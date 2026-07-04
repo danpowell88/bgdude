@@ -1,0 +1,108 @@
+/// Dart client for the native pump bridge. Listens to the `bgdude/pump_events`
+/// EventChannel for connection-state changes and status snapshots, and exposes them as
+/// broadcast streams the rest of the app (and Riverpod providers) can watch.
+///
+/// Commands (start/stop scan, submit pairing code) go through the Pigeon-generated
+/// `PumpHostApi`; until Pigeon is generated, the MethodChannel fallback below is used so
+/// the read path works end-to-end.
+library;
+
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
+import 'package:logging/logging.dart';
+
+import 'pump_snapshot.dart';
+
+class PumpClient {
+  PumpClient({
+    EventChannel? events,
+    MethodChannel? commands,
+  })  : _events = events ?? const EventChannel('bgdude/pump_events'),
+        _commands = commands ?? const MethodChannel('bgdude/pump_commands');
+
+  final EventChannel _events;
+  final MethodChannel _commands;
+  final _log = Logger('PumpClient');
+
+  final _connection = StreamController<PumpConnection>.broadcast();
+  final _snapshots = StreamController<PumpSnapshot>.broadcast();
+  final _pairingRequests = StreamController<String>.broadcast();
+  final _errors = StreamController<String>.broadcast();
+
+  StreamSubscription<dynamic>? _sub;
+  PumpConnection _lastConnection = PumpConnection.idle;
+  PumpSnapshot? _lastSnapshot;
+
+  Stream<PumpConnection> get connection => _connection.stream;
+  Stream<PumpSnapshot> get snapshots => _snapshots.stream;
+  Stream<String> get pairingRequests => _pairingRequests.stream;
+  Stream<String> get errors => _errors.stream;
+
+  PumpConnection get lastConnection => _lastConnection;
+  PumpSnapshot? get lastSnapshot => _lastSnapshot;
+
+  void start() {
+    _sub ??= _events.receiveBroadcastStream().listen(
+          _onEvent,
+          onError: (Object e, StackTrace s) => _log.warning('event error', e, s),
+        );
+  }
+
+  Future<void> dispose() async {
+    await _sub?.cancel();
+    await _connection.close();
+    await _snapshots.close();
+    await _pairingRequests.close();
+    await _errors.close();
+  }
+
+  void _onEvent(dynamic event) {
+    if (event is! Map) return;
+    final map = event.cast<Object?, Object?>();
+    switch (map['kind']) {
+      case 'state':
+        _lastConnection = PumpConnection.fromEvent(map);
+        _connection.add(_lastConnection);
+      case 'snapshot':
+        final json = map['json'] as String?;
+        if (json != null) {
+          final decoded = jsonDecode(json) as Map<String, dynamic>;
+          _lastSnapshot = PumpSnapshot.fromJson(decoded);
+          _snapshots.add(_lastSnapshot!);
+        }
+      case 'pairingCode':
+        _pairingRequests.add(map['type'] as String? ?? 'SHORT_6CHAR');
+      case 'criticalError':
+        _errors.add(map['message'] as String? ?? 'Unknown pump error');
+    }
+  }
+
+  // --- Commands ---
+
+  Future<void> startScan({String? macFilter}) =>
+      _invoke('startScan', {'macFilter': macFilter});
+
+  Future<void> stopScan() => _invoke('stopScan', const {});
+
+  Future<void> requestStatus() => _invoke('requestStatus', const {});
+
+  Future<void> submitPairingCode(String code, {required bool long}) => _invoke(
+      'submitPairingCode',
+      {'code': code, 'type': long ? 'LONG_16CHAR' : 'SHORT_6CHAR'});
+
+  Future<void> unpair() => _invoke('unpair', const {});
+
+  Future<void> _invoke(String method, Map<String, dynamic> args) async {
+    try {
+      await _commands.invokeMethod<void>(method, args);
+    } on MissingPluginException {
+      // Pigeon host API not generated yet; read path via EventChannel still works.
+      _log.info('command $method not wired (pigeon not generated)');
+    } on PlatformException catch (e) {
+      _log.warning('command $method failed', e);
+      rethrow;
+    }
+  }
+}

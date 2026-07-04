@@ -1,0 +1,83 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader("UTF-8") { reader -> localProperties.load(reader) }
+}
+
+def flutterVersionCode = localProperties.getProperty("flutter.versionCode") ?: "1"
+def flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "0.1.0"
+
+// Toggle: build pumpx2 from a local ~/.m2 publish instead of JitPack.
+def useLocalPumpx2 = localProperties.getProperty("use_local_pumpx2") == "true"
+def pumpx2Version = localProperties.getProperty("pumpx2_version") ?: "1.9.0"
+
+android {
+    namespace = "com.bgdude.app"
+    compileSdk = 36
+
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        // Required by health-connect / desugared libs used transitively.
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    defaultConfig {
+        applicationId = "com.bgdude.app"
+        minSdk = 29
+        targetSdk = 37
+        versionCode = flutterVersionCode.toInteger()
+        versionName = flutterVersionName
+    }
+
+    buildTypes {
+        release {
+            // Personal build: sign with debug for now; swap in a real keystore later.
+            signingConfig = signingConfigs.debug
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.2"
+
+    if (useLocalPumpx2) {
+        // Requires `./gradlew publishToMavenLocal` in a pumpx2 checkout.
+        implementation "com.jwoglom.pumpx2:pumpx2-android:${pumpx2Version}"
+        implementation "com.jwoglom.pumpx2:pumpx2-messages:${pumpx2Version}"
+        implementation "com.jwoglom.pumpx2:pumpx2-shared:${pumpx2Version}"
+    } else {
+        // JitPack coordinates (github.com/jwoglom/pumpX2).
+        implementation "com.github.jwoglom.pumpX2:pumpx2-android:${pumpx2Version}"
+        implementation "com.github.jwoglom.pumpX2:pumpx2-messages:${pumpx2Version}"
+        implementation "com.github.jwoglom.pumpX2:pumpx2-shared:${pumpx2Version}"
+    }
+
+    // pumpx2 transitive expectations.
+    implementation "com.welie.blessed:blessed:2.4.1"
+    implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation "commons-codec:commons-codec:1.15"
+
+    implementation "androidx.core:core-ktx:1.13.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
+}

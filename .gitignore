@@ -1,0 +1,42 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.pub-cache/
+.pub/
+pubspec.lock
+*.g.dart.lock
+
+# Generated code (drift, pigeon, freezed, json_serializable) is committed on purpose
+# so the repo is inspectable without a build, EXCEPT transient caches above.
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/*.jks
+android/captures/
+*.keystore
+
+# Secrets / local config
+local.properties
+.env
+*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ML artifacts (large; keep out of git, ship base model via release asset)
+assets/models/*.bin
+assets/models/*.ckpt
+*.tflite.large
