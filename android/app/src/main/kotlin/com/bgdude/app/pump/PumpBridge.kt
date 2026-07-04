@@ -7,6 +7,7 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodChannel
 
 /**
  * Bridges the Flutter engine to [PumpService]. Two channels:
@@ -43,8 +44,34 @@ class PumpBridge(
 
     fun attach() {
         hostApiImpl = PumpHostApiImpl(context)
-        // Generated: PumpHostApi.setUp(messenger, hostApiImpl)
-        PumpHostApiRegistrar.register(engine.dartExecutor.binaryMessenger, hostApiImpl)
+
+        // Command surface: a plain MethodChannel matching Dart's PumpClient. All
+        // commands are read-only requests; there is no control/bolus path.
+        MethodChannel(engine.dartExecutor.binaryMessenger, COMMAND_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "startScan" ->
+                        hostApiImpl.startScan(call.argument("macFilter")) {
+                            result.success(null)
+                        }
+                    "stopScan" -> hostApiImpl.stopScan { result.success(null) }
+                    "requestStatus" ->
+                        hostApiImpl.requestStatusJson { r ->
+                            result.success(r.getOrNull())
+                        }
+                    "submitPairingCode" -> {
+                        val code = call.argument<String>("code") ?: ""
+                        val type = if (call.argument<String>("type") == "LONG_16CHAR") {
+                            PairingCodeType.LONG_16CHAR
+                        } else {
+                            PairingCodeType.SHORT_6CHAR
+                        }
+                        hostApiImpl.submitPairingCode(code, type) { result.success(null) }
+                    }
+                    "unpair" -> hostApiImpl.unpair { result.success(null) }
+                    else -> result.notImplemented()
+                }
+            }
 
         EventChannel(engine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
             .setStreamHandler(object : EventChannel.StreamHandler {
@@ -101,5 +128,6 @@ class PumpBridge(
 
     companion object {
         private const val EVENT_CHANNEL = "bgdude/pump_events"
+        private const val COMMAND_CHANNEL = "bgdude/pump_commands"
     }
 }

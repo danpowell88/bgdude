@@ -7,6 +7,8 @@ import '../pump/pump_snapshot.dart';
 import '../state/providers.dart';
 import 'advanced_screen.dart';
 import 'bolus_advisor_screen.dart';
+import 'illness_screen.dart';
+import 'meal_library_screen.dart';
 import 'widgets/glucose_hero.dart';
 import 'widgets/prediction_chart.dart';
 
@@ -29,6 +31,20 @@ class HomeScreen extends ConsumerWidget {
             tooltip: 'Toggle units',
             onPressed: () => ref.read(glucoseUnitProvider.notifier).state =
                 unit == GlucoseUnit.mmol ? GlucoseUnit.mgdl : GlucoseUnit.mmol,
+          ),
+          IconButton(
+            icon: const Icon(Icons.restaurant),
+            tooltip: 'Meals',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const MealLibraryScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.sick_outlined),
+            tooltip: 'Illness mode',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const IllnessScreen()),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.tune),

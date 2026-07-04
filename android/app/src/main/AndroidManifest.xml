@@ -94,6 +94,18 @@
             </intent-filter>
         </receiver>
 
+        <!-- Home-screen glucose widget. -->
+        <receiver
+            android:name=".widget.BgWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/bg_widget_info" />
+        </receiver>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

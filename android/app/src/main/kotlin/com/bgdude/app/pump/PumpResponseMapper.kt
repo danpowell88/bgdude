@@ -19,18 +19,22 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.LastBolusStatusV2
  */
 object PumpResponseMapper {
 
+    /** Tandem pump timestamps are seconds since 2008-01-01T00:00:00Z. */
+    private const val TANDEM_EPOCH_MS = 1_199_145_600_000L
+
     fun apply(message: Message, snapshot: MutableSnapshot) {
         when (message) {
+            // Ibc (internal battery capacity) is the value the pump UI shows as %.
             is CurrentBatteryV1Response ->
-                snapshot.batteryPercent = message.currentBatteryPercent
+                snapshot.batteryPercent = message.currentBatteryIbc
             is CurrentBatteryV2Response ->
-                snapshot.batteryPercent = message.currentBatteryPercent
+                snapshot.batteryPercent = message.currentBatteryIbc
 
             is InsulinStatusResponse ->
                 snapshot.reservoirUnits = message.currentInsulinAmount.toDouble()
 
             is ControlIQIOBResponse -> {
-                snapshot.iobUnits = message.mudaliarIOB / 1000.0 // milliunits → units
+                snapshot.iobUnits = message.pumpDisplayedIOB / 1000.0 // milliunits
                 snapshot.controlIqActive = true
             }
 
@@ -41,13 +45,13 @@ object PumpResponseMapper {
                 snapshot.cgmMgdl = message.cgmReading
                 snapshot.cgmTrend = mapTrend(message.trendRate)
                 snapshot.cgmTimestampEpochMs =
-                    message.timestampSeconds.toLong() * 1000L
+                    TANDEM_EPOCH_MS + message.bgReadingTimestampSeconds * 1000L
             }
 
             is LastBolusStatusV2Response -> {
                 snapshot.lastBolusUnits = message.deliveredVolume / 1000.0
                 snapshot.lastBolusTimestampEpochMs =
-                    message.timestamp.toLong() * 1000L
+                    message.timestampInstant.toEpochMilli()
             }
 
             is ApiVersionResponse ->

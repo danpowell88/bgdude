@@ -12,9 +12,7 @@
 ///     separately).
 library;
 
-import '../core/samples.dart';
 import '../core/units.dart';
-import 'carb_math.dart';
 import 'insulin_math.dart';
 import 'predictor.dart';
 import 'therapy_settings.dart';
@@ -119,6 +117,8 @@ class BolusAdvisor {
     }
 
     // --- Predicted-low guardrail ---
+    // Always surface a predicted low, even when there is no correction to trim —
+    // the user deciding on a meal bolus needs to know either way.
     final prediction = _predictor.predict(state);
     final predictedMin = prediction.minMgdl;
     if (predictedMin < GlucoseThresholds.low) {
@@ -128,8 +128,11 @@ class BolusAdvisor {
       if (before > 0) {
         notes.add(
             'Predicted low (${Mgdl(predictedMin).display(displayUnit)} ${displayUnit.label}) — correction reduced by ${(severity * 100).round()}%.');
-        confidence = _downgrade(confidence);
+      } else {
+        notes.add(
+            'Predicted low ahead (${Mgdl(predictedMin).display(displayUnit)} ${displayUnit.label}) — dose with care.');
       }
+      confidence = _downgrade(confidence);
       if (predictedMin < GlucoseThresholds.veryLow && carbsGrams == 0) {
         notes.add('Consider fast carbs rather than insulin.');
       }

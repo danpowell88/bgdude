@@ -26,7 +26,7 @@ void main() {
       for (var i = 0; i < 100; i++) {
         samples.add(CgmSample(
             time: start.add(Duration(minutes: 5 * i)),
-            mgdl: i.isEven ? 100 : 250));
+            mgdl: i.isEven ? 100 : 260));
       }
       final m = const MetricsCalculator().compute(samples);
       expect(m.timeInRange, closeTo(0.5, 0.02));

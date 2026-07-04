@@ -31,12 +31,13 @@ class TherapySegment {
 }
 
 class TherapySettings {
+  /// [segments] must be non-empty; `segmentAt` assumes at least one entry.
   const TherapySettings({
     required this.segments,
     this.durationOfInsulinActionMinutes = 360,
     this.maxBolusUnits = 25,
     this.insulinPeakMinutes = 75,
-  }) : assert(segments.length > 0);
+  });
 
   final List<TherapySegment> segments;
   final int durationOfInsulinActionMinutes;

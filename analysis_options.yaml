@@ -16,6 +16,5 @@ linter:
     - prefer_final_locals
     - avoid_print
     - unawaited_futures
-    - require_trailing_commas
     - always_declare_return_types
     - prefer_const_constructors

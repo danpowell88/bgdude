@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Binder
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.bgdude.app.garmin.GarminIntegration
 
 /**
  * Foreground service (type `connectedDevice`) that owns the pump connection for the
@@ -45,6 +46,7 @@ class PumpService : Service(), PumpCommHandler.Listener {
         super.onCreate()
         createChannel()
         commHandler = PumpCommHandler(applicationContext, this)
+        GarminIntegration.init(applicationContext)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -68,7 +70,9 @@ class PumpService : Service(), PumpCommHandler.Listener {
     }
 
     override fun onSnapshotUpdated(snapshot: MutableSnapshot) {
-        callbacks?.onSnapshot(snapshot.toJson())
+        val json = snapshot.toJson()
+        callbacks?.onSnapshot(json)
+        GarminIntegration.onSnapshot(json)
     }
 
     override fun onPairingCodeRequired(type: PairingCodeType) {

@@ -75,7 +75,32 @@ class NotificationService {
         android: AndroidNotificationDetails('morning_summary', 'Morning summary'),
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  /// Schedule a one-shot pre-bolus timer: fires "time to eat" after [lead].
+  /// Survives the app being backgrounded/killed (unlike an in-process delay).
+  Future<void> schedulePreBolusTimer(Duration lead, String mealName) async {
+    final when = tz.TZDateTime.now(tz.local).add(lead);
+    await _plugin.zonedSchedule(
+      3000,
+      'Time to eat',
+      '${lead.inMinutes} min pre-bolus for $mealName is up — enjoy.',
+      when,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'glucose_alerts',
+          'Glucose nudges',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 

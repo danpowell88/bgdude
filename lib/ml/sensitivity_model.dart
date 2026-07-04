@@ -15,8 +15,10 @@
 ///   * alcohol → delayed lows (handled as a predictor bias, not here)
 library;
 
-import '../ml/ridge_regression.dart';
 import '../analytics/therapy_settings.dart';
+import 'ridge_regression.dart';
+
+export '../analytics/therapy_settings.dart' show SensitivityContext;
 
 /// Contextual features for a given day, already normalised to sensible ranges.
 class ContextFeatures {

@@ -68,14 +68,15 @@ class MealDetector {
       final unexplainedRise = roc + insulinDrag; // add back what insulin subtracted
 
       if (unexplainedRise >= riseThresholdMgdlPerMin) {
-        candidateStart ??= prev.time;
+        final start = candidateStart ?? prev.time;
+        candidateStart = start;
         sustained += gap;
         accumulatedRise += unexplainedRise * gap;
         if (sustained >= sustainMinutes) {
           final csf = seg.isf / seg.carbRatio;
           final estCarbs = csf == 0 ? 0.0 : accumulatedRise / csf;
           out.add(MealCandidate(
-            time: candidateStart!,
+            time: start,
             riseRateMgdlPerMin: unexplainedRise,
             estimatedCarbsGrams: estCarbs,
             confidence: (sustained / 45.0).clamp(0.0, 1.0),

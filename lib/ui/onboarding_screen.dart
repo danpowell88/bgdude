@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../state/providers.dart';
-
 /// First-run onboarding. The critical screen is the pairing warning: pairing with
 /// pumpx2 unpairs the official t:connect app (mutual exclusion), and pairing is a
 /// reverse-engineered proof-of-concept that can be flaky. The user must acknowledge this

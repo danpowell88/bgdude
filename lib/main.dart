@@ -4,6 +4,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 
 import 'app.dart';
 import 'insights/notifications.dart';
+import 'state/providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -73,10 +73,13 @@ dependencies {
         implementation "com.github.jwoglom.pumpX2:pumpx2-shared:${pumpx2Version}"
     }
 
-    // pumpx2 transitive expectations.
-    implementation "com.welie.blessed:blessed:2.4.1"
-    implementation "org.apache.commons:commons-lang3:3.12.0"
-    implementation "commons-codec:commons-codec:1.15"
+    // Blessed is declared runtime-scope in pumpx2's POM, but our TandemPump subclass
+    // references BluetoothPeripheral/HciStatus directly, so it must be on the compile
+    // classpath too. Version must match the pumpx2 POM.
+    implementation "com.github.weliem:blessed-android:2.4.0"
+
+    // Garmin Connect IQ Mobile SDK (free) — pushes BG to the watch app in garmin/.
+    implementation "com.garmin.connectiq:ciq-companion-app-sdk:2.0.3@aar"
 
     implementation "androidx.core:core-ktx:1.13.1"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"

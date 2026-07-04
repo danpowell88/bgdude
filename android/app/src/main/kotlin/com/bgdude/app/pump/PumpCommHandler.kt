@@ -1,29 +1,37 @@
 package com.bgdude.app.pump
 
+import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.util.Log
 import com.jwoglom.pumpx2.pump.PumpState
+import com.jwoglom.pumpx2.pump.TandemError
+import com.jwoglom.pumpx2.pump.bluetooth.PumpReadyState
 import com.jwoglom.pumpx2.pump.bluetooth.TandemBluetoothHandler
 import com.jwoglom.pumpx2.pump.bluetooth.TandemPump
 import com.jwoglom.pumpx2.pump.messages.Message
 import com.jwoglom.pumpx2.pump.messages.builders.CurrentBatteryRequestBuilder
-import com.jwoglom.pumpx2.pump.messages.request.currentStatus.ApiVersionRequest
+import com.jwoglom.pumpx2.pump.messages.builders.JpakeAuthBuilder
+import com.jwoglom.pumpx2.pump.messages.models.KnownDeviceModel
+import com.jwoglom.pumpx2.pump.messages.models.PairingCodeType as X2PairingCodeType
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.ControlIQIOBRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CurrentBasalStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CurrentEGVGuiDataRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.InsulinStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.LastBolusStatusV2Request
+import com.jwoglom.pumpx2.pump.messages.response.authentication.AbstractCentralChallengeResponse
+import com.jwoglom.pumpx2.pump.messages.response.authentication.AbstractPumpChallengeResponse
+import com.jwoglom.pumpx2.pump.messages.response.qualifyingEvent.QualifyingEvent
 import com.welie.blessed.BluetoothPeripheral
+import com.welie.blessed.HciStatus
 
 /**
  * Owns the pumpx2 [TandemPump] object and the BLE handler. This is the ONLY place that
  * talks to the pump.
  *
- * Read-only by construction: this class imports and sends only request classes from the
- * `request.currentStatus` package. It deliberately does not import anything from
- * `request.control` (InitiateBolusRequest, SetTempRateRequest, FactoryResetRequest, …),
- * so there is no code path that can modify insulin delivery. Keep it that way — the
- * read-only guarantee is enforced by what is (not) imported here.
+ * Read-only by construction: this class sends only `currentStatus` request messages and
+ * never calls [enableActionsAffectingInsulinDelivery], so pumpx2 itself blocks any
+ * insulin-affecting message. Nothing from `request.control` is imported here — keep it
+ * that way; the read-only guarantee is enforced by what is (not) imported and enabled.
  *
  * Modeled on the ControlX2 `PumpCommHandler`, minus every write path.
  */
@@ -43,6 +51,9 @@ class PumpCommHandler(
     private var peripheral: BluetoothPeripheral? = null
     private var macFilter: String? = null
 
+    /** The challenge from onWaitingForPairingCode, needed to complete pairing. */
+    private var pendingChallenge: AbstractCentralChallengeResponse? = null
+
     /** Accumulates the latest values as responses stream in. */
     val snapshot = MutableSnapshot()
 
@@ -55,15 +66,17 @@ class PumpCommHandler(
     }
 
     fun stop() {
-        bluetoothHandler?.stopScan()
-        peripheral?.let { bluetoothHandler?.disconnect(it) }
+        bluetoothHandler?.stop()
         emitState(ConnectionStage.IDLE)
     }
 
     fun requestFullStatus() {
         val p = peripheral ?: return
         // Fire the read-only status requests; responses arrive in onReceiveMessage.
-        sendCommand(p, CurrentBatteryRequestBuilder.create(PumpState.tandemPumpApiVersion))
+        // Battery needs the version-matched request; the rest are unversioned.
+        PumpState.getPumpAPIVersion()?.let { api ->
+            sendCommand(p, CurrentBatteryRequestBuilder.create(api))
+        }
         sendCommand(p, InsulinStatusRequest())
         sendCommand(p, ControlIQIOBRequest())
         sendCommand(p, CurrentBasalStatusRequest())
@@ -72,21 +85,25 @@ class PumpCommHandler(
     }
 
     fun submitPairingCode(code: String, type: PairingCodeType) {
-        // PumpState stores the code; the handshake resumes on the next connection attempt.
-        PumpState.setPairingCode(code)
-        peripheral?.let { bluetoothHandler?.connect(it) }
+        val p = peripheral
+        val challenge = pendingChallenge
+        PumpState.setPairingCode(context, code)
+        if (p != null && challenge != null) {
+            pair(p, challenge, code)
+        }
     }
 
     fun unpair() {
-        PumpState.clearPairingCode()
-        peripheral?.let { bluetoothHandler?.removeBond(it) }
+        bluetoothHandler?.stop()
+        PumpState.resetState(context)
+        pendingChallenge = null
+        peripheral = null
         emitState(ConnectionStage.IDLE)
     }
 
     // --- pumpx2 TandemPump callbacks (read-only subset) ---
 
-    override fun onReceiveMessage(peripheral: BluetoothPeripheral, message: Message?) {
-        if (message == null) return
+    override fun onReceiveMessage(peripheral: BluetoothPeripheral, message: Message) {
         try {
             PumpResponseMapper.apply(message, snapshot)
             listener.onSnapshotUpdated(snapshot)
@@ -97,15 +114,27 @@ class PumpCommHandler(
 
     override fun onReceiveQualifyingEvent(
         peripheral: BluetoothPeripheral,
-        events: MutableSet<com.jwoglom.pumpx2.pump.messages.models.PumpQualifyingEvent>?,
+        events: Set<QualifyingEvent>,
     ) {
         // A qualifying event (e.g. new CGM reading, bolus completed) — pull fresh status.
         requestFullStatus()
     }
 
-    override fun onWaitingForPairingCode(peripheral: BluetoothPeripheral, pumpApiMessage: Message?) {
+    override fun onWaitingForPairingCode(
+        peripheral: BluetoothPeripheral,
+        centralChallengeResponse: AbstractCentralChallengeResponse?,
+    ) {
         this.peripheral = peripheral
-        val type = if (PumpState.getPairingCodeType() == PumpState.PairingCodeType.LONG_16CHAR) {
+        this.pendingChallenge = centralChallengeResponse
+
+        // If a code is already stored (re-pair after restart), use it directly.
+        val saved = PumpState.getPairingCodeCached()
+        if (!saved.isNullOrEmpty() && centralChallengeResponse != null) {
+            pair(peripheral, centralChallengeResponse, saved)
+            return
+        }
+
+        val type = if (PumpState.pairingCodeType == X2PairingCodeType.LONG_16CHAR) {
             PairingCodeType.LONG_16CHAR
         } else {
             PairingCodeType.SHORT_6CHAR
@@ -128,7 +157,11 @@ class PumpCommHandler(
         requestFullStatus()
     }
 
-    override fun onPumpDiscovered(peripheral: BluetoothPeripheral, scanResult: android.bluetooth.le.ScanResult?): Boolean {
+    override fun onPumpDiscovered(
+        peripheral: BluetoothPeripheral,
+        scanResult: ScanResult?,
+        readyState: PumpReadyState,
+    ): Boolean {
         val mac = macFilter
         if (mac != null && !peripheral.address.equals(mac, ignoreCase = true)) {
             return false // ignore other pumps
@@ -139,34 +172,41 @@ class PumpCommHandler(
         return true
     }
 
-    override fun onPumpModel(peripheral: BluetoothPeripheral, model: com.jwoglom.pumpx2.pump.messages.models.KnownDeviceModel?) {
-        snapshot.model = when (model?.name) {
-            "TSLIM_X2" -> PumpModel.TSLIM_X2
-            "MOBI" -> PumpModel.MOBI
+    override fun onPumpModel(peripheral: BluetoothPeripheral, model: KnownDeviceModel) {
+        snapshot.model = when (model) {
+            KnownDeviceModel.TSLIM_X2 -> PumpModel.TSLIM_X2
+            KnownDeviceModel.MOBI -> PumpModel.MOBI
             else -> PumpModel.UNKNOWN
         }
         listener.onSnapshotUpdated(snapshot)
     }
 
-    override fun onJpakeProgress(peripheral: BluetoothPeripheral, step: Int) {
-        snapshot.jpakeProgress = step
+    override fun onJpakeProgress(step: JpakeAuthBuilder.JpakeStep) {
+        snapshot.jpakeProgress = step.ordinal
         emitState(ConnectionStage.JPAKE_IN_PROGRESS)
     }
 
-    override fun onInvalidPairingCode(peripheral: BluetoothPeripheral, message: Message?) {
+    override fun onInvalidPairingCode(
+        peripheral: BluetoothPeripheral,
+        response: AbstractPumpChallengeResponse?,
+    ) {
+        pendingChallenge = null
         emitState(ConnectionStage.ERROR, "Invalid pairing code")
     }
 
-    override fun onPumpDisconnected(peripheral: BluetoothPeripheral, status: Int): Boolean {
+    override fun onPumpDisconnected(
+        peripheral: BluetoothPeripheral,
+        status: HciStatus,
+    ): Boolean {
         emitState(ConnectionStage.DISCONNECTED)
         // Return true to request an automatic reconnect (proof-of-concept pairing can
         // drop; the service surfaces persistent failures to the UI).
         return true
     }
 
-    override fun onPumpCriticalError(peripheral: BluetoothPeripheral, reason: String?) {
-        listener.onCriticalError(reason ?: "Unknown pump error")
-        emitState(ConnectionStage.ERROR, reason)
+    override fun onPumpCriticalError(peripheral: BluetoothPeripheral, error: TandemError) {
+        listener.onCriticalError(error.name)
+        emitState(ConnectionStage.ERROR, error.name)
     }
 
     private fun emitState(stage: ConnectionStage, error: String? = null) {
