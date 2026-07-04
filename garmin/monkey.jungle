@@ -1,0 +1,6 @@
+# bgdude Connect IQ build file.
+# Build:  monkeyc -f monkey.jungle -d <device> -o bin/bgdude.prg -y developer_key
+project.manifest = manifest.xml
+
+base.sourcePath = source
+base.resourcePath = resources

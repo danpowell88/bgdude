@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rounded dark card behind the BG widget. Slightly translucent so it sits
+     naturally on the launcher without disappearing on dark wallpapers. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#F21C1B1F" />
+    <corners android:radius="24dp" />
+</shape>

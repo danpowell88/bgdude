@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AppWidget metadata for the BG widget.
+
+     updatePeriodMillis is 0 because updates are pushed from the app whenever a new
+     CGM snapshot arrives (via the home_widget plugin) plus a periodic staleness
+     refresh; the system never needs to poll. targetCellWidth/Height and
+     previewLayout are API 31+ and ignored below that (minSdk 29). -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/bg_widget_description"
+    android:initialLayout="@layout/bg_widget"
+    android:minWidth="110dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="40dp"
+    android:previewLayout="@layout/bg_widget"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home-screen widget metadata. -->
+    <string name="bg_widget_label">Blood glucose</string>
+    <string name="bg_widget_description">Current BG, trend, and insulin on board from your pump.</string>
+</resources>
