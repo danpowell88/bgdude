@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// First-run onboarding. The critical screen is the pairing warning: pairing with
 /// pumpx2 unpairs the official t:connect app (mutual exclusion), and pairing is a
@@ -56,12 +57,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   bool get _canAdvance => _page != 1 || _acceptedPairing;
 
-  void _advance() {
+  Future<void> _advance() async {
     if (_page == 2) {
+      // Request the permissions the pump service and notifications need. The
+      // connectedDevice foreground service can only start once bluetoothConnect
+      // is granted (Android 14+ hard requirement).
+      await [
+        Permission.bluetoothConnect,
+        Permission.bluetoothScan,
+        Permission.notification,
+      ].request();
       widget.onDone();
       return;
     }
-    _controller.nextPage(
+    await _controller.nextPage(
         duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
   }
 

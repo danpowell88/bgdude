@@ -1,15 +1,20 @@
 package com.bgdude.app.pump
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Binder
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.bgdude.app.garmin.GarminIntegration
 
 /**
@@ -50,7 +55,19 @@ class PumpService : Service(), PumpCommHandler.Listener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForegroundCompat()
+        // Android 14+ refuses a connectedDevice FGS unless a Bluetooth runtime
+        // permission is already granted — on a fresh install it won't be. Never
+        // crash: run un-foregrounded (bound-only) until the app retries after the
+        // permission flow (see hasBluetoothPermission + PumpBridge).
+        if (hasBluetoothPermission(this)) {
+            try {
+                startForegroundCompat()
+            } catch (e: SecurityException) {
+                Log.w(TAG, "FGS start rejected; continuing bound-only", e)
+            }
+        } else {
+            Log.i(TAG, "BLUETOOTH_CONNECT not granted yet; deferring foreground start")
+        }
         return START_STICKY // restart if killed
     }
 
@@ -128,7 +145,16 @@ class PumpService : Service(), PumpCommHandler.Listener {
     }
 
     companion object {
+        private const val TAG = "PumpService"
         private const val CHANNEL_ID = "pump_connection"
         private const val NOTIF_ID = 42
+
+        /** The connectedDevice FGS type requires one of the BT runtime permissions. */
+        fun hasBluetoothPermission(context: Context): Boolean =
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                ) == PackageManager.PERMISSION_GRANTED
     }
 }

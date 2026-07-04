@@ -50,10 +50,14 @@ class PumpBridge(
         MethodChannel(engine.dartExecutor.binaryMessenger, COMMAND_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "startScan" ->
+                    "startScan" -> {
+                        // The user grants Bluetooth permissions before scanning; make
+                        // sure the service is foregrounded now that it's allowed.
+                        ensureForegroundStarted()
                         hostApiImpl.startScan(call.argument("macFilter")) {
                             result.success(null)
                         }
+                    }
                     "stopScan" -> hostApiImpl.stopScan { result.success(null) }
                     "requestStatus" ->
                         hostApiImpl.requestStatusJson { r ->
@@ -84,10 +88,21 @@ class PumpBridge(
                 }
             })
 
-        // Start + bind the foreground service.
+        // Always bind (creates the service without foregrounding); only *start* it as
+        // a foreground service when the Bluetooth runtime permission is granted —
+        // Android 14+ hard-rejects a connectedDevice FGS without it (fresh installs).
         val intent = Intent(context, PumpService::class.java)
-        context.startForegroundService(intent)
+        if (PumpService.hasBluetoothPermission(context)) {
+            context.startForegroundService(intent)
+        }
         context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
+    }
+
+    /** Re-attempt the foreground start (call after the permission flow completes). */
+    private fun ensureForegroundStarted() {
+        if (PumpService.hasBluetoothPermission(context)) {
+            context.startForegroundService(Intent(context, PumpService::class.java))
+        }
     }
 
     fun detach() {

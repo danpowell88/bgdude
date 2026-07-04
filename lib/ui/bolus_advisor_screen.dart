@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../analytics/bolus_advisor.dart';
-import '../analytics/predictor.dart';
-import '../core/samples.dart';
 import '../state/providers.dart';
+import 'widgets/common.dart';
 
 /// Interactive bolus advisor. Enter carbs (optional); it computes a suggestion from the
 /// live CGM/IOB + context-adjusted settings and shows every step of the maths. The user
@@ -28,23 +27,9 @@ class _BolusAdvisorScreenState extends ConsumerState<BolusAdvisorScreen> {
   }
 
   void _compute() {
-    final snapshot = ref.read(pumpSnapshotProvider).valueOrNull;
-    final mgdl = snapshot?.cgmMgdl?.toDouble();
-    if (mgdl == null) return;
-    final settings = ref.read(therapySettingsProvider);
-    final ctx = ref.read(sensitivityContextProvider);
+    final state = ref.read(livePredictionStateProvider);
+    if (state == null) return;
     final unit = ref.read(glucoseUnitProvider);
-
-    final state = PredictionState(
-      now: snapshot!.cgmTime ?? DateTime.now(),
-      currentMgdl: mgdl,
-      recentRocMgdlPerMin: (snapshot.cgmTrend ?? GlucoseTrend.flat).mgdlPerMin,
-      boluses: const [],
-      basal: const [],
-      carbs: const [],
-      settings: settings,
-      context: ctx,
-    );
 
     final carbs = double.tryParse(_carbs.text) ?? 0;
     setState(() {
@@ -129,37 +114,10 @@ class _AdviceCard extends StatelessWidget {
             const Divider(height: 24),
             Text('Working', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
-            for (final step in advice.working)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                        width: 110,
-                        child: Text(step.label,
-                            style: Theme.of(context).textTheme.bodySmall)),
-                    Expanded(child: Text(step.value)),
-                  ],
-                ),
-              ),
+            AdviceWorkingList(advice.working),
             if (advice.notes.isNotEmpty) ...[
               const SizedBox(height: 12),
-              for (final note in advice.notes)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.info_outline,
-                          size: 16, color: cs.tertiary),
-                      const SizedBox(width: 6),
-                      Expanded(
-                          child: Text(note,
-                              style: Theme.of(context).textTheme.bodySmall)),
-                    ],
-                  ),
-                ),
+              AdviceNotesList(advice.notes),
             ],
             const SizedBox(height: 16),
             Container(

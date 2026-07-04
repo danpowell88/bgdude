@@ -1,0 +1,190 @@
+/// On-device integration tests: boots the real app on an Android device/emulator and
+/// drives the primary flows through the tab shell. Dev mode is enabled so the timeline,
+/// predictions, and insights render against the simulated t:slim + CGM (no hardware).
+/// Run with: flutter test integration_test -d <device-id>
+library;
+
+import 'package:bgdude/app.dart';
+import 'package:bgdude/insights/notifications.dart';
+import 'package:bgdude/state/providers.dart';
+import 'package:bgdude/ui/home_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+
+Future<void> _pumpApp(
+  WidgetTester tester, {
+  bool onboarded = true,
+  bool devMode = true,
+}) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        notificationServiceProvider.overrideWithValue(NotificationService()),
+        onboardingDoneProvider.overrideWith((ref) => onboarded),
+        devModeProvider.overrideWith((ref) => devMode),
+      ],
+      child: const BgDudeApp(),
+    ),
+  );
+  await tester.pumpAndSettle();
+  // Let the simulator's deferred first emit (Timer.zero) land and rebuild.
+  if (devMode) {
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+  }
+}
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('first run shows onboarding with the pairing warning gate',
+      (tester) async {
+    await _pumpApp(tester, onboarded: false);
+
+    expect(find.textContaining('personal companion'), findsOneWidget);
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Before you pair'), findsOneWidget);
+    final next =
+        tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Next'));
+    expect(next.onPressed, isNull);
+
+    await tester.tap(find.text('I understand and want to continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Connect your data'), findsOneWidget);
+  });
+
+  testWidgets('dev mode boots the tab shell with simulated glucose',
+      (tester) async {
+    await _pumpApp(tester);
+
+    // Shell chrome + DEV badge.
+    expect(find.text('Today'), findsWidgets);
+    expect(find.text('DEV'), findsOneWidget);
+    // Simulated pump connects and streams a reading (no "waiting" card).
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Simulated t:slim'), findsOneWidget);
+    expect(find.text('Bolus'), findsOneWidget);
+  });
+
+  testWidgets('timeline shows simulated events that can be tagged',
+      (tester) async {
+    await _pumpApp(tester);
+    await tester.pumpAndSettle();
+
+    // Events render below the dashboard in the same scroll view (lazy-built), so
+    // drag up until a tag action comes into view.
+    final scrollable = find.byType(Scrollable).first;
+    for (var i = 0;
+        i < 12 && find.text('Use for model').evaluate().isEmpty;
+        i++) {
+      await tester.drag(scrollable, const Offset(0, -350));
+      await tester.pumpAndSettle();
+    }
+    expect(find.byType(TimelineEventCard), findsWidgets);
+
+    await tester.tap(find.text('Use for model').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Ignore — Illness').first);
+    await tester.pumpAndSettle();
+    // The tagged event now shows its ignore chip.
+    expect(find.text('Illness'), findsWidgets);
+  });
+
+  testWidgets('predict tab shows forecast horizons and scenario chart',
+      (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.byIcon(Icons.insights_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Forecast'), findsOneWidget);
+    expect(find.text('+30m'), findsOneWidget);
+    expect(find.text('+60m'), findsOneWidget);
+    expect(find.text('+120m'), findsOneWidget);
+    expect(find.text('Scenario lines'), findsOneWidget);
+    expect(find.textContaining('Sensitivity readiness'), findsOneWidget);
+  });
+
+  testWidgets('insights tab merges briefing, sensitivity and illness',
+      (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.byIcon(Icons.lightbulb_outline));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Daily briefing'), findsOneWidget);
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(find.text('Insulin sensitivity'), 250,
+        scrollable: scrollable);
+    expect(find.text('Insulin sensitivity'), findsOneWidget);
+
+    final sick = find.text('Sick day mode');
+    await tester.scrollUntilVisible(sick, 250, scrollable: scrollable);
+    expect(sick, findsOneWidget);
+
+    // Toggle illness mode on → the resistance slider appears.
+    await tester.tap(find.byType(Switch).first);
+    await tester.pumpAndSettle();
+    expect(find.byType(Slider), findsWidgets);
+  });
+
+  testWidgets('bolus advisor computes a suggestion from simulated glucose',
+      (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.text('Bolus'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, '45');
+    await tester.tap(find.text('Calculate suggestion'));
+    await tester.pumpAndSettle();
+
+    // With a live simulated reading the advisor produces working + a suggestion.
+    expect(find.text('Working'), findsOneWidget);
+    expect(find.text('Suggested'), findsOneWidget);
+  });
+
+  testWidgets('meals tab: add a meal and open its detail with the coach',
+      (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.byIcon(Icons.restaurant_outlined));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add meal'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const Key('meal-name-field')), 'Test pasta');
+    await tester.enterText(find.byKey(const Key('meal-carbs-field')), '60');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save meal'));
+    await tester.pumpAndSettle();
+
+    // Sheet closed; the meal is in the list.
+    expect(find.text('Save meal'), findsNothing);
+    expect(find.text('Test pasta'), findsOneWidget);
+    await tester.tap(find.text('Test pasta'));
+    await tester.pumpAndSettle();
+
+    // Dev mode has a live reading, so the pre-bolus coach renders (not the
+    // "needs a live CGM" fallback). "Learned curve" appears as both the section
+    // header and a coach working line.
+    expect(find.text('Learned curve'), findsWidgets);
+    expect(find.text('What this meal does to you'), findsOneWidget);
+    expect(find.textContaining('needs a live CGM reading'), findsNothing);
+  });
+
+  testWidgets('settings exposes the dev-mode toggle', (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Dev mode'), findsOneWidget);
+    expect(find.text('Glucose units'), findsOneWidget);
+    expect(find.text('Advanced mode'), findsOneWidget);
+  });
+}

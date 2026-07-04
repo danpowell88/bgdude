@@ -5,16 +5,17 @@ import '../core/samples.dart';
 import '../core/units.dart';
 import '../pump/pump_snapshot.dart';
 import '../state/providers.dart';
-import 'advanced_screen.dart';
-import 'bolus_advisor_screen.dart';
-import 'illness_screen.dart';
-import 'meal_library_screen.dart';
+import 'timeline_screen.dart';
 import 'widgets/glucose_hero.dart';
 import 'widgets/prediction_chart.dart';
 
-/// Simple-mode home: the everyday glanceable view. Advanced internals live one tap away.
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+export 'timeline_screen.dart' show TimelineEventCard;
+
+/// The "Today" tab: the glanceable dashboard (current glucose, IOB, TIR, short-term
+/// prediction) followed by today's interactive event stream. One page, so the day's
+/// state and the events that shaped it live together.
+class TodayTab extends ConsumerWidget {
+  const TodayTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,60 +23,46 @@ class HomeScreen extends ConsumerWidget {
     final connection = ref.watch(pumpConnectionProvider);
     final snapshot = ref.watch(pumpSnapshotProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('bgdude'),
-        actions: [
-          IconButton(
-            icon: Icon(unit == GlucoseUnit.mmol ? Icons.water_drop : Icons.science),
-            tooltip: 'Toggle units',
-            onPressed: () => ref.read(glucoseUnitProvider.notifier).state =
-                unit == GlucoseUnit.mmol ? GlucoseUnit.mgdl : GlucoseUnit.mmol,
+    // Newest events first, rendered inline in the same scroll view (no nested
+    // scrollable, so everything is in the tree and flows naturally).
+    final events = ref.watch(dayEventsProvider);
+    final ordered = [...events]..sort((a, b) => b.time.compareTo(a.time));
+
+    return RefreshIndicator(
+      onRefresh: () => ref.read(pumpClientProvider).requestStatus(),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _ConnectionBanner(connection: connection),
+          const SizedBox(height: 12),
+          snapshot.when(
+            data: (s) => _Dashboard(snapshot: s, unit: unit),
+            loading: () => const _WaitingCard(),
+            error: (e, _) => _ErrorCard(message: '$e'),
           ),
-          IconButton(
-            icon: const Icon(Icons.restaurant),
-            tooltip: 'Meals',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const MealLibraryScreen()),
-            ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Text('Today', style: Theme.of(context).textTheme.titleMedium),
+              const Spacer(),
+              Text('tap an event to explain or tag',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline)),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.sick_outlined),
-            tooltip: 'Illness mode',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const IllnessScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.tune),
-            tooltip: 'Advanced',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const AdvancedScreen()),
-            ),
-          ),
+          const SizedBox(height: 4),
+          if (ordered.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                'No events yet today. Meals, boluses and glucose swings will appear '
+                'here to review.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            )
+          else
+            for (final e in ordered) TimelineEventCard(event: e),
         ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.read(pumpClientProvider).requestStatus(),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _ConnectionBanner(connection: connection),
-            const SizedBox(height: 12),
-            snapshot.when(
-              data: (s) => _Dashboard(snapshot: s, unit: unit),
-              loading: () => const _WaitingCard(),
-              error: (e, _) => _ErrorCard(message: '$e'),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const BolusAdvisorScreen()),
-        ),
-        icon: const Icon(Icons.calculate),
-        label: const Text('Bolus advisor'),
       ),
     );
   }
@@ -130,8 +117,7 @@ class _Dashboard extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 16),
-        Text('Next few hours',
-            style: Theme.of(context).textTheme.titleMedium),
+        Text('Next few hours', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         const SizedBox(height: 200, child: PredictionChart()),
         const SizedBox(height: 8),
@@ -188,10 +174,19 @@ class _ConnectionBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = connection.valueOrNull ?? PumpConnection.idle;
     final (color, label) = switch (c.stage) {
-      PumpConnectionStage.connected => (Colors.green, 'Connected${c.pumpName != null ? ' · ${c.pumpName}' : ''}'),
+      PumpConnectionStage.connected => (
+          Colors.green,
+          'Connected${c.pumpName != null ? ' · ${c.pumpName}' : ''}'
+        ),
       PumpConnectionStage.scanning => (Colors.orange, 'Searching for pump…'),
-      PumpConnectionStage.awaitingPairingCode => (Colors.orange, 'Enter pairing code from pump'),
-      PumpConnectionStage.disconnected => (Colors.red, 'Disconnected — reconnecting'),
+      PumpConnectionStage.awaitingPairingCode => (
+          Colors.orange,
+          'Enter pairing code from pump'
+        ),
+      PumpConnectionStage.disconnected => (
+          Colors.red,
+          'Disconnected — reconnecting'
+        ),
       PumpConnectionStage.error => (Colors.red, c.error ?? 'Error'),
       _ => (Colors.grey, c.stage.name),
     };

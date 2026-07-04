@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../analytics/predictor.dart';
-import '../core/samples.dart';
 import '../core/units.dart';
+import '../meals/meal_library.dart';
 import '../meals/prebolus_coach.dart';
 import '../state/providers.dart';
+import 'widgets/common.dart';
 
 /// A saved meal's detail view: learned-curve stats, outcome-derived insights, and the
 /// pre-bolus coach card computed from the live pump state.
@@ -27,23 +27,11 @@ class MealDetailScreen extends ConsumerWidget {
 
     final unit = ref.watch(glucoseUnitProvider);
     final insights = library.mealInsights(meal);
-    final snapshot = ref.watch(pumpSnapshotProvider).valueOrNull;
     final cs = Theme.of(context).colorScheme;
 
     PreBolusAdvice? advice;
-    final mgdl = snapshot?.cgmMgdl?.toDouble();
-    if (mgdl != null) {
-      final state = PredictionState(
-        now: snapshot!.cgmTime ?? DateTime.now(),
-        currentMgdl: mgdl,
-        recentRocMgdlPerMin:
-            (snapshot.cgmTrend ?? GlucoseTrend.flat).mgdlPerMin,
-        boluses: const [],
-        basal: const [],
-        carbs: const [],
-        settings: ref.watch(therapySettingsProvider),
-        context: ref.watch(sensitivityContextProvider),
-      );
+    final state = ref.watch(livePredictionStateProvider);
+    if (state != null) {
       advice = ref.watch(preBolusCoachProvider).advise(
             meal: meal,
             state: state,
@@ -56,7 +44,7 @@ class MealDetailScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (advice != null) _CoachCard(advice: advice, ref: ref, meal: meal),
+          if (advice != null) _CoachCard(advice: advice, meal: meal),
           if (advice == null)
             const Card(
               child: Padding(
@@ -74,12 +62,12 @@ class MealDetailScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _kv(context, 'Carbs', '${meal.carbsGrams.toStringAsFixed(0)} g'),
-                  _kv(context, 'Absorption', '~${meal.absorptionMinutes} min'),
-                  _kv(context, 'BG peak', '~+${meal.peakOffsetMinutes} min'),
-                  _kv(context, 'Fat/protein heavy',
+                  KvRow('Carbs', '${meal.carbsGrams.toStringAsFixed(0)} g'),
+                  KvRow('Absorption', '~${meal.absorptionMinutes} min'),
+                  KvRow('BG peak', '~+${meal.peakOffsetMinutes} min'),
+                  KvRow('Fat/protein heavy',
                       meal.fatProteinHeavy ? 'yes' : 'no'),
-                  _kv(context, 'Logged outcomes', '${meal.outcomes.length}'),
+                  KvRow('Logged outcomes', '${meal.outcomes.length}'),
                 ],
               ),
             ),
@@ -129,32 +117,15 @@ class MealDetailScreen extends ConsumerWidget {
 
   static String _date(DateTime t) =>
       '${t.day}/${t.month}/${t.year % 100}';
-
-  Widget _kv(BuildContext context, String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          children: [
-            SizedBox(width: 150, child: Text(k)),
-            Expanded(
-              child: Text(v,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w600)),
-            ),
-          ],
-        ),
-      );
 }
 
-class _CoachCard extends StatelessWidget {
-  const _CoachCard({required this.advice, required this.ref, required this.meal});
+class _CoachCard extends ConsumerWidget {
+  const _CoachCard({required this.advice, required this.meal});
   final PreBolusAdvice advice;
-  final WidgetRef ref;
-  final dynamic meal;
+  final SavedMeal meal;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final headline = advice.bolusAfterEating
         ? 'Eat first — bolus with or after the meal'
@@ -183,34 +154,11 @@ class _CoachCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            for (final step in advice.working)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                        width: 110,
-                        child: Text(step.label,
-                            style: Theme.of(context).textTheme.bodySmall)),
-                    Expanded(child: Text(step.value)),
-                  ],
-                ),
-              ),
-            for (final note in advice.notes)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.info_outline, size: 16),
-                    const SizedBox(width: 6),
-                    Expanded(
-                        child: Text(note,
-                            style: Theme.of(context).textTheme.bodySmall)),
-                  ],
-                ),
-              ),
+            AdviceWorkingList(advice.working),
+            if (advice.notes.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              AdviceNotesList(advice.notes),
+            ],
             if (!advice.bolusAfterEating && advice.recommendedMinutes > 0) ...[
               const SizedBox(height: 12),
               Align(
@@ -222,7 +170,7 @@ class _CoachCard extends StatelessWidget {
                         .read(notificationServiceProvider)
                         .schedulePreBolusTimer(
                           Duration(minutes: advice.recommendedMinutes),
-                          meal.name as String,
+                          meal.name,
                         );
                     messenger.showSnackBar(SnackBar(
                       content: Text('Timer set — you\'ll be nudged in '

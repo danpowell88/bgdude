@@ -39,8 +39,29 @@ Layered Dart modules under `lib/`:
 | `analytics/` | TIR/GMI/CV/AGP metrics, IOB/COB curves, what-if + bolus advisor |
 | `ml/` | sensitivity index, model registry, BG forecaster, event detectors, error grid |
 | `feedback/` | annotations → robust retraining pipeline |
-| `insights/` | morning summary generator, notification scheduling |
-| `ui/` | simple + advanced Material 3 screens, onboarding |
+| `insights/` | morning summary, reading explainer, illness mode, notifications |
+| `timeline/` | day event-stream model + builder (meals, highs/lows, detected events) |
+| `meals/` | meal library (learned absorption curves) + pre-bolus coach |
+| `dev/` | simulated t:slim X2 + CGM day, for dev mode |
+| `ui/` | tab shell (Today · Predict · Insights · Meals), screens, onboarding |
+
+## Dev mode (no hardware needed)
+
+Settings → **Dev mode** runs the app against an in-app simulated t:slim X2 + Dexcom
+(`lib/dev/sim_data.dart`), generating a physiologically-consistent day (meals, boluses,
+a post-lunch exercise dip, a nocturnal compression low, dawn phenomenon) using the app's
+own insulin/carb math. The whole app — timeline, predictions, insights, bolus advisor,
+meal coach — becomes usable and demoable without a pump. Integration tests
+(`integration_test/app_test.dart`) drive every tab through dev mode on an emulator.
+
+## The day event-stream
+
+The **Today** tab shows a single stream of the day's events — logged meals/boluses,
+detected unannounced rises, sustained highs/lows, and compression lows. Each event can be
+**tagged** for how the models should treat it: *use for model*, or *ignore* because of a
+compression low, a new sensor, a new infusion site, illness, etc. Ignoring writes an
+[`Annotation`](lib/feedback/annotations.dart) the retraining pipeline already knows how to
+exclude or relabel — closing the feedback loop from the UI.
 
 The pure-Dart domain logic (`analytics/`, `ml/`, `feedback/`) is deterministic and unit
 tested (`test/`), so it can be validated off-device with the replay harness even before

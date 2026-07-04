@@ -139,14 +139,15 @@ class SensitivityModel {
     );
   }
 
-  List<String> _reasons(ContextFeatures f) {
+  List<String> _reasons(ContextFeatures f) => reasonsFor(f);
+
+  static List<String> reasonsFor(ContextFeatures f) {
     final r = <String>[];
     if (f.sleepHours < 6) r.add('short sleep');
     if (f.baselineHrv > 0 && f.overnightHrvRmssd < f.baselineHrv * 0.85) {
       r.add('low HRV');
     }
-    if (f.baselineRestingHr > 0 &&
-        f.restingHr > f.baselineRestingHr * 1.08) {
+    if (f.baselineRestingHr > 0 && f.restingHr > f.baselineRestingHr * 1.08) {
       r.add('elevated resting HR');
     }
     if (f.priorDayExerciseLoad > 0.5) r.add('post-exercise');
@@ -154,4 +155,35 @@ class SensitivityModel {
     if (f.illnessFlag > 0.5) r.add('illness');
     return r;
   }
+}
+
+/// A transparent, model-free sensitivity estimate from context, used before enough
+/// history exists to train [SensitivityModel]. Each recognised driver nudges the
+/// resistance multiplier by a small, literature-motivated amount; the result is
+/// clamped and carries modest confidence so it informs without over-committing.
+SensitivityContext heuristicSensitivity(ContextFeatures f) {
+  var mult = 1.0;
+  if (f.sleepHours < 5) {
+    mult += 0.20;
+  } else if (f.sleepHours < 6) {
+    mult += 0.12;
+  }
+  if (f.baselineHrv > 0 && f.overnightHrvRmssd < f.baselineHrv * 0.85) {
+    mult += 0.08;
+  }
+  if (f.baselineRestingHr > 0 && f.restingHr > f.baselineRestingHr * 1.08) {
+    mult += 0.05;
+  }
+  if (f.menstrualLutealPhase > 0.5) mult += 0.10;
+  if (f.illnessFlag > 0.5) mult += 0.15;
+  // Prior-day aerobic exercise raises sensitivity (lowers requirement).
+  if (f.priorDayExerciseLoad > 0.5) mult -= 0.08;
+
+  final reasons = SensitivityModel.reasonsFor(f);
+  if (reasons.isEmpty && mult == 1.0) return SensitivityContext.neutral;
+  return SensitivityContext(
+    resistanceMultiplier: mult.clamp(0.6, 1.5).toDouble(),
+    confidence: 0.5, // informative, not authoritative, pre-training
+    reasons: reasons,
+  );
 }

@@ -38,6 +38,7 @@ class CgmSample {
     this.trend = GlucoseTrend.unknown,
     this.isCalibration = false,
     this.sensorWarmup = false,
+    this.compressionLow = false,
   });
 
   final DateTime time;
@@ -47,6 +48,10 @@ class CgmSample {
 
   /// True while the sensor is in warm-up (readings unreliable / absent).
   final bool sensorWarmup;
+
+  /// Flagged as a compression-low artefact (nocturnal sensor pressure), so analytics
+  /// and training can exclude it. Set by the detector or a known-simulated event.
+  final bool compressionLow;
 
   Mgdl get glucose => Mgdl(mgdl);
 }

@@ -14,8 +14,9 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 
 import 'pump_snapshot.dart';
+import 'pump_source.dart';
 
-class PumpClient {
+class PumpClient implements PumpSource {
   PumpClient({
     EventChannel? events,
     MethodChannel? commands,
@@ -35,14 +36,21 @@ class PumpClient {
   PumpConnection _lastConnection = PumpConnection.idle;
   PumpSnapshot? _lastSnapshot;
 
+  @override
   Stream<PumpConnection> get connection => _connection.stream;
+  @override
   Stream<PumpSnapshot> get snapshots => _snapshots.stream;
+  @override
   Stream<String> get pairingRequests => _pairingRequests.stream;
+  @override
   Stream<String> get errors => _errors.stream;
 
+  @override
   PumpConnection get lastConnection => _lastConnection;
+  @override
   PumpSnapshot? get lastSnapshot => _lastSnapshot;
 
+  @override
   void start() {
     _sub ??= _events.receiveBroadcastStream().listen(
           _onEvent,
@@ -50,6 +58,7 @@ class PumpClient {
         );
   }
 
+  @override
   Future<void> dispose() async {
     await _sub?.cancel();
     await _connection.close();
@@ -81,17 +90,22 @@ class PumpClient {
 
   // --- Commands ---
 
+  @override
   Future<void> startScan({String? macFilter}) =>
       _invoke('startScan', {'macFilter': macFilter});
 
+  @override
   Future<void> stopScan() => _invoke('stopScan', const {});
 
+  @override
   Future<void> requestStatus() => _invoke('requestStatus', const {});
 
+  @override
   Future<void> submitPairingCode(String code, {required bool long}) => _invoke(
       'submitPairingCode',
       {'code': code, 'type': long ? 'LONG_16CHAR' : 'SHORT_6CHAR'});
 
+  @override
   Future<void> unpair() => _invoke('unpair', const {});
 
   Future<void> _invoke(String method, Map<String, dynamic> args) async {

@@ -9,7 +9,11 @@ import 'meal_detail_screen.dart';
 /// its personally learned absorption curve; tapping through opens the detail screen
 /// with insights and the pre-bolus coach.
 class MealLibraryScreen extends ConsumerStatefulWidget {
-  const MealLibraryScreen({super.key});
+  const MealLibraryScreen({super.key, this.embedded = false});
+
+  /// When embedded in the tab shell, drop the Scaffold/AppBar (the shell provides
+  /// them) and render just the list + add button.
+  final bool embedded;
 
   @override
   ConsumerState<MealLibraryScreen> createState() => _MealLibraryScreenState();
@@ -23,9 +27,14 @@ class _MealLibraryScreenState extends ConsumerState<MealLibraryScreen> {
     final library = ref.watch(mealLibraryProvider);
     final meals = library.search(_query);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Meals')),
-      body: Column(
+    final fab = FloatingActionButton.extended(
+      heroTag: 'meal-add-fab',
+      onPressed: () => _showAddMealSheet(context),
+      icon: const Icon(Icons.add),
+      label: const Text('Add meal'),
+    );
+
+    final content = Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -73,12 +82,20 @@ class _MealLibraryScreenState extends ConsumerState<MealLibraryScreen> {
                   ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddMealSheet(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Add meal'),
-      ),
+      );
+
+    if (widget.embedded) {
+      return Stack(
+        children: [
+          content,
+          Positioned(right: 16, bottom: 16, child: fab),
+        ],
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meals')),
+      body: content,
+      floatingActionButton: fab,
     );
   }
 
@@ -133,6 +150,7 @@ class _AddMealSheetState extends State<_AddMealSheet> {
           Text('New meal', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
           TextField(
+            key: const Key('meal-name-field'),
             controller: _name,
             decoration: const InputDecoration(
                 labelText: 'Name', border: OutlineInputBorder()),
@@ -140,6 +158,7 @@ class _AddMealSheetState extends State<_AddMealSheet> {
           ),
           const SizedBox(height: 12),
           TextField(
+            key: const Key('meal-carbs-field'),
             controller: _carbs,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(

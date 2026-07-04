@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'state/providers.dart';
-import 'ui/home_screen.dart';
+import 'ui/main_shell.dart';
+import 'ui/onboarding_screen.dart';
 
 class BgDudeApp extends ConsumerWidget {
   const BgDudeApp({super.key});
@@ -23,6 +25,8 @@ class BgDudeApp extends ConsumerWidget {
       ref.read(homeWidgetServiceProvider).setUnit(unit);
     });
 
+    final onboarded = ref.watch(onboardingDoneProvider);
+
     return MaterialApp(
       title: 'bgdude',
       debugShowCheckedModeBanner: false,
@@ -40,7 +44,15 @@ class BgDudeApp extends ConsumerWidget {
         ),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: onboarded
+          ? const MainShell()
+          : OnboardingScreen(
+              onDone: () async {
+                ref.read(onboardingDoneProvider.notifier).state = true;
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('onboarding_done', true);
+              },
+            ),
     );
   }
 }
