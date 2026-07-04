@@ -44,6 +44,23 @@ class MealDetailScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          FilledButton.tonalIcon(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              await ref.read(appJobsProvider).logMeal(
+                    meal: meal,
+                    preBolusMinutes: advice?.recommendedMinutes ?? 0,
+                    bolusUnits: 0,
+                  );
+              messenger.showSnackBar(const SnackBar(
+                content: Text('Logged — the app will learn from how it plays out '
+                    'over the next few hours.'),
+              ));
+            },
+            icon: const Icon(Icons.restaurant),
+            label: const Text('Log this meal (ate now)'),
+          ),
+          const SizedBox(height: 12),
           if (advice != null) _CoachCard(advice: advice, meal: meal),
           if (advice == null)
             const Card(

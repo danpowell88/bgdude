@@ -16,10 +16,15 @@ import '../core/units.dart';
 import '../feedback/annotations.dart';
 import '../insights/illness_mode.dart';
 import '../insights/notifications.dart';
+import '../data/health_sync.dart';
+import '../data/history_repository.dart';
 import '../dev/sim_data.dart';
 import '../meals/meal_library.dart';
+import '../meals/meal_log.dart';
+import '../meals/meal_outcome_service.dart';
 import '../meals/prebolus_coach.dart';
 import '../ml/forecaster.dart';
+import '../ml/forecaster_service.dart';
 import '../ml/sensitivity_model.dart';
 import '../ml/time_of_day_sensitivity.dart';
 import '../pump/pump_client.dart';
@@ -30,6 +35,7 @@ import '../timeline/day_event.dart';
 import '../timeline/event_builder.dart';
 import '../widget/home_widget_service.dart';
 import 'day_data.dart';
+import 'day_history_controller.dart';
 
 export 'day_data.dart';
 
@@ -92,7 +98,15 @@ final sensitivityContextProvider =
 
 /// Shared engines.
 final predictorProvider = Provider<GlucosePredictor>((ref) => GlucosePredictor());
-final forecasterProvider = Provider<Forecaster>((ref) => Forecaster());
+
+/// The active learned residual model (deterministic-only until trained). The controller
+/// loads the persisted model and runs the train → gate → promote cycle.
+final forecasterModelProvider =
+    StateNotifierProvider<ForecasterModelController, ResidualModel>(
+        (ref) => ForecasterModelController());
+
+final forecasterProvider = Provider<Forecaster>(
+    (ref) => Forecaster(residual: ref.watch(forecasterModelProvider)));
 final bolusAdvisorProvider = Provider<BolusAdvisor>(
     (ref) => BolusAdvisor(predictor: ref.watch(predictorProvider)));
 final preBolusCoachProvider = Provider<PreBolusCoach>(
@@ -194,40 +208,31 @@ final effectiveSensitivityProvider = Provider<SensitivityContext>((ref) {
   return illness.overlay(ctx);
 });
 
-/// The day's data (history + events + context). Simulated in dev mode; assembled
-/// from live data otherwise. Watch this for anything that needs history.
-final dayDataProvider = Provider<DayData>((ref) {
-  final settings = ref.watch(therapySettingsProvider);
-  final sim = ref.watch(simulatedDayProvider);
-  if (sim != null) {
-    return DayData(
-      start: sim.start,
-      end: sim.end,
-      cgm: sim.cgm,
-      boluses: sim.boluses,
-      basal: sim.basal,
-      carbs: sim.carbs,
-      settings: sim.settings,
-      context: sim.context,
-      isSimulated: true,
-    );
-  }
-  // Real mode: history repositories land with the drift wiring; for now expose the
-  // single live reading so the current-value UI works.
-  final snap = ref.watch(pumpSnapshotProvider).valueOrNull;
-  final live = snap?.toCgmSample();
-  return DayData(
-    start: live?.time ?? DateTime.now(),
-    end: live?.time ?? DateTime.now(),
-    cgm: live == null ? const [] : [live],
-    boluses: const [],
-    basal: const [],
-    carbs: const [],
-    settings: settings,
-    context: null,
-    isSimulated: false,
+/// The encrypted history repository. Overridden in main() with a SQLCipher-backed
+/// [DriftHistoryRepository]; defaults to in-memory so tests and DB-less contexts work.
+final historyRepositoryProvider =
+    Provider<HistoryRepository>((ref) => InMemoryHistoryRepository());
+
+/// Health Connect ingestion service.
+final healthSyncServiceProvider =
+    Provider<HealthSyncService>((ref) => HealthSyncService());
+
+/// Owns "today": assembled from the repository and kept live as snapshots arrive.
+/// Seeds from the simulator in dev mode.
+final dayHistoryControllerProvider =
+    StateNotifierProvider<DayHistoryController, DayData>((ref) {
+  final controller = DayHistoryController(
+    repo: ref.watch(historyRepositoryProvider),
+    settings: ref.watch(therapySettingsProvider),
+    sim: ref.watch(simulatedDayProvider),
   );
+  return controller;
 });
+
+/// The day's data (history + events + context). Watch this for anything that needs
+/// history; it is the single source of truth, kept live by [DayHistoryController].
+final dayDataProvider =
+    Provider<DayData>((ref) => ref.watch(dayHistoryControllerProvider));
 
 /// The day's health context features (sleep/HRV/etc.), when available.
 final contextFeaturesProvider = Provider<ContextFeatures?>((ref) {
@@ -358,5 +363,112 @@ class MealLibraryNotifier extends StateNotifier<MealLibrary> {
     state.learnFromOutcome(meal, outcome, postMealCgm);
     state = MealLibrary(meals: state.meals);
     unawaited(_persist());
+  }
+}
+
+/// Log of meals actually eaten, awaiting outcome learning.
+final mealLogProvider =
+    StateNotifierProvider<MealLogNotifier, List<MealLogEntry>>(
+        (ref) => MealLogNotifier());
+
+class MealLogNotifier extends StateNotifier<List<MealLogEntry>> {
+  MealLogNotifier() : super(const []) {
+    _restore();
+  }
+
+  Future<void> _restore() async {
+    state = await MealLogStore.load();
+  }
+
+  Future<void> add(MealLogEntry entry) async {
+    state = [...state, entry];
+    await MealLogStore.save(state);
+  }
+
+  Future<void> replaceAll(List<MealLogEntry> entries) async {
+    state = entries;
+    await MealLogStore.save(state);
+  }
+}
+
+/// Background jobs run at startup (and on demand): close the meal-outcome loop,
+/// reconcile matured predictions, and retrain the forecaster when enough data exists.
+final appJobsProvider = Provider<AppJobs>((ref) => AppJobs(ref));
+
+class AppJobs {
+  AppJobs(this._ref);
+  final Ref _ref;
+
+  Future<void> runStartup() async {
+    try {
+      await runMealOutcomeLoop();
+    } catch (_) {}
+    try {
+      await _ref.read(historyRepositoryProvider).reconcilePredictions(DateTime.now());
+    } catch (_) {}
+    try {
+      await trainForecaster();
+    } catch (_) {}
+  }
+
+  /// Compute matured meal outcomes and fold them into the learned curves.
+  Future<void> runMealOutcomeLoop() async {
+    final repo = _ref.read(historyRepositoryProvider);
+    final res = await const MealOutcomeService().process(
+      log: _ref.read(mealLogProvider),
+      library: _ref.read(mealLibraryProvider),
+      repo: repo,
+      now: DateTime.now(),
+    );
+    for (final l in res.learned) {
+      final cgm = await repo.cgm(
+        l.outcome.eatenAt.subtract(const Duration(minutes: 30)),
+        l.outcome.eatenAt.add(const Duration(hours: 3, minutes: 30)),
+      );
+      _ref.read(mealLibraryProvider.notifier).learnFromOutcome(l.meal, l.outcome, cgm);
+    }
+    await _ref.read(mealLogProvider.notifier).replaceAll(res.updatedLog);
+  }
+
+  /// Retrain the residual forecaster from all stored history.
+  Future<TrainingOutcome> trainForecaster() async {
+    final repo = _ref.read(historyRepositoryProvider);
+    final now = DateTime.now();
+    final from = now.subtract(const Duration(days: 30));
+    final settings = _ref.read(therapySettingsProvider);
+    return _ref.read(forecasterModelProvider.notifier).train(
+          cgm: await repo.cgm(from, now),
+          boluses: await repo.boluses(from, now),
+          basal: await repo.basal(from, now),
+          carbs: await repo.carbs(from, now),
+          settings: settings,
+          annotations: await repo.annotations(from, now),
+          asOf: now,
+        );
+  }
+
+  /// Record that a saved meal was eaten now: persists the carb entry and a meal-log
+  /// entry for later outcome learning.
+  Future<void> logMeal({
+    required SavedMeal meal,
+    required int preBolusMinutes,
+    required double bolusUnits,
+  }) async {
+    final now = DateTime.now();
+    await _ref.read(dayHistoryControllerProvider.notifier).logCarb(
+          CarbEntry(
+            time: now,
+            grams: meal.carbsGrams,
+            absorptionMinutes: meal.absorptionMinutes,
+          ),
+        );
+    await _ref.read(mealLogProvider.notifier).add(MealLogEntry(
+          id: MealLogStore.newId(now),
+          mealId: meal.id,
+          eatenAt: now,
+          carbsGrams: meal.carbsGrams,
+          preBolusMinutes: preBolusMinutes,
+          bolusUnits: bolusUnits,
+        ));
   }
 }

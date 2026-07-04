@@ -19,6 +19,10 @@ class BgDudeApp extends ConsumerWidget {
         ref
             .read(homeWidgetServiceProvider)
             .pushUpdate(snapshot, ref.read(glucoseUnitProvider));
+        // Persist the reading and keep today's history current.
+        ref
+            .read(dayHistoryControllerProvider.notifier)
+            .ingestSnapshot(snapshot);
       }
     });
     ref.listen(glucoseUnitProvider, (_, unit) {

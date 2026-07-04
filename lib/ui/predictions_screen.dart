@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../analytics/predictor.dart';
 import '../core/units.dart';
+import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
 import '../state/providers.dart';
 import 'widgets/prediction_chart.dart';
@@ -37,7 +38,7 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
       );
     }
 
-    final forecasts = ref.watch(forecasterProvider).forecast(state);
+    final forecasts = ref.watch(forecasterProvider).forecastState(state);
     final predictor = ref.watch(predictorProvider);
     final ctx = ref.watch(effectiveSensitivityProvider);
     final whatIf = (_carbs > 0 || _units > 0)

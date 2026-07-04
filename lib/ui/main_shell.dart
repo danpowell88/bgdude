@@ -26,6 +26,16 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _titles = ['Today', 'Predict', 'Insights', 'Meals'];
 
   @override
+  void initState() {
+    super.initState();
+    // Run background jobs once the first frame is up (meal-outcome loop, prediction
+    // reconciliation, forecaster retraining).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(appJobsProvider).runStartup();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final devMode = ref.watch(devModeProvider);
     final unit = ref.watch(glucoseUnitProvider);

@@ -49,6 +49,10 @@ dependencies:
   # Runtime permission requests (Bluetooth, notifications)
   permission_handler: ^11.3.1
 
+  # Networking (Nightscout bridge)
+  http: ^1.2.2
+  crypto: ^3.0.5
+
   # Utilities
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0

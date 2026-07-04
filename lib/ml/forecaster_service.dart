@@ -1,0 +1,130 @@
+/// Persists the learned residual model and runs the train → gate → promote cycle.
+///
+/// A newly trained candidate is only promoted (and persisted as the active model) if it
+/// passes the registry's [PromotionGate] AND actually improves RMSE over the
+/// deterministic baseline on the held-out tail — so a bad or useless retraining run
+/// can never degrade the live forecast.
+library;
+
+import 'dart:convert';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../analytics/therapy_settings.dart';
+import '../core/samples.dart';
+import '../feedback/annotations.dart';
+import 'forecast_features.dart';
+import 'forecaster.dart';
+import 'forecaster_training.dart';
+import 'model_registry.dart';
+import 'residual_gbm_model.dart';
+
+class TrainingOutcome {
+  const TrainingOutcome({
+    required this.trained,
+    required this.promoted,
+    this.reasons = const [],
+    this.baselineRmse,
+    this.candidateRmse,
+    this.trainSamples = 0,
+  });
+
+  final bool trained;
+  final bool promoted;
+  final List<String> reasons;
+  final double? baselineRmse;
+  final double? candidateRmse;
+  final int trainSamples;
+
+  static const TrainingOutcome notEnoughData =
+      TrainingOutcome(trained: false, promoted: false, reasons: ['not enough data']);
+}
+
+/// Loads/saves the active residual model as JSON in shared_preferences, versioned by
+/// the feature layout so a layout change discards stale models.
+class ForecasterModelStore {
+  static const _key = 'residual_model_v1';
+  static const _versionKey = 'residual_model_feature_version';
+
+  static Future<ResidualModel> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getInt(_versionKey) != ForecastFeatures.version) {
+      return const NoResidualModel();
+    }
+    final raw = prefs.getString(_key);
+    if (raw == null) return const NoResidualModel();
+    try {
+      return ResidualGbmModel.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return const NoResidualModel();
+    }
+  }
+
+  static Future<void> save(ResidualGbmModel model) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, jsonEncode(model.toJson()));
+    await prefs.setInt(_versionKey, ForecastFeatures.version);
+  }
+}
+
+/// Holds the active residual model and runs training. Watched by [forecasterProvider].
+class ForecasterModelController extends StateNotifier<ResidualModel> {
+  ForecasterModelController() : super(const NoResidualModel()) {
+    _restore();
+  }
+
+  final PromotionGate _gate = const PromotionGate();
+  TrainingOutcome lastOutcome = const TrainingOutcome(trained: false, promoted: false);
+
+  Future<void> _restore() async {
+    state = await ForecasterModelStore.load();
+  }
+
+  /// Train from history, gate the candidate, and promote + persist if it wins.
+  Future<TrainingOutcome> train({
+    required List<CgmSample> cgm,
+    required List<BolusEvent> boluses,
+    required List<BasalSegment> basal,
+    required List<CarbEntry> carbs,
+    required TherapySettings settings,
+    required List<Annotation> annotations,
+    required DateTime asOf,
+  }) async {
+    final result = ForecasterTrainer().train(
+      cgm: cgm,
+      boluses: boluses,
+      basal: basal,
+      carbs: carbs,
+      settings: settings,
+      annotations: annotations,
+      asOf: asOf,
+    );
+    if (result == null) {
+      lastOutcome = TrainingOutcome.notEnoughData;
+      return lastOutcome;
+    }
+
+    final gate = _gate.evaluate(result.candidateEval, incumbent: result.baselineEval);
+    final improves = result.candidateEval.rmseMgdl < result.baselineEval.rmseMgdl;
+    final promoted = gate.pass && improves;
+
+    if (promoted) {
+      await ForecasterModelStore.save(result.model);
+      state = result.model;
+    }
+
+    lastOutcome = TrainingOutcome(
+      trained: true,
+      promoted: promoted,
+      reasons: [
+        ...gate.reasons,
+        if (!improves) 'no RMSE improvement over baseline',
+      ],
+      baselineRmse: result.baselineEval.rmseMgdl,
+      candidateRmse: result.candidateEval.rmseMgdl,
+      trainSamples: result.trainSamples,
+    );
+    return lastOutcome;
+  }
+}

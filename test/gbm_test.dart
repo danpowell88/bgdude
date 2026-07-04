@@ -1,0 +1,130 @@
+import 'dart:convert';
+import 'dart:math' as math;
+
+import 'package:bgdude/ml/gbm.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+/// Deterministic grid of samples over [-2, 2]^2 for a known function.
+({List<List<double>> x, List<double> y}) _grid(
+  double Function(double x0, double x1) f, {
+  int steps = 12,
+}) {
+  final x = <List<double>>[];
+  final y = <double>[];
+  for (var i = 0; i < steps; i++) {
+    for (var j = 0; j < steps; j++) {
+      final x0 = -2.0 + 4.0 * i / (steps - 1);
+      final x1 = -2.0 + 4.0 * j / (steps - 1);
+      x.add([x0, x1]);
+      y.add(f(x0, x1));
+    }
+  }
+  return (x: x, y: y);
+}
+
+double _rmse(GbmRegressor m, List<List<double>> x, List<double> y) {
+  var se = 0.0;
+  for (var i = 0; i < x.length; i++) {
+    final e = y[i] - m.predict(x[i]);
+    se += e * e;
+  }
+  return math.sqrt(se / x.length);
+}
+
+void main() {
+  group('GbmRegressor', () {
+    test('recovers a nonlinear function with low RMSE', () {
+      final data = _grid((x0, x1) => x0 * x0 - 2 * x1);
+      final m = GbmRegressor(nEstimators: 120, maxDepth: 3, learningRate: 0.1)
+        ..fit(data.x, data.y);
+
+      expect(m.isTrained, isTrue);
+      expect(m.treeCount, 120);
+
+      final targetRange = data.y.reduce(math.max) - data.y.reduce(math.min);
+      final rmse = _rmse(m, data.x, data.y);
+      // Comfortably better than a trivial constant predictor.
+      expect(rmse, lessThan(0.1 * targetRange));
+    });
+
+    test('captures an axis-aligned feature interaction', () {
+      // Additive steps PLUS a joint bonus when both features are positive — the
+      // interaction term a purely additive/linear model cannot represent.
+      double f(double x0, double x1) =>
+          (x0 > 0 ? 10.0 : 0.0) +
+          (x1 > 0 ? 5.0 : 0.0) +
+          (x0 > 0 && x1 > 0 ? 7.0 : 0.0);
+      final data = _grid(f);
+      final m = GbmRegressor(nEstimators: 150, maxDepth: 3)..fit(data.x, data.y);
+      final targetRange = data.y.reduce(math.max) - data.y.reduce(math.min);
+      expect(_rmse(m, data.x, data.y), lessThan(0.1 * targetRange));
+    });
+
+    test('predictions stay within a sane bound of the training target range', () {
+      final data = _grid((x0, x1) => x0 * x0 - 2 * x1);
+      final m = GbmRegressor()..fit(data.x, data.y);
+      final lo = data.y.reduce(math.min);
+      final hi = data.y.reduce(math.max);
+      final span = hi - lo;
+      for (final row in data.x) {
+        final p = m.predict(row);
+        expect(p, greaterThan(lo - span));
+        expect(p, lessThan(hi + span));
+      }
+    });
+
+    test('honours sample weights (down-weighted region fit worse)', () {
+      final data = _grid((x0, x1) => x0 * x0 - 2 * x1);
+      // Weight rows with x0 < 0 near zero.
+      final w = [
+        for (final row in data.x) row[0] < 0 ? 0.001 : 1.0,
+      ];
+      final m = GbmRegressor(nEstimators: 100)
+        ..fit(data.x, data.y, sampleWeights: w);
+
+      var seDown = 0.0;
+      var nDown = 0;
+      var seUp = 0.0;
+      var nUp = 0;
+      for (var i = 0; i < data.x.length; i++) {
+        final e = data.y[i] - m.predict(data.x[i]);
+        if (data.x[i][0] < 0) {
+          seDown += e * e;
+          nDown++;
+        } else {
+          seUp += e * e;
+          nUp++;
+        }
+      }
+      final rmseDown = math.sqrt(seDown / nDown);
+      final rmseUp = math.sqrt(seUp / nUp);
+      expect(rmseUp, lessThan(rmseDown));
+    });
+
+    test('JSON round-trip reproduces predictions exactly', () {
+      final data = _grid((x0, x1) => x0 * x0 - 2 * x1);
+      final m = GbmRegressor(nEstimators: 40)..fit(data.x, data.y);
+
+      final restored = GbmRegressor.fromJson(
+          jsonDecode(jsonEncode(m.toJson())) as Map<String, dynamic>);
+
+      expect(restored.maxDepth, m.maxDepth);
+      expect(restored.nEstimators, m.nEstimators);
+      expect(restored.learningRate, m.learningRate);
+      expect(restored.treeCount, m.treeCount);
+      for (final row in data.x) {
+        expect(restored.predict(row), m.predict(row));
+      }
+    });
+
+    test('single-sample fit is a safe constant model', () {
+      final m = GbmRegressor()..fit([
+            [1.0, 2.0]
+          ], [
+            5.0
+          ]);
+      expect(m.predict([1.0, 2.0]), closeTo(5.0, 1e-9));
+      expect(m.predict([99.0, -99.0]), closeTo(5.0, 1e-9));
+    });
+  });
+}
