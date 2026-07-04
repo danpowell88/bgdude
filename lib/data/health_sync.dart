@@ -34,17 +34,42 @@ class HealthSyncService {
   final Health _health;
   final _log = Logger('HealthSync');
 
+  /// The full set of Health Connect types we ingest. Beyond the sleep/HR/activity
+  /// signals the models use directly, we pull the broader picture (energy, weight,
+  /// SpO2, respiratory rate, blood pressure, temperature, hydration, nutrition,
+  /// menstruation) so insights can correlate against it and future models can use it.
   static const _readTypes = <HealthDataType>[
+    // Sleep stages
     HealthDataType.SLEEP_ASLEEP,
     HealthDataType.SLEEP_DEEP,
     HealthDataType.SLEEP_LIGHT,
     HealthDataType.SLEEP_REM,
     HealthDataType.SLEEP_AWAKE,
+    // Cardio / autonomic
     HealthDataType.HEART_RATE_VARIABILITY_RMSSD,
     HealthDataType.RESTING_HEART_RATE,
     HealthDataType.HEART_RATE,
+    HealthDataType.BLOOD_OXYGEN,
+    HealthDataType.RESPIRATORY_RATE,
+    HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
+    HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
+    HealthDataType.BODY_TEMPERATURE,
+    // Activity / energy
     HealthDataType.STEPS,
+    HealthDataType.DISTANCE_DELTA,
+    HealthDataType.FLIGHTS_CLIMBED,
+    HealthDataType.ACTIVE_ENERGY_BURNED,
+    HealthDataType.TOTAL_CALORIES_BURNED,
     HealthDataType.WORKOUT,
+    // Body
+    HealthDataType.WEIGHT,
+    HealthDataType.BODY_FAT_PERCENTAGE,
+    // Nutrition / hydration
+    HealthDataType.WATER,
+    HealthDataType.NUTRITION,
+    // Reproductive
+    HealthDataType.MENSTRUATION_FLOW,
+    // Glucose (also written back)
     HealthDataType.BLOOD_GLUCOSE,
   ];
 
@@ -95,6 +120,53 @@ class HealthSyncService {
         case HealthDataType.STEPS:
           out.add(HealthSample(
               time: point.dateFrom, type: 'steps', value: _numeric(point)));
+        case HealthDataType.DISTANCE_DELTA:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'distanceM', value: _numeric(point)));
+        case HealthDataType.FLIGHTS_CLIMBED:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'flights', value: _numeric(point)));
+        case HealthDataType.ACTIVE_ENERGY_BURNED:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'activeEnergyKcal', value: _numeric(point)));
+        case HealthDataType.TOTAL_CALORIES_BURNED:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'totalEnergyKcal', value: _numeric(point)));
+        case HealthDataType.BLOOD_OXYGEN:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'spo2', value: _numeric(point)));
+        case HealthDataType.RESPIRATORY_RATE:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'respiratoryRate', value: _numeric(point)));
+        case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'bpSystolic', value: _numeric(point)));
+        case HealthDataType.BLOOD_PRESSURE_DIASTOLIC:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'bpDiastolic', value: _numeric(point)));
+        case HealthDataType.BODY_TEMPERATURE:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'bodyTempC', value: _numeric(point)));
+        case HealthDataType.WEIGHT:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'weightKg', value: _numeric(point)));
+        case HealthDataType.BODY_FAT_PERCENTAGE:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'bodyFatPct', value: _numeric(point)));
+        case HealthDataType.WATER:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'waterL', value: _numeric(point)));
+        case HealthDataType.NUTRITION:
+          // Store dietary carbs (informational — not auto-logged as a bolus carb entry
+          // to avoid double-counting the pump's own carbs).
+          final carbs = _nutritionCarbs(point);
+          if (carbs != null) {
+            out.add(HealthSample(
+                time: point.dateFrom, type: 'dietaryCarbsG', value: carbs));
+          }
+        case HealthDataType.MENSTRUATION_FLOW:
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'menstruationFlow', value: _numeric(point)));
         case HealthDataType.WORKOUT:
           out.add(HealthSample(
             time: point.dateFrom,
@@ -103,12 +175,17 @@ class HealthSyncService {
             meta: {'activity': point.sourceName},
           ));
         case HealthDataType.SLEEP_ASLEEP:
-        case HealthDataType.SLEEP_DEEP:
         case HealthDataType.SLEEP_LIGHT:
         case HealthDataType.SLEEP_REM:
           final night = _nightKey(point.dateFrom);
           final acc = sleepByNight.putIfAbsent(night, _SleepAcc.new);
           acc.asleepMinutes += point.dateTo.difference(point.dateFrom).inMinutes;
+        case HealthDataType.SLEEP_DEEP:
+          final night = _nightKey(point.dateFrom);
+          final acc = sleepByNight.putIfAbsent(night, _SleepAcc.new);
+          final mins = point.dateTo.difference(point.dateFrom).inMinutes;
+          acc.asleepMinutes += mins;
+          acc.deepMinutes += mins;
         case HealthDataType.SLEEP_AWAKE:
           final night = _nightKey(point.dateFrom);
           final acc = sleepByNight.putIfAbsent(night, _SleepAcc.new);
@@ -124,12 +201,20 @@ class HealthSyncService {
         ..add(HealthSample(
             time: night, type: 'sleepHours', value: acc.asleepMinutes / 60.0))
         ..add(HealthSample(
+            time: night, type: 'sleepDeepHours', value: acc.deepMinutes / 60.0))
+        ..add(HealthSample(
             time: night,
             type: 'sleepEfficiency',
             value: total == 0 ? 0 : acc.asleepMinutes / total));
     });
 
     return out;
+  }
+
+  static double? _nutritionCarbs(HealthDataPoint p) {
+    final v = p.value;
+    if (v is NutritionHealthValue) return v.carbs?.toDouble();
+    return null;
   }
 
   static double _numeric(HealthDataPoint p) {
@@ -148,4 +233,5 @@ class HealthSyncService {
 class _SleepAcc {
   int asleepMinutes = 0;
   int awakeMinutes = 0;
+  int deepMinutes = 0;
 }

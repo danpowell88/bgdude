@@ -121,6 +121,7 @@
   <a href="#advanced">Advanced</a>
   <a href="#accuracy">Accuracy</a>
   <a href="#loop">Learning loop</a>
+  <a href="#alerts">Alerts &amp; helpers</a>
   <a href="#integrations">Integrations</a>
   <a href="#safety">Safety</a>
   <a href="#regen">Regenerate</a>
@@ -253,8 +254,13 @@
         learned nightly from your history (heuristic until trained).</li>
         <li><b>Illness mode</b> — a resistance overlay + sick-day checklist; the detector can auto-suggest
         turning it on when your data looks illness-like.</li>
+        <li><b>A1c goal</b> — current GMI, a 2-week projection, and progress toward your target.</li>
+        <li><b>Sleep &amp; glucose</b> — how your sleep correlates with overnight steadiness.</li>
         <li><b>Models</b> — forecaster and sensitivity-model status.</li>
       </ul>
+      <p style="margin-top:8px">Health Connect ingestion is comprehensive — sleep stages, HRV, resting/heart
+      rate, SpO₂, respiratory rate, blood pressure, temperature, steps/distance/energy, weight, hydration,
+      nutrition and menstruation — so insights can correlate against the full picture.</p>
     </div>
   </div>
 </section>
@@ -376,6 +382,33 @@
         <li><b>Sensitivity</b> — ridge over sleep/HRV/exercise/cycle/illness, Autotune-style labels.</li>
         <li><b>Time-of-day</b> — per-bucket multipliers (dawn/evening).</li>
         <li><b>Event detectors</b> — unannounced meals, compression lows.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="alerts">
+  <h2>Alerts &amp; real-time helpers</h2>
+  <p class="lead">Beyond the forecast, the app watches for the situations that matter and offers help in the moment —
+  all additive to your CGM/pump alarms, never a replacement.</p>
+  <div class="grid2">
+    <div class="card"><h3 style="margin-top:0">Proactive alerts</h3>
+      <ul class="tight">
+        <li><b>Predicted low / high</b> nudges with a suggested action and cooldowns.</li>
+        <li><b>Missed-bolus?</b> — a sustained unbolused rise triggers "did you forget to bolus?".</li>
+        <li><b>Stubborn high</b> — high for hours with IOB doing nothing (and an old site) → possible site failure.</li>
+        <li><b>Connection lost</b> — a heads-up when the pump has been unreachable for ~10 minutes.</li>
+        <li><b>Sensor/site overdue</b> reminders from the age tracker.</li>
+      </ul>
+    </div>
+    <div class="card"><h3 style="margin-top:0">In-the-moment help</h3>
+      <ul class="tight">
+        <li><b>Rescue-carb helper</b> — when low or predicted-low, a 15-15-aware "take ~Ng" card that
+        accounts for IOB and the predicted nadir.</li>
+        <li><b>Explain this reading</b> — from the dashboard or any timeline event, ranked causal hypotheses
+        you can accept as a one-tap annotation.</li>
+        <li><b>Calibrated uncertainty</b> — the prediction cone widens from the forecaster's <em>recent live
+        error</em>, not just training-time sigma.</li>
       </ul>
     </div>
   </div>

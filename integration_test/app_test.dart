@@ -150,6 +150,13 @@ void main() {
         scrollable: scrollable);
     expect(find.text('Insulin sensitivity'), findsOneWidget);
 
+    await tester.scrollUntilVisible(find.text('A1c goal'), 250,
+        scrollable: scrollable);
+    expect(find.text('A1c goal'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Sleep & glucose'), 250,
+        scrollable: scrollable);
+    expect(find.text('Sleep & glucose'), findsOneWidget);
+
     final sick = find.text('Sick day mode');
     await tester.scrollUntilVisible(sick, 250, scrollable: scrollable);
     expect(sick, findsOneWidget);

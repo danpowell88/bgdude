@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../analytics/rescue_carbs.dart';
 import '../core/samples.dart';
 import '../core/units.dart';
+import '../insights/reading_explainer.dart';
 import '../pump/pump_snapshot.dart';
 import '../state/providers.dart';
+import 'explain_reading_screen.dart';
 import 'timeline_screen.dart';
 import 'widgets/glucose_hero.dart';
 import 'widgets/prediction_chart.dart';
@@ -130,6 +133,7 @@ class _Dashboard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final rescue = ref.watch(rescueCarbAdviceProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -139,6 +143,10 @@ class _Dashboard extends ConsumerWidget {
           unit: unit,
           time: snapshot.cgmTime,
         ),
+        if (rescue != null) ...[
+          const SizedBox(height: 12),
+          _RescueCard(advice: rescue),
+        ],
         const SizedBox(height: 16),
         Row(
           children: [
@@ -175,7 +183,15 @@ class _Dashboard extends ConsumerWidget {
         Text('Next few hours', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         const SizedBox(height: 200, child: PredictionChart()),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => _explainCurrent(context, ref),
+            icon: const Icon(Icons.help_outline, size: 18),
+            label: const Text('Explain this reading'),
+          ),
+        ),
         Text(
           'Predictions are informational and can be wrong. They do not replace your '
           'CGM or pump alarms.',
@@ -185,6 +201,68 @@ class _Dashboard extends ConsumerWidget {
               ?.copyWith(color: Theme.of(context).colorScheme.outline),
         ),
       ],
+    );
+  }
+
+  Future<void> _explainCurrent(BuildContext context, WidgetRef ref) async {
+    final day = ref.read(dayDataProvider);
+    final latest = day.latest;
+    if (latest == null) return;
+    final explanations = ReadingExplainer().explain(
+      at: latest.time,
+      cgm: day.cgm,
+      boluses: day.boluses,
+      basal: day.basal,
+      carbs: day.carbs,
+      settings: day.settings,
+      wasAsleep: latest.time.hour >= 23 || latest.time.hour < 7,
+    );
+    if (!context.mounted) return;
+    final annotation = await Navigator.of(context).push<dynamic>(
+      MaterialPageRoute<dynamic>(
+        builder: (_) => ExplainReadingScreen(
+          at: latest.time,
+          mgdl: latest.mgdl,
+          explanations: explanations,
+        ),
+      ),
+    );
+    if (annotation != null) {
+      await ref.read(historyRepositoryProvider).saveAnnotation(annotation);
+    }
+  }
+}
+
+class _RescueCard extends StatelessWidget {
+  const _RescueCard({required this.advice});
+  final RescueCarbAdvice advice;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      color: advice.urgent ? cs.errorContainer : cs.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(advice.urgent ? Icons.emergency : Icons.cookie_outlined),
+                const SizedBox(width: 8),
+                Text('Rescue carbs: ${advice.grams.toStringAsFixed(0)} g',
+                    style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(advice.reason),
+            const SizedBox(height: 6),
+            Text(advice.working.join('  ·  '),
+                style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
     );
   }
 }

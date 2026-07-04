@@ -84,6 +84,60 @@ class InsightsScreen extends ConsumerWidget {
         _SensitivityCard(mult: ctx.effectiveMultiplier, reasons: ctx.reasons),
 
         const SizedBox(height: 16),
+        // --- A1c / GMI goal ---
+        Text('A1c goal', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        ref.watch(a1cStatusProvider).when(
+              loading: () => const Card(
+                  child: ListTile(title: Text('Calculating GMI…'))),
+              error: (e, _) => const SizedBox.shrink(),
+              data: (s) => Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(s.onTrack ? Icons.check_circle : Icons.flag_outlined,
+                              color: s.onTrack ? Colors.green : Colors.orange),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(s.summary)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text('Goal: ${s.targetGmiPercent.toStringAsFixed(1)}% GMI'),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => _editGoal(context, ref, s.targetGmiPercent),
+                            child: const Text('Change'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+        const SizedBox(height: 16),
+        // --- Sleep & glucose ---
+        Text('Sleep & glucose', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        ref.watch(sleepInsightProvider).when(
+              loading: () => const SizedBox.shrink(),
+              error: (e, _) => const SizedBox.shrink(),
+              data: (s) => Card(
+                child: ListTile(
+                  leading: const Icon(Icons.bedtime_outlined),
+                  title: Text(s.message),
+                ),
+              ),
+            ),
+
+        const SizedBox(height: 16),
         // --- Illness mode (inline) ---
         Text('Illness mode', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
@@ -190,6 +244,37 @@ class InsightsScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _editGoal(
+      BuildContext context, WidgetRef ref, double current) async {
+    final controller =
+        TextEditingController(text: current.toStringAsFixed(1));
+    final v = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('A1c / GMI goal (%)'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(labelText: 'Target GMI %'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(ctx).pop(double.tryParse(controller.text)),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (v != null && v > 4 && v < 14) {
+      await ref.read(a1cTargetProvider.notifier).save(v);
+    }
   }
 
   GlucoseMetrics _overnightMetrics(List<CgmSample> cgm) {

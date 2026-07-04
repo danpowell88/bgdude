@@ -10,15 +10,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../analytics/bolus_advisor.dart';
 import '../analytics/context_builder.dart';
+import '../analytics/insulin_math.dart';
 import '../analytics/metrics.dart';
 import '../analytics/predictor.dart';
+import '../analytics/rescue_carbs.dart';
 import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
 import '../core/units.dart';
 import '../feedback/annotations.dart';
+import '../insights/a1c_goal.dart';
 import '../insights/alert_monitor.dart';
+import '../insights/care_detectors.dart';
 import '../insights/daily_narrative.dart';
 import '../insights/illness_mode.dart';
+import '../insights/sleep_insight.dart';
 import '../insights/morning_summary.dart';
 import '../insights/notifications.dart';
 import '../integrations/nightscout.dart';
@@ -36,6 +41,7 @@ import '../ml/forecaster_service.dart';
 import '../ml/sensitivity_model.dart';
 import '../ml/sensitivity_training.dart';
 import '../ml/time_of_day_sensitivity.dart';
+import '../ml/uncertainty_calibrator.dart';
 import '../pump/history_backfill.dart';
 import '../pump/pump_client.dart';
 import '../pump/pump_snapshot.dart';
@@ -145,6 +151,80 @@ final todayMetricsProvider = Provider<GlucoseMetrics>((ref) {
   return const MetricsCalculator().compute(day.cgm);
 });
 
+/// The user's GMI (estimated A1c) goal, as a GMI percentage. Persisted.
+final a1cTargetProvider =
+    StateNotifierProvider<A1cTargetNotifier, double>((ref) => A1cTargetNotifier());
+
+class A1cTargetNotifier extends StateNotifier<double> {
+  A1cTargetNotifier() : super(6.5) {
+    _restore();
+  }
+  static const _key = 'a1c_target_gmi';
+  Future<void> _restore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getDouble(_key);
+    if (v != null) state = v;
+  }
+
+  Future<void> save(double gmiPercent) async {
+    state = gmiPercent;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_key, gmiPercent);
+  }
+}
+
+/// GMI status + 2-week projection against the goal, over the last 14 days of CGM.
+final a1cStatusProvider = FutureProvider<GmiStatus>((ref) async {
+  final repo = ref.watch(historyRepositoryProvider);
+  final target = ref.watch(a1cTargetProvider);
+  final now = DateTime.now();
+  final cgm = await repo.cgm(now.subtract(const Duration(days: 14)), now);
+  final recent = const MetricsCalculator().compute(cgm);
+  final byDay = <String, List<double>>{};
+  for (final s in cgm) {
+    (byDay['${s.time.year}-${s.time.month}-${s.time.day}'] ??= <double>[])
+        .add(s.mgdl);
+  }
+  final keys = byDay.keys.toList()..sort();
+  final means = [
+    for (final k in keys)
+      byDay[k]!.reduce((a, b) => a + b) / byDay[k]!.length,
+  ];
+  return const A1cTracker().status(
+    recent: recent,
+    dailyMeanMgdlHistory: means,
+    targetGmiPercent: target,
+  );
+});
+
+/// Sleep ↔ glucose-steadiness correlation over recent nights.
+final sleepInsightProvider = FutureProvider<SleepInsight>((ref) async {
+  final repo = ref.watch(historyRepositoryProvider);
+  final now = DateTime.now();
+  final health = await repo.health(now.subtract(const Duration(days: 21)), now);
+  final cgm = await repo.cgm(now.subtract(const Duration(days: 21)), now);
+  final nights = <SleepNight>[];
+  for (final h in health) {
+    if (h.type != 'sleepHours') continue;
+    final night = DateTime(h.time.year, h.time.month, h.time.day);
+    final ws = night.add(const Duration(days: 1)); // next-morning window
+    final we = ws.add(const Duration(hours: 7));
+    final overnight = [
+      for (final s in cgm)
+        if (!s.time.isBefore(ws) && s.time.isBefore(we)) s,
+    ];
+    if (overnight.length < 12) continue;
+    final m = const MetricsCalculator().compute(overnight);
+    nights.add(SleepNight(
+      night: night,
+      sleepHours: h.value,
+      overnightCvPercent: m.cvPercent,
+      overnightTir: m.timeInRange,
+    ));
+  }
+  return const SleepInsightAnalyzer().analyze(nights);
+});
+
 /// The "Your Day" narrative: a plain-language summary + suggestions built from the
 /// current state, today's metrics, the sensitivity context, and the forecast.
 final dailyNarrativeProvider = Provider<DailyNarrative>((ref) {
@@ -198,6 +278,30 @@ final forecasterProvider = Provider<Forecaster>(
     (ref) => Forecaster(residual: ref.watch(forecasterModelProvider)));
 final bolusAdvisorProvider = Provider<BolusAdvisor>(
     (ref) => BolusAdvisor(predictor: ref.watch(predictorProvider)));
+
+/// Rescue-carb advice when low or predicted-low (null when not needed).
+final rescueCarbAdviceProvider = Provider<RescueCarbAdvice?>((ref) {
+  final state = ref.watch(livePredictionStateProvider);
+  if (state == null) return null;
+  final seg = state.settings.segmentAt(state.now);
+  final mult = state.context.effectiveMultiplier;
+  final iob =
+      const IobCalculator().total(state.boluses, state.basal, state.now).units;
+  final forecasts = ref.watch(forecasterProvider).forecastState(state);
+  final nadir = forecasts.isEmpty
+      ? null
+      : forecasts.map((f) => f.mgdl).reduce((a, b) => a < b ? a : b);
+  final advice = const RescueCarbCalculator().advise(
+    currentMgdl: state.currentMgdl,
+    targetMgdl: seg.targetMgdl,
+    isf: seg.isf / mult,
+    carbRatio: seg.carbRatio / mult,
+    iobUnits: iob,
+    predictedNadirMgdl: nadir,
+    unit: ref.watch(glucoseUnitProvider),
+  );
+  return advice.needed ? advice : null;
+});
 final preBolusCoachProvider = Provider<PreBolusCoach>(
     (ref) => PreBolusCoach(predictor: ref.watch(predictorProvider)));
 
@@ -553,6 +657,44 @@ class DeviceChangeNotifier extends StateNotifier<DeviceState> {
   }
 }
 
+/// Recent per-horizon live forecast error (mg/dL RMSE), used to widen the prediction
+/// cone. Updated by the jobs runner after prediction reconciliation.
+final recentHorizonErrorProvider =
+    StateProvider<Map<int, double>>((ref) => const {});
+
+/// Alerts the user when the pump has been disconnected for a sustained period.
+final connectionAlertServiceProvider =
+    Provider<ConnectionAlertService>((ref) => ConnectionAlertService(ref));
+
+class ConnectionAlertService {
+  ConnectionAlertService(this._ref);
+  final Ref _ref;
+  Timer? _timer;
+
+  static const graceBeforeAlert = Duration(minutes: 10);
+
+  void onConnection(PumpConnection c) {
+    if (c.stage == PumpConnectionStage.connected) {
+      _timer?.cancel();
+      _timer = null;
+      return;
+    }
+    if (c.stage == PumpConnectionStage.disconnected ||
+        c.stage == PumpConnectionStage.error) {
+      _timer ??= Timer(graceBeforeAlert, () async {
+        _timer = null;
+        try {
+          await _ref.read(notificationServiceProvider).showNudge(
+                'Pump disconnected',
+                'No pump data for ~10 min — readings and predictions are paused. '
+                    'Check Bluetooth and that the pump is in range.',
+              );
+        } catch (_) {}
+      });
+    }
+  }
+}
+
 /// Fires real-time predicted-low/high nudges and logs predictions for accuracy
 /// scoring. Driven from the app root on each pump snapshot.
 final alertServiceProvider = Provider<AlertService>((ref) => AlertService(ref));
@@ -561,12 +703,20 @@ class AlertService {
   AlertService(this._ref);
   final Ref _ref;
   final Map<GlucoseAlertKind, DateTime> _lastFired = {};
+  final Map<String, DateTime> _lastCare = {};
   DateTime? _lastPredictionLog;
+
+  static const _careCooldown = Duration(minutes: 60);
+  bool _careReady(String k, DateTime now) =>
+      !_lastCare.containsKey(k) || now.difference(_lastCare[k]!) >= _careCooldown;
 
   Future<void> onSnapshot() async {
     final state = _ref.read(livePredictionStateProvider);
     if (state == null) return;
-    final forecasts = _ref.read(forecasterProvider).forecastState(state);
+    final forecasts = const UncertaintyCalibrator().calibrateAll(
+      _ref.read(forecasterProvider).forecastState(state),
+      _ref.read(recentHorizonErrorProvider),
+    );
     final now = DateTime.now();
 
     final alert = const AlertMonitor().evaluate(
@@ -582,6 +732,51 @@ class AlertService {
         await _ref
             .read(notificationServiceProvider)
             .showNudge(alert.title, alert.body);
+      } catch (_) {}
+    }
+
+    // Care alerts: missed bolus and stubborn-high (possible site failure).
+    final day = _ref.read(dayDataProvider);
+    final missed = const MissedBolusDetector().detect(
+      cgm: day.cgm,
+      boluses: day.boluses,
+      carbs: day.carbs,
+      basal: day.basal,
+      settings: day.settings,
+      now: now,
+    );
+    if (missed != null && _careReady('missedBolus', now)) {
+      _lastCare['missedBolus'] = now;
+      try {
+        await _ref.read(notificationServiceProvider).showNudge(
+              'Missed bolus?',
+              'A ~${missed.estimatedCarbsGrams.round()}g rise with no bolus logged — '
+                  'correct now if you ate.',
+            );
+      } catch (_) {}
+    }
+
+    final siteMin = _ref.read(deviceStateProvider).age(DeviceKind.site, now)?.inMinutes;
+    final stubborn = const StubbornHighDetector().detect(
+      cgm: day.cgm,
+      boluses: day.boluses,
+      basal: day.basal,
+      settings: day.settings,
+      siteAgeHours: siteMin == null ? null : siteMin / 60.0,
+      now: now,
+    );
+    if (stubborn != null && _careReady('stubbornHigh', now)) {
+      _lastCare['stubbornHigh'] = now;
+      try {
+        await _ref.read(notificationServiceProvider).showNudge(
+              'Stubborn high',
+              stubborn.likelySiteIssue
+                  ? 'High for a while with insulin doing little, and your site is '
+                      '~${(stubborn.siteAgeHours! / 24).toStringAsFixed(1)} days old — '
+                      'consider a set change.'
+                  : 'High for a while with IOB not bringing it down — watch for a '
+                      'possible site issue.',
+            );
       } catch (_) {}
     }
 
@@ -626,6 +821,7 @@ class AppJobs {
     } catch (_) {}
     try {
       await _ref.read(historyRepositoryProvider).reconcilePredictions(DateTime.now());
+      await updateRecentForecastError();
     } catch (_) {}
     try {
       await maybeShowMorningSummary();
@@ -647,6 +843,23 @@ class AppJobs {
     try {
       await trainSensitivity();
     } catch (_) {}
+  }
+
+  /// Recompute per-horizon live forecast RMSE from reconciled predictions and publish it
+  /// so the prediction cone reflects recent real accuracy.
+  Future<void> updateRecentForecastError() async {
+    final repo = _ref.read(historyRepositoryProvider);
+    final now = DateTime.now();
+    final preds =
+        await repo.predictions(now.subtract(const Duration(days: 14)), now);
+    final pairs = [
+      for (final p in preds)
+        if (p.actualMgdl != null)
+          (horizon: p.horizonMinutes, predicted: p.predictedMgdl, actual: p.actualMgdl!),
+    ];
+    if (pairs.isEmpty) return;
+    _ref.read(recentHorizonErrorProvider.notifier).state =
+        const UncertaintyCalibrator().perHorizonRmse(pairs);
   }
 
   /// Backfill historical pump data from the History Log (best-effort; no-op in dev/sim).

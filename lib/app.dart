@@ -37,6 +37,11 @@ class BgDudeApp extends ConsumerWidget {
     ref.listen(glucoseUnitProvider, (_, unit) {
       ref.read(homeWidgetServiceProvider).setUnit(unit);
     });
+    // Alert if the pump stays disconnected.
+    ref.listen(pumpConnectionProvider, (_, next) {
+      final c = next.valueOrNull;
+      if (c != null) ref.read(connectionAlertServiceProvider).onConnection(c);
+    });
 
     final onboarded = ref.watch(onboardingDoneProvider);
 
