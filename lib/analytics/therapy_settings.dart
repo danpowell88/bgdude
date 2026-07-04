@@ -28,6 +28,22 @@ class TherapySegment {
   final double targetMgdl;
 
   final double basalUnitsPerHour;
+
+  Map<String, dynamic> toJson() => {
+        'startMinuteOfDay': startMinuteOfDay,
+        'isf': isf,
+        'carbRatio': carbRatio,
+        'targetMgdl': targetMgdl,
+        'basalUnitsPerHour': basalUnitsPerHour,
+      };
+
+  factory TherapySegment.fromJson(Map<String, dynamic> j) => TherapySegment(
+        startMinuteOfDay: (j['startMinuteOfDay'] as num).toInt(),
+        isf: (j['isf'] as num).toDouble(),
+        carbRatio: (j['carbRatio'] as num).toDouble(),
+        targetMgdl: (j['targetMgdl'] as num).toDouble(),
+        basalUnitsPerHour: (j['basalUnitsPerHour'] as num).toDouble(),
+      );
 }
 
 class TherapySettings {
@@ -63,8 +79,32 @@ class TherapySettings {
     return active;
   }
 
+  TherapySettings copyWith({List<TherapySegment>? segments}) => TherapySettings(
+        segments: segments ?? this.segments,
+        durationOfInsulinActionMinutes: durationOfInsulinActionMinutes,
+        maxBolusUnits: maxBolusUnits,
+        insulinPeakMinutes: insulinPeakMinutes,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'segments': [for (final s in segments) s.toJson()],
+        'dia': durationOfInsulinActionMinutes,
+        'maxBolus': maxBolusUnits,
+        'peak': insulinPeakMinutes,
+      };
+
+  factory TherapySettings.fromJson(Map<String, dynamic> j) => TherapySettings(
+        segments: [
+          for (final s in (j['segments'] as List))
+            TherapySegment.fromJson((s as Map).cast<String, dynamic>()),
+        ],
+        durationOfInsulinActionMinutes: (j['dia'] as num?)?.toInt() ?? 360,
+        maxBolusUnits: (j['maxBolus'] as num?)?.toDouble() ?? 25,
+        insulinPeakMinutes: (j['peak'] as num?)?.toInt() ?? 75,
+      );
+
   /// A sensible default profile for bootstrapping before the user configures theirs.
-  /// These are illustrative only — the onboarding flow imports the real IDP values.
+  /// These are illustrative only — the onboarding/settings flow imports the real IDP.
   static TherapySettings placeholder() => const TherapySettings(
         segments: [
           TherapySegment(

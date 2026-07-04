@@ -2,7 +2,8 @@ import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.WatchUi;
 
-//! One-line glance: "8.2 <arrow>  6m" (greyed when stale), with a tiny title.
+//! One-line glance: "7.3 <arrow> +0.6  IOB 1.4" (greyed when stale), under a
+//! tiny "BGDUDE" title. The BG value is range-coloured like the widget.
 (:glance)
 class BgDudeGlanceView extends WatchUi.GlanceView {
 
@@ -23,7 +24,7 @@ class BgDudeGlanceView extends WatchUi.GlanceView {
         dc.drawText(0, h / 4, titleFont, "BGDUDE",
             Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        var bg = BgData.bgString();
+        var bg = BgData.bgDisplayString();
         var lineY = h * 3 / 4;
         if (bg == null) {
             dc.drawText(0, lineY, valueFont, "--",
@@ -32,25 +33,35 @@ class BgDudeGlanceView extends WatchUi.GlanceView {
         }
 
         var stale = BgData.isStale();
-        dc.setColor(stale ? Graphics.COLOR_DK_GRAY : Graphics.COLOR_WHITE,
-            Graphics.COLOR_TRANSPARENT);
+        var valueColor = stale ? Graphics.COLOR_DK_GRAY : BgData.bgColor();
+        var subColor = stale ? Graphics.COLOR_DK_GRAY : Graphics.COLOR_LT_GRAY;
 
         // BG value.
-        dc.drawText(0, lineY, valueFont, bg,
+        var x = 0;
+        dc.setColor(valueColor, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(x, lineY, valueFont, bg,
             Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
-        var x = dc.getTextWidthInPixels(bg, valueFont);
+        x += dc.getTextWidthInPixels(bg, valueFont) + 2;
 
         // Trend arrow just after the number.
         var arrowSize = h / 4;
         BgData.drawTrendArrow(dc, x + arrowSize, lineY, arrowSize, BgData.trend());
-        x += arrowSize * 2 + 4;
+        x += arrowSize * 2 + 6;
 
-        // Age.
-        var age = BgData.ageString();
-        if (age != null) {
-            dc.setColor(stale ? Graphics.COLOR_DK_GRAY : Graphics.COLOR_LT_GRAY,
-                Graphics.COLOR_TRANSPARENT);
-            dc.drawText(x, lineY, titleFont, age,
+        // Delta.
+        var delta = BgData.deltaString();
+        if (delta != null) {
+            dc.setColor(subColor, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(x, lineY, titleFont, delta,
+                Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+            x += dc.getTextWidthInPixels(delta, titleFont) + 8;
+        }
+
+        // IOB (compact, no unit suffix) if it still fits.
+        var iob = BgData.iobShort();
+        if (iob != null) {
+            dc.setColor(subColor, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(x, lineY, titleFont, iob,
                 Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
         }
     }

@@ -12,6 +12,7 @@ import org.json.JSONObject
 object GarminIntegration {
 
     private var sender: GarminSender? = null
+    private var lastBg: Int = -1
 
     fun init(context: Context) {
         if (sender == null) {
@@ -24,10 +25,16 @@ object GarminIntegration {
         val s = sender ?: return
         try {
             val json = JSONObject(snapshotJson)
+            val bg = json.optInt("cgmMgdl", -1)
+            if (bg == -1) return
             val cgmTs = json.optLong("cgmTimestampEpochMs", 0L)
-            val payload = mapOf(
-                "bg" to json.optInt("cgmMgdl", -1),
+            val delta = if (lastBg != -1) bg - lastBg else 0
+            lastBg = bg
+
+            val payload = mutableMapOf<String, Any?>(
+                "bg" to bg,
                 "trend" to json.optString("cgmTrend", "unknown"),
+                "delta" to delta, // mg/dL signed; watch converts to display unit
                 "ageSec" to if (cgmTs > 0) {
                     ((System.currentTimeMillis() - cgmTs) / 1000L).toInt()
                 } else {
@@ -36,7 +43,13 @@ object GarminIntegration {
                 "iob" to json.optDouble("iobUnits", -1.0),
                 "unit" to "mmol",
             )
-            if (payload["bg"] != -1) s.send(payload)
+            if (json.has("batteryPercent")) {
+                payload["battery"] = json.optInt("batteryPercent")
+            }
+            if (json.has("reservoirUnits")) {
+                payload["reservoir"] = json.optDouble("reservoirUnits")
+            }
+            s.send(payload)
         } catch (_: Throwable) {
             // Malformed snapshot — skip; never destabilise the pump path.
         }

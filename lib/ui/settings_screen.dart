@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/units.dart';
 import '../integrations/nightscout.dart';
 import '../state/providers.dart';
+import 'advanced_screen.dart';
 import 'model_accuracy_screen.dart';
+import 'therapy_settings_screen.dart';
 
 /// Nightscout upload configuration section.
 class _NightscoutSection extends ConsumerStatefulWidget {
@@ -124,6 +126,15 @@ class SettingsScreen extends ConsumerWidget {
                   ref.read(glucoseUnitProvider.notifier).state = s.first,
             ),
           ),
+          ListTile(
+            leading: const Icon(Icons.medication_outlined),
+            title: const Text('Therapy profile'),
+            subtitle: const Text('Basal, ISF, carb ratio & targets from your pump'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const TherapySettingsScreen()),
+            ),
+          ),
           SwitchListTile(
             secondary: const Icon(Icons.tune),
             title: const Text('Advanced mode'),
@@ -132,6 +143,15 @@ class SettingsScreen extends ConsumerWidget {
             value: advanced,
             onChanged: (v) =>
                 ref.read(advancedModeProvider.notifier).state = v,
+          ),
+          ListTile(
+            leading: const Icon(Icons.science_outlined),
+            title: const Text('Model internals'),
+            subtitle: const Text(
+                'Sensitivity, time-of-day profile, forecaster & error grid'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const AdvancedScreen()),
+            ),
           ),
           const Divider(),
           ListTile(

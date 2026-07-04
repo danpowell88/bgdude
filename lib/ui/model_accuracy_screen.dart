@@ -15,6 +15,21 @@ final accuracyReportProvider = FutureProvider<AccuracyReport>((ref) async {
   return const AccuracyAnalyzer().analyze(preds);
 });
 
+/// Reconciled prediction points for the Clarke error grid (reference = actual).
+final errorGridPointsProvider =
+    FutureProvider<List<({double referenceMgdl, double predictedMgdl})>>(
+        (ref) async {
+  final repo = ref.watch(historyRepositoryProvider);
+  final now = DateTime.now();
+  await repo.reconcilePredictions(now);
+  final preds = await repo.predictions(now.subtract(const Duration(days: 14)), now);
+  return [
+    for (final p in preds)
+      if (p.actualMgdl != null)
+        (referenceMgdl: p.actualMgdl!, predictedMgdl: p.predictedMgdl),
+  ];
+});
+
 class ModelAccuracyScreen extends ConsumerWidget {
   const ModelAccuracyScreen({super.key});
 

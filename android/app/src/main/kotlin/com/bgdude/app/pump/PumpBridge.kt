@@ -73,6 +73,14 @@ class PumpBridge(
                         hostApiImpl.submitPairingCode(code, type) { result.success(null) }
                     }
                     "unpair" -> hostApiImpl.unpair { result.success(null) }
+                    "fetchHistory" -> {
+                        // Best-effort history-log backfill. Decoding the pump History
+                        // Log is a streaming multi-message flow (see ControlX2's
+                        // HistoryLogFetcher) and pumpx2's decode is partial; until that
+                        // is wired against real hardware this returns an empty list so
+                        // the Dart HistoryBackfillService no-ops cleanly.
+                        result.success(emptyList<Map<String, Any?>>())
+                    }
                     else -> result.notImplemented()
                 }
             }

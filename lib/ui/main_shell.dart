@@ -7,6 +7,7 @@ import 'bolus_advisor_screen.dart';
 import 'home_screen.dart';
 import 'insights_screen.dart';
 import 'meal_library_screen.dart';
+import 'pairing_dialog.dart';
 import 'predictions_screen.dart';
 import 'quick_log_sheet.dart';
 import 'settings_screen.dart';
@@ -38,6 +39,9 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Auto-prompt for the pairing code when the pump asks, and surface pump errors.
+    PumpPairingListener.attach(ref, context);
+
     final devMode = ref.watch(devModeProvider);
     final unit = ref.watch(glucoseUnitProvider);
 

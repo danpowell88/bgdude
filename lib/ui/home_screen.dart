@@ -36,6 +36,7 @@ class TodayTab extends ConsumerWidget {
         children: [
           _ConnectionBanner(connection: connection),
           const SizedBox(height: 12),
+          const _ColdStartCard(),
           const YourDayPanel(),
           const SizedBox(height: 12),
           snapshot.when(
@@ -66,6 +67,57 @@ class TodayTab extends ConsumerWidget {
           else
             for (final e in ordered) TimelineEventCard(event: e),
         ],
+      ),
+    );
+  }
+}
+
+/// First-days guidance: shown in real mode while there's little history, so the app
+/// explains what to set up and that the models sharpen over ~2 weeks.
+class _ColdStartCard extends ConsumerWidget {
+  const _ColdStartCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final devMode = ref.watch(devModeProvider);
+    final day = ref.watch(dayDataProvider);
+    // Only for real mode with thin history (< ~4h of readings).
+    if (devMode || day.cgm.length >= 48) return const SizedBox.shrink();
+
+    return Card(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.rocket_launch_outlined),
+                const SizedBox(width: 8),
+                Text('Getting started',
+                    style: Theme.of(context).textTheme.titleSmall),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text('• Pair your pump in Settings, then enter the code it shows.'),
+            const Text('• Add your therapy profile (basal/ISF/CR/targets).'),
+            const Text('• Sync Health Connect for sleep/HRV context.'),
+            const Text('• Log meals so the app learns how they treat you.'),
+            const SizedBox(height: 6),
+            Text(
+              'Metrics need ~14 days and the models train once enough of your own '
+              'data has accrued — until then predictions use the physiological '
+              'baseline and a transparent heuristic.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.outline),
+            ),
+            const SizedBox(height: 8),
+            Text('Tip: turn on Dev mode in Settings to explore the full app with '
+                'simulated data.',
+                style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
       ),
     );
   }

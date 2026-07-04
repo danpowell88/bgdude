@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../analytics/bolus_advisor.dart';
+import '../analytics/context_builder.dart';
 import '../analytics/metrics.dart';
 import '../analytics/predictor.dart';
 import '../analytics/therapy_settings.dart';
@@ -33,7 +34,9 @@ import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
 import '../ml/forecaster_service.dart';
 import '../ml/sensitivity_model.dart';
+import '../ml/sensitivity_training.dart';
 import '../ml/time_of_day_sensitivity.dart';
+import '../pump/history_backfill.dart';
 import '../pump/pump_client.dart';
 import '../pump/pump_snapshot.dart';
 import '../pump/pump_source.dart';
@@ -95,9 +98,42 @@ final pumpSnapshotProvider = StreamProvider<PumpSnapshot>((ref) {
   return client.snapshots;
 });
 
-/// The user's therapy settings (imported from the pump IDP during onboarding).
+/// Emits when the pump is waiting for a pairing code ('SHORT_6CHAR' | 'LONG_16CHAR').
+final pumpPairingRequestProvider = StreamProvider<String>((ref) {
+  return ref.watch(pumpClientProvider).pairingRequests;
+});
+
+/// Emits critical pump errors for surfacing to the user.
+final pumpErrorProvider = StreamProvider<String>((ref) {
+  return ref.watch(pumpClientProvider).errors;
+});
+
+/// The user's therapy settings (their pump IDP: basal schedule, ISF, CR, targets),
+/// persisted. Feeds the what-if engine, bolus advisor, and predictions.
 final therapySettingsProvider =
-    StateProvider<TherapySettings>((ref) => TherapySettings.placeholder());
+    StateNotifierProvider<TherapyNotifier, TherapySettings>(
+        (ref) => TherapyNotifier());
+
+class TherapyNotifier extends StateNotifier<TherapySettings> {
+  TherapyNotifier() : super(TherapySettings.placeholder()) {
+    _restore();
+  }
+  static const _key = 'therapy_settings_v1';
+
+  Future<void> _restore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key);
+    if (raw != null) {
+      state = TherapySettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    }
+  }
+
+  Future<void> save(TherapySettings settings) async {
+    state = settings;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, jsonEncode(settings.toJson()));
+  }
+}
 
 /// Today's sensitivity context (from the sensitivity model; neutral until trained).
 final sensitivityContextProvider =
@@ -177,6 +213,11 @@ final homeWidgetServiceProvider = Provider<HomeWidgetService>((ref) {
 /// nightly analysis job has ≥14 days of data to learn from.
 final timeOfDayProfileProvider =
     StateProvider<TimeOfDayProfile?>((ref) => null);
+
+/// A pending illness-mode suggestion from the detector (null when none). Surfaced as a
+/// banner on the Insights page.
+final illnessSuggestionProvider =
+    StateProvider<IllnessSuggestion?>((ref) => null);
 
 /// Illness ("sick day") mode with shared_preferences persistence.
 final illnessModeProvider =
@@ -592,9 +633,116 @@ class AppJobs {
     try {
       await checkDeviceReminders();
     } catch (_) {}
+    if (!_ref.read(devModeProvider)) {
+      try {
+        await backfillHistory();
+      } catch (_) {}
+    }
+    try {
+      await checkIllnessSuggestion();
+    } catch (_) {}
     try {
       await trainForecaster();
     } catch (_) {}
+    try {
+      await trainSensitivity();
+    } catch (_) {}
+  }
+
+  /// Backfill historical pump data from the History Log (best-effort; no-op in dev/sim).
+  Future<int> backfillHistory() async {
+    final now = DateTime.now();
+    return HistoryBackfillService(_ref.read(historyRepositoryProvider)).backfill(
+      from: now.subtract(const Duration(days: 14)),
+      to: now,
+    );
+  }
+
+  /// Assemble per-day inputs and train the sensitivity + time-of-day models from
+  /// history, pushing the results into the providers the advisor/insights read.
+  Future<void> trainSensitivity() async {
+    final repo = _ref.read(historyRepositoryProvider);
+    final now = DateTime.now();
+    final settings = _ref.read(therapySettingsProvider);
+    final baseHealth =
+        await repo.health(now.subtract(const Duration(days: 21)), now);
+
+    final days = <SensitivityDayInput>[];
+    for (var d = 1; d <= 21; d++) {
+      final start = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: d));
+      final end = start.add(const Duration(days: 1));
+      final lookback = start.subtract(const Duration(hours: 6));
+      final cgm = await repo.cgm(lookback, end);
+      if (cgm.length < 12) continue;
+      final ctx = ContextBuilder.build(
+        today: await repo.health(start, end),
+        baseline: baseHealth,
+      );
+      if (ctx == null) continue;
+      days.add(SensitivityDayInput(
+        day: start,
+        cgm: cgm,
+        boluses: await repo.boluses(lookback, end),
+        basal: await repo.basal(lookback, end),
+        carbs: await repo.carbs(lookback, end),
+        context: ctx,
+        settings: settings,
+      ));
+    }
+    if (days.isEmpty) return;
+
+    const svc = SensitivityTrainingService();
+    final profile = svc.trainTimeOfDay(days);
+    if (profile != null) {
+      _ref.read(timeOfDayProfileProvider.notifier).state = profile;
+    }
+    final model = svc.train(days);
+    if (model != null) {
+      final todayCtx = ContextBuilder.build(
+        today: await repo.health(
+            DateTime(now.year, now.month, now.day), now),
+        baseline: baseHealth,
+      );
+      if (todayCtx != null) {
+        _ref.read(sensitivityContextProvider.notifier).state =
+            model.contextFor(todayCtx, trainingDays: days.length);
+      }
+    }
+  }
+
+  /// Run the illness detector on recent data; if it looks illness-like and the mode
+  /// isn't already on, stage a suggestion for the Insights page.
+  Future<void> checkIllnessSuggestion() async {
+    if (_ref.read(illnessModeProvider).active) return;
+    final repo = _ref.read(historyRepositoryProvider);
+    final now = DateTime.now();
+    final recent = await repo.cgm(now.subtract(const Duration(hours: 36)), now);
+    if (recent.length < 24) return;
+    final mean =
+        recent.map((s) => s.mgdl).reduce((a, b) => a + b) / recent.length;
+    final base = await repo.cgm(
+        now.subtract(const Duration(days: 14)),
+        now.subtract(const Duration(days: 2)));
+    final baseMean = base.isEmpty
+        ? null
+        : base.map((s) => s.mgdl).reduce((a, b) => a + b) / base.length;
+
+    final ctx = ContextBuilder.build(
+      today: await repo.health(now.subtract(const Duration(hours: 36)), now),
+      baseline: await repo.health(now.subtract(const Duration(days: 14)), now),
+    );
+    final s = const IllnessDetector().detect(
+      meanGlucoseMgdl: mean,
+      baselineGlucoseMgdl: baseMean,
+      restingHr: ctx?.restingHr,
+      baselineRestingHr: ctx?.baselineRestingHr,
+      hrvRmssd: ctx?.overnightHrvRmssd,
+      baselineHrv: ctx?.baselineHrv,
+    );
+    if (s.suggestActivation) {
+      _ref.read(illnessSuggestionProvider.notifier).state = s;
+    }
   }
 
   /// Generate and show the morning briefing on first open each morning (the reliable

@@ -75,6 +75,6 @@ Future<void> registerBackgroundSummary() async {
     _summaryTask,
     frequency: const Duration(hours: 6),
     constraints: Constraints(networkType: NetworkType.notRequired),
-    existingWorkPolicy: ExistingWorkPolicy.keep,
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
   );
 }

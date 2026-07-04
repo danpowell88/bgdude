@@ -10,11 +10,28 @@ bgdude (Android)                          Garmin watch
 PumpService → GarminIntegration           BgDudeApp (this project)
             → GarminSender ──ConnectIQ──▶ Communications.registerForPhoneAppMessages
               sendMessage({bg, trend,     → Storage → widget / glance render
-                ageSec, iob, unit})
+                delta, ageSec, iob, unit,
+                battery, reservoir})
 ```
 
-- **Glance:** one line — BG value, trend arrow, minutes-ago.
-- **Widget:** large BG value, trend arrow, unit, "Xm ago", IOB.
+BG is sent in **mg/dL** and converted on the watch to the display unit
+(`unit`): `mmol/L` shows one decimal (mg/dL ÷ 18.0), `mg/dL` shows a whole
+number. Range colouring is always computed from the mg/dL value.
+
+- **Glance:** one line — `7.3 → +0.6  IOB 1.4` (BG value, trend arrow, delta,
+  IOB), under a small "BGDUDE" title.
+- **Widget**, centered top-to-bottom (reads the same on round and rectangular
+  screens):
+  - unit label (`mmol/L` / `mg/dL`)
+  - large **range-coloured** BG value with the trend arrow beside it
+    (red < 70 mg/dL, green 70–180, amber > 180)
+  - delta + reading age — `+0.6   2m ago`
+  - IOB, pump battery (drawn battery icon + `%`, red at ≤ 20 %) and reservoir
+    on one bottom line; any piece that is absent is skipped so the face never
+    crowds
+- The trend arrow is drawn from primitives (shaft + head), so no custom font is
+  needed: `↑↑ ↑ ↗ → ↘ ↓ ↓↓` map to
+  `doubleUp singleUp fortyFiveUp flat fortyFiveDown singleDown doubleDown`.
 - Data older than **15 minutes greys out** and is marked "(stale)".
 - Messages are **queued by the Connect IQ framework**: readings sent while
   the widget is closed are delivered the next time the widget or glance
@@ -107,18 +124,23 @@ match.
 ## Message payload contract
 
 The Android app sends one message per new CGM reading (debounced on the CGM
-timestamp):
+timestamp). BG and delta are sent in **mg/dL**; the watch converts to the
+display unit locally.
 
-| key      | type   | meaning                                   |
-|----------|--------|-------------------------------------------|
-| `bg`     | Float  | BG in mmol/L, already converted from mg/dL |
-| `trend`  | String | `doubleUp`, `singleUp`, `fortyFiveUp`, `flat`, `fortyFiveDown`, `singleDown`, `doubleDown`, `unknown` |
-| `ageSec` | Number | age of the reading when sent, seconds      |
-| `iob`    | Float  | insulin on board, units (may be absent)    |
-| `unit`   | String | display unit label, `"mmol/L"`             |
+| key         | type   | meaning                                                                                               |
+|-------------|--------|-------------------------------------------------------------------------------------------------------|
+| `bg`        | Number | current glucose in **mg/dL** (e.g. `132`)                                                              |
+| `trend`     | String | `doubleUp`, `singleUp`, `fortyFiveUp`, `flat`, `fortyFiveDown`, `singleDown`, `doubleDown`, `unknown`  |
+| `delta`     | Number | change in **mg/dL** since the previous reading (may be negative; may be absent)                        |
+| `ageSec`    | Number | age of the reading when sent, seconds                                                                  |
+| `iob`       | Float  | insulin on board, units (`-1` or absent = unknown)                                                    |
+| `unit`      | String | display unit, `"mmol"` or `"mgdl"` (default `"mmol"`)                                                  |
+| `battery`   | Number | pump battery percent (optional)                                                                       |
+| `reservoir` | Float  | pump reservoir units (optional)                                                                       |
 
 The watch adds elapsed time since receipt to `ageSec` when rendering, and
-treats anything over 900 s as stale.
+treats anything over 900 s as stale. Every message is treated as a full
+snapshot: a key sent as absent/null clears the previously stored value.
 
 ## Prerequisites on the phone
 

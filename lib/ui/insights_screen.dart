@@ -87,6 +87,44 @@ class InsightsScreen extends ConsumerWidget {
         // --- Illness mode (inline) ---
         Text('Illness mode', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
+        if (ref.watch(illnessSuggestionProvider) case final s?
+            when s.suggestActivation && !illnessMode.active)
+          Card(
+            color: Theme.of(context).colorScheme.tertiaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Your data looks illness-like',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 6),
+                  for (final r in s.reasons) Text('• $r'),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => ref
+                            .read(illnessSuggestionProvider.notifier)
+                            .state = null,
+                        child: const Text('Not sick'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () {
+                          ref.read(illnessModeProvider.notifier).activate();
+                          ref.read(illnessSuggestionProvider.notifier).state =
+                              null;
+                        },
+                        child: const Text('Turn on'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         Card(
           child: Column(
             children: [

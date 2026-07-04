@@ -11,38 +11,94 @@ import Toybox.WatchUi;
 //! glance view (hence the (:glance) annotation).
 (:glance)
 module BgData {
-    // Storage keys. The payload pushed from the phone is a Dictionary:
-    //   { "bg" => Float (mmol/L), "trend" => String, "ageSec" => Number,
-    //     "iob" => Float (units, optional), "unit" => String }
+    // Storage keys. The payload pushed from the phone is a Dictionary. BG is
+    // always sent in mg/dL as a whole Number; the watch converts to the
+    // display unit locally. See save() for the full key list.
+    //   { "bg" => Number (mg/dL), "trend" => String, "delta" => Number (mg/dL),
+    //     "ageSec" => Number, "iob" => Float (units, -1/absent = unknown),
+    //     "unit" => "mmol"|"mgdl", "battery" => Number, "reservoir" => Float }
     const KEY_BG = "bg";
     const KEY_TREND = "trend";
+    const KEY_DELTA = "delta";
     const KEY_AGE_SEC = "ageSec";
     const KEY_IOB = "iob";
     const KEY_UNIT = "unit";
+    const KEY_BATTERY = "battery";
+    const KEY_RESERVOIR = "reservoir";
     const KEY_RECEIVED_AT = "receivedAt"; // epoch seconds, stamped on the watch
 
     const STALE_AFTER_SEC = 900; // 15 minutes
+    const MMOL_PER_MGDL = 18.0;  // divide mg/dL by this to get mmol/L
 
-    //! Persist a payload received from the phone.
+    // Range thresholds, always evaluated in mg/dL regardless of display unit.
+    const LOW_MGDL = 70;
+    const HIGH_MGDL = 180;
+
+    //! Persist a payload received from the phone. Every message is a full
+    //! snapshot, so absent keys store null and clear any previous value (e.g. a
+    //! pump that stops reporting battery no longer shows a stale percentage).
     function save(data as Dictionary) as Void {
         Storage.setValue(KEY_BG, data[KEY_BG]);
         Storage.setValue(KEY_TREND, data[KEY_TREND]);
+        Storage.setValue(KEY_DELTA, data[KEY_DELTA]);
         Storage.setValue(KEY_AGE_SEC, data[KEY_AGE_SEC]);
         Storage.setValue(KEY_IOB, data[KEY_IOB]);
         Storage.setValue(KEY_UNIT, data[KEY_UNIT]);
+        Storage.setValue(KEY_BATTERY, data[KEY_BATTERY]);
+        Storage.setValue(KEY_RESERVOIR, data[KEY_RESERVOIR]);
         Storage.setValue(KEY_RECEIVED_AT, Time.now().value());
     }
 
-    //! BG formatted to one decimal ("8.2"), or null if no data yet.
-    function bgString() as String or Null {
+    //! Raw glucose in mg/dL as a whole Number, or null if no data yet.
+    function bgMgdl() as Number or Null {
         var bg = Storage.getValue(KEY_BG);
-        if (bg == null) {
+        if (!(bg instanceof Lang.Number) && !(bg instanceof Lang.Float)) {
             return null;
         }
-        if (bg instanceof Lang.String) {
-            return bg;
+        return (bg as Numeric).toNumber();
+    }
+
+    //! Display unit, normalised to "mmol" or "mgdl" (default "mmol").
+    function rawUnit() as String {
+        var u = Storage.getValue(KEY_UNIT);
+        if ((u instanceof Lang.String) && u.equals("mgdl")) {
+            return "mgdl";
         }
-        return (bg as Numeric).toFloat().format("%.1f");
+        return "mmol";
+    }
+
+    //! Human-readable unit label for the face ("mmol/L" / "mg/dL").
+    function unitLabel() as String {
+        return rawUnit().equals("mgdl") ? "mg/dL" : "mmol/L";
+    }
+
+    //! BG formatted for display: "8.2" for mmol/L (1 decimal), "148" for
+    //! mg/dL (whole number), or null when there is no reading yet.
+    function bgDisplayString() as String or Null {
+        var mgdl = bgMgdl();
+        if (mgdl == null) {
+            return null;
+        }
+        if (rawUnit().equals("mgdl")) {
+            return mgdl.format("%d");
+        }
+        return (mgdl.toFloat() / MMOL_PER_MGDL).format("%.1f");
+    }
+
+    //! Range colour for the BG value, computed from mg/dL thresholds:
+    //! red < 70, green 70-180, amber > 180.
+    function bgColor() as Graphics.ColorType {
+        var mgdl = bgMgdl();
+        if (mgdl == null) {
+            return Graphics.COLOR_WHITE;
+        }
+        if (mgdl < LOW_MGDL) {
+            return Graphics.COLOR_RED;
+        }
+        if (mgdl > HIGH_MGDL) {
+            return Graphics.COLOR_ORANGE;
+        }
+        return Graphics.COLOR_GREEN;
     }
 
     function trend() as String {
@@ -50,18 +106,76 @@ module BgData {
         return (t instanceof Lang.String) ? t : "unknown";
     }
 
-    function unitString() as String {
-        var u = Storage.getValue(KEY_UNIT);
-        return (u instanceof Lang.String) ? u : "mmol/L";
-    }
-
-    //! "IOB 1.2u" or null when the pump didn't report IOB.
-    function iobString() as String or Null {
-        var iob = Storage.getValue(KEY_IOB);
-        if (iob == null) {
+    //! Signed change since the previous reading, in the display unit:
+    //! "+0.6" / "-1.2" (mmol) or "+11" / "-20" (mg/dL). Null when unknown.
+    function deltaString() as String or Null {
+        var d = Storage.getValue(KEY_DELTA);
+        if (!(d instanceof Lang.Number) && !(d instanceof Lang.Float)) {
             return null;
         }
-        return "IOB " + (iob as Numeric).toFloat().format("%.1f") + "u";
+        if (rawUnit().equals("mgdl")) {
+            var v = (d as Numeric).toNumber();
+            var sign = (v < 0) ? "-" : "+";
+            if (v < 0) { v = -v; }
+            return sign + v.format("%d");
+        }
+        var f = (d as Numeric).toFloat() / MMOL_PER_MGDL;
+        var fsign = (f < 0) ? "-" : "+";
+        if (f < 0) { f = -f; }
+        return fsign + f.format("%.1f");
+    }
+
+    //! "IOB 1.4U" or null when the pump did not report IOB (-1 or absent).
+    function iobString() as String or Null {
+        var f = iobValue();
+        if (f == null) {
+            return null;
+        }
+        return "IOB " + f.format("%.1f") + "U";
+    }
+
+    //! Shorter "IOB 1.4" (no unit suffix) for the tight glance line.
+    function iobShort() as String or Null {
+        var f = iobValue();
+        if (f == null) {
+            return null;
+        }
+        return "IOB " + f.format("%.1f");
+    }
+
+    //! IOB in units as a Float, or null if unknown (-1 or absent).
+    function iobValue() as Float or Null {
+        var iob = Storage.getValue(KEY_IOB);
+        if (!(iob instanceof Lang.Number) && !(iob instanceof Lang.Float)) {
+            return null;
+        }
+        var f = (iob as Numeric).toFloat();
+        if (f < 0) {
+            return null;
+        }
+        return f;
+    }
+
+    //! Pump battery percent, or null when not reported.
+    function battery() as Number or Null {
+        var b = Storage.getValue(KEY_BATTERY);
+        if (!(b instanceof Lang.Number) && !(b instanceof Lang.Float)) {
+            return null;
+        }
+        return (b as Numeric).toNumber();
+    }
+
+    //! Reservoir label "142U", or null when not reported.
+    function reservoirString() as String or Null {
+        var r = Storage.getValue(KEY_RESERVOIR);
+        if (!(r instanceof Lang.Number) && !(r instanceof Lang.Float)) {
+            return null;
+        }
+        var f = (r as Numeric).toFloat();
+        if (f < 0) {
+            return null;
+        }
+        return f.format("%.0f") + "U";
     }
 
     //! Total age of the reading in seconds: age when sent + time since receipt.
@@ -151,6 +265,26 @@ module BgData {
         ]);
         dc.setPenWidth(1);
     }
+
+    //! Small battery glyph: outline + terminal nub + charge-proportional fill.
+    //! (x, y) is the left edge / vertical center; w, h are the body size. Drawn
+    //! with primitives so no emoji/custom font is required.
+    function drawBatteryIcon(dc as Graphics.Dc, x as Number, y as Number,
+                             w as Number, h as Number, pct as Number,
+                             color as Graphics.ColorType) as Void {
+        var top = y - h / 2;
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(1);
+        dc.drawRectangle(x, top, w, h);
+        // Terminal nub on the right.
+        dc.fillRectangle(x + w, top + h / 4, 2, h - h / 2);
+        // Charge fill.
+        var inner = w - 2;
+        var fillW = inner * pct / 100;
+        if (fillW < 0) { fillW = 0; }
+        if (fillW > inner) { fillW = inner; }
+        dc.fillRectangle(x + 1, top + 1, fillW, h - 2);
+    }
 }
 
 //! Application entry point. Registers for messages pushed by the bgdude
@@ -160,8 +294,13 @@ module BgData {
 (:glance)
 class BgDudeApp extends Application.AppBase {
 
+    //! Last dictionary received from the phone this session (also persisted to
+    //! Storage by BgData.save so the glance has it before the first message).
+    var mLastMessage as Dictionary or Null;
+
     function initialize() {
         AppBase.initialize();
+        mLastMessage = null;
     }
 
     function onStart(state as Dictionary or Null) as Void {
@@ -178,10 +317,12 @@ class BgDudeApp extends Application.AppBase {
         }
     }
 
-    //! Message from the phone: {bg, trend, ageSec, iob, unit}.
+    //! Message from the phone: {bg, trend, delta, ageSec, iob, unit, battery,
+    //! reservoir}. Persist it and force a redraw of whatever view is showing.
     function onPhoneMessage(msg as Communications.PhoneAppMessage) as Void {
         var data = msg.data;
         if (data instanceof Lang.Dictionary) {
+            mLastMessage = data;
             BgData.save(data);
             WatchUi.requestUpdate();
         }

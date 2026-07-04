@@ -94,9 +94,9 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
     expect(find.text('Forecast accuracy'), findsOneWidget);
-    expect(find.text('Nightscout'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Nightscout'), 200,
         scrollable: find.byType(Scrollable).first);
+    expect(find.text('Nightscout'), findsOneWidget);
     await tester.tap(find.text('Nightscout'));
     await tester.pumpAndSettle();
     expect(find.text('Upload to Nightscout'), findsOneWidget);
@@ -212,5 +212,32 @@ void main() {
     expect(find.textContaining('Dev mode'), findsOneWidget);
     expect(find.text('Glucose units'), findsOneWidget);
     expect(find.text('Advanced mode'), findsOneWidget);
+    expect(find.text('Therapy profile'), findsOneWidget);
+    expect(find.text('Model internals'), findsOneWidget);
+  });
+
+  testWidgets('therapy profile editor opens and lists a segment',
+      (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Therapy profile'));
+    await tester.pumpAndSettle();
+    expect(find.text('Add segment'), findsOneWidget);
+    expect(find.textContaining('Basal'), findsWidgets);
+  });
+
+  testWidgets('advanced/model internals screen renders sections',
+      (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Model internals'), 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Model internals'));
+    await tester.pumpAndSettle();
+    expect(find.text('Effective sensitivity'), findsOneWidget);
+    expect(find.text('Forecaster'), findsOneWidget);
+    expect(find.text('Clarke error grid'), findsOneWidget);
   });
 }

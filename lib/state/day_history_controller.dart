@@ -10,6 +10,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../analytics/basal_reconstruction.dart';
 import '../analytics/context_builder.dart';
 import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
@@ -39,6 +40,12 @@ class DayHistoryController extends StateNotifier<DayData> {
   final DateTime Function() _clock;
   final TherapySettings _settings;
   DateTime? _lastBolusTime;
+
+  // Live basal reconstruction: accumulate rate observations, rebuild segments, and
+  // persist a segment whenever the rate changes.
+  final List<({DateTime time, double unitsPerHour})> _basalObs = [];
+  double? _openBasalRate;
+  DateTime? _openBasalStart;
 
   static DayData _fromSim(SimulatedDay sim) => DayData(
         start: sim.start,
@@ -117,13 +124,34 @@ class DayHistoryController extends StateNotifier<DayData> {
       await _repo.saveBolus(BolusEvent(time: lb, units: snapshot.lastBolusUnits!));
     }
 
+    // Reconstruct basal from the reported rate.
+    final rate = snapshot.basalUnitsPerHour;
+    if (rate != null) {
+      _basalObs.add((time: sample.time, unitsPerHour: rate));
+      if (_openBasalRate == null) {
+        _openBasalRate = rate;
+        _openBasalStart = sample.time;
+      } else if ((_openBasalRate! - rate).abs() > 1e-6) {
+        // Rate changed: close and persist the previous segment.
+        await _repo.saveBasal(BasalSegment(
+          start: _openBasalStart!,
+          end: sample.time,
+          unitsPerHour: _openBasalRate!,
+        ));
+        _openBasalRate = rate;
+        _openBasalStart = sample.time;
+      }
+    }
+    final basal =
+        const BasalReconstructor().reconstruct(_basalObs, until: sample.time);
+
     final cgm = [...state.cgm, sample];
     state = DayData(
       start: state.start,
       end: sample.time,
       cgm: cgm,
       boluses: state.boluses,
-      basal: state.basal,
+      basal: basal.isEmpty ? state.basal : basal,
       carbs: state.carbs,
       settings: state.settings,
       context: state.context,
