@@ -54,6 +54,23 @@ own insulin/carb math. The whole app — timeline, predictions, insights, bolus 
 meal coach — becomes usable and demoable without a pump. Integration tests
 (`integration_test/app_test.dart`) drive every tab through dev mode on an emulator.
 
+## The learning loop
+
+History is persisted to the encrypted store (`data/history_repository.dart`); the
+`DayHistoryController` keeps "today" live and seeds the store from the simulator in dev
+mode. On startup, background jobs (`AppJobs`) run: Health Connect sync, the meal-outcome
+loop (measures how logged meals played out ~3h later and refines each meal's curve),
+prediction reconciliation, the morning briefing, sensor/site reminders, and **forecaster
+retraining**. The forecaster is a deterministic physiological baseline plus a learned
+per-horizon GBM residual (`ml/`); a retrained model is only promoted if it clears the
+error-grid gate **and** beats the baseline RMSE on a held-out tail. Settings → *Forecast
+accuracy* shows how predictions score against actual outcomes.
+
+Real-time predicted-low/high nudges fire from `insights/alert_monitor.dart` (additive to
+CGM alarms, with cooldowns). The **Your Day** panel on the Today tab renders a
+plain-language narrative + suggestions. Optional **Nightscout** upload and **quick-log**
+(carbs, bolus, exercise, alcohol, sensor/site changes) round out the loop.
+
 ## The day event-stream
 
 The **Today** tab shows a single stream of the day's events — logged meals/boluses,

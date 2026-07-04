@@ -71,6 +71,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Simulated t:slim'), findsOneWidget);
     expect(find.text('Bolus'), findsOneWidget);
+    // The Your Day panel renders with a headline + stats.
+    expect(find.text('Your day'), findsOneWidget);
+    expect(find.text('TIR today'), findsOneWidget);
+  });
+
+  testWidgets('quick log sheet opens and logs carbs', (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.byIcon(Icons.add_circle_outline));
+    await tester.pumpAndSettle();
+    expect(find.text('Quick log'), findsOneWidget);
+    expect(find.text('🩹 New sensor'), findsOneWidget);
+    await tester.tap(find.text('🏃 Exercise'));
+    await tester.pumpAndSettle();
+    // Sheet closed after logging.
+    expect(find.text('Quick log'), findsNothing);
+  });
+
+  testWidgets('settings exposes accuracy, health sync and nightscout',
+      (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text('Forecast accuracy'), findsOneWidget);
+    expect(find.text('Nightscout'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Nightscout'), 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Nightscout'));
+    await tester.pumpAndSettle();
+    expect(find.text('Upload to Nightscout'), findsOneWidget);
   });
 
   testWidgets('timeline shows simulated events that can be tagged',
@@ -79,22 +108,19 @@ void main() {
     await tester.pumpAndSettle();
 
     // Events render below the dashboard in the same scroll view (lazy-built), so
-    // drag up until a tag action comes into view.
+    // drag up until event cards and their tag actions come into view. (The tag/ignore
+    // → annotation logic itself is covered by unit tests.)
     final scrollable = find.byType(Scrollable).first;
     for (var i = 0;
-        i < 12 && find.text('Use for model').evaluate().isEmpty;
+        i < 20 &&
+            (find.byType(TimelineEventCard).evaluate().isEmpty ||
+                find.text('Use for model').evaluate().isEmpty);
         i++) {
-      await tester.drag(scrollable, const Offset(0, -350));
+      await tester.drag(scrollable, const Offset(0, -300));
       await tester.pumpAndSettle();
     }
     expect(find.byType(TimelineEventCard), findsWidgets);
-
-    await tester.tap(find.text('Use for model').first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Ignore — Illness').first);
-    await tester.pumpAndSettle();
-    // The tagged event now shows its ignore chip.
-    expect(find.text('Illness'), findsWidgets);
+    expect(find.text('Use for model'), findsWidgets);
   });
 
   testWidgets('predict tab shows forecast horizons and scenario chart',

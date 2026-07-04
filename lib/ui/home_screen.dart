@@ -8,6 +8,7 @@ import '../state/providers.dart';
 import 'timeline_screen.dart';
 import 'widgets/glucose_hero.dart';
 import 'widgets/prediction_chart.dart';
+import 'your_day_panel.dart';
 
 export 'timeline_screen.dart' show TimelineEventCard;
 
@@ -34,6 +35,8 @@ class TodayTab extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _ConnectionBanner(connection: connection),
+          const SizedBox(height: 12),
+          const YourDayPanel(),
           const SizedBox(height: 12),
           snapshot.when(
             data: (s) => _Dashboard(snapshot: s, unit: unit),

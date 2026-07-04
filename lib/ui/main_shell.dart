@@ -8,6 +8,7 @@ import 'home_screen.dart';
 import 'insights_screen.dart';
 import 'meal_library_screen.dart';
 import 'predictions_screen.dart';
+import 'quick_log_sheet.dart';
 import 'settings_screen.dart';
 
 /// The app's home: a four-tab shell (Today · Predict · Insights · Meals) with the
@@ -63,6 +64,11 @@ class _MainShellState extends ConsumerState<MainShell> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            tooltip: 'Quick log',
+            onPressed: () => QuickLogSheet.show(context),
+          ),
           IconButton(
             icon: Icon(
                 unit == GlucoseUnit.mmol ? Icons.water_drop : Icons.science),

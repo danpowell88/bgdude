@@ -9,13 +9,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../analytics/bolus_advisor.dart';
+import '../analytics/metrics.dart';
 import '../analytics/predictor.dart';
 import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
 import '../core/units.dart';
 import '../feedback/annotations.dart';
+import '../insights/alert_monitor.dart';
+import '../insights/daily_narrative.dart';
 import '../insights/illness_mode.dart';
+import '../insights/morning_summary.dart';
 import '../insights/notifications.dart';
+import '../integrations/nightscout.dart';
+import '../logging/device_changes.dart';
 import '../data/health_sync.dart';
 import '../data/history_repository.dart';
 import '../dev/sim_data.dart';
@@ -23,6 +29,7 @@ import '../meals/meal_library.dart';
 import '../meals/meal_log.dart';
 import '../meals/meal_outcome_service.dart';
 import '../meals/prebolus_coach.dart';
+import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
 import '../ml/forecaster_service.dart';
 import '../ml/sensitivity_model.dart';
@@ -95,6 +102,52 @@ final therapySettingsProvider =
 /// Today's sensitivity context (from the sensitivity model; neutral until trained).
 final sensitivityContextProvider =
     StateProvider<SensitivityContext>((ref) => SensitivityContext.neutral);
+
+/// Today's glycaemic metrics (TIR/GMI/CV) over the day's CGM.
+final todayMetricsProvider = Provider<GlucoseMetrics>((ref) {
+  final day = ref.watch(dayDataProvider);
+  return const MetricsCalculator().compute(day.cgm);
+});
+
+/// The "Your Day" narrative: a plain-language summary + suggestions built from the
+/// current state, today's metrics, the sensitivity context, and the forecast.
+final dailyNarrativeProvider = Provider<DailyNarrative>((ref) {
+  final snap = ref.watch(pumpSnapshotProvider).valueOrNull;
+  final metrics = ref.watch(todayMetricsProvider);
+  final sensitivity = ref.watch(effectiveSensitivityProvider);
+  final unit = ref.watch(glucoseUnitProvider);
+  final state = ref.watch(livePredictionStateProvider);
+  final illness = ref.watch(illnessModeProvider);
+  final events = ref.watch(dayEventsProvider);
+
+  double? low, high;
+  if (state != null) {
+    final f = ref.watch(forecasterProvider).forecastState(state);
+    if (f.isNotEmpty) {
+      low = f.map((e) => e.mgdl).reduce((a, b) => a < b ? a : b);
+      high = f.map((e) => e.mgdl).reduce((a, b) => a > b ? a : b);
+    }
+  }
+  final notable = events
+      .where((e) =>
+          e.type == DayEventType.high ||
+          e.type == DayEventType.low ||
+          e.type == DayEventType.detectedMeal)
+      .length;
+
+  return const DailyNarrativeGenerator().generate(DailyNarrativeInput(
+    now: DateTime.now(),
+    currentMgdl: snap?.cgmMgdl?.toDouble(),
+    trend: snap?.cgmTrend ?? GlucoseTrend.unknown,
+    todayMetrics: metrics,
+    sensitivity: sensitivity,
+    predictedLowMgdl: low,
+    predictedHighMgdl: high,
+    notableEventCount: notable,
+    illnessActive: illness.active,
+    unit: unit,
+  ));
+});
 
 /// Shared engines.
 final predictorProvider = Provider<GlucosePredictor>((ref) => GlucosePredictor());
@@ -269,13 +322,31 @@ class EventDispositionNotifier extends StateNotifier<
 }
 
 /// The day's event stream (meals, boluses, detected rises, highs/lows, compression
-/// lows) with any user tags applied. This is the timeline's single source.
+/// lows, sensor/site changes) with any user tags applied. Timeline's single source.
 final dayEventsProvider = Provider<List<DayEvent>>((ref) {
   final day = ref.watch(dayDataProvider);
   final unit = ref.watch(glucoseUnitProvider);
   final overrides = ref.watch(eventDispositionProvider);
+  final devices = ref.watch(deviceStateProvider);
 
-  final events = EventBuilder(unit: unit).build(day);
+  final events = [...EventBuilder(unit: unit).build(day)];
+
+  // Sensor/site changes that happened within today's window.
+  for (final c in devices.changes) {
+    if (c.changedAt.isBefore(day.start) || c.changedAt.isAfter(day.end)) continue;
+    events.add(DayEvent(
+      id: '${c.kind.name}-${c.changedAt.millisecondsSinceEpoch}',
+      type: c.kind == DeviceKind.sensor
+          ? DayEventType.sensorChange
+          : DayEventType.siteChange,
+      time: c.changedAt,
+      title: 'Changed ${c.kind.label.toLowerCase()}',
+      detail: c.kind == DeviceKind.sensor
+          ? 'Readings may be unreliable during the warm-up window.'
+          : 'Fresh site — watch the first few hours for absorption changes.',
+    ));
+  }
+
   return [
     for (final e in events)
       if (overrides.containsKey(e.id))
@@ -391,6 +462,110 @@ class MealLogNotifier extends StateNotifier<List<MealLogEntry>> {
   }
 }
 
+/// Nightscout upload configuration (persisted) and client.
+final nightscoutConfigProvider =
+    StateNotifierProvider<NightscoutConfigNotifier, NightscoutConfig>(
+        (ref) => NightscoutConfigNotifier());
+
+class NightscoutConfigNotifier extends StateNotifier<NightscoutConfig> {
+  NightscoutConfigNotifier() : super(const NightscoutConfig()) {
+    _restore();
+  }
+  static const _key = 'nightscout_config_v1';
+
+  Future<void> _restore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key);
+    if (raw != null) {
+      state = NightscoutConfig.fromJson(
+          jsonDecode(raw) as Map<String, dynamic>);
+    }
+  }
+
+  Future<void> save(NightscoutConfig config) async {
+    state = config;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, jsonEncode(config.toJson()));
+  }
+}
+
+final nightscoutClientProvider = Provider<NightscoutClient>(
+    (ref) => NightscoutClient(ref.watch(nightscoutConfigProvider)));
+
+/// CGM sensor / infusion-site change tracking.
+final deviceStateProvider =
+    StateNotifierProvider<DeviceChangeNotifier, DeviceState>(
+        (ref) => DeviceChangeNotifier());
+
+class DeviceChangeNotifier extends StateNotifier<DeviceState> {
+  DeviceChangeNotifier() : super(const DeviceState()) {
+    _restore();
+  }
+
+  Future<void> _restore() async {
+    state = await DeviceChangeStore.load();
+  }
+
+  Future<void> record(DeviceKind kind, {DateTime? at}) async {
+    state = state.withChange(DeviceChange(kind: kind, changedAt: at ?? DateTime.now()));
+    await DeviceChangeStore.save(state);
+  }
+}
+
+/// Fires real-time predicted-low/high nudges and logs predictions for accuracy
+/// scoring. Driven from the app root on each pump snapshot.
+final alertServiceProvider = Provider<AlertService>((ref) => AlertService(ref));
+
+class AlertService {
+  AlertService(this._ref);
+  final Ref _ref;
+  final Map<GlucoseAlertKind, DateTime> _lastFired = {};
+  DateTime? _lastPredictionLog;
+
+  Future<void> onSnapshot() async {
+    final state = _ref.read(livePredictionStateProvider);
+    if (state == null) return;
+    final forecasts = _ref.read(forecasterProvider).forecastState(state);
+    final now = DateTime.now();
+
+    final alert = const AlertMonitor().evaluate(
+      forecasts: forecasts,
+      currentMgdl: state.currentMgdl,
+      now: now,
+      lastFired: _lastFired,
+      unit: _ref.read(glucoseUnitProvider),
+    );
+    if (alert != null) {
+      _lastFired[alert.kind] = now;
+      try {
+        await _ref
+            .read(notificationServiceProvider)
+            .showNudge(alert.title, alert.body);
+      } catch (_) {}
+    }
+
+    // Log predictions (throttled) so the model-accuracy view can score them later.
+    if (_lastPredictionLog == null ||
+        now.difference(_lastPredictionLog!).inMinutes >= 5) {
+      _lastPredictionLog = now;
+      final trained = _ref.read(forecasterModelProvider).isTrained;
+      final repo = _ref.read(historyRepositoryProvider);
+      for (final f in forecasts) {
+        try {
+          await repo.savePrediction(StoredPrediction(
+            madeAt: state.now,
+            horizonMinutes: f.horizonMinutes,
+            predictedMgdl: f.mgdl,
+            lowerMgdl: f.lowerMgdl,
+            upperMgdl: f.upperMgdl,
+            modelId: trained ? 'residual' : 'deterministic',
+          ));
+        } catch (_) {}
+      }
+    }
+  }
+}
+
 /// Background jobs run at startup (and on demand): close the meal-outcome loop,
 /// reconcile matured predictions, and retrain the forecaster when enough data exists.
 final appJobsProvider = Provider<AppJobs>((ref) => AppJobs(ref));
@@ -400,6 +575,11 @@ class AppJobs {
   final Ref _ref;
 
   Future<void> runStartup() async {
+    if (!_ref.read(devModeProvider)) {
+      try {
+        await syncHealth();
+      } catch (_) {}
+    }
     try {
       await runMealOutcomeLoop();
     } catch (_) {}
@@ -407,8 +587,46 @@ class AppJobs {
       await _ref.read(historyRepositoryProvider).reconcilePredictions(DateTime.now());
     } catch (_) {}
     try {
+      await maybeShowMorningSummary();
+    } catch (_) {}
+    try {
+      await checkDeviceReminders();
+    } catch (_) {}
+    try {
       await trainForecaster();
     } catch (_) {}
+  }
+
+  /// Generate and show the morning briefing on first open each morning (the reliable
+  /// path; a WorkManager job covers days the app isn't opened). Idempotent per day.
+  Future<void> maybeShowMorningSummary() async {
+    final now = DateTime.now();
+    if (now.hour < 6) return;
+    final prefs = await SharedPreferences.getInstance();
+    final key = '${now.year}-${now.month}-${now.day}';
+    if (prefs.getString('morning_summary_shown') == key) return;
+
+    final day = _ref.read(dayDataProvider);
+    final features = day.context;
+    if (features == null || day.cgm.length < 12) return;
+
+    final overnight = const MetricsCalculator().compute(
+        [for (final s in day.cgm) if (s.time.hour < 7) s]);
+    final summary = MorningSummaryGenerator(unit: _ref.read(glucoseUnitProvider))
+        .generate(
+      date: now,
+      overnightMetrics: overnight,
+      context: features,
+      sensitivity: _ref.read(effectiveSensitivityProvider),
+    );
+    final body = [for (final i in summary.insights.take(3)) '• ${i.detail}']
+        .join('\n');
+    try {
+      await _ref
+          .read(notificationServiceProvider)
+          .showMorningSummary(summary.headline, body);
+    } catch (_) {}
+    await prefs.setString('morning_summary_shown', key);
   }
 
   /// Compute matured meal outcomes and fold them into the learned curves.
@@ -430,6 +648,19 @@ class AppJobs {
     await _ref.read(mealLogProvider.notifier).replaceAll(res.updatedLog);
   }
 
+  /// Pull recent Health Connect data (sleep, HRV, resting HR, steps, workouts) into the
+  /// store and refresh today's context. Returns how many samples were ingested.
+  Future<int> syncHealth() async {
+    final svc = _ref.read(healthSyncServiceProvider);
+    final now = DateTime.now();
+    final samples = await svc.fetch(now.subtract(const Duration(days: 2)), now);
+    if (samples.isNotEmpty) {
+      await _ref.read(historyRepositoryProvider).saveHealth(samples);
+      await _ref.read(dayHistoryControllerProvider.notifier).reload();
+    }
+    return samples.length;
+  }
+
   /// Retrain the residual forecaster from all stored history.
   Future<TrainingOutcome> trainForecaster() async {
     final repo = _ref.read(historyRepositoryProvider);
@@ -445,6 +676,55 @@ class AppJobs {
           annotations: await repo.annotations(from, now),
           asOf: now,
         );
+  }
+
+  /// Quick-log a carb entry.
+  Future<void> logCarb(double grams, {int absorptionMinutes = 180}) =>
+      _ref.read(dayHistoryControllerProvider.notifier).logCarb(
+            CarbEntry(
+                time: DateTime.now(),
+                grams: grams,
+                absorptionMinutes: absorptionMinutes),
+          );
+
+  /// Quick-log a bolus the user actually delivered on the pump.
+  Future<void> logBolus(double units) => _ref
+      .read(dayHistoryControllerProvider.notifier)
+      .logBolus(BolusEvent(time: DateTime.now(), units: units));
+
+  /// Quick-log a context annotation (exercise / alcohol / stress), persisted for the
+  /// retraining pipeline and surfaced on the timeline.
+  Future<void> logContext(AnnotationKind kind,
+      {Duration window = const Duration(hours: 2), String note = ''}) async {
+    final now = DateTime.now();
+    await _ref.read(historyRepositoryProvider).saveAnnotation(Annotation(
+          id: '${kind.name}-${now.millisecondsSinceEpoch}',
+          kind: kind,
+          start: now,
+          end: now.add(window),
+          note: note,
+        ));
+  }
+
+  /// Record a sensor/site change and reset its age.
+  Future<void> recordDeviceChange(DeviceKind kind) =>
+      _ref.read(deviceStateProvider.notifier).record(kind);
+
+  /// Notify if the sensor or site is overdue for a change.
+  Future<void> checkDeviceReminders() async {
+    final state = _ref.read(deviceStateProvider);
+    final now = DateTime.now();
+    for (final kind in DeviceKind.values) {
+      if (state.isOverdue(kind, now)) {
+        final age = state.age(kind, now)!;
+        try {
+          await _ref.read(notificationServiceProvider).showNudge(
+                '${kind.label} is overdue',
+                'It\'s been ${age.inDays}d ${age.inHours % 24}h — consider changing it.',
+              );
+        } catch (_) {}
+      }
+    }
   }
 
   /// Record that a saved meal was eaten now: persists the carb entry and a meal-log

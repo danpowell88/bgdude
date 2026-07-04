@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../state/providers.dart';
+
 /// First-run onboarding. The critical screen is the pairing warning: pairing with
 /// pumpx2 unpairs the official t:connect app (mutual exclusion), and pairing is a
 /// reverse-engineered proof-of-concept that can be flaky. The user must acknowledge this
@@ -67,6 +69,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         Permission.bluetoothScan,
         Permission.notification,
       ].request();
+      // Health Connect permissions (sleep, HRV, resting HR, steps, workouts).
+      try {
+        await ref.read(healthSyncServiceProvider).requestPermissions();
+      } catch (_) {}
       widget.onDone();
       return;
     }

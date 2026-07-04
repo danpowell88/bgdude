@@ -7,6 +7,7 @@ import 'app.dart';
 import 'data/database.dart';
 import 'data/history_repository.dart';
 import 'data/secure_key.dart';
+import 'insights/background_summary.dart';
 import 'insights/notifications.dart';
 import 'state/providers.dart';
 
@@ -36,6 +37,10 @@ Future<void> main() async {
   if (onboarded) {
     await notifications.init();
     await notifications.scheduleDailySummary(hour: 7);
+    // Background morning-summary backstop for days the app isn't opened.
+    try {
+      await registerBackgroundSummary();
+    } catch (_) {}
   }
 
   runApp(

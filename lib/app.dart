@@ -23,6 +23,15 @@ class BgDudeApp extends ConsumerWidget {
         ref
             .read(dayHistoryControllerProvider.notifier)
             .ingestSnapshot(snapshot);
+        // Predicted low/high nudges + prediction logging.
+        ref.read(alertServiceProvider).onSnapshot();
+        // Best-effort Nightscout push (no-op unless configured + enabled).
+        final sample = snapshot.toCgmSample();
+        final ns = ref.read(nightscoutClientProvider);
+        if (sample != null) ns.uploadEntries([sample]);
+        if (snapshot.iobUnits != null) {
+          ns.uploadDeviceStatus(iob: snapshot.iobUnits!);
+        }
       }
     });
     ref.listen(glucoseUnitProvider, (_, unit) {
