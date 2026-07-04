@@ -7,7 +7,7 @@ library;
 
 import 'dart:convert';
 
-import 'package:shared_preferences/shared_preferences.dart';
+import '../data/kv_store.dart';
 
 class MealLogEntry {
   const MealLogEntry({
@@ -63,8 +63,7 @@ class MealLogStore {
   static const _key = 'meal_log_v1';
 
   static Future<List<MealLogEntry>> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_key) ?? const [];
+    final raw = await KvStore.getStringList(_key) ?? const [];
     return [
       for (final r in raw)
         MealLogEntry.fromJson(jsonDecode(r) as Map<String, dynamic>),
@@ -72,14 +71,13 @@ class MealLogStore {
   }
 
   static Future<void> save(List<MealLogEntry> entries) async {
-    final prefs = await SharedPreferences.getInstance();
     // Prune learned entries older than 7 days to bound growth.
     final now = DateTime.now();
     final kept = [
       for (final e in entries)
         if (!e.learned || now.difference(e.eatenAt).inDays < 7) e,
     ];
-    await prefs.setStringList(
+    await KvStore.setStringList(
         _key, [for (final e in kept) jsonEncode(e.toJson())]);
   }
 

@@ -152,8 +152,12 @@ class BolusAdvisor {
     // Round to the pump's typical 0.01U increment for display.
     total = (total * 100).roundToDouble() / 100;
 
+    // Show the breakdown of the (possibly capped) total, so meal + correction always
+    // sums to the suggested figure rather than the pre-cap amounts.
+    final shownMeal = mealUnits > total ? total : mealUnits;
+    final shownCorrection = (total - shownMeal).clamp(0.0, total);
     working.add(AdviceStep('Suggested',
-        '${total.toStringAsFixed(2)} U  (meal ${mealUnits.toStringAsFixed(2)} + correction ${correctionUnits.toStringAsFixed(2)})'));
+        '${total.toStringAsFixed(2)} U  (meal ${shownMeal.toStringAsFixed(2)} + correction ${shownCorrection.toStringAsFixed(2)})'));
 
     if (state.context.confidence > 0 && state.context.reasons.isNotEmpty) {
       notes.add(

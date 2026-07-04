@@ -39,6 +39,7 @@ class PumpService : Service(), PumpCommHandler.Listener {
         fun onSnapshot(json: String)
         fun onPairingCodeRequired(type: PairingCodeType)
         fun onCriticalError(message: String)
+        fun onTherapyProfile(json: String)
     }
 
     inner class LocalBinder : Binder() {
@@ -74,6 +75,8 @@ class PumpService : Service(), PumpCommHandler.Listener {
     fun startScan(macFilter: String?) = commHandler?.start(macFilter)
     fun stopScan() = commHandler?.stop()
     fun requestStatus() = commHandler?.requestFullStatus()
+    fun requestProfile() = commHandler?.requestProfile()
+    fun fetchHistory(): List<Map<String, Any?>> = commHandler?.drainHistory() ?: emptyList()
     fun submitPairingCode(code: String, type: PairingCodeType) =
         commHandler?.submitPairingCode(code, type)
     fun unpair() = commHandler?.unpair()
@@ -98,6 +101,10 @@ class PumpService : Service(), PumpCommHandler.Listener {
 
     override fun onCriticalError(message: String) {
         callbacks?.onCriticalError(message)
+    }
+
+    override fun onTherapyProfile(json: String) {
+        callbacks?.onTherapyProfile(json)
     }
 
     private fun startForegroundCompat() {

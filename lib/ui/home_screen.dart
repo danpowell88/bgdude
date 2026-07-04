@@ -299,12 +299,12 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-class _ConnectionBanner extends StatelessWidget {
+class _ConnectionBanner extends ConsumerWidget {
   const _ConnectionBanner({required this.connection});
   final AsyncValue<PumpConnection> connection;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = connection.valueOrNull ?? PumpConnection.idle;
     final (color, label) = switch (c.stage) {
       PumpConnectionStage.connected => (
@@ -334,6 +334,13 @@ class _ConnectionBanner extends StatelessWidget {
           Icon(Icons.bluetooth, size: 18, color: color),
           const SizedBox(width: 8),
           Expanded(child: Text(label)),
+          if (c.stage == PumpConnectionStage.disconnected ||
+              c.stage == PumpConnectionStage.error ||
+              c.stage == PumpConnectionStage.idle)
+            TextButton(
+              onPressed: () => ref.read(pumpClientProvider).startScan(),
+              child: const Text('Reconnect'),
+            ),
         ],
       ),
     );

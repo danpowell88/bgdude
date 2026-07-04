@@ -6,6 +6,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'app.dart';
 import 'data/database.dart';
 import 'data/history_repository.dart';
+import 'data/kv_store.dart';
 import 'data/secure_key.dart';
 import 'insights/background_summary.dart';
 import 'insights/notifications.dart';
@@ -27,6 +28,7 @@ Future<void> main() async {
     final keys = await SecureKeyStore.open();
     final db = AppDatabase(openEncryptedDatabase(keys.getOrCreatePassphrase()));
     repository = DriftHistoryRepository(db);
+    KvStore.init(db); // encrypted key-value store for app state
   } catch (_) {
     repository = InMemoryHistoryRepository();
   }

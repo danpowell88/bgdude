@@ -11,6 +11,9 @@ abstract interface class PumpSource {
   Stream<String> get pairingRequests;
   Stream<String> get errors;
 
+  /// Emits the pump's therapy profile (IDP) as JSON when read from the pump.
+  Stream<String> get therapyProfiles;
+
   PumpConnection get lastConnection;
   PumpSnapshot? get lastSnapshot;
 

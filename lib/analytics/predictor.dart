@@ -161,7 +161,10 @@ class GlucosePredictor {
   }) {
     final seg = s.settings.segmentAt(s.now);
     final mult = s.context.effectiveMultiplier;
-    // More resistance => smaller effective ISF and CSF (insulin does less).
+    // More resistance => smaller effective ISF (insulin does less). Note CSF = ISF/CR is
+    // invariant to the multiplier when it scales ISF and CR proportionally — resistance
+    // changes the insulin side, not grams-to-mg/dL; the advisor pulls the carb lever via
+    // the effective carb ratio in the dose, not here.
     final isf = seg.isf / mult;
     final csf = carbSensitivityFactor(isf: isf, carbRatio: seg.carbRatio / mult);
 

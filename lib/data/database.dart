@@ -98,6 +98,18 @@ class Predictions extends Table {
   TextColumn get modelId => text().withDefault(const Constant('deterministic'))();
 }
 
+/// Encrypted key-value store for app state that used to live in SharedPreferences
+/// (therapy profile, illness/device state, meals, model blob, goals…) — consolidated
+/// here so it is AES-256 encrypted at rest like the rest of the health data.
+@DataClassName('AppKvRow')
+class AppKv extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
 @DataClassName('ModelRunRow')
 class ModelRuns extends Table {
   TextColumn get id => text()();
@@ -122,16 +134,38 @@ class ModelRuns extends Table {
     Predictions,
     ModelRuns,
     SavedMeals,
+    AppKv,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  /// Read a value from the encrypted key-value store.
+  Future<String?> readKv(String key) async {
+    final row = await (select(appKv)..where((t) => t.key.equals(key)))
+        .getSingleOrNull();
+    return row?.value;
+  }
+
+  /// Write a value to the encrypted key-value store.
+  Future<void> writeKv(String key, String value) =>
+      into(appKv).insertOnConflictUpdate(
+          AppKvCompanion.insert(key: key, value: value));
+
+  Future<void> saveModelRunRow(ModelRunsCompanion row) =>
+      into(modelRuns).insertOnConflictUpdate(row);
+
+  Future<List<ModelRunRow>> allModelRuns() =>
+      (select(modelRuns)..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).get();
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) await m.createTable(appKv);
+        },
         beforeOpen: (details) async {
           await customStatement('PRAGMA journal_mode=WAL');
           await customStatement('PRAGMA foreign_keys=ON');

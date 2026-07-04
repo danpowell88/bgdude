@@ -1,0 +1,81 @@
+# CI workflow for bgdude (Flutter / Android-only)
+#
+# Runs code generation, static analysis, unit tests, a debug APK build, and
+# best-effort native Kotlin unit tests on every push / PR to main.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the repository.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. JDK 17 is required for the Android/Gradle build (compileSdk 36).
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # 3. Install Flutter. Pin to the stable channel version used locally
+      #    (3.44.4). If this exact version ever becomes unavailable, drop the
+      #    `flutter-version` line and rely on `channel: stable` alone.
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.4
+          cache: true
+
+      # 4. Print the toolchain versions for debugging.
+      - name: Flutter version
+        run: flutter --version
+
+      # 5. Resolve Dart/Flutter package dependencies.
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 6. Generate code (drift, freezed, json_serializable, riverpod). This
+      #    MUST run before analyze/test since generated files are not committed.
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # 7. Static analysis.
+      - name: Analyze
+        run: flutter analyze
+
+      # 8. Unit tests only. The integration_test/ suite needs an emulator and
+      #    is intentionally excluded by scoping to test/.
+      - name: Unit tests
+        run: flutter test test/
+
+      # 9. Debug APK build. Pulls pumpx2/blessed from JitPack (network available).
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      # 10. Native Kotlin unit tests (android/app/src/test). Best-effort: these
+      #     need local.properties pointing at the Flutter + Android SDKs, which
+      #     we write here from the paths exported by flutter-action / setup step.
+      #     Marked continue-on-error so flakiness here never fails the build.
+      - name: Native unit tests (best-effort)
+        continue-on-error: true
+        run: |
+          # flutter-action exports FLUTTER_ROOT; ANDROID_HOME is set on the runner.
+          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_ROOT" "$ANDROID_HOME" > android/local.properties
+          cd android && ./gradlew :app:testDebugUnitTest --no-daemon
+
+      # 11. Publish the debug APK as a build artifact.
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bgdude-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk

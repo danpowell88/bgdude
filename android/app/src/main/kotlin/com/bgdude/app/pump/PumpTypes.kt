@@ -57,17 +57,18 @@ class MutableSnapshot {
     var firmwareVersion: String? = null
     var activeAlerts: MutableList<String> = mutableListOf()
 
-    /** JSON string streamed over the EventChannel (compact, hand-rolled to avoid deps). */
+    /** JSON string streamed over the EventChannel (compact, hand-rolled to avoid deps).
+     *  Non-null fields are collected and comma-joined so the output is always valid JSON
+     *  regardless of which fields are set. */
     fun toJson(): String {
-        val sb = StringBuilder("{")
-        fun field(name: String, value: Any?, last: Boolean = false) {
+        val parts = mutableListOf<String>()
+        fun field(name: String, value: Any?) {
             if (value == null) return
             val v = when (value) {
                 is String -> "\"${value.replace("\"", "\\\"")}\""
                 else -> value.toString()
             }
-            sb.append("\"$name\":$v")
-            if (!last) sb.append(",")
+            parts.add("\"$name\":$v")
         }
         field("timestampEpochMs", System.currentTimeMillis())
         field("model", model.name)
@@ -82,8 +83,7 @@ class MutableSnapshot {
         field("lastBolusUnits", lastBolusUnits)
         field("lastBolusTimestampEpochMs", lastBolusTimestampEpochMs)
         field("apiVersion", apiVersion)
-        field("firmwareVersion", firmwareVersion, last = true)
-        sb.append("}")
-        return sb.toString()
+        field("firmwareVersion", firmwareVersion)
+        return parts.joinToString(",", prefix = "{", postfix = "}")
     }
 }

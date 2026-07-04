@@ -10,10 +10,10 @@ library;
 
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/samples.dart';
 import '../data/history_repository.dart';
+import '../data/kv_store.dart';
 
 class HistoryBackfillService {
   HistoryBackfillService(this._repo, {MethodChannel? commands})
@@ -31,8 +31,7 @@ class HistoryBackfillService {
     required DateTime to,
     bool force = false,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final hwm = force ? 0 : (prefs.getInt(_hwmKey) ?? 0);
+    final hwm = force ? 0 : ((await KvStore.getDouble(_hwmKey))?.toInt() ?? 0);
     final effectiveFrom = DateTime.fromMillisecondsSinceEpoch(
         hwm > from.millisecondsSinceEpoch ? hwm : from.millisecondsSinceEpoch);
 
@@ -93,7 +92,7 @@ class HistoryBackfillService {
     }
     if (cgm.isNotEmpty) await _repo.saveCgm(cgm);
 
-    if (maxEpoch > hwm) await prefs.setInt(_hwmKey, maxEpoch);
+    if (maxEpoch > hwm) await KvStore.setDouble(_hwmKey, maxEpoch.toDouble());
     _log.info('backfilled $imported history entries');
     return imported;
   }

@@ -61,7 +61,10 @@ class ForecastFeatures {
 }
 
 /// Forecast directly from a [PredictionState], wiring the feature builder so the
-/// residual model receives the same layout it was trained on.
+/// residual model receives the same layout it was trained on. The sensitivity feature
+/// is fixed to neutral here to match training (the trainer builds features with a
+/// neutral context), avoiding a train/serve skew where the GBM sees an out-of-
+/// distribution value it never learned to split on.
 extension ForecasterStateExt on Forecaster {
   List<HorizonForecast> forecastState(PredictionState s) => forecast(
         s,
@@ -72,7 +75,7 @@ extension ForecasterStateExt on Forecaster {
           boluses: s.boluses,
           basal: s.basal,
           carbs: s.carbs,
-          context: s.context,
+          context: SensitivityContext.neutral,
           horizonMinutes: h,
         ),
       );

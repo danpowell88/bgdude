@@ -6,7 +6,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../analytics/bolus_advisor.dart';
 import '../analytics/context_builder.dart';
@@ -30,6 +29,7 @@ import '../integrations/nightscout.dart';
 import '../logging/device_changes.dart';
 import '../data/health_sync.dart';
 import '../data/history_repository.dart';
+import '../data/kv_store.dart';
 import '../dev/sim_data.dart';
 import '../meals/meal_library.dart';
 import '../meals/meal_log.dart';
@@ -114,6 +114,11 @@ final pumpErrorProvider = StreamProvider<String>((ref) {
   return ref.watch(pumpClientProvider).errors;
 });
 
+/// Emits the pump's therapy profile JSON when auto-read from the pump (IDP import).
+final pumpTherapyProfileProvider = StreamProvider<String>((ref) {
+  return ref.watch(pumpClientProvider).therapyProfiles;
+});
+
 /// The user's therapy settings (their pump IDP: basal schedule, ISF, CR, targets),
 /// persisted. Feeds the what-if engine, bolus advisor, and predictions.
 final therapySettingsProvider =
@@ -127,8 +132,7 @@ class TherapyNotifier extends StateNotifier<TherapySettings> {
   static const _key = 'therapy_settings_v1';
 
   Future<void> _restore() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
+    final raw = await KvStore.getString(_key);
     if (raw != null) {
       state = TherapySettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     }
@@ -136,8 +140,7 @@ class TherapyNotifier extends StateNotifier<TherapySettings> {
 
   Future<void> save(TherapySettings settings) async {
     state = settings;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode(settings.toJson()));
+    await KvStore.setString(_key, jsonEncode(settings.toJson()));
   }
 }
 
@@ -161,15 +164,13 @@ class A1cTargetNotifier extends StateNotifier<double> {
   }
   static const _key = 'a1c_target_gmi';
   Future<void> _restore() async {
-    final prefs = await SharedPreferences.getInstance();
-    final v = prefs.getDouble(_key);
+    final v = await KvStore.getDouble(_key);
     if (v != null) state = v;
   }
 
   Future<void> save(double gmiPercent) async {
     state = gmiPercent;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_key, gmiPercent);
+    await KvStore.setDouble(_key, gmiPercent);
   }
 }
 
@@ -180,9 +181,11 @@ final a1cStatusProvider = FutureProvider<GmiStatus>((ref) async {
   final now = DateTime.now();
   final cgm = await repo.cgm(now.subtract(const Duration(days: 14)), now);
   final recent = const MetricsCalculator().compute(cgm);
-  final byDay = <String, List<double>>{};
+  // Group by calendar day and order chronologically (DateTime keys, not string keys —
+  // a lexicographic sort would put day 10 before day 2 and scramble the trend).
+  final byDay = <DateTime, List<double>>{};
   for (final s in cgm) {
-    (byDay['${s.time.year}-${s.time.month}-${s.time.day}'] ??= <double>[])
+    (byDay[DateTime(s.time.year, s.time.month, s.time.day)] ??= <double>[])
         .add(s.mgdl);
   }
   final keys = byDay.keys.toList()..sort();
@@ -341,8 +344,7 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
   Annotation? lastDeactivationAnnotation;
 
   Future<void> _restore() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_prefsKey);
+    final raw = await KvStore.getString(_prefsKey);
     if (raw != null) {
       _controller.mode = IllnessMode.decode(raw);
       state = _controller.mode;
@@ -350,8 +352,7 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
   }
 
   Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsKey, _controller.mode.encode());
+    await KvStore.setString(_prefsKey, _controller.mode.encode());
     state = _controller.mode;
   }
 
@@ -545,8 +546,7 @@ class MealLibraryNotifier extends StateNotifier<MealLibrary> {
   static const _prefsKey = 'meal_library_v1';
 
   Future<void> _restore() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_prefsKey);
+    final raw = await KvStore.getStringList(_prefsKey);
     if (raw != null && raw.isNotEmpty) {
       state = MealLibrary(
         meals: [
@@ -558,8 +558,7 @@ class MealLibraryNotifier extends StateNotifier<MealLibrary> {
   }
 
   Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
+    await KvStore.setStringList(
       _prefsKey,
       [for (final m in state.meals) jsonEncode(m.toJson())],
     );
@@ -619,8 +618,7 @@ class NightscoutConfigNotifier extends StateNotifier<NightscoutConfig> {
   static const _key = 'nightscout_config_v1';
 
   Future<void> _restore() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
+    final raw = await KvStore.getString(_key);
     if (raw != null) {
       state = NightscoutConfig.fromJson(
           jsonDecode(raw) as Map<String, dynamic>);
@@ -629,8 +627,7 @@ class NightscoutConfigNotifier extends StateNotifier<NightscoutConfig> {
 
   Future<void> save(NightscoutConfig config) async {
     state = config;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode(config.toJson()));
+    await KvStore.setString(_key, jsonEncode(config.toJson()));
   }
 }
 
@@ -963,16 +960,22 @@ class AppJobs {
   Future<void> maybeShowMorningSummary() async {
     final now = DateTime.now();
     if (now.hour < 6) return;
-    final prefs = await SharedPreferences.getInstance();
     final key = '${now.year}-${now.month}-${now.day}';
-    if (prefs.getString('morning_summary_shown') == key) return;
+    if (await KvStore.getString('morning_summary_shown') == key) return;
 
     final day = _ref.read(dayDataProvider);
     final features = day.context;
     if (features == null || day.cgm.length < 12) return;
 
-    final overnight = const MetricsCalculator().compute(
-        [for (final s in day.cgm) if (s.time.hour < 7) s]);
+    // Last night specifically (23:00 yesterday → 07:00 today), not "any hour < 7"
+    // across the 24h window.
+    final midnight = DateTime(now.year, now.month, now.day);
+    final onStart = midnight.subtract(const Duration(hours: 1));
+    final onEnd = midnight.add(const Duration(hours: 7));
+    final overnight = const MetricsCalculator().compute([
+      for (final s in day.cgm)
+        if (!s.time.isBefore(onStart) && s.time.isBefore(onEnd)) s,
+    ]);
     final summary = MorningSummaryGenerator(unit: _ref.read(glucoseUnitProvider))
         .generate(
       date: now,
@@ -987,7 +990,7 @@ class AppJobs {
           .read(notificationServiceProvider)
           .showMorningSummary(summary.headline, body);
     } catch (_) {}
-    await prefs.setString('morning_summary_shown', key);
+    await KvStore.setString('morning_summary_shown', key);
   }
 
   /// Compute matured meal outcomes and fold them into the learned curves.
@@ -1022,13 +1025,14 @@ class AppJobs {
     return samples.length;
   }
 
-  /// Retrain the residual forecaster from all stored history.
+  /// Retrain the residual forecaster from all stored history, recording a model-run
+  /// row (registry version history) with the outcome.
   Future<TrainingOutcome> trainForecaster() async {
     final repo = _ref.read(historyRepositoryProvider);
     final now = DateTime.now();
     final from = now.subtract(const Duration(days: 30));
     final settings = _ref.read(therapySettingsProvider);
-    return _ref.read(forecasterModelProvider.notifier).train(
+    final outcome = await _ref.read(forecasterModelProvider.notifier).train(
           cgm: await repo.cgm(from, now),
           boluses: await repo.boluses(from, now),
           basal: await repo.basal(from, now),
@@ -1037,6 +1041,24 @@ class AppJobs {
           annotations: await repo.annotations(from, now),
           asOf: now,
         );
+    if (outcome.trained) {
+      try {
+        await repo.saveModelRun(ModelRunRecord(
+          id: now.microsecondsSinceEpoch.toString(),
+          stage: outcome.promoted ? 'active' : 'candidate',
+          createdAt: now,
+          trainedOnDays: 30,
+          metricsJson: jsonEncode({
+            'baselineRmse': outcome.baselineRmse,
+            'candidateRmse': outcome.candidateRmse,
+            'trainSamples': outcome.trainSamples,
+            'promoted': outcome.promoted,
+            'reasons': outcome.reasons,
+          }),
+        ));
+      } catch (_) {}
+    }
+    return outcome;
   }
 
   /// Quick-log a carb entry.

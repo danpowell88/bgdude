@@ -7,7 +7,7 @@ library;
 
 import 'dart:convert';
 
-import 'package:shared_preferences/shared_preferences.dart';
+import '../data/kv_store.dart';
 
 enum DeviceKind { sensor, site }
 
@@ -77,14 +77,12 @@ class DeviceChangeStore {
   static const _key = 'device_changes_v1';
 
   static Future<DeviceState> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
+    final raw = await KvStore.getString(_key);
     if (raw == null) return const DeviceState();
     return DeviceState.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 
   static Future<void> save(DeviceState state) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode(state.toJson()));
+    await KvStore.setString(_key, jsonEncode(state.toJson()));
   }
 }

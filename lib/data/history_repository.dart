@@ -39,9 +39,28 @@ class StoredPrediction {
   DateTime get targetTime => madeAt.add(Duration(minutes: horizonMinutes));
 }
 
+/// A recorded model-training run (version history for the forecaster registry).
+class ModelRunRecord {
+  const ModelRunRecord({
+    required this.id,
+    required this.stage,
+    required this.createdAt,
+    required this.trainedOnDays,
+    this.metricsJson = '{}',
+  });
+  final String id;
+  final String stage;
+  final DateTime createdAt;
+  final int trainedOnDays;
+  final String metricsJson;
+}
+
 abstract interface class HistoryRepository {
   Future<void> saveCgm(List<CgmSample> samples);
   Future<List<CgmSample>> cgm(DateTime from, DateTime to);
+
+  Future<void> saveModelRun(ModelRunRecord run);
+  Future<List<ModelRunRecord>> modelRuns();
 
   Future<void> saveBolus(BolusEvent bolus);
   Future<List<BolusEvent>> boluses(DateTime from, DateTime to);
@@ -326,12 +345,39 @@ class DriftHistoryRepository implements HistoryRepository {
         .getSingleOrNull();
     return row?.time;
   }
+
+  @override
+  Future<void> saveModelRun(ModelRunRecord run) => _db.saveModelRunRow(
+        ModelRunsCompanion.insert(
+          id: run.id,
+          stage: run.stage,
+          createdAt: run.createdAt,
+          trainedOnDays: run.trainedOnDays,
+          metricsJson: Value(run.metricsJson),
+        ),
+      );
+
+  @override
+  Future<List<ModelRunRecord>> modelRuns() async {
+    final rows = await _db.allModelRuns();
+    return [
+      for (final r in rows)
+        ModelRunRecord(
+          id: r.id,
+          stage: r.stage,
+          createdAt: r.createdAt,
+          trainedOnDays: r.trainedOnDays,
+          metricsJson: r.metricsJson,
+        ),
+    ];
+  }
 }
 
 /// In-memory repository for tests and DB-less contexts. Same contract, no persistence
 /// across launches.
 class InMemoryHistoryRepository implements HistoryRepository {
   final List<CgmSample> _cgm = [];
+  final List<ModelRunRecord> _modelRuns = [];
   final List<BolusEvent> _boluses = [];
   final List<CarbEntry> _carbs = [];
   final List<BasalSegment> _basal = [];
@@ -435,4 +481,11 @@ class InMemoryHistoryRepository implements HistoryRepository {
     if (_cgm.isEmpty) return null;
     return _cgm.map((s) => s.time).reduce((a, b) => a.isBefore(b) ? a : b);
   }
+
+  @override
+  Future<void> saveModelRun(ModelRunRecord run) async => _modelRuns.add(run);
+
+  @override
+  Future<List<ModelRunRecord>> modelRuns() async =>
+      [..._modelRuns]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 }

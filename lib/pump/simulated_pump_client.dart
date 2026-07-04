@@ -41,6 +41,8 @@ class SimulatedPumpClient implements PumpSource {
   @override
   Stream<String> get errors => _errors.stream;
   @override
+  Stream<String> get therapyProfiles => const Stream<String>.empty();
+  @override
   PumpConnection get lastConnection => _lastConnection;
   @override
   PumpSnapshot? get lastSnapshot => _lastSnapshot;

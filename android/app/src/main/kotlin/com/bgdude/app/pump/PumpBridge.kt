@@ -73,13 +73,14 @@ class PumpBridge(
                         hostApiImpl.submitPairingCode(code, type) { result.success(null) }
                     }
                     "unpair" -> hostApiImpl.unpair { result.success(null) }
-                    "fetchHistory" -> {
-                        // Best-effort history-log backfill. Decoding the pump History
-                        // Log is a streaming multi-message flow (see ControlX2's
-                        // HistoryLogFetcher) and pumpx2's decode is partial; until that
-                        // is wired against real hardware this returns an empty list so
-                        // the Dart HistoryBackfillService no-ops cleanly.
-                        result.success(emptyList<Map<String, Any?>>())
+                    "fetchHistory" ->
+                        // Drain whatever history-log entries the service has decoded so
+                        // far (best-effort; pumpx2's decode is partial and unvalidated
+                        // on hardware). The Dart importer dedups via a high-water mark.
+                        result.success(service?.fetchHistory() ?: emptyList<Map<String, Any?>>())
+                    "requestProfile" -> {
+                        service?.requestProfile()
+                        result.success(null)
                     }
                     else -> result.notImplemented()
                 }
@@ -147,6 +148,10 @@ class PumpBridge(
 
     override fun onCriticalError(message: String) {
         eventSink?.success(mapOf("kind" to "criticalError", "message" to message))
+    }
+
+    override fun onTherapyProfile(json: String) {
+        eventSink?.success(mapOf("kind" to "profile", "json" to json))
     }
 
     companion object {

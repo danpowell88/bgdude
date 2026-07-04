@@ -31,6 +31,7 @@ class PumpClient implements PumpSource {
   final _snapshots = StreamController<PumpSnapshot>.broadcast();
   final _pairingRequests = StreamController<String>.broadcast();
   final _errors = StreamController<String>.broadcast();
+  final _profiles = StreamController<String>.broadcast();
 
   StreamSubscription<dynamic>? _sub;
   PumpConnection _lastConnection = PumpConnection.idle;
@@ -44,6 +45,8 @@ class PumpClient implements PumpSource {
   Stream<String> get pairingRequests => _pairingRequests.stream;
   @override
   Stream<String> get errors => _errors.stream;
+  @override
+  Stream<String> get therapyProfiles => _profiles.stream;
 
   @override
   PumpConnection get lastConnection => _lastConnection;
@@ -65,6 +68,7 @@ class PumpClient implements PumpSource {
     await _snapshots.close();
     await _pairingRequests.close();
     await _errors.close();
+    await _profiles.close();
   }
 
   void _onEvent(dynamic event) {
@@ -85,6 +89,9 @@ class PumpClient implements PumpSource {
         _pairingRequests.add(map['type'] as String? ?? 'SHORT_6CHAR');
       case 'criticalError':
         _errors.add(map['message'] as String? ?? 'Unknown pump error');
+      case 'profile':
+        final json = map['json'] as String?;
+        if (json != null) _profiles.add(json);
     }
   }
 

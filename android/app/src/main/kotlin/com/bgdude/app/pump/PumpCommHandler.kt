@@ -16,10 +16,19 @@ import com.jwoglom.pumpx2.pump.messages.models.PairingCodeType as X2PairingCodeT
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.ControlIQIOBRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CurrentBasalStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CurrentEGVGuiDataRequest
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.HistoryLogRequest
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.HistoryLogStatusRequest
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.IDPSegmentRequest
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.IDPSettingsRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.InsulinStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.LastBolusStatusV2Request
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.ProfileStatusRequest
 import com.jwoglom.pumpx2.pump.messages.response.authentication.AbstractCentralChallengeResponse
 import com.jwoglom.pumpx2.pump.messages.response.authentication.AbstractPumpChallengeResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.HistoryLogStatusResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.IDPSegmentResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.IDPSettingsResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ProfileStatusResponse
 import com.jwoglom.pumpx2.pump.messages.response.qualifyingEvent.QualifyingEvent
 import com.welie.blessed.BluetoothPeripheral
 import com.welie.blessed.HciStatus
@@ -45,7 +54,13 @@ class PumpCommHandler(
         fun onSnapshotUpdated(snapshot: MutableSnapshot)
         fun onPairingCodeRequired(type: PairingCodeType)
         fun onCriticalError(message: String)
+        /** The decoded active therapy profile (IDP) as JSON, when read from the pump. */
+        fun onTherapyProfile(json: String) {}
     }
+
+    /** Buffer of decoded history-log entries; drained by the Dart backfill service. */
+    private val historyBuffer = ArrayDeque<Map<String, Any?>>()
+    private val profileMapper = PumpProfileMapper()
 
     private var bluetoothHandler: TandemBluetoothHandler? = null
     private var peripheral: BluetoothPeripheral? = null
@@ -84,6 +99,28 @@ class PumpCommHandler(
         sendCommand(p, LastBolusStatusV2Request())
     }
 
+    /** Read the active Insulin Delivery Profile (basal/ISF/CR/targets). */
+    fun requestProfile() {
+        peripheral?.let { sendCommand(it, ProfileStatusRequest()) }
+    }
+
+    /** Ask the pump for the most recent [count] history-log entries. */
+    fun requestRecentHistory(count: Int = 500) {
+        peripheral?.let { sendCommand(it, HistoryLogStatusRequest()) }
+        // The status response arrives async; on it we issue the ranged HistoryLogRequest.
+        pendingHistoryCount = count
+    }
+
+    /** Drain and return the accumulated history-log entries (for the Dart importer). */
+    @Synchronized
+    fun drainHistory(): List<Map<String, Any?>> {
+        val out = historyBuffer.toList()
+        historyBuffer.clear()
+        return out
+    }
+
+    private var pendingHistoryCount = 0
+
     fun submitPairingCode(code: String, type: PairingCodeType) {
         val p = peripheral
         val challenge = pendingChallenge
@@ -107,9 +144,45 @@ class PumpCommHandler(
         try {
             PumpResponseMapper.apply(message, snapshot)
             listener.onSnapshotUpdated(snapshot)
+            handleProfileMessage(peripheral, message)
+            handleHistoryMessage(peripheral, message)
         } catch (t: Throwable) {
             Log.w(TAG, "Failed to map ${message.javaClass.simpleName}", t)
         }
+    }
+
+    /** Drive the IDP read: settings → per-segment requests → emit the profile. */
+    private fun handleProfileMessage(peripheral: BluetoothPeripheral, message: Message) {
+        when (message) {
+            is ProfileStatusResponse ->
+                sendCommand(peripheral, IDPSettingsRequest(message.activeIdpSlotId))
+            is IDPSettingsResponse -> {
+                val idpId = profileMapper.onSettings(message)
+                for (i in 0 until message.numberOfProfileSegments) {
+                    sendCommand(peripheral, IDPSegmentRequest(idpId, i))
+                }
+            }
+            is IDPSegmentResponse -> {
+                profileMapper.onSegment(message)
+                if (profileMapper.complete) listener.onTherapyProfile(profileMapper.toJson())
+            }
+            else -> {}
+        }
+    }
+
+    private fun handleHistoryMessage(peripheral: BluetoothPeripheral, message: Message) {
+        if (message is HistoryLogStatusResponse) {
+            val count = pendingHistoryCount
+            if (count > 0) {
+                val start = (message.lastSequenceNum - count + 1)
+                    .coerceAtLeast(message.firstSequenceNum)
+                sendCommand(peripheral, HistoryLogRequest(start, count))
+                pendingHistoryCount = 0
+            }
+            return
+        }
+        val entry = PumpHistoryMapper.map(message) ?: return
+        synchronized(this) { historyBuffer.addLast(entry) }
     }
 
     override fun onReceiveQualifyingEvent(
@@ -155,6 +228,9 @@ class PumpCommHandler(
         // Base class auto-sends ApiVersion/PumpVersion/TimeSinceReset; then get status.
         super.onPumpConnected(peripheral)
         requestFullStatus()
+        // Read the therapy profile and backfill recent history on connect.
+        requestProfile()
+        requestRecentHistory()
     }
 
     override fun onPumpDiscovered(

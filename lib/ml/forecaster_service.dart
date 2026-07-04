@@ -9,9 +9,9 @@ library;
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../analytics/therapy_settings.dart';
+import '../data/kv_store.dart';
 import '../core/samples.dart';
 import '../feedback/annotations.dart';
 import 'forecast_features.dart';
@@ -48,11 +48,11 @@ class ForecasterModelStore {
   static const _versionKey = 'residual_model_feature_version';
 
   static Future<ResidualModel> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getInt(_versionKey) != ForecastFeatures.version) {
+    final version = await KvStore.getDouble(_versionKey);
+    if (version?.toInt() != ForecastFeatures.version) {
       return const NoResidualModel();
     }
-    final raw = prefs.getString(_key);
+    final raw = await KvStore.getString(_key);
     if (raw == null) return const NoResidualModel();
     try {
       return ResidualGbmModel.fromJson(jsonDecode(raw) as Map<String, dynamic>);
@@ -62,9 +62,8 @@ class ForecasterModelStore {
   }
 
   static Future<void> save(ResidualGbmModel model) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode(model.toJson()));
-    await prefs.setInt(_versionKey, ForecastFeatures.version);
+    await KvStore.setString(_key, jsonEncode(model.toJson()));
+    await KvStore.setDouble(_versionKey, ForecastFeatures.version.toDouble());
   }
 }
 

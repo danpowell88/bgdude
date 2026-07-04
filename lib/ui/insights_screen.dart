@@ -278,8 +278,15 @@ class InsightsScreen extends ConsumerWidget {
   }
 
   GlucoseMetrics _overnightMetrics(List<CgmSample> cgm) {
-    final overnight =
-        cgm.where((s) => s.time.hour >= 0 && s.time.hour < 7).toList();
+    // Last night's window (23:00 yesterday → 07:00 today), not any-hour-<7 across 24h.
+    final now = DateTime.now();
+    final midnight = DateTime(now.year, now.month, now.day);
+    final start = midnight.subtract(const Duration(hours: 1));
+    final end = midnight.add(const Duration(hours: 7));
+    final overnight = [
+      for (final s in cgm)
+        if (!s.time.isBefore(start) && s.time.isBefore(end)) s,
+    ];
     return const MetricsCalculator()
         .compute(overnight.isEmpty ? cgm : overnight);
   }
