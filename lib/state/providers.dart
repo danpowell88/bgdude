@@ -47,6 +47,7 @@ import '../logging/device_changes.dart';
 import '../data/health_sync.dart';
 import '../data/history_repository.dart';
 import '../data/kv_store.dart';
+import '../dev/demo_history.dart';
 import '../dev/sim_data.dart';
 import '../meals/meal_library.dart';
 import '../meals/meal_log.dart';
@@ -850,10 +851,34 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
   }
 }
 
-/// The encrypted history repository. Overridden in main() with a SQLCipher-backed
+/// The real, persisted history repository. Overridden in main() with a SQLCipher-backed
 /// [DriftHistoryRepository]; defaults to in-memory so tests and DB-less contexts work.
-final historyRepositoryProvider =
+final persistentHistoryRepositoryProvider =
     Provider<HistoryRepository>((ref) => InMemoryHistoryRepository());
+
+/// A throwaway in-memory repository pre-seeded with ~3 weeks of simulated history, used
+/// only in demo mode so every range-based report/insight has data. Never persisted.
+final demoHistoryRepositoryProvider = Provider<HistoryRepository>((ref) {
+  final repo = InMemoryHistoryRepository();
+  final bundle = DemoHistory.build(now: DateTime.now());
+  repo.seed(
+    cgm: bundle.cgm,
+    boluses: bundle.boluses,
+    carbs: bundle.carbs,
+    basal: bundle.basal,
+    health: bundle.health,
+    annotations: bundle.annotations,
+    predictions: bundle.predictions,
+  );
+  return repo;
+});
+
+/// The history repository the app reads/writes. In demo mode this is the seeded in-memory
+/// store (so demo data never lands in the real database); otherwise the persistent one.
+final historyRepositoryProvider = Provider<HistoryRepository>((ref) =>
+    ref.watch(devModeProvider)
+        ? ref.watch(demoHistoryRepositoryProvider)
+        : ref.watch(persistentHistoryRepositoryProvider));
 
 /// Health Connect ingestion service.
 final healthSyncServiceProvider =
@@ -1038,17 +1063,25 @@ ControlIqState _controlIqStateFrom(PumpSnapshot? snap) {
 /// table is the eventual home once the encrypted DB is wired through the app).
 final mealLibraryProvider =
     StateNotifierProvider<MealLibraryNotifier, MealLibrary>(
-        (ref) => MealLibraryNotifier());
+        (ref) => MealLibraryNotifier(demo: ref.watch(devModeProvider)));
 
 class MealLibraryNotifier extends StateNotifier<MealLibrary> {
-  MealLibraryNotifier() : super(MealLibrary()) {
+  MealLibraryNotifier({this.demo = false}) : super(MealLibrary()) {
     _restore();
   }
+
+  /// In demo mode, seed a few saved meals (with outcome history) when the store is empty
+  /// so the meal library and Meals report have content without hardware.
+  final bool demo;
 
   static const _prefsKey = 'meal_library_v1';
 
   Future<void> _restore() async {
     final raw = await KvStore.getStringList(_prefsKey);
+    if ((raw == null || raw.isEmpty) && demo) {
+      state = MealLibrary(meals: DemoHistory.demoMeals(now: DateTime.now()));
+      return;
+    }
     if (raw != null && raw.isNotEmpty) {
       state = MealLibrary(
         meals: [

@@ -116,12 +116,23 @@ class IobCalculator {
     var units = 0.0;
     var activity = 0.0;
     final horizon = model.durationMinutes;
+    // Only micro-boluses whose midpoint falls in [at - horizon, at] contribute; anything
+    // older than the insulin duration or in the future adds nothing. Clamp the walk to
+    // that window so a long (e.g. multi-day) basal segment costs O(horizon), not O(length)
+    // — the same result, but without re-scanning the whole segment on every call.
+    final earliest = at.subtract(Duration(minutes: horizon));
     for (final seg in segments) {
       // Walk the segment in steps, attributing units/step as a micro-bolus at the
       // step midpoint.
       final unitsPerStep = seg.unitsPerHour * stepMinutes / 60.0;
       var cursor = seg.start;
-      while (cursor.isBefore(seg.end)) {
+      if (cursor.isBefore(earliest)) {
+        // Jump to the first step boundary at/after the window start (keeps midpoints
+        // identical to a full walk, so the summation is unchanged).
+        final skip = earliest.difference(seg.start).inMinutes ~/ stepMinutes;
+        cursor = seg.start.add(Duration(minutes: skip * stepMinutes));
+      }
+      while (cursor.isBefore(seg.end) && !cursor.isAfter(at)) {
         final mid = cursor.add(Duration(minutes: stepMinutes ~/ 2));
         final minutesAgo = at.difference(mid).inMinutes.toDouble();
         cursor = cursor.add(Duration(minutes: stepMinutes));

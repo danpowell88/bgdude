@@ -488,4 +488,26 @@ class InMemoryHistoryRepository implements HistoryRepository {
   @override
   Future<List<ModelRunRecord>> modelRuns() async =>
       [..._modelRuns]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+  /// Synchronously bulk-load data (demo seeding / tests) without awaiting a series of
+  /// single-item saves.
+  void seed({
+    List<CgmSample> cgm = const [],
+    List<BolusEvent> boluses = const [],
+    List<CarbEntry> carbs = const [],
+    List<BasalSegment> basal = const [],
+    List<HealthSample> health = const [],
+    List<Annotation> annotations = const [],
+    List<StoredPrediction> predictions = const [],
+  }) {
+    _cgm.addAll(cgm);
+    _boluses.addAll(boluses);
+    _carbs.addAll(carbs);
+    _basal.addAll(basal);
+    _health.addAll(health);
+    for (final a in annotations) {
+      _annotations[a.id] = a;
+    }
+    _predictions.addAll(predictions);
+  }
 }

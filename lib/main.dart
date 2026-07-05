@@ -52,7 +52,7 @@ Future<void> main() async {
         notificationServiceProvider.overrideWithValue(notifications),
         onboardingDoneProvider.overrideWith((ref) => onboarded),
         devModeProvider.overrideWith((ref) => devMode),
-        historyRepositoryProvider.overrideWithValue(repository),
+        persistentHistoryRepositoryProvider.overrideWithValue(repository),
       ],
       child: const BgDudeApp(),
     ),

@@ -46,4 +46,18 @@ void main() {
       await _openReport(tester, report);
     }
   });
+
+  testWidgets('glucose report renders AGP + metrics from seeded demo data',
+      (tester) async {
+    await pumpDemoApp(tester);
+    await openSettingsScreen(tester, 'Reports');
+    final card = find.text('Glucose report');
+    await tester.scrollUntilVisible(card, 150,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(card);
+    await tester.pumpAndSettle();
+    // Demo mode seeds ~3 weeks of history, so the AGP + GMI compute (not the empty state).
+    expect(find.text('GMI'), findsWidgets);
+    expect(find.text('Not enough data for an AGP curve.'), findsNothing);
+  });
 }

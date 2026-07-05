@@ -59,12 +59,27 @@ class TherapyReportBuilder {
           if (!s.time.isBefore(dayStart) && s.time.isBefore(dayEnd)) s,
       ];
       if (dayCgm.length < 12) continue;
+      // Slice insulin/carbs to this day's window (with the IOB lookback) so Autotune's
+      // per-step IOB integration doesn't re-scan the whole range's basal/boluses for every
+      // day — the difference between O(range²) and O(range) over a long report window.
+      final dayBoluses = [
+        for (final b in boluses)
+          if (!b.time.isBefore(dayStart) && b.time.isBefore(dayEnd)) b,
+      ];
+      final dayBasal = [
+        for (final s in basal)
+          if (!s.start.isAfter(dayEnd) && !s.end.isBefore(dayStart)) s,
+      ];
+      final dayCarbs = [
+        for (final c in carbs)
+          if (!c.time.isBefore(dayStart) && c.time.isBefore(dayEnd)) c,
+      ];
       final r = autotune.analyseDay(
         day: d,
         cgm: dayCgm,
-        boluses: boluses,
-        basal: basal,
-        carbs: carbs,
+        boluses: dayBoluses,
+        basal: dayBasal,
+        carbs: dayCarbs,
         settings: settings,
       );
       if (r.carbFreeMinutes > 0) results.add(r);
