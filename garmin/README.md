@@ -1,9 +1,23 @@
-# bgdude — Garmin Connect IQ companion app
+# bgdude — Garmin Connect IQ companion
 
-A Connect IQ **widget with glance support** that shows the current BG
-(mmol/L), trend arrow, reading age and IOB, pushed from the bgdude Android
-app over the free **Connect IQ Mobile SDK** (the same pattern xDrip+ and
-GarminHomeAssistant use — no paid Garmin Health API involved).
+Connect IQ products that show the current BG (mmol/L or mg/dL), trend arrow,
+delta, reading age and IOB, pushed from the bgdude Android app over the free
+**Connect IQ Mobile SDK** (the same pattern xDrip+ and GarminHomeAssistant use
+— no paid Garmin Health API involved). Four product types, all sharing one
+`source-common/BgData.mc` module so unit handling, range colouring and the
+primitive-drawn trend arrow are defined once:
+
+| Product        | type        | manifest / jungle                         | shows |
+|----------------|-------------|-------------------------------------------|-------|
+| **Widget** (+ glance) | `widget`    | `manifest.xml` / `monkey.jungle`          | full BG panel + one-line glance |
+| **Watch face** | `watchface` | `manifest-watchface.xml` / `watchface.jungle` | time + date + BG/trend/IOB |
+| **Data field** | `datafield` | `manifest-datafield.xml` / `datafield.jungle` | range-coloured BG on activity screens |
+| **Complication** | (published) | `source-common/BgComplication.mc`         | BG as a system complication any face can show (CIQ 4.1+) — see [COMPLICATIONS.md](COMPLICATIONS.md) |
+
+A Connect IQ app has exactly one `type` per manifest, so the widget, watch face
+and data field are three builds/`.prg`s sharing `source-common`; each registers
+for phone messages under its own UUID (all three are listed on the Android side,
+see below) and additionally publishes the BG complication.
 
 ```
 bgdude (Android)                          Garmin watch
@@ -39,9 +53,10 @@ number. Range colouring is always computed from the mg/dL value.
   received payload is persisted in `Application.Storage`, so the glance
   always has the last-known value even before a fresh message arrives.
 
-> Why a widget and not also a data field? A Connect IQ app has exactly one
-> `type` per manifest. A BG **data field** for activity screens would be a
-> second, near-identical CIQ project reusing `BgData` — easy to add later.
+The **watch face** shows the time and date with a range-coloured BG line
+(value + trend arrow + delta + IOB/age), greying out when stale, and drops the
+per-second work in low-power mode. The **data field** shows BG range-coloured on
+an activity data screen, scaling the font to whatever field size you place it in.
 
 ## 1. Install the Connect IQ SDK
 
@@ -69,50 +84,75 @@ also generate this via *Monkey C: Generate a Developer Key*.
 
 ## 3. Build
 
-From this `garmin/` directory:
+From this `garmin/` directory, build whichever product(s) you want — each has
+its own jungle:
 
 ```bash
-monkeyc -f monkey.jungle \
-        -d fenix7 \
-        -o bin/bgdude.prg \
-        -y /path/to/developer_key.der \
-        -w
+monkeyc -f monkey.jungle    -d fenix7 -o bin/bgdude.prg            -y developer_key.der -w  # widget
+monkeyc -f watchface.jungle -d fenix7 -o bin/bgdude-watchface.prg  -y developer_key.der -w  # watch face
+monkeyc -f datafield.jungle -d fenix7 -o bin/bgdude-datafield.prg  -y developer_key.der -w  # data field
 ```
 
-Substitute `-d` with your device id (must be listed in `manifest.xml`;
-add your device there if missing). `-w` enables warnings.
-
-To try it in the simulator instead of on hardware:
+Or build all three at once:
 
 ```bash
-connectiq                 # start the simulator
-monkeydo bin/bgdude.prg fenix7
+powershell -File tools/build_all.ps1 -Device fenix7    # Windows
+```
+
+Substitute `-d` with your device id (must be listed in the matching
+`manifest*.xml`; add your device there if missing). `-w` enables warnings.
+
+To try a product in the simulator instead of on hardware:
+
+```bash
+connectiq                              # start the simulator
+monkeydo bin/bgdude-watchface.prg fenix7
+```
+
+## Functional tests (simulator)
+
+`tests/BgDataTest.mc` holds `(:test)` unit tests for the shared `BgData` logic
+(unit conversion, range colour, delta sign, IOB, staleness) — the code every
+product relies on. Build the test target and run it in the simulator:
+
+```bash
+monkeyc -f test.jungle -d fenix7 --unit-test -o bin/test.prg -y developer_key.der
+monkeydo bin/test.prg fenix7 -t        # -t runs the (:test) functions and prints PASS/FAIL
+```
+
+Or use the wrapper (builds, starts the simulator if needed, runs `-t`):
+
+```bash
+powershell -File tools/run_tests.ps1 -Device fenix7   # Windows
+tools/run_tests.sh fenix7                              # macOS/Linux
 ```
 
 ## 4. Sideload the .prg onto the watch
 
 1. Connect the watch over USB (it mounts as mass storage / MTP).
-2. Copy `bin/bgdude.prg` into the watch's `GARMIN/Apps/` directory.
-3. Disconnect; the widget appears in the widget/glance list after a
-   moment (add it to your glance loop in the watch settings if needed).
+2. Copy the `.prg`(s) you built into the watch's `GARMIN/Apps/` directory.
+3. Disconnect; the widget/watch face/data field appears in its respective list
+   after a moment (add the widget to your glance loop, pick the watch face in
+   *Watch Face* settings, or add the data field to an activity data screen).
 
 Because the app is sideloaded with your own developer key, it does not need
 to be published to the Connect IQ store.
 
-## 5. The app UUID — where it is used on the Android side
+## 5. The app UUIDs — where they are used on the Android side
 
-`manifest.xml` declares the application id:
+Each product's manifest declares its own application id, and each is addressed
+independently by the phone. On the Android side they are hard-coded in
+`android/app/src/main/kotlin/com/bgdude/app/garmin/GarminSender.kt` and the phone
+sends every reading to all three (whichever the user installed receives it):
 
-```
-id="33a5cbffcdb94cdfa61c69ec806dec41"
-```
+| product    | manifest                  | Android constant           | UUID |
+|------------|---------------------------|----------------------------|------|
+| widget     | `manifest.xml`            | `WATCH_APP_UUID`           | `33a5cbffcdb94cdfa61c69ec806dec41` |
+| watch face | `manifest-watchface.xml`  | `WATCH_FACE_UUID`          | `5b464f4e38a24b0591aaac277b12f3d3` |
+| data field | `manifest-datafield.xml`  | `DATA_FIELD_UUID`          | `9306b7b1a5d148888b64c900377a5951` |
 
-This UUID is the address the phone sends messages to. On the Android side it
-is hard-coded as `GarminSender.WATCH_APP_UUID` in
-`android/app/src/main/kotlin/com/bgdude/app/garmin/GarminSender.kt`, and is
-used to construct the `IQApp` handle passed to `ConnectIQ.sendMessage(...)`.
-**The two values must match exactly** (32 hex chars, no dashes) or messages
-will silently go nowhere.
+**Each pair must match exactly** (32 hex chars, no dashes) or that product's
+messages silently go nowhere.
 
 For a private sideloaded app any UUID works, as long as both sides agree —
 this one was generated with a standard UUID generator. If you ever publish

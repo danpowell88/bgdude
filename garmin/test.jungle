@@ -1,0 +1,11 @@
+# bgdude Connect IQ build file — UNIT TESTS (run in the simulator).
+# Build:  monkeyc -f test.jungle -d fenix7 --unit-test -o bin/test.prg -y developer_key.der
+# Run:    monkeydo bin/test.prg fenix7 -t
+#
+# Reuses the widget manifest so the app links; the (:test) functions in tests/ are only
+# included by --unit-test builds. Includes source-common (BgData/BgComplication) + the
+# widget source + tests.
+project.manifest = manifest.xml
+
+base.sourcePath = source-common;source;tests
+base.resourcePath = resources

@@ -1,6 +1,9 @@
-# bgdude Connect IQ build file.
-# Build:  monkeyc -f monkey.jungle -d <device> -o bin/bgdude.prg -y developer_key
+# bgdude Connect IQ build file — WIDGET (with glance).
+# Build:  monkeyc -f monkey.jungle -d <device> -o bin/bgdude.prg -y developer_key.der -w
+#
+# Shared BG state/formatting + the complication publisher live in source-common and are
+# reused by the watch face (watchface.jungle) and data field (datafield.jungle).
 project.manifest = manifest.xml
 
-base.sourcePath = source
+base.sourcePath = source-common;source
 base.resourcePath = resources

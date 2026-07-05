@@ -1,0 +1,6 @@
+# bgdude Connect IQ build file — WATCH FACE.
+# Build:  monkeyc -f watchface.jungle -d <device> -o bin/bgdude-watchface.prg -y developer_key.der -w
+project.manifest = manifest-watchface.xml
+
+base.sourcePath = source-common;source-watchface
+base.resourcePath = resources

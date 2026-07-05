@@ -19,8 +19,17 @@ import com.garmin.android.connectiq.exception.ServiceUnavailableException
  */
 class GarminSender(private val context: Context) {
 
-    /** Must match the `id` attribute in garmin/manifest.xml. */
-    private val watchApp = IQApp(WATCH_APP_UUID)
+    /**
+     * The bgdude Connect IQ products the phone pushes to — the widget, watch face and data
+     * field each have their own app UUID (Connect IQ addresses messages per app), so a
+     * reading is delivered to whichever the user has installed/open. UUIDs must match the
+     * `id` in the matching garmin/manifest*.xml.
+     */
+    private val watchTargets = listOf(
+        IQApp(WATCH_APP_UUID),
+        IQApp(WATCH_FACE_UUID),
+        IQApp(DATA_FIELD_UUID),
+    )
 
     private var connectIQ: ConnectIQ? = null
     private var initialized = false
@@ -66,8 +75,10 @@ class GarminSender(private val context: Context) {
             val devices: List<IQDevice> = ciq.connectedDevices ?: emptyList()
             if (devices.isEmpty()) return
             for (device in devices) {
-                ciq.sendMessage(device, watchApp, payload) { _, _, status ->
-                    Log.d(TAG, "watch send → $status")
+                for (app in watchTargets) {
+                    ciq.sendMessage(device, app, payload) { _, _, status ->
+                        Log.d(TAG, "watch send ${app.applicationId} → $status")
+                    }
                 }
             }
             lastSentAtMs = now
@@ -92,7 +103,13 @@ class GarminSender(private val context: Context) {
         private const val TAG = "GarminSender"
         private const val MIN_SEND_INTERVAL_MS = 60_000L
 
-        /** Keep in sync with the `id` in garmin/manifest.xml. */
+        /** Keep in sync with the `id` in garmin/manifest.xml (widget). */
         const val WATCH_APP_UUID = "33a5cbffcdb94cdfa61c69ec806dec41"
+
+        /** Keep in sync with garmin/manifest-watchface.xml (watch face). */
+        const val WATCH_FACE_UUID = "5b464f4e38a24b0591aaac277b12f3d3"
+
+        /** Keep in sync with garmin/manifest-datafield.xml (data field). */
+        const val DATA_FIELD_UUID = "9306b7b1a5d148888b64c900377a5951"
     }
 }
