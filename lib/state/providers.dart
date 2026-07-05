@@ -76,6 +76,8 @@ import '../reports/meals_report.dart';
 import '../reports/model_report.dart';
 import '../reports/report_range.dart';
 import '../reports/therapy_report.dart';
+import '../weather/weather.dart';
+import '../weather/weather_history.dart';
 import '../pump/pump_source.dart';
 import '../pump/simulated_pump_client.dart';
 import '../timeline/day_event.dart';
@@ -611,6 +613,7 @@ final correlationReportProvider =
     health: await repo.health(range.from, range.to),
     range: range,
     now: DateTime.now(),
+    dailyTempC: await WeatherHistoryStore.loadDaily(),
   );
 });
 
@@ -833,6 +836,46 @@ final historyRepositoryProvider =
 /// Health Connect ingestion service.
 final healthSyncServiceProvider =
     Provider<HealthSyncService>((ref) => HealthSyncService());
+
+final weatherServiceProvider = Provider<WeatherService>((ref) => WeatherService());
+
+/// Weather settings (city → lat/lon, enabled). Persisted; opt-in (nothing is fetched
+/// until a city is set and it's enabled).
+final weatherSettingsProvider =
+    StateNotifierProvider<WeatherSettingsNotifier, WeatherSettings>(
+        (ref) => WeatherSettingsNotifier());
+
+class WeatherSettingsNotifier extends StateNotifier<WeatherSettings> {
+  WeatherSettingsNotifier() : super(const WeatherSettings()) {
+    _restore();
+  }
+  static const _key = 'weather_settings_v1';
+  Future<void> _restore() async {
+    final raw = await KvStore.getString(_key);
+    if (raw != null) {
+      state = WeatherSettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    }
+  }
+
+  Future<void> save(WeatherSettings s) async {
+    state = s;
+    await KvStore.setString(_key, jsonEncode(s.toJson()));
+  }
+}
+
+/// Current ambient weather (null unless enabled + a location is set). Records the reading
+/// into the daily weather history for correlation.
+final weatherProvider = FutureProvider<Weather?>((ref) async {
+  final s = ref.watch(weatherSettingsProvider);
+  if (!s.ready) return null;
+  final w = await ref.read(weatherServiceProvider).current(s.lat!, s.lon!);
+  if (w != null) {
+    try {
+      await WeatherHistoryStore.record(w.at, w.tempC);
+    } catch (_) {}
+  }
+  return w;
+});
 
 /// Owns "today": assembled from the repository and kept live as snapshots arrive.
 /// Seeds from the simulator in dev mode.
@@ -1178,6 +1221,10 @@ class AlertService {
       lowMgdl = math.max(
           lowMgdl, thresholds.lowMgdl + const ExerciseModeCoach().lowBump(exercise.type));
     }
+    // Hot/cold ambient weather raises the low line (faster/altered insulin absorption).
+    final weatherBump = const WeatherRiskModifier()
+        .lowThresholdBump(_ref.read(weatherProvider).valueOrNull?.tempC);
+    if (weatherBump > 0) lowMgdl = math.max(lowMgdl, thresholds.lowMgdl + weatherBump);
 
     // Evaluate without an internal cooldown — repeat/opt-out is governed by prefs here.
     final alert = AlertMonitor(

@@ -75,6 +75,7 @@ class CorrelationReportBuilder {
     required List<HealthSample> health,
     required ReportRange range,
     required DateTime now,
+    Map<String, double> dailyTempC = const {},
   }) {
     // Daily glucose outcomes.
     final byDayCgm = <String, List<CgmSample>>{};
@@ -120,6 +121,8 @@ class CorrelationReportBuilder {
         label: 'resting HR',
         byDay: {for (final e in restingHr.entries) e.key: _median(e.value)}
       ),
+      if (dailyTempC.isNotEmpty)
+        (label: 'ambient temperature', byDay: dailyTempC),
     ];
     final outcomes = <({String label, Map<String, double> byDay})>[
       (label: 'time-in-range', byDay: tir),

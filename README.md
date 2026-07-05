@@ -130,6 +130,19 @@ Lookups fill carbs plus fat/protein (feeding the FPU coach). The source layer is
   an offline device still works. Other providers (e.g. FatSecret) slot in behind the same
   interface. Scanning uses `mobile_scanner` (camera stays on-device).
 
+## More inputs
+
+- **Ambient weather** (*Settings → Weather*, `weather/`) — set a city (geocoded via free,
+  no-key [Open-Meteo](https://open-meteo.com/)); heat/cold nudges the low-alert threshold
+  (temperature alters insulin absorption) and daily temperature is correlated against your
+  glucose. Opt-in; only the city/coords leave the device.
+- **Continuous heart rate → forecaster** — per-reading HR (Health Connect) feeds an acute
+  HR-relative feature in the BG residual model.
+- **Steroid / medication mode** (*Settings*) — raises expected insulin resistance while a
+  course is active.
+- **Lab A1c → GMI discordance** (Insights) — flags a glycation gap between your lab HbA1c
+  and CGM-derived GMI.
+
 ## Profile
 
 A personal profile (sex, age, diabetes type/duration, weight, height) is collected in

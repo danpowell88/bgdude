@@ -15,6 +15,7 @@ import 'notification_settings_screen.dart';
 import 'profile_screen.dart';
 import 'pump_screen.dart';
 import 'reports/reports_hub_screen.dart';
+import 'weather_settings_screen.dart';
 import 'therapy_settings_screen.dart';
 
 /// Nightscout upload configuration section.
@@ -243,6 +244,16 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const Divider(),
+          ListTile(
+            leading: const Icon(Icons.thermostat_outlined),
+            title: const Text('Weather'),
+            subtitle: const Text(
+                'Heat-aware low alerts + weather↔glucose (Open-Meteo, free)'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const WeatherSettingsScreen()),
+            ),
+          ),
           SwitchListTile(
             secondary: const Icon(Icons.qr_code_scanner),
             title: const Text('Barcode food lookup'),
