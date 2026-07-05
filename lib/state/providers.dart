@@ -239,8 +239,9 @@ final onboardingDoneProvider = StateProvider<bool>((ref) => false);
 /// Whether advanced mode (model internals, prediction decomposition) is enabled.
 final advancedModeProvider = StateProvider<bool>((ref) => false);
 
-/// Dev mode: run against the in-app t:slim + CGM simulator instead of the native
-/// pump bridge, so the whole app is usable without hardware. Persisted in main().
+/// Demo mode: run against the in-app t:slim + CGM simulator instead of the native pump
+/// bridge, so the whole app is usable without hardware. Entered only via onboarding;
+/// exited from the header / Settings. Persisted (prefs `dev_mode`) in main().
 final devModeProvider = StateProvider<bool>((ref) => false);
 
 /// The active pump data source — real native bridge, or the simulator in dev mode.

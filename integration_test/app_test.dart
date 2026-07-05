@@ -1,5 +1,5 @@
 /// On-device integration tests: boots the real app on an Android device/emulator and
-/// drives the primary flows through the tab shell. Dev mode is enabled so the timeline,
+/// drives the primary flows through the tab shell. Demo mode is enabled so the timeline,
 /// predictions, and insights render against the simulated t:slim + CGM (no hardware).
 /// Run with: flutter test integration_test -d <device-id>
 library;
@@ -56,16 +56,24 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
-    expect(find.text('Connect your data'), findsOneWidget);
+    expect(find.text('About you'), findsOneWidget);
+
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    // Final gate: pair a pump or choose demo. In this (simulated) run the pump
+    // "connects", so the Get-started button is enabled without an explicit choice.
+    expect(find.text('Get connected'), findsOneWidget);
+    expect(find.text('Use demo mode'), findsOneWidget);
   });
 
-  testWidgets('dev mode boots the tab shell with simulated glucose',
+  testWidgets('demo mode boots the tab shell with simulated glucose',
       (tester) async {
     await _pumpApp(tester);
 
-    // Shell chrome + DEV badge.
+    // Shell chrome + DEMO badge + one-tap exit.
     expect(find.text('Today'), findsWidgets);
-    expect(find.text('DEV'), findsOneWidget);
+    expect(find.text('DEMO'), findsOneWidget);
+    expect(find.text('Exit demo'), findsOneWidget);
     // Simulated pump connects and streams a reading (no "waiting" card).
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
@@ -203,7 +211,7 @@ void main() {
     await tester.tap(find.text('Test pasta'));
     await tester.pumpAndSettle();
 
-    // Dev mode has a live reading, so the pre-bolus coach renders (not the
+    // Demo mode has a live reading, so the pre-bolus coach renders (not the
     // "needs a live CGM" fallback). "Learned curve" appears as both the section
     // header and a coach working line.
     expect(find.text('Learned curve'), findsWidgets);
@@ -211,12 +219,15 @@ void main() {
     expect(find.textContaining('needs a live CGM reading'), findsNothing);
   });
 
-  testWidgets('settings exposes the dev-mode toggle', (tester) async {
+  testWidgets('settings shows demo-mode exit and core options', (tester) async {
     await _pumpApp(tester);
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Dev mode'), findsOneWidget);
+    // In demo mode Settings shows a read-only status row with an Exit action (no
+    // manual switch back into demo).
+    expect(find.text('Demo mode'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Exit'), findsOneWidget);
     expect(find.text('Glucose units'), findsOneWidget);
     expect(find.text('Advanced mode'), findsOneWidget);
     expect(find.text('Therapy profile'), findsOneWidget);

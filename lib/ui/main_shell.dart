@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../state/providers.dart';
 import 'bolus_advisor_screen.dart';
@@ -36,6 +37,21 @@ class _MainShellState extends ConsumerState<MainShell> {
     });
   }
 
+  /// Leave demo mode: switch back to the real pump bridge (persisted) and kick off a
+  /// scan so a paired pump reconnects — or the pairing prompt appears if none is paired.
+  Future<void> _exitDemo() async {
+    final messenger = ScaffoldMessenger.of(context);
+    ref.read(devModeProvider.notifier).state = false;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('dev_mode', false);
+    try {
+      await ref.read(pumpClientProvider).startScan();
+    } catch (_) {}
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Demo mode off — connecting to your pump…')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Auto-prompt for the pairing code when the pump asks, and surface pump errors.
@@ -58,7 +74,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             if (devMode) ...[
               const SizedBox(width: 8),
               const Chip(
-                label: Text('DEV'),
+                label: Text('DEMO'),
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
               ),
@@ -66,6 +82,16 @@ class _MainShellState extends ConsumerState<MainShell> {
           ],
         ),
         actions: [
+          // Convenient one-tap exit from demo mode back to the real pump.
+          if (devMode)
+            TextButton.icon(
+              onPressed: _exitDemo,
+              icon: const Icon(Icons.logout, size: 18),
+              label: const Text('Exit demo'),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.add_circle_outline),
             tooltip: 'Quick log',

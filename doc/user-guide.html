@@ -123,9 +123,9 @@
     <li><b>Intro</b> — what the app does.</li>
     <li><b>Before you pair</b> — you must tick the acknowledgement: pairing with the pump unpairs the official t:connect app, the connection is reverse-engineered (can be finicky), and the app never sends insulin/control commands.</li>
     <li><b>About you</b> — pick your <b>glucose units</b> (mmol/L or mg/dL) up front so every reading shows the way you think about your numbers, plus an optional profile (sex, age, diabetes type/duration, weight, height). You can skip the profile and set it later in <a href="#profile">Profile</a>, and change units any time in <a href="#settings">Settings</a>.</li>
-    <li><b>Connect your data</b> — grants Health Connect access and pump/notification permissions, then pairs.</li>
+    <li><b>Get connected</b> — the final gate. You <b>can't finish until you either pair your pump or choose demo mode</b>. "Pair your pump" scans over Bluetooth and prompts for the pairing code; "Use demo mode" runs the app on simulated data. Pairing also grants Health Connect + pump/notification permissions.</li>
   </ul>
-  <div class="note">No hardware? Turn on <b>Dev mode</b> (Settings → Dev mode) to run against a simulated t:slim&nbsp;X2 + Dexcom so every screen is populated. The <span class="chip">DEV</span> badge in the top bar shows when it's on.</div>
+  <div class="note">No hardware? Choose <b>demo mode</b> on the last onboarding step to run against a simulated t:slim&nbsp;X2 + Dexcom so every screen is populated. Demo mode can <b>only</b> be entered here — there's no manual switch in Settings. The <span class="chip">DEMO</span> badge and an <b>Exit demo</b> button appear in the top bar; tap it (or Settings → Demo mode → Exit) to switch back to your real pump when you're ready.</div>
 </section>
 
 <section id="layout">
@@ -136,7 +136,7 @@
     <tr><th>Icon</th><th>What it does</th></tr>
     <tr><td>⊕ add-circle</td><td>Open the <a href="#quicklog">Quick-log</a> sheet (carbs, bolus, exercise, alcohol, sensor/site change).</td></tr>
     <tr><td>⚙ settings</td><td>Open <a href="#settings">Settings</a> — every screen below that isn't a tab lives here.</td></tr>
-    <tr><td><span class="chip">DEV</span></td><td>Shown only in dev mode (simulated pump).</td></tr>
+    <tr><td><span class="chip">DEMO</span> + <b>Exit demo</b></td><td>Shown only in demo mode (simulated pump). The <b>Exit demo</b> button switches back to your real pump.</td></tr>
   </table>
   <h3>Bolus button</h3>
   <p>On the Today tab a <b>Bolus</b> button (calculator icon) opens the <a href="#bolus">Bolus advisor</a>. It's hidden on other tabs to keep dosing tied to the live reading.</p>
@@ -379,7 +379,7 @@
   <div class="shot"><img src="screenshots/10-settings.png" alt="Settings"><div class="cap">The Settings hub</div></div>
   <p>Everything not on a tab lives in Settings. Beyond the screens above:</p>
   <ul class="tight">
-    <li><b>Dev mode</b> — simulated pump + CGM for exploring without hardware.</li>
+    <li><b>Demo mode</b> — when active (chosen during onboarding), a status row here lets you <b>Exit</b> back to your real pump. There's no switch to turn it on; that only happens in onboarding.</li>
     <li><b>Glucose units</b> — mmol/L (Australian default) or mg/dL. You pick this during onboarding; change it here any time and the whole app follows.</li>
     <li><b>Sync health data now</b> — pull sleep, HRV, resting/continuous HR, steps and workouts from Health Connect.</li>
     <li><b>Barcode food lookup</b> — the online food-lookup switch (see <a href="#meals">Meals</a>).</li>

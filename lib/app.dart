@@ -42,9 +42,15 @@ class BgDudeApp extends ConsumerWidget {
       ref.read(homeWidgetServiceProvider).setUnit(unit);
     });
     // Alert if the pump stays disconnected.
-    ref.listen(pumpConnectionProvider, (_, next) {
+    ref.listen(pumpConnectionProvider, (_, next) async {
       final c = next.valueOrNull;
       if (c != null) ref.read(connectionAlertServiceProvider).onConnection(c);
+      // Remember that a pump has been paired at least once, so onboarding's pair path is
+      // pre-satisfied for a returning user.
+      if (c != null && c.isConnected) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('pump_paired', true);
+      }
     });
     // Apply notification-preference changes to the live channels.
     ref.listen(notificationPrefsProvider, (_, prefs) {

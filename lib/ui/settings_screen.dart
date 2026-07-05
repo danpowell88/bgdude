@@ -108,20 +108,30 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          SwitchListTile(
-            secondary: const Icon(Icons.science_outlined),
-            title: const Text('Dev mode (simulated pump)'),
-            subtitle: const Text(
-                'Run against a simulated t:slim X2 + Dexcom so you can see the full '
-                'app — timeline, predictions, insights — without hardware.'),
-            value: devMode,
-            onChanged: (v) async {
-              ref.read(devModeProvider.notifier).state = v;
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setBool('dev_mode', v);
-            },
-          ),
-          const Divider(),
+          // Demo mode can only be *entered* during onboarding — there's no manual switch
+          // in here. When it's on, show a read-only status row with a one-tap exit.
+          if (devMode) ...[
+            ListTile(
+              leading: const Icon(Icons.science_outlined),
+              title: const Text('Demo mode'),
+              subtitle: const Text(
+                  'Running against a simulated t:slim X2 + Dexcom. Exit when you\'re '
+                  'ready to pair your real pump.'),
+              trailing: OutlinedButton.icon(
+                icon: const Icon(Icons.logout, size: 18),
+                label: const Text('Exit'),
+                onPressed: () async {
+                  ref.read(devModeProvider.notifier).state = false;
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('dev_mode', false);
+                  try {
+                    await ref.read(pumpClientProvider).startScan();
+                  } catch (_) {}
+                },
+              ),
+            ),
+            const Divider(),
+          ],
           ListTile(
             leading: const Icon(Icons.water_drop_outlined),
             title: const Text('Glucose units'),

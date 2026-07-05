@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/units.dart';
 import '../profile/user_profile.dart';
 import '../state/providers.dart';
+import 'pairing_dialog.dart';
 import 'profile_form.dart';
 
-/// First-run onboarding. The critical screen is the pairing warning: pairing with
-/// pumpx2 unpairs the official t:connect app (mutual exclusion), and pairing is a
-/// reverse-engineered proof-of-concept that can be flaky. The user must acknowledge this
-/// before proceeding.
+/// First-run onboarding. Two screens gate progress: the pairing warning (pairing with
+/// pumpx2 unpairs the official t:connect app and is a flaky proof-of-concept), and the
+/// final "Get connected" step, which will not let you finish until you have **either**
+/// paired a pump **or** chosen demo mode. There is no other way into demo mode.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key, required this.onDone});
   final VoidCallback onDone;
@@ -25,10 +27,55 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   bool _acceptedPairing = false;
   UserProfile _draftProfile = const UserProfile();
 
+  /// The user picked demo mode on the final step.
+  bool _demoChosen = false;
+
+  /// A pairing scan is in flight (waiting for the pump / code prompt).
+  bool _pairing = false;
+
+  /// A pump was already paired before onboarding (returning user) — the pair path is
+  /// then pre-satisfied.
+  bool _pumpEverPaired = false;
+
   static const _pageCount = 4;
 
   @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      if (!mounted) return;
+      setState(() => _pumpEverPaired = prefs.getBool('pump_paired') ?? false);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Show the pairing-code dialog / pump errors during onboarding too, so the pair
+    // path can complete here rather than only inside the main shell.
+    PumpPairingListener.attach(ref, context);
+
+    // Persist and latch a successful pairing so the gate stays satisfied even if the
+    // link later drops mid-onboarding.
+    ref.listen(pumpConnectionProvider, (_, next) async {
+      if (next.valueOrNull?.isConnected ?? false) {
+        if (!_pumpEverPaired && mounted) setState(() => _pumpEverPaired = true);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('pump_paired', true);
+      }
+    });
+
+    final connected =
+        ref.watch(pumpConnectionProvider).valueOrNull?.isConnected ?? false;
+    final pumpReady = connected || _pumpEverPaired;
+    // The final step needs a pump (paired now or already) or an explicit demo choice.
+    final lastStepSatisfied = pumpReady || _demoChosen;
+    final canAdvance = _page == 1
+        ? _acceptedPairing
+        : _page == _pageCount - 1
+            ? lastStepSatisfied
+            : true;
+    final demoOnly = _demoChosen && !pumpReady;
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -41,7 +88,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   _page1(context),
                   _pairingWarning(context),
                   _profilePage(context),
-                  _page3(context),
+                  _connectGate(context, pumpReady: pumpReady),
                 ],
               ),
             ),
@@ -52,7 +99,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 children: [
                   Text('${_page + 1} / $_pageCount'),
                   FilledButton(
-                    onPressed: _canAdvance ? _advance : null,
+                    onPressed:
+                        canAdvance ? () => _advance(demoOnly: demoOnly) : null,
                     child: Text(
                         _page == _pageCount - 1 ? 'Get started' : 'Next'),
                   ),
@@ -65,31 +113,54 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  bool get _canAdvance => _page != 1 || _acceptedPairing;
-
-  Future<void> _advance() async {
+  Future<void> _advance({bool demoOnly = false}) async {
     if (_page == _pageCount - 1) {
       // Persist whatever profile fields the user filled in (all optional).
       if (!_draftProfile.isEmpty) {
         await ref.read(userProfileProvider.notifier).save(_draftProfile);
       }
-      // Request the permissions the pump service and notifications need. The
-      // connectedDevice foreground service can only start once bluetoothConnect
-      // is granted (Android 14+ hard requirement).
-      await [
-        Permission.bluetoothConnect,
-        Permission.bluetoothScan,
-        Permission.notification,
-      ].request();
-      // Health Connect permissions (sleep, HRV, resting HR, steps, workouts).
-      try {
-        await ref.read(healthSyncServiceProvider).requestPermissions();
-      } catch (_) {}
+      // Notifications matter in both demo and real mode (alerts). The pump/health
+      // permissions only matter when actually using hardware.
+      await [Permission.notification].request();
+      if (!demoOnly) {
+        await [Permission.bluetoothConnect, Permission.bluetoothScan].request();
+        try {
+          await ref.read(healthSyncServiceProvider).requestPermissions();
+        } catch (_) {}
+      }
       widget.onDone();
       return;
     }
     await _controller.nextPage(
         duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+  }
+
+  /// Begin scanning for a pump. The code prompt is handled by [PumpPairingListener].
+  Future<void> _startPairing() async {
+    setState(() => _pairing = true);
+    // Leaving demo (if it was picked) makes pumpClientProvider the real bridge.
+    if (ref.read(devModeProvider)) {
+      ref.read(devModeProvider.notifier).state = false;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('dev_mode', false);
+    }
+    if (mounted) setState(() => _demoChosen = false);
+    await [
+      Permission.bluetoothConnect,
+      Permission.bluetoothScan,
+      Permission.notification,
+    ].request();
+    try {
+      await ref.read(pumpClientProvider).startScan();
+    } catch (_) {}
+  }
+
+  /// Choose demo mode — the only path into it, and undoable later from the header.
+  Future<void> _chooseDemo() async {
+    ref.read(devModeProvider.notifier).state = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('dev_mode', true);
+    if (mounted) setState(() => _demoChosen = true);
   }
 
   Widget _profilePage(BuildContext context) {
@@ -174,16 +245,103 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
       );
 
-  Widget _page3(BuildContext context) => _pane(
-        context,
-        icon: Icons.health_and_safety,
-        title: 'Connect your data',
-        body:
-            'Next you\'ll grant Health Connect access (sleep, HRV, resting heart rate, '
-            'steps, workouts — your Garmin data flows in through Google Health) and pair '
-            'your pump. The insight models stay neutral until they\'ve learned from a '
-            'couple of weeks of your data.',
-      );
+  /// The final gate: pair a pump or enter demo mode. Finishing is blocked until one of
+  /// these is done (enforced by [canAdvance] in [build]).
+  Widget _connectGate(BuildContext context, {required bool pumpReady}) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: ListView(
+        children: [
+          Icon(Icons.cable, size: 48, color: theme.colorScheme.primary),
+          const SizedBox(height: 16),
+          Text('Get connected', style: theme.textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          Text(
+            'To continue, either pair your pump or explore with demo data. You can leave '
+            'demo mode any time from the header once you\'re ready to pair.',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 24),
+
+          // --- Pair a pump ---
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Icon(Icons.bluetooth, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text('Pair your pump', style: theme.textTheme.titleMedium),
+                    const Spacer(),
+                    if (pumpReady)
+                      Icon(Icons.check_circle, color: theme.colorScheme.primary),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text(
+                    pumpReady
+                        ? 'Pump connected. You\'re ready to go.'
+                        : _pairing
+                            ? 'Scanning… put your pump on its Bluetooth pairing screen '
+                                'and enter the code when prompted.'
+                            : 'Connect your t:slim X2 over Bluetooth for live data.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: pumpReady ? null : _startPairing,
+                    icon: const Icon(Icons.bluetooth_searching),
+                    label: Text(_pairing && !pumpReady
+                        ? 'Scanning…'
+                        : 'Pair your pump'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // --- Demo mode ---
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Icon(Icons.science_outlined,
+                        color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text('Explore in demo mode',
+                        style: theme.textTheme.titleMedium),
+                    const Spacer(),
+                    if (_demoChosen && !pumpReady)
+                      Icon(Icons.check_circle, color: theme.colorScheme.primary),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Run against a simulated t:slim X2 + Dexcom so you can see the whole '
+                    'app — timeline, predictions, insights — without hardware.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _demoChosen && !pumpReady ? null : _chooseDemo,
+                    icon: const Icon(Icons.play_circle_outline),
+                    label: Text(_demoChosen && !pumpReady
+                        ? 'Demo mode selected'
+                        : 'Use demo mode'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _pane(BuildContext context,
           {required IconData icon,
