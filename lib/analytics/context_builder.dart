@@ -21,6 +21,7 @@ class ContextBuilder {
     double? menstrualLutealPhase,
     double illnessFlag = 0,
     DateTime? now,
+    bool hasMenstrualCycle = true,
   }) {
     if (today.isEmpty && baseline.isEmpty) return null;
     final ref = now ?? DateTime.now();
@@ -78,8 +79,10 @@ class ContextBuilder {
         : energyTotals[energyTotals.length ~/ 2];
 
     // Infer luteal phase from menstruation-flow records (roughly days 14–28 after the
-    // most recent period start), unless the caller passed it explicitly.
-    final luteal = menstrualLutealPhase ?? _lutealFromFlow([...today, ...baseline], ref);
+    // most recent period start), unless the caller passed it explicitly. Only applied
+    // when the profile indicates a menstrual cycle.
+    final luteal = menstrualLutealPhase ??
+        (hasMenstrualCycle ? _lutealFromFlow([...today, ...baseline], ref) : 0.0);
 
     return ContextFeatures(
       sleepHours: sleepHours,

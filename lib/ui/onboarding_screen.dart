@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../profile/user_profile.dart';
 import '../state/providers.dart';
+import 'profile_form.dart';
 
 /// First-run onboarding. The critical screen is the pairing warning: pairing with
 /// pumpx2 unpairs the official t:connect app (mutual exclusion), and pairing is a
@@ -20,6 +22,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _controller = PageController();
   int _page = 0;
   bool _acceptedPairing = false;
+  UserProfile _draftProfile = const UserProfile();
+
+  static const _pageCount = 4;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +39,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 children: [
                   _page1(context),
                   _pairingWarning(context),
+                  _profilePage(context),
                   _page3(context),
                 ],
               ),
@@ -43,10 +49,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('${_page + 1} / 3'),
+                  Text('${_page + 1} / $_pageCount'),
                   FilledButton(
                     onPressed: _canAdvance ? _advance : null,
-                    child: Text(_page == 2 ? 'Get started' : 'Next'),
+                    child: Text(
+                        _page == _pageCount - 1 ? 'Get started' : 'Next'),
                   ),
                 ],
               ),
@@ -60,7 +67,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   bool get _canAdvance => _page != 1 || _acceptedPairing;
 
   Future<void> _advance() async {
-    if (_page == 2) {
+    if (_page == _pageCount - 1) {
+      // Persist whatever profile fields the user filled in (all optional).
+      if (!_draftProfile.isEmpty) {
+        await ref.read(userProfileProvider.notifier).save(_draftProfile);
+      }
       // Request the permissions the pump service and notifications need. The
       // connectedDevice foreground service can only start once bluetoothConnect
       // is granted (Android 14+ hard requirement).
@@ -79,6 +90,29 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await _controller.nextPage(
         duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
   }
+
+  Widget _profilePage(BuildContext context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: ListView(
+          children: [
+            Icon(Icons.person_outline,
+                size: 48, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 16),
+            Text('About you', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text(
+              'Optional — a few details help tailor the insights. You can change these '
+              'any time in Settings.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 20),
+            ProfileForm(
+              initial: _draftProfile,
+              onChanged: (p) => _draftProfile = p,
+            ),
+          ],
+        ),
+      );
 
   Widget _page1(BuildContext context) => _pane(
         context,

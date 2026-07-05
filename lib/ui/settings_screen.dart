@@ -10,6 +10,7 @@ import 'basal_recommendations_screen.dart';
 import 'confirmation_inbox_screen.dart';
 import 'model_accuracy_screen.dart';
 import 'notification_settings_screen.dart';
+import 'profile_screen.dart';
 import 'pump_screen.dart';
 import 'reports/reports_hub_screen.dart';
 import 'therapy_settings_screen.dart';
@@ -129,6 +130,14 @@ class SettingsScreen extends ConsumerWidget {
               selected: {unit},
               onSelectionChanged: (s) =>
                   ref.read(glucoseUnitProvider.notifier).state = s.first,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: const Text('Profile'),
+            subtitle: const Text('Sex, age & diabetes history — feeds the models'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
             ),
           ),
           ListTile(

@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,6 +33,7 @@ import '../insights/notification_prefs.dart';
 import '../insights/notifications.dart';
 import '../insights/post_meal_movement.dart';
 import '../insights/workout_classifier.dart';
+import '../profile/user_profile.dart';
 import '../integrations/nightscout.dart';
 import '../logging/device_changes.dart';
 import '../data/health_sync.dart';
@@ -100,6 +102,31 @@ class NotificationPrefsNotifier extends StateNotifier<NotificationPrefs> {
   Future<void> setCategory(NotificationCategory c, CategoryPref pref) async {
     state = state.withCategory(c, pref);
     await KvStore.setString(_key, jsonEncode(state.toJson()));
+  }
+}
+
+/// The user's personal profile (sex, age, diabetes history, body metrics), persisted
+/// encrypted. Fed into the models where usable (menstrual gating, hypo-awareness alerts).
+final userProfileProvider =
+    StateNotifierProvider<UserProfileNotifier, UserProfile>(
+        (ref) => UserProfileNotifier());
+
+class UserProfileNotifier extends StateNotifier<UserProfile> {
+  UserProfileNotifier() : super(const UserProfile()) {
+    _restore();
+  }
+  static const _key = 'user_profile_v1';
+
+  Future<void> _restore() async {
+    final raw = await KvStore.getString(_key);
+    if (raw != null) {
+      state = UserProfile.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    }
+  }
+
+  Future<void> save(UserProfile profile) async {
+    state = profile;
+    await KvStore.setString(_key, jsonEncode(profile.toJson()));
   }
 }
 
@@ -474,15 +501,21 @@ final correlationReportProvider =
   );
 });
 
-/// Menstrual-cycle glucose comparison (follicular vs luteal) for the range.
+/// Menstrual-cycle glucose comparison (follicular vs luteal) for the range. Only computed
+/// for profiles with a menstrual cycle.
 final cycleReportProvider = FutureProvider<CycleReport>((ref) async {
   final range = ref.watch(reportRangeProvider);
+  final now = DateTime.now();
+  if (!ref.watch(userProfileProvider).hasMenstrualCycle) {
+    return const CycleReportBuilder().build(
+        cgm: [], health: [], range: range, now: now);
+  }
   final repo = ref.read(historyRepositoryProvider);
   return const CycleReportBuilder().build(
     cgm: await repo.cgm(range.from, range.to),
     health: await repo.health(range.from, range.to),
     range: range,
-    now: DateTime.now(),
+    now: now,
   );
 });
 
@@ -971,13 +1004,19 @@ class AlertService {
     );
     final now = DateTime.now();
 
-    // Alcohol raises the low-alert threshold (earlier warning) while its watch is active.
+    // The low-alert threshold leads more for impaired-awareness risk factors (older age,
+    // long-standing diabetes) and while an alcohol watch is active (delayed lows).
+    final profile = _ref.read(userProfileProvider);
+    final hypoBump =
+        const HypoAwarenessRisk().lowThresholdBump(profile, now);
     const alcohol = AlcoholWatch();
     final recentAnnotations = await _ref
         .read(historyRepositoryProvider)
         .annotations(now.subtract(alcohol.window), now);
-    final lowMgdl =
-        alcohol.activeAt(recentAnnotations, now) ? alcohol.raisedLowMgdl : 70.0;
+    var lowMgdl = 70.0 + hypoBump;
+    if (alcohol.activeAt(recentAnnotations, now)) {
+      lowMgdl = math.max(lowMgdl, alcohol.raisedLowMgdl);
+    }
 
     // Evaluate without an internal cooldown — repeat/opt-out is governed by prefs here.
     final alert = AlertMonitor(cooldown: Duration.zero, lowMgdl: lowMgdl).evaluate(
@@ -1272,6 +1311,7 @@ class AppJobs {
       final ctx = ContextBuilder.build(
         today: await repo.health(start, end),
         baseline: baseHealth,
+        hasMenstrualCycle: _ref.read(userProfileProvider).hasMenstrualCycle,
       );
       if (ctx == null) continue;
       days.add(SensitivityDayInput(
@@ -1297,6 +1337,7 @@ class AppJobs {
         today: await repo.health(
             DateTime(now.year, now.month, now.day), now),
         baseline: baseHealth,
+        hasMenstrualCycle: _ref.read(userProfileProvider).hasMenstrualCycle,
       );
       if (todayCtx != null) {
         _ref.read(sensitivityContextProvider.notifier).state =
@@ -1325,6 +1366,7 @@ class AppJobs {
     final ctx = ContextBuilder.build(
       today: await repo.health(now.subtract(const Duration(hours: 36)), now),
       baseline: await repo.health(now.subtract(const Duration(days: 14)), now),
+      hasMenstrualCycle: _ref.read(userProfileProvider).hasMenstrualCycle,
     );
     final s = const IllnessDetector().detect(
       meanGlucoseMgdl: mean,

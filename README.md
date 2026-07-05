@@ -114,6 +114,15 @@ TIR/GMI/CV, hypo/hyper episodes, coverage) with **clinician-ready PDF + CSV expo
 **Correlations** (glucose vs sleep/exercise/HRV with a minimum-days gate), an **Events
 journal**, and a **Model-performance** report. Every report takes a 7/14/30/90-day range.
 
+## Profile
+
+A personal profile (sex, age, diabetes type/duration, weight, height) is collected in
+onboarding and editable in *Settings → Profile* (`profile/user_profile.dart`, encrypted,
+on-device). It feeds the models only where usable: **biological sex** gates the
+menstrual-cycle features (luteal-phase sensitivity, the cycle report), and **older age /
+long-standing diabetes** — established risk factors for impaired hypo awareness — make the
+low-alert threshold lead a little more. All fields are optional.
+
 ## Evidence-based helpers
 
 Several features are grounded in recent CGM/T1D literature and ride the data the app
