@@ -68,12 +68,15 @@ dependencies:
   pdf: ^3.11.0
   share_plus: ^10.1.0
 
-  # Barcode scanning for food lookup (CameraX/ML Kit; camera stays on-device)
-  mobile_scanner: ^5.2.3
+  # Barcode scanning for food lookup (CameraX/ML Kit; camera stays on-device).
+  # 7.x pulls the 16 KB-page-aligned ML Kit barcode + CameraX native libs (required for
+  # Android 15 / 16 KB-page devices; older 5.x shipped 4 KB-aligned libbarhopper /
+  # libimage_processing_util_jni that fail the ELF alignment check).
+  mobile_scanner: ^7.2.0
 
   # Nutrition-panel photo reader: on-device OCR of the label text + a camera/gallery
   # picker. The image is processed on-device (ML Kit) and never uploaded.
-  google_mlkit_text_recognition: ^0.13.1
+  google_mlkit_text_recognition: ^0.15.1
   image_picker: ^1.1.2
 
 dev_dependencies:
