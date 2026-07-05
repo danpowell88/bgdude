@@ -46,7 +46,7 @@ class PredictionState {
     required this.carbs,
     required this.settings,
     this.context = SensitivityContext.neutral,
-    this.healthFeatures = const [0.0, 0.0],
+    this.healthFeatures = const [0.0, 0.0, 0.0],
   });
 
   final DateTime now;

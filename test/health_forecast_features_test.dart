@@ -59,11 +59,36 @@ void main() {
       // Well beyond the window → 0.
       expect(s.featuresAt(t0.add(const Duration(hours: 5)))[1], 0);
     });
+
+    test('elevated heart rate vs resting baseline raises the hr feature', () {
+      final samples = [
+        HealthSample(
+            time: t0.subtract(const Duration(days: 1)),
+            type: 'restingHr',
+            value: 60),
+        HealthSample(
+            time: t0.subtract(const Duration(minutes: 5)),
+            type: 'heartRate',
+            value: 90), // +50% over resting
+      ];
+      final s = HealthFeatureSampler(samples);
+      // (90-60)/60 = 0.5.
+      expect(s.featuresAt(t0)[2], closeTo(0.5, 1e-9));
+      // No recent HR reading → 0.
+      expect(s.featuresAt(t0.add(const Duration(hours: 2)))[2], 0);
+    });
+
+    test('no resting baseline → hr feature is 0', () {
+      final samples = [
+        HealthSample(time: t0, type: 'heartRate', value: 120),
+      ];
+      expect(HealthFeatureSampler(samples).featuresAt(t0)[2], 0);
+    });
   });
 
   group('ForecastFeatures with health', () {
-    test('vector length and names include the health features (v2)', () {
-      expect(ForecastFeatures.version, 2);
+    test('vector length and names include the health features (v3)', () {
+      expect(ForecastFeatures.version, 3);
       final v = ForecastFeatures.build(
         now: DateTime(2026, 7, 4, 9),
         currentMgdl: 140,
@@ -75,9 +100,10 @@ void main() {
         horizonMinutes: 30,
       );
       expect(v.length, ForecastFeatures.names.length);
-      expect(ForecastFeatures.names, containsAll(['activity', 'exercise_recency']));
-      // Default health contribution is zeros (trailing two features).
-      expect(v.sublist(v.length - 2), [0.0, 0.0]);
+      expect(ForecastFeatures.names,
+          containsAll(['activity', 'exercise_recency', 'hr_rel']));
+      // Default health contribution is zeros (trailing three features).
+      expect(v.sublist(v.length - 3), [0.0, 0.0, 0.0]);
     });
 
     test('supplied health features land in the trailing slots', () {
@@ -90,9 +116,9 @@ void main() {
         carbs: const [],
         context: SensitivityContext.neutral,
         horizonMinutes: 30,
-        health: const [0.8, 0.3],
+        health: const [0.8, 0.3, 0.4],
       );
-      expect(v.sublist(v.length - 2), [0.8, 0.3]);
+      expect(v.sublist(v.length - 3), [0.8, 0.3, 0.4]);
     });
   });
 }

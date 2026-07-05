@@ -1,7 +1,8 @@
 /// Acute activity features for the BG forecaster, derived from Google Fit / Health
-/// Connect data (steps + workouts). These are *near-term-BG-relevant* signals — recent
-/// movement and post-exercise insulin sensitivity — and are deliberately distinct from
-/// the slower daily sensitivity context (`sensitivity_model.dart`).
+/// Connect data (steps + workouts + heart rate). These are *near-term-BG-relevant*
+/// signals — recent movement, post-exercise sensitivity, and heart-rate elevation
+/// (exercise/stress) — and are deliberately distinct from the slower daily sensitivity
+/// context (`sensitivity_model.dart`).
 ///
 /// The sampler is built once from a window of [HealthSample]s and can then be queried at
 /// any timestamp, so the exact same feature is produced at training time (over historical
@@ -21,10 +22,15 @@ class HealthFeatureSampler {
     this.exerciseWindow = const Duration(hours: 3),
     this.exerciseHalfLife = const Duration(minutes: 90),
     this.briskStepsPerMin = 100.0,
+    this.hrWindow = const Duration(minutes: 15),
   })  : _steps = (samples.where((s) => s.type == 'steps').toList()
           ..sort((a, b) => a.time.compareTo(b.time))),
         _exercise = (samples.where((s) => s.type == 'exercise').toList()
-          ..sort((a, b) => a.time.compareTo(b.time)));
+          ..sort((a, b) => a.time.compareTo(b.time))),
+        _hr = (samples.where((s) => s.type == 'heartRate').toList()
+          ..sort((a, b) => a.time.compareTo(b.time))),
+        _restingBaseline = _median(
+            samples.where((s) => s.type == 'restingHr').map((s) => s.value));
 
   /// Steps are summed over this trailing window to estimate current movement.
   final Duration stepsWindow;
@@ -38,20 +44,54 @@ class HealthFeatureSampler {
   /// Steps/min treated as "fully active" (a brisk walk), i.e. activity feature = 1.0.
   final double briskStepsPerMin;
 
+  /// A heart-rate reading counts as "current" if within this window of the timestamp.
+  final Duration hrWindow;
+
   final List<HealthSample> _steps;
   final List<HealthSample> _exercise;
+  final List<HealthSample> _hr;
+
+  /// Median resting heart rate over the window (0 when unknown → no HR signal).
+  final double _restingBaseline;
 
   /// Number of features this sampler contributes to the forecast vector.
-  static const int featureCount = 2;
+  static const int featureCount = 3;
 
-  static const List<String> names = ['activity', 'exercise_recency'];
+  static const List<String> names = ['activity', 'exercise_recency', 'hr_rel'];
 
   /// The all-zero feature contribution (no activity data). Used as the default so the
   /// forecast vector keeps a constant length whether or not health data is present.
-  static const List<double> zeros = [0.0, 0.0];
+  static const List<double> zeros = [0.0, 0.0, 0.0];
 
-  /// Features at [t]: `[activity, exerciseRecency]`.
-  List<double> featuresAt(DateTime t) => [_activityAt(t), _exerciseRecencyAt(t)];
+  /// Features at [t]: `[activity, exerciseRecency, hrRel]`.
+  List<double> featuresAt(DateTime t) =>
+      [_activityAt(t), _exerciseRecencyAt(t), _hrRelAt(t)];
+
+  /// Heart rate relative to the resting baseline at [t]: (hr − resting)/resting, clamped.
+  /// 0 when there's no baseline or no recent reading.
+  double _hrRelAt(DateTime t) {
+    if (_restingBaseline <= 0 || _hr.isEmpty) return 0;
+    HealthSample? nearest;
+    var bestGap = hrWindow;
+    for (final s in _hr) {
+      final gap = (s.time.difference(t)).abs();
+      if (gap <= bestGap) {
+        bestGap = gap;
+        nearest = s;
+      }
+    }
+    if (nearest == null) return 0;
+    return ((nearest.value - _restingBaseline) / _restingBaseline)
+        .clamp(-0.5, 1.0)
+        .toDouble();
+  }
+
+  static double _median(Iterable<double> values) {
+    final v = values.toList()..sort();
+    if (v.isEmpty) return 0;
+    final mid = v.length ~/ 2;
+    return v.length.isOdd ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+  }
 
   /// Trailing-window step rate, normalised to [0, 1.5] against a brisk-walk cadence.
   double _activityAt(DateTime t) {

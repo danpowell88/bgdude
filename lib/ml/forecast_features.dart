@@ -20,7 +20,8 @@ class ForecastFeatures {
   /// Bump when the feature layout changes so stale models are discarded.
   /// v2: appended the [HealthFeatureSampler] activity features (Google Fit / Health
   /// Connect) so the residual model can learn exercise/activity effects on BG.
-  static const int version = 2;
+  /// v3: added the heart-rate-relative feature (exercise/stress signal).
+  static const int version = 3;
 
   static const List<String> names = [
     'bg/100',

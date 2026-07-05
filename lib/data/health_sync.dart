@@ -117,6 +117,10 @@ class HealthSyncService {
               time: point.dateFrom,
               type: 'restingHr',
               value: _numeric(point)));
+        case HealthDataType.HEART_RATE:
+          // Per-reading heart rate — an acute exercise/stress signal for the forecaster.
+          out.add(HealthSample(
+              time: point.dateFrom, type: 'heartRate', value: _numeric(point)));
         case HealthDataType.STEPS:
           out.add(HealthSample(
               time: point.dateFrom, type: 'steps', value: _numeric(point)));
