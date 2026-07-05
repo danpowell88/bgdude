@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bgdude — user guide</title>
+<style>
+  :root {
+    --bg:#f6f7fb; --card:#fff; --ink:#1a1b21; --muted:#5b6072; --line:#e4e6ef;
+    --brand:#3d6df2; --brand-ink:#2b3a78; --chip:#eef1fb; --good:#22a565;
+    --warn:#e08a1e; --bad:#d0492e; --radius:12px;
+    --shadow:0 1px 2px rgba(20,23,40,.06), 0 8px 24px rgba(20,23,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1116; --card:#171a22; --ink:#eceef5; --muted:#9aa0b4;
+      --line:#262a36; --brand:#6d92ff; --brand-ink:#b9c8ff; --chip:#1d2233;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35); }
+  }
+  :root[data-theme="dark"] { --bg:#0f1116; --card:#171a22; --ink:#eceef5;
+    --muted:#9aa0b4; --line:#262a36; --brand:#6d92ff; --brand-ink:#b9c8ff; --chip:#1d2233; }
+  :root[data-theme="light"] { --bg:#f6f7fb; --card:#fff; --ink:#1a1b21;
+    --muted:#5b6072; --line:#e4e6ef; --brand:#3d6df2; --brand-ink:#2b3a78; --chip:#eef1fb; }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  a { color:var(--brand); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .layout { display:grid; grid-template-columns:260px 1fr; gap:0; max-width:1200px; margin:0 auto; }
+  nav.toc { position:sticky; top:0; align-self:start; height:100vh; overflow:auto;
+    border-right:1px solid var(--line); padding:20px 16px; }
+  nav.toc h1 { font-size:20px; margin:0 0 4px; }
+  nav.toc .tag { color:var(--muted); font-size:13px; margin:0 0 16px; }
+  nav.toc a { display:block; color:var(--ink); padding:5px 8px; border-radius:8px; font-size:14px; }
+  nav.toc a:hover { background:var(--chip); text-decoration:none; }
+  nav.toc .grp { color:var(--muted); font-size:12px; text-transform:uppercase;
+    letter-spacing:.05em; margin:14px 8px 4px; }
+  main { padding:32px 28px 80px; min-width:0; }
+  section { scroll-margin-top:20px; margin-bottom:36px; }
+  h2 { font-size:26px; margin:8px 0 6px; letter-spacing:-.01em; }
+  h3 { font-size:18px; margin:20px 0 6px; }
+  p, li { color:var(--ink); }
+  .lead { color:var(--muted); font-size:17px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:16px 18px; margin:14px 0; }
+  ul.tight { margin:6px 0; padding-left:20px; }
+  ul.tight li { margin:3px 0; }
+  .chip { display:inline-block; background:var(--chip); border:1px solid var(--line);
+    border-radius:999px; padding:1px 9px; font-size:13px; color:var(--brand-ink); white-space:nowrap; }
+  .kbd { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; background:var(--chip);
+    border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:13px; }
+  .note { border-left:3px solid var(--brand); background:var(--chip); padding:10px 14px;
+    border-radius:0 8px 8px 0; margin:12px 0; font-size:15px; }
+  .note.safe { border-color:var(--good); }
+  .note.warn { border-color:var(--warn); }
+  table { border-collapse:collapse; width:100%; margin:10px 0; font-size:15px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  .shot { max-width:260px; border:1px solid var(--line); border-radius:14px; overflow:hidden;
+    box-shadow:var(--shadow); margin:12px 0; }
+  .shot img { display:block; width:100%; }
+  .cap { color:var(--muted); font-size:13px; margin-top:4px; }
+  .toggle { position:fixed; top:14px; right:16px; z-index:10; background:var(--card);
+    border:1px solid var(--line); border-radius:999px; padding:6px 12px; cursor:pointer;
+    box-shadow:var(--shadow); font-size:13px; color:var(--ink); }
+  header.hero { background:linear-gradient(135deg, var(--brand), #7a5cf0); color:#fff;
+    padding:28px 28px; border-radius:14px; margin-bottom:20px; }
+  header.hero h2 { color:#fff; margin:0 0 6px; }
+  header.hero p { color:#fff; opacity:.95; margin:0; }
+  @media (max-width:820px) {
+    .layout { grid-template-columns:1fr; }
+    nav.toc { position:static; height:auto; border-right:0; border-bottom:1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<button class="toggle" onclick="(function(){var r=document.documentElement;var d=r.getAttribute('data-theme')==='dark';r.setAttribute('data-theme',d?'light':'dark');})()">◐ theme</button>
+
+<div class="layout">
+<nav class="toc">
+  <h1>bgdude</h1>
+  <p class="tag">User guide</p>
+  <a href="#start">Getting started</a>
+  <a href="#layout">App layout &amp; icons</a>
+  <div class="grp">The four tabs</div>
+  <a href="#today">Today</a>
+  <a href="#predict">Predict</a>
+  <a href="#insights">Insights</a>
+  <a href="#meals">Meals</a>
+  <div class="grp">Doing things</div>
+  <a href="#bolus">Bolus advisor</a>
+  <a href="#quicklog">Quick-log</a>
+  <a href="#confirm">Confirm events</a>
+  <div class="grp">Modes</div>
+  <a href="#exercise">Exercise mode</a>
+  <a href="#medication">Medication / steroid</a>
+  <a href="#illness">Illness mode</a>
+  <a href="#weather">Weather</a>
+  <div class="grp">Alerts</div>
+  <a href="#notifications">Notifications</a>
+  <div class="grp">Data &amp; analysis</div>
+  <a href="#reports">Reports</a>
+  <a href="#pump">Pump</a>
+  <a href="#therapy">Therapy &amp; basal</a>
+  <a href="#advanced">Advanced / models</a>
+  <div class="grp">Setup</div>
+  <a href="#profile">Profile</a>
+  <a href="#settings">Settings &amp; integrations</a>
+  <a href="#safety">Safety &amp; scope</a>
+</nav>
+
+<main>
+<header class="hero">
+  <h2>bgdude user guide</h2>
+  <p>A page-by-page walk-through of every screen, panel and icon — what it's for and how to use it. bgdude reads your t:slim&nbsp;X2 and CGM, pulls health data, predicts glucose and advises on dosing. It is read-only: it never delivers insulin — you always dose on the pump yourself.</p>
+</header>
+
+<section id="start">
+  <h2>Getting started</h2>
+  <p class="lead">First launch runs a short onboarding, then you land on the Today tab.</p>
+  <h3>Onboarding (4 steps)</h3>
+  <ul class="tight">
+    <li><b>Intro</b> — what the app does.</li>
+    <li><b>Before you pair</b> — you must tick the acknowledgement: pairing with the pump unpairs the official t:connect app, the connection is reverse-engineered (can be finicky), and the app never sends insulin/control commands.</li>
+    <li><b>About you</b> — optional profile (sex, age, diabetes type/duration, weight, height). You can skip and set it later in <a href="#profile">Profile</a>.</li>
+    <li><b>Connect your data</b> — grants Health Connect access and pump/notification permissions, then pairs.</li>
+  </ul>
+  <div class="note">No hardware? Turn on <b>Dev mode</b> (Settings → Dev mode) to run against a simulated t:slim&nbsp;X2 + Dexcom so every screen is populated. The <span class="chip">DEV</span> badge in the top bar shows when it's on.</div>
+</section>
+
+<section id="layout">
+  <h2>App layout &amp; icons</h2>
+  <p class="lead">A top bar with quick actions, and a bottom bar with the four main tabs.</p>
+  <h3>Top bar (right side)</h3>
+  <table>
+    <tr><th>Icon</th><th>What it does</th></tr>
+    <tr><td>💧 / 🧪 water-drop / flask</td><td>Toggle glucose units between mmol/L and mg/dL. The whole app follows your choice.</td></tr>
+    <tr><td>⊕ add-circle</td><td>Open the <a href="#quicklog">Quick-log</a> sheet (carbs, bolus, exercise, alcohol, sensor/site change).</td></tr>
+    <tr><td>⚙ settings</td><td>Open <a href="#settings">Settings</a> — every screen below that isn't a tab lives here.</td></tr>
+    <tr><td><span class="chip">DEV</span></td><td>Shown only in dev mode (simulated pump).</td></tr>
+  </table>
+  <h3>Bolus button</h3>
+  <p>On the Today tab a <b>Bolus</b> button (calculator icon) opens the <a href="#bolus">Bolus advisor</a>. It's hidden on other tabs to keep dosing tied to the live reading.</p>
+  <h3>Bottom tabs</h3>
+  <table>
+    <tr><th>Tab</th><th>Purpose</th></tr>
+    <tr><td>📅 <b>Today</b></td><td>Your day at a glance: current glucose, forecast, and the event stream you review and tag.</td></tr>
+    <tr><td>📈 <b>Predict</b></td><td>Every model's forecast, scenarios and a what-if explorer.</td></tr>
+    <tr><td>💡 <b>Insights</b></td><td>Daily briefing, sensitivity, A1c, sleep, illness — read together.</td></tr>
+    <tr><td>🍽️ <b>Meals</b></td><td>Your saved-meal library and the add-meal flow (incl. barcode scan).</td></tr>
+  </table>
+</section>
+
+<section id="today">
+  <h2>Today</h2>
+  <div class="shot"><img src="screenshots/01-today.png" alt="Today tab"><div class="cap">The Today tab</div></div>
+  <h3>Your Day panel</h3>
+  <p>A plain-language narrative of how the day is going — current stats, trends and a suggestion or two. Read it first thing.</p>
+  <h3>Glucose &amp; "Next few hours" chart</h3>
+  <ul class="tight">
+    <li>The big number is your <b>current glucose</b> with its trend arrow.</li>
+    <li>The <b>Next few hours</b> chart shows a trailing CGM trace leading into the forward forecast. The dashed vertical line is <b>now</b>; the green band is your target range; the x-axis marks <span class="kbd">-2h</span>, <span class="kbd">now</span>, <span class="kbd">+2h</span>.</li>
+    <li><b>Tip:</b> touch-and-hold anywhere on a line to read the exact time and value in the tooltip.</li>
+  </ul>
+  <h3>Rescue-carb card</h3>
+  <p>Appears only when you're low or a low is predicted. It suggests fast carbs (≈15 g, adjusted for insulin-on-board and the predicted nadir). Informational — act on the pump/with food yourself.</p>
+  <h3>The event stream (timeline)</h3>
+  <p>Scroll down for the day's events — meals, boluses, highs/lows, detected unannounced rises, and compression lows. Each card can do two things:</p>
+  <ul class="tight">
+    <li><b>Explain this</b> — opens ranked, plain-language reasons for a high/low/rise you can accept with one tap.</li>
+    <li><b>Tag (use for model)</b> — tap to tell the model how to treat the event. A smart default is already applied: <b>pump dosing</b> (meals, boluses) is <em>used</em> by default; a suspected <b>compression low</b> is <em>excluded</em> by default. The reasons offered are contextual to the event type — a compression low is never offered "missed carbs".</li>
+  </ul>
+  <div class="note">Tagging an event "ignore" writes a note that keeps the model from learning the wrong lesson (and, for confirmed carbs, adds them to your history).</div>
+</section>
+
+<section id="predict">
+  <h2>Predict</h2>
+  <div class="shot"><img src="screenshots/03-predict.png" alt="Predict tab"><div class="cap">Forecast horizons &amp; scenarios</div></div>
+  <ul class="tight">
+    <li><b>Horizon forecasts</b> (30 / 60 / 120 min) with uncertainty bands — a physiological baseline plus a learned correction once trained.</li>
+    <li><b>Scenario lines</b> (in Advanced mode) — IOB-only, with-carbs, unannounced-meal, and no-basal — so you see the spread, not one confident number.</li>
+    <li><b>Sensitivity &amp; risk read-outs</b> — today's resistance multiplier and near-term low/high risk with a suggested action.</li>
+    <li><b>What-if explorer</b> — sliders for carbs and insulin to project the trajectory before you decide.</li>
+  </ul>
+</section>
+
+<section id="insights">
+  <h2>Insights</h2>
+  <div class="shot"><img src="screenshots/04-insights.png" alt="Insights tab"><div class="cap">Insights, read together</div></div>
+  <h3>Daily briefing</h3>
+  <p>The morning summary: overnight time-in-range plus prescriptive, evidence-grounded notes ("consider bolusing a touch stronger").</p>
+  <h3>Insulin sensitivity</h3>
+  <p>Today's resistance multiplier and its drivers (short sleep, low HRV, illness, exercise, medication…). &gt;1 = more resistant than your settings; &lt;1 = more sensitive.</p>
+  <h3>A1c goal &amp; Lab A1c</h3>
+  <ul class="tight">
+    <li>Your <b>GMI</b> (CGM-derived A1c estimate) vs your goal, with a projection. Tap <b>Change</b> to set the goal.</li>
+    <li><b>Log lab A1c</b> — enter a lab HbA1c result; the app compares it to your GMI and flags a <em>glycation gap</em> (some people's lab result runs systematically higher/lower than their average glucose predicts).</li>
+  </ul>
+  <h3>Sleep &amp; glucose</h3>
+  <p>How your sleep length relates to overnight steadiness, learned from your own nights.</p>
+  <h3>Illness mode</h3>
+  <p>A switch for <b>Sick day mode</b> (raises expected insulin needs). When your data looks illness-like the app suggests turning it on — accept or dismiss. See <a href="#illness">Illness mode</a>.</p>
+</section>
+
+<section id="meals">
+  <h2>Meals</h2>
+  <div class="shot"><img src="screenshots/05-meals.png" alt="Meals tab"><div class="cap">The saved-meal library</div></div>
+  <h3>The library</h3>
+  <p>Meals you eat often, each learning its own absorption curve and typical outcome over time. Search with the bar at top; tap a meal for its detail screen.</p>
+  <h3>Add a meal</h3>
+  <p>Tap <b>Add meal</b>. In the sheet you can:</p>
+  <ul class="tight">
+    <li><b>Scan barcode</b> — point the camera at a product; carbs (and fat/protein) fill in from the food database.</li>
+    <li><b>Search foods</b> — type a name to look it up (packaged products + a bundled offline Australian generic-food set).</li>
+    <li>Every looked-up value lands in an <b>editable field</b> — correct anything the database got wrong, or adjust to your portion. Fat/Protein (optional) feed the fat-protein-unit coach.</li>
+  </ul>
+  <div class="note">Food lookup uses Open Food Facts (free, public). A one-time notice explains that only the barcode/text is sent — no health data. Turn it off in <b>Settings → Barcode food lookup</b> to stay fully offline.</div>
+  <h3>Meal detail &amp; pre-bolus coach</h3>
+  <div class="shot"><img src="screenshots/07-meal-detail.png" alt="Meal detail"><div class="cap">Learned curve, insights &amp; coach</div></div>
+  <ul class="tight">
+    <li><b>Log this meal</b> — records that you ate it; the app measures the outcome ~3 h later and refines the curve.</li>
+    <li><b>Pre-bolus coach</b> — from the live reading, how many minutes to pre-bolus.</li>
+    <li><b>Fat/protein card</b> — for fat/protein-heavy meals, a split/extended-dose suggestion and a delayed-rise watch (3–5 h).</li>
+    <li><b>Insights &amp; recent outcomes</b> — median peak, time-above-range, and whether pre-bolusing has helped this meal.</li>
+  </ul>
+</section>
+
+<section id="bolus">
+  <h2>Bolus advisor</h2>
+  <div class="shot"><img src="screenshots/08-bolus.png" alt="Bolus advisor"><div class="cap">Always shows its working</div></div>
+  <p class="lead">Open it from the <b>Bolus</b> button on Today. Enter carbs (and it reads your current glucose + IOB); it suggests a dose and <b>always shows the working</b> — BG, target, ISF, carb ratio, IOB and the context multiplier.</p>
+  <ul class="tight">
+    <li>It leans conservative near predicted lows and never suggests a negative dose (that's a rescue-carb situation).</li>
+    <li>It <b>never delivers insulin</b> — enter the dose on your pump yourself.</li>
+  </ul>
+</section>
+
+<section id="quicklog">
+  <h2>Quick-log</h2>
+  <div class="shot"><img src="screenshots/09-quicklog.png" alt="Quick-log sheet"><div class="cap">Fast context capture</div></div>
+  <p class="lead">The ⊕ button in the top bar. Log the things the models want to know:</p>
+  <ul class="tight">
+    <li><b>Carbs / bolus</b> you took (that the pump didn't capture).</li>
+    <li><b>Context</b> — exercise, alcohol, stress. Logging <b>alcohol</b> also opens an overnight-low watch (alcohol causes delayed lows) and a heads-up.</li>
+    <li><b>Sensor / infusion-site change</b> — resets the age tracker used for reminders and the site-failure story.</li>
+  </ul>
+</section>
+
+<section id="confirm">
+  <h2>Confirm events</h2>
+  <div class="shot"><img src="screenshots/16-confirm.png" alt="Confirmation Inbox"><div class="cap">Turn detections into confirmed data</div></div>
+  <p class="lead">Settings → <b>Confirm events</b> (a badge shows how many are waiting). The app queues detected-but-unconfirmed events — unannounced meals, compression lows, illness — for a one-tap decision.</p>
+  <ul class="tight">
+    <li><b>Confirm</b> — counts it as real, confirmed data in reports and teaches the model correctly (and adds a meal's carbs to history).</li>
+    <li><b>Edit</b> — adjust a detected meal's carbs before confirming.</li>
+    <li><b>Dismiss</b> — it won't come back.</li>
+  </ul>
+</section>
+
+<section id="exercise">
+  <h2>Exercise mode</h2>
+  <div class="shot"><img src="screenshots/20-exercise.png" alt="Exercise mode"><div class="cap">Announce a workout</div></div>
+  <p class="lead">Settings → <b>Exercise mode</b>. Tell the app about an upcoming or current workout so it can be proactive.</p>
+  <ul class="tight">
+    <li>Pick a <b>type</b> (aerobic / resistance / mixed), a <b>duration</b>, and when it <b>starts</b>.</li>
+    <li>It raises the <b>low-alert threshold</b> for the session plus a recovery tail (longer for aerobic), so lows are caught earlier during and after.</li>
+    <li>It suggests a <b>pre-exercise snack</b> from your live glucose / insulin-on-board, and arms the overnight-low watch.</li>
+    <li>Tap <b>End exercise mode</b> when you're done (it also expires on its own).</li>
+  </ul>
+</section>
+
+<section id="medication">
+  <h2>Medication / steroid mode</h2>
+  <p class="lead">Settings → <b>Medication / steroid mode</b>. Steroids raise insulin needs, often a lot.</p>
+  <ul class="tight">
+    <li>Turn it <b>on</b> while you're on a course; pick an <b>intensity</b> (mild / moderate / high → +15 / 25 / 40% resistance).</li>
+    <li>The whole app then expects more resistance in its sensitivity, dosing hints and insights. Turn it off when the course ends. Advisory only — it never changes your pump.</li>
+  </ul>
+</section>
+
+<section id="illness">
+  <h2>Illness mode</h2>
+  <p class="lead">On the <a href="#insights">Insights</a> tab. A <b>Sick day mode</b> switch that boosts expected insulin needs.</p>
+  <ul class="tight">
+    <li>When your data looks illness-like (fever, raised heart rate, low HRV, higher glucose), a card suggests turning it on — <b>Turn on</b> or <b>Not sick</b>.</li>
+    <li>While a sustained high coincides with illness (or a likely site failure, or being very high with little insulin on board), a <b>Check ketones</b> alert fires with sick-day guidance.</li>
+  </ul>
+</section>
+
+<section id="weather">
+  <h2>Weather</h2>
+  <p class="lead">Settings → <b>Weather</b>. Opt-in ambient-temperature context (free, no account).</p>
+  <ul class="tight">
+    <li>Type your <b>city</b> and tap search — it's geocoded once and stored.</li>
+    <li>Hot weather speeds insulin absorption (more lows) and cold has a paradoxical risk, so at temperature extremes low alerts <b>lead a little earlier</b>.</li>
+    <li>Daily temperature is also correlated against your glucose in the <a href="#reports">Correlations</a> report.</li>
+  </ul>
+  <div class="note">Only the city/coordinates leave the device (to Open-Meteo). Turn the switch off to stop all weather lookups.</div>
+</section>
+
+<section id="notifications">
+  <h2>Notifications</h2>
+  <div class="shot"><img src="screenshots/18-notifications.png" alt="Notification settings"><div class="cap">Quiet hours, thresholds &amp; per-category tuning</div></div>
+  <p class="lead">Settings → <b>Notifications</b>. Every alert is a <b>category</b> you control. All alerts are additive to your CGM/pump alarms — never a replacement.</p>
+  <h3>Alert thresholds</h3>
+  <p>Set your own <b>low</b> and <b>high</b> alert lines with the −/+ steppers (shown in your unit). Safety modifiers (age, alcohol, exercise, hot/cold weather) can only make the <em>low</em> alert lead <em>earlier</em>, never later.</p>
+  <h3>Quiet hours</h3>
+  <p>A do-not-disturb window that holds back non-critical notifications overnight. Urgent/predicted lows and pump alarms <b>always come through</b>. Toggle it on and set the From/To times.</p>
+  <h3>Per-category controls</h3>
+  <p>Each category (predicted/urgent low, high, missed bolus, stubborn high, check-ketones, rescue carbs, move-after-meals, overnight-low risk, pump alarms, low reservoir, low battery, disconnected, device reminders, illness, morning/weekly summary, pre-bolus timer) can be tuned: <b>on/off</b>, <b>intensity</b> (silent→urgent), <b>sound</b>, <b>vibration</b>, and a <b>repeat-until-clear</b> interval.</p>
+</section>
+
+<section id="reports">
+  <h2>Reports</h2>
+  <div class="shot"><img src="screenshots/14-reports.png" alt="Reports hub"><div class="cap">The Reports hub</div></div>
+  <p class="lead">Settings → <b>Reports</b>. Every report is built on <b>real, confirmed data</b> (sensor artefacts you marked are excluded) and takes a date range — tap the <span class="chip">7</span>/<span class="chip">14</span>/<span class="chip">30</span>/<span class="chip">90</span>-day chips.</p>
+  <div class="shot"><img src="screenshots/15-glucose-report.png" alt="Glucose report"><div class="cap">Glucose report (AGP)</div></div>
+  <table>
+    <tr><th>Report</th><th>What it shows / how to use</th></tr>
+    <tr><td><b>Glucose</b></td><td>Ambulatory Glucose Profile (median + percentile bands), Time in Range &amp; <b>Tight Range (70–140)</b>, GMI, CV (amber if ≥36%), risk indices (GRI, LBGI/HBGI), and hypo/hyper episodes. Tap the <b>share</b> icon (top right) to export a clinician-ready <b>PDF + CSV</b>.</td></tr>
+    <tr><td><b>Insulin</b></td><td>Daily total insulin (basal + bolus bar chart), the basal/bolus split, and bolus behaviour (meal vs correction, size, frequency).</td></tr>
+    <tr><td><b>Meals</b></td><td>Per-meal performance from confirmed outcomes — rise, time-to-peak, time-above-range, pre-bolus timing — plus a post-meal movement note.</td></tr>
+    <tr><td><b>Therapy</b></td><td>Learned daily sensitivity trend, the time-of-day profile, and a link to Basal suggestions.</td></tr>
+    <tr><td><b>Correlations</b></td><td>Daily glucose vs sleep, exercise, HRV, resting HR, and (if set) ambient temperature; plus a menstrual-cycle panel. Only associations backed by enough days are shown.</td></tr>
+    <tr><td><b>Events journal</b></td><td>One filterable timeline of confirmed notes, pump events, device changes and episodes — a clinic-visit log.</td></tr>
+    <tr><td><b>Model performance</b></td><td>Forecast accuracy by horizon, Clarke error-grid zones, interval calibration and training history (kept separate from your real numbers).</td></tr>
+  </table>
+</section>
+
+<section id="pump">
+  <h2>Pump</h2>
+  <div class="shot"><img src="screenshots/17-pump.png" alt="Pump screen"><div class="cap">Everything synced from the pump</div></div>
+  <p class="lead">Settings → <b>Pump</b>. A read-only view of live and derived pump data:</p>
+  <ul class="tight">
+    <li><b>Live status</b> — glucose + trend, insulin-on-board, basal rate, Control-IQ, last bolus.</li>
+    <li><b>Insulin today</b> — total, bolus/basal split.</li>
+    <li><b>Reservoir</b> — units left + a runway estimate.</li>
+    <li><b>Site &amp; sensor</b> — age since last change.</li>
+    <li><b>Device</b> — battery (with a <b>time-to-empty</b> estimate or "charging"), firmware, API version.</li>
+    <li><b>Active alarms/alerts</b> and a <b>recent pump-events</b> timeline.</li>
+  </ul>
+</section>
+
+<section id="therapy">
+  <h2>Therapy profile &amp; basal suggestions</h2>
+  <div class="shot"><img src="screenshots/11-therapy.png" alt="Therapy profile"><div class="cap">Your pump IDP</div></div>
+  <h3>Therapy profile</h3>
+  <p>Settings → <b>Therapy profile</b>. Your basal rate, ISF, carb ratio and target per time-of-day segment (imported from the pump, editable). These feed the what-if engine, bolus advisor and predictions — getting them right matters.</p>
+  <h3>Basal suggestions</h3>
+  <div class="shot"><img src="screenshots/21-basal.png" alt="Basal suggestions"><div class="cap">From repeated fasting trends</div></div>
+  <p>Settings → <b>Basal suggestions</b>. From repeated carb-free (fasting) time-of-day trends, per-segment basal changes with a confidence and a rationale. <b>Advisory only</b> — make any change on the pump yourself and discuss with your team. It never writes to the pump.</p>
+</section>
+
+<section id="advanced">
+  <h2>Advanced / model internals</h2>
+  <div class="shot"><img src="screenshots/12-advanced.png" alt="Model internals"><div class="cap">The engine, exposed</div></div>
+  <ul class="tight">
+    <li><b>Advanced mode</b> (Settings switch) — surfaces prediction decomposition and model internals throughout.</li>
+    <li><b>Model internals</b> — effective sensitivity, the learned time-of-day profile, forecaster state and a Clarke error grid.</li>
+    <li><b>Forecast accuracy</b> — how predictions have scored against actual outcomes.</li>
+    <li><b>Retrain forecaster now</b> — rebuild the learned correction from your history (it's only promoted if it beats the baseline and passes a safety gate).</li>
+  </ul>
+</section>
+
+<section id="profile">
+  <h2>Profile</h2>
+  <div class="shot"><img src="screenshots/19-profile.png" alt="Profile"><div class="cap">Details that tune the models</div></div>
+  <p class="lead">Settings → <b>Profile</b>. All optional, encrypted, on-device.</p>
+  <ul class="tight">
+    <li><b>Sex</b> — gates the menstrual-cycle features (they only apply when there's a cycle).</li>
+    <li><b>Age</b> &amp; <b>years with diabetes</b> — older age and long-standing diabetes make low alerts lead a little earlier (impaired-awareness risk).</li>
+    <li><b>Weight / height</b> — reference (BMI).</li>
+  </ul>
+</section>
+
+<section id="settings">
+  <h2>Settings &amp; integrations</h2>
+  <div class="shot"><img src="screenshots/10-settings.png" alt="Settings"><div class="cap">The Settings hub</div></div>
+  <p>Everything not on a tab lives in Settings. Beyond the screens above:</p>
+  <ul class="tight">
+    <li><b>Dev mode</b> — simulated pump + CGM for exploring without hardware.</li>
+    <li><b>Glucose units</b> — mmol/L or mg/dL (also toggled from the top bar).</li>
+    <li><b>Sync health data now</b> — pull sleep, HRV, resting/continuous HR, steps and workouts from Health Connect.</li>
+    <li><b>Barcode food lookup</b> — the online food-lookup switch (see <a href="#meals">Meals</a>).</li>
+    <li><b>Re-pair / Unpair pump</b> — start a fresh scan or drop the pairing.</li>
+    <li><b>Nightscout</b> — optional upload of entries, treatments and device status; enter your site URL + API secret and <b>Test connection</b>.</li>
+  </ul>
+</section>
+
+<section id="safety">
+  <h2>Safety &amp; scope</h2>
+  <div class="note safe"><b>Read-only.</b> The app cannot deliver insulin or change your pump — enforced at the connection layer. You always dose on the pump yourself.</div>
+  <ul class="tight">
+    <li>Predictions and suggestions are <b>informational</b> and can be wrong; they never replace your CGM/pump alarms or clinical advice.</li>
+    <li>The bolus advisor shows its working and leans conservative near lows.</li>
+    <li>This is a personal tool, not a medical device. Pairing with the pump unpairs the official app.</li>
+  </ul>
+</section>
+
+</main>
+</div>
+</body>
+</html>
