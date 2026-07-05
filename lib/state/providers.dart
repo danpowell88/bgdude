@@ -52,6 +52,8 @@ import '../pump/history_backfill.dart';
 import '../pump/pump_client.dart';
 import '../pump/pump_events.dart';
 import '../pump/pump_snapshot.dart';
+import '../reports/glucose_report.dart';
+import '../reports/report_range.dart';
 import '../pump/pump_source.dart';
 import '../pump/simulated_pump_client.dart';
 import '../timeline/day_event.dart';
@@ -372,6 +374,27 @@ final insulinTodayProvider = Provider<InsulinTotals>((ref) {
 /// Recent pump events (alarms/alerts/cartridge changes) decoded from the History Log.
 final pumpEventsProvider =
     FutureProvider<List<PumpEvent>>((ref) => PumpEventLog.load());
+
+/// The date range the Reports section is showing (default: last 14 days).
+final reportRangeProvider = StateProvider<ReportRange>(
+    (ref) => ReportRange.preset(ReportPreset.last14, now: DateTime.now()));
+
+/// The Glucose report for the selected range, plus the confirmed readings behind it
+/// (kept alongside so PDF/CSV export shares exactly what the report shows). Built from
+/// real, confirmed data — sensor-artifact windows are excluded.
+final glucoseReportProvider =
+    FutureProvider<({GlucoseReport report, List<CgmSample> confirmed})>(
+        (ref) async {
+  final range = ref.watch(reportRangeProvider);
+  final repo = ref.read(historyRepositoryProvider);
+  final cgm = await repo.cgm(range.from, range.to);
+  final annotations = await repo.annotations(range.from, range.to);
+  final report = const GlucoseReportBuilder()
+      .build(cgm: cgm, annotations: annotations, range: range, now: DateTime.now());
+  final confirmed = GlucoseReportBuilder.confirmedSamples(
+      cgm: cgm, annotations: annotations, range: range);
+  return (report: report, confirmed: confirmed);
+});
 
 /// Suggested basal-profile changes derived from repeated time-of-day sensitivity
 /// trends. Empty until there's a trusted profile (≥14 days). Informational only —

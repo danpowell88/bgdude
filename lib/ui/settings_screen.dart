@@ -11,6 +11,7 @@ import 'confirmation_inbox_screen.dart';
 import 'model_accuracy_screen.dart';
 import 'notification_settings_screen.dart';
 import 'pump_screen.dart';
+import 'reports/reports_hub_screen.dart';
 import 'therapy_settings_screen.dart';
 
 /// Nightscout upload configuration section.
@@ -128,6 +129,15 @@ class SettingsScreen extends ConsumerWidget {
               selected: {unit},
               onSelectionChanged: (s) =>
                   ref.read(glucoseUnitProvider.notifier).state = s.first,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.assessment_outlined),
+            title: const Text('Reports'),
+            subtitle: const Text(
+                'AGP, time-in-range & episodes from confirmed data · PDF/CSV export'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ReportsHubScreen()),
             ),
           ),
           ListTile(
