@@ -124,32 +124,43 @@ class _AddMealSheet extends ConsumerStatefulWidget {
 class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
   final _name = TextEditingController();
   final _carbs = TextEditingController();
+  final _fat = TextEditingController();
+  final _protein = TextEditingController();
   MealCategory _category = MealCategory.other;
   bool _fatProteinHeavy = false;
-  double? _fatGrams;
-  double? _proteinGrams;
 
   @override
   void dispose() {
     _name.dispose();
     _carbs.dispose();
+    _fat.dispose();
+    _protein.dispose();
     super.dispose();
   }
 
   /// Prefill the form from a looked-up food. Uses the product's serving size when known,
   /// else per-100 g, keeping carbs and fat/protein on the same basis for the FPU coach.
+  /// Every value lands in an editable field, so the user can override anything the
+  /// database got wrong (or adjust to their actual portion).
   void _prefill(FoodItem item) {
     final grams = item.servingSizeG ?? 100.0;
-    final carbs = item.carbsForGrams(grams);
     setState(() {
       _name.text = item.displayName;
+      final carbs = item.carbsForGrams(grams);
       if (carbs != null) _carbs.text = carbs.round().toString();
-      _fatGrams = item.fatForGrams(grams);
-      _proteinGrams = item.proteinForGrams(grams);
-      // Flag fat/protein-heavy when they'd add ≥1 fat-protein unit vs the carbs.
-      final fpu = ((_fatGrams ?? 0) * 9 + (_proteinGrams ?? 0) * 4) / 100.0;
-      _fatProteinHeavy = fpu >= 1.0;
+      final fat = item.fatForGrams(grams);
+      final protein = item.proteinForGrams(grams);
+      _fat.text = fat == null ? '' : fat.round().toString();
+      _protein.text = protein == null ? '' : protein.round().toString();
+      _refreshFatProteinHeavy();
     });
+  }
+
+  /// Auto-toggle fat/protein-heavy when the entered fat+protein add ≥1 fat-protein unit.
+  void _refreshFatProteinHeavy() {
+    final fat = double.tryParse(_fat.text) ?? 0;
+    final protein = double.tryParse(_protein.text) ?? 0;
+    _fatProteinHeavy = (fat * 9 + protein * 4) / 100.0 >= 1.0;
   }
 
   /// Show the one-time notice before the first online (Open Food Facts) lookup.
@@ -267,6 +278,38 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  key: const Key('meal-fat-field'),
+                  controller: _fat,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                      labelText: 'Fat (g)',
+                      helperText: 'optional',
+                      border: OutlineInputBorder()),
+                  onChanged: (_) => setState(_refreshFatProteinHeavy),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  key: const Key('meal-protein-field'),
+                  controller: _protein,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                      labelText: 'Protein (g)',
+                      helperText: 'optional',
+                      border: OutlineInputBorder()),
+                  onChanged: (_) => setState(_refreshFatProteinHeavy),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           DropdownMenu<MealCategory>(
             initialSelection: _category,
             label: const Text('Category'),
@@ -295,8 +338,8 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
                         emoji: _category.defaultEmoji,
                         category: _category,
                         carbsGrams: carbs,
-                        fatGrams: _fatGrams ?? 0,
-                        proteinGrams: _proteinGrams ?? 0,
+                        fatGrams: double.tryParse(_fat.text) ?? 0,
+                        proteinGrams: double.tryParse(_protein.text) ?? 0,
                         fatProteinHeavy: _fatProteinHeavy,
                       ),
                     )
