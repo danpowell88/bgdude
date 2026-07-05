@@ -3,14 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../analytics/metrics.dart';
 import '../core/samples.dart';
-import '../insights/illness_mode.dart';
 import '../insights/lab_a1c.dart';
 import '../insights/morning_summary.dart';
 import '../state/providers.dart';
 
-/// The unified Insights page: the daily briefing, insulin-sensitivity readiness,
-/// illness mode, and model status — the things that used to be scattered across
-/// separate screens, now read together the way they're actually used.
+/// The unified Insights page: the daily briefing, insulin-sensitivity readiness, and
+/// model status — the things that used to be scattered across separate screens, now read
+/// together the way they're actually used. (Illness is auto-suggested in Confirm events
+/// and toggled from Quick-log, so it no longer lives here.)
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
 
@@ -20,7 +20,6 @@ class InsightsScreen extends ConsumerWidget {
     final unit = ref.watch(glucoseUnitProvider);
     final ctx = ref.watch(effectiveSensitivityProvider);
     final features = ref.watch(contextFeaturesProvider);
-    final illnessMode = ref.watch(illnessModeProvider);
 
     final overnight = _overnightMetrics(day.cgm);
     final summary = features == null
@@ -139,89 +138,6 @@ class InsightsScreen extends ConsumerWidget {
                 ),
               ),
             ),
-
-        const SizedBox(height: 16),
-        // --- Illness mode (inline) ---
-        Text('Illness mode', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        if (ref.watch(illnessSuggestionProvider) case final s?
-            when s.suggestActivation && !illnessMode.active)
-          Card(
-            color: Theme.of(context).colorScheme.tertiaryContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Your data looks illness-like',
-                      style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  for (final r in s.reasons) Text('• $r'),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => ref
-                            .read(illnessSuggestionProvider.notifier)
-                            .state = null,
-                        child: const Text('Not sick'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: () {
-                          ref.read(illnessModeProvider.notifier).activate();
-                          ref.read(illnessSuggestionProvider.notifier).state =
-                              null;
-                        },
-                        child: const Text('Turn on'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        Card(
-          child: Column(
-            children: [
-              SwitchListTile(
-                title: const Text('Sick day mode'),
-                subtitle: Text(illnessMode.active
-                    ? 'Active — boosting expected insulin needs ×'
-                        '${illnessMode.expectedResistanceBoost.toStringAsFixed(2)}'
-                    : 'Raises expected insulin needs and tags today for the models'),
-                value: illnessMode.active,
-                onChanged: (v) {
-                  final n = ref.read(illnessModeProvider.notifier);
-                  v ? n.activate() : n.deactivate();
-                },
-              ),
-              if (illnessMode.active)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Row(
-                    children: [
-                      const Text('Resistance'),
-                      Expanded(
-                        child: Slider(
-                          value: illnessMode.expectedResistanceBoost,
-                          min: IllnessMode.minBoost,
-                          max: IllnessMode.maxBoost,
-                          divisions: 10,
-                          label:
-                              '×${illnessMode.expectedResistanceBoost.toStringAsFixed(2)}',
-                          onChanged: (v) => ref
-                              .read(illnessModeProvider.notifier)
-                              .updateBoost(v),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
 
         const SizedBox(height: 16),
         // --- Model status ---

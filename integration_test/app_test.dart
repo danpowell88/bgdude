@@ -147,7 +147,7 @@ void main() {
     expect(find.textContaining('Sensitivity readiness'), findsOneWidget);
   });
 
-  testWidgets('insights tab merges briefing, sensitivity and illness',
+  testWidgets('insights tab merges briefing, sensitivity and A1c',
       (tester) async {
     await _pumpApp(tester);
     await tester.tap(find.byIcon(Icons.lightbulb_outline));
@@ -166,15 +166,27 @@ void main() {
     await tester.scrollUntilVisible(find.text('Sleep & glucose'), 250,
         scrollable: scrollable);
     expect(find.text('Sleep & glucose'), findsOneWidget);
+    // Illness mode was removed from Insights — it's auto-suggested in Confirm events and
+    // toggled from Quick-log now.
+    expect(find.text('Sick day mode'), findsNothing);
+  });
 
-    final sick = find.text('Sick day mode');
-    await tester.scrollUntilVisible(sick, 250, scrollable: scrollable);
-    expect(sick, findsOneWidget);
-
-    // Toggle illness mode on → the resistance slider appears.
-    await tester.tap(find.byType(Switch).first);
+  testWidgets('quick-log exposes wellbeing logs incl. illness + mood',
+      (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.byIcon(Icons.add_circle_outline));
     await tester.pumpAndSettle();
-    expect(find.byType(Slider), findsWidgets);
+    expect(find.text('😰 Stress'), findsOneWidget);
+    expect(find.text('🙂 Mood'), findsOneWidget);
+    expect(find.text('🤒 Illness'), findsOneWidget);
+
+    // Illness opens a severity prompt; picking one turns the mode on and closes the sheet.
+    await tester.tap(find.text('🤒 Illness'));
+    await tester.pumpAndSettle();
+    expect(find.text('Feeling unwell?'), findsOneWidget);
+    await tester.tap(find.text('Moderate'));
+    await tester.pumpAndSettle();
+    expect(find.text('Quick log'), findsNothing);
   });
 
   testWidgets('bolus advisor computes a suggestion from simulated glucose',

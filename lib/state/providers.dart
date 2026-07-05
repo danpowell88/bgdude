@@ -32,6 +32,7 @@ import '../insights/a1c_goal.dart';
 import '../insights/alcohol_watch.dart';
 import '../insights/alert_monitor.dart';
 import '../insights/alert_thresholds.dart';
+import '../insights/anomaly_detector.dart';
 import '../insights/care_detectors.dart';
 import '../insights/daily_narrative.dart';
 import '../insights/exercise_mode.dart';
@@ -719,8 +720,8 @@ final basalRecommendationProvider = Provider<BasalRecommendation>((ref) {
       .recommend(profile: profile, settings: settings, now: now);
 });
 
-/// A pending illness-mode suggestion from the detector (null when none). Surfaced as a
-/// banner on the Insights page.
+/// A pending illness-mode suggestion from the detector (null when none). Surfaced in the
+/// Confirm-events inbox (and a notification); confirming it turns illness mode on.
 final illnessSuggestionProvider =
     StateProvider<IllnessSuggestion?>((ref) => null);
 
@@ -1287,6 +1288,9 @@ class AlertService {
       _ref.read(recentHorizonErrorProvider),
     );
     final now = DateTime.now();
+    // Tracks whether a *named* condition is present this cycle; the general anomaly alert
+    // only fires as a catch-all when none is.
+    var firedSpecific = false;
 
     // Start from the user's own alert thresholds, then let safety modifiers raise the
     // low line: impaired-awareness risk (older age, long-standing diabetes), an active
@@ -1327,6 +1331,7 @@ class AlertService {
       unit: _ref.read(glucoseUnitProvider),
     );
     if (alert != null) {
+      firedSpecific = true;
       final category = _categoryFor(alert.kind);
       if (_shouldFire(category, now)) {
         try {
@@ -1367,16 +1372,17 @@ class AlertService {
     // Rescue carbs: fire the act-now case (urgent) as its own category so it can be
     // tuned/opted separately from the predictive low alert above.
     final rescue = _ref.read(rescueCarbAdviceProvider);
-    if (rescue != null &&
-        rescue.urgent &&
-        _shouldFire(NotificationCategory.rescueCarb, now)) {
-      try {
-        await _ref.read(notificationServiceProvider).show(
-              NotificationCategory.rescueCarb,
-              'Take rescue carbs',
-              '~${rescue.grams.round()}g fast carbs now — ${rescue.reason}',
-            );
-      } catch (_) {}
+    if (rescue != null && rescue.urgent) {
+      firedSpecific = true;
+      if (_shouldFire(NotificationCategory.rescueCarb, now)) {
+        try {
+          await _ref.read(notificationServiceProvider).show(
+                NotificationCategory.rescueCarb,
+                'Take rescue carbs',
+                '~${rescue.grams.round()}g fast carbs now — ${rescue.reason}',
+              );
+        } catch (_) {}
+      }
     }
 
     // Care alerts: missed bolus and stubborn-high (possible site failure).
@@ -1389,15 +1395,18 @@ class AlertService {
       settings: day.settings,
       now: now,
     );
-    if (missed != null && _shouldFire(NotificationCategory.missedBolus, now)) {
-      try {
-        await _ref.read(notificationServiceProvider).show(
-              NotificationCategory.missedBolus,
-              'Missed bolus?',
-              'A ~${missed.estimatedCarbsGrams.round()}g rise with no bolus logged — '
-                  'correct now if you ate.',
-            );
-      } catch (_) {}
+    if (missed != null) {
+      firedSpecific = true;
+      if (_shouldFire(NotificationCategory.missedBolus, now)) {
+        try {
+          await _ref.read(notificationServiceProvider).show(
+                NotificationCategory.missedBolus,
+                'Missed bolus?',
+                'A ~${missed.estimatedCarbsGrams.round()}g rise with no bolus logged — '
+                    'correct now if you ate.',
+              );
+        } catch (_) {}
+      }
     }
 
     final siteMin = _ref.read(deviceStateProvider).age(DeviceKind.site, now)?.inMinutes;
@@ -1409,6 +1418,9 @@ class AlertService {
       siteAgeHours: siteMin == null ? null : siteMin / 60.0,
       now: now,
     );
+    if (stubborn != null) {
+      firedSpecific = true;
+    }
     if (stubborn != null && _shouldFire(NotificationCategory.stubbornHigh, now)) {
       try {
         await _ref.read(notificationServiceProvider).show(
@@ -1436,13 +1448,37 @@ class AlertService {
       likelySiteIssue: stubborn?.likelySiteIssue ?? false,
       now: now,
     );
-    if (ketone.suggestCheck &&
-        _shouldFire(NotificationCategory.ketoneCheck, now)) {
-      try {
-        await _ref.read(notificationServiceProvider).show(
-              NotificationCategory.ketoneCheck, 'Check ketones', ketone.reason,
-              bigText: true);
-      } catch (_) {}
+    if (ketone.suggestCheck) {
+      firedSpecific = true;
+      if (_shouldFire(NotificationCategory.ketoneCheck, now)) {
+        try {
+          await _ref.read(notificationServiceProvider).show(
+                NotificationCategory.ketoneCheck, 'Check ketones', ketone.reason,
+                bigText: true);
+        } catch (_) {}
+      }
+    }
+
+    // General anomaly catch-all: when no named condition above is present, flag glucose
+    // that's moving faster than the carbs/insulin model expects — an early "something out
+    // of the norm" heads-up (unannounced meal, sensor/site trouble, stress, illness onset).
+    if (!firedSpecific) {
+      final current = state.currentMgdl;
+      final expectedRoc = forecasts.isEmpty
+          ? 0.0
+          : (forecasts.first.mgdl - current) / forecasts.first.horizonMinutes;
+      final anomaly = const AnomalyDetector()
+          .detect(cgm: day.cgm, expectedRocMgdlPerMin: expectedRoc, now: now);
+      if (anomaly.detected &&
+          _shouldFire(NotificationCategory.anomalyDetected, now)) {
+        try {
+          await _ref.read(notificationServiceProvider).show(
+                NotificationCategory.anomalyDetected,
+                'Something looks unusual',
+                anomaly.reason,
+              );
+        } catch (_) {}
+      }
     }
 
     // Log predictions (throttled) so the model-accuracy view can score them later.
@@ -1962,6 +1998,17 @@ class AppJobs {
     AnnotationKind? kind,
     double? carbsGrams,
   }) async {
+    // Confirming a detected illness *turns the mode on* (which boosts expected insulin
+    // needs and, on deactivation, writes the annotation spanning the whole sick period) —
+    // not just a one-off annotation.
+    if (p.type == ConfirmationType.illness) {
+      _ref.read(illnessModeProvider.notifier).activate();
+      _ref.read(illnessSuggestionProvider.notifier).state = null;
+      await ConfirmationDecisionStore.record(
+          p.id, ConfirmationDecision.confirmed, at: DateTime.now());
+      _ref.invalidate(pendingConfirmationsProvider);
+      return;
+    }
     final k = kind ?? p.suggestedKind;
     final grams = k.relabelsCarbs ? (carbsGrams ?? p.carbsGrams ?? 0) : 0.0;
     final repo = _ref.read(historyRepositoryProvider);
@@ -1979,9 +2026,6 @@ class AppJobs {
     }
     await ConfirmationDecisionStore.record(
         p.id, ConfirmationDecision.confirmed, at: DateTime.now());
-    if (p.type == ConfirmationType.illness) {
-      _ref.read(illnessSuggestionProvider.notifier).state = null;
-    }
     _ref.invalidate(pendingConfirmationsProvider);
   }
 

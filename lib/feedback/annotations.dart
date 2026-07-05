@@ -15,6 +15,7 @@ enum AnnotationKind {
   exercise, // context + partial exclude
   illness, // context: raises resistance
   stress, // context: raises resistance
+  mood, // context: wellbeing note (great/ok/low)
   alcohol, // context: biases toward delayed lows
   other,
 }
@@ -39,6 +40,7 @@ extension AnnotationKindX on AnnotationKind {
   bool get isContext => switch (this) {
         AnnotationKind.illness => true,
         AnnotationKind.stress => true,
+        AnnotationKind.mood => true,
         AnnotationKind.exercise => true,
         AnnotationKind.alcohol => true,
         _ => false,
@@ -53,6 +55,7 @@ extension AnnotationKindX on AnnotationKind {
         AnnotationKind.exercise => 'Exercise',
         AnnotationKind.illness => 'Illness',
         AnnotationKind.stress => 'Stress',
+        AnnotationKind.mood => 'Mood',
         AnnotationKind.alcohol => 'Alcohol',
         AnnotationKind.other => 'Other',
       };

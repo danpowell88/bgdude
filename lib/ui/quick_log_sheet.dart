@@ -61,6 +61,8 @@ class QuickLogSheet extends ConsumerWidget {
                   await jobs.logContext(AnnotationKind.stress);
                   toast('Logged stress.');
                 }),
+                _Chip('🙂 Mood', () => _mood(context, ref, toast)),
+                _Chip('🤒 Illness', () => _illness(context, ref, toast)),
                 _Chip('🩹 New sensor', () async {
                   await jobs.recordDeviceChange(DeviceKind.sensor);
                   toast('Sensor change recorded.');
@@ -75,6 +77,89 @@ class QuickLogSheet extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Quick illness on/off. Illness reliably raises insulin needs, so turning it on boosts
+  /// the models and, on end, tags the sick period for retraining. (The app also auto-
+  /// suggests this in Confirm events when your data looks illness-like.)
+  Future<void> _illness(
+      BuildContext context, WidgetRef ref, void Function(String) toast) async {
+    final mode = ref.read(illnessModeProvider);
+    final notifier = ref.read(illnessModeProvider.notifier);
+    if (mode.active) {
+      final end = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Illness mode is on'),
+          content: Text(
+              'Boosting expected insulin needs ×${mode.expectedResistanceBoost.toStringAsFixed(2)}. '
+              'End it once you\'re feeling better.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Keep on')),
+            FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('End illness')),
+          ],
+        ),
+      );
+      if (end == true) {
+        notifier.deactivate();
+        toast('Illness mode ended.');
+      }
+      return;
+    }
+    final boost = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Feeling unwell?'),
+        content: const Text(
+            'Sick days usually raise insulin needs. Pick how rough you feel — the models '
+            'expect more resistance while it\'s on, and today gets tagged for training.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(1.1),
+              child: const Text('Mild')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(1.2),
+              child: const Text('Moderate')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(1.35),
+              child: const Text('Severe')),
+        ],
+      ),
+    );
+    if (boost != null) {
+      notifier.activate(boost: boost);
+      toast('Illness mode on — check ketones if high with normal IOB.');
+    }
+  }
+
+  /// Log a wellbeing note (great/ok/low) as context.
+  Future<void> _mood(
+      BuildContext context, WidgetRef ref, void Function(String) toast) async {
+    final level = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('How are you feeling?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop('Good'),
+              child: const Text('🙂 Good')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop('OK'),
+              child: const Text('😐 OK')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop('Low'),
+              child: const Text('😟 Low')),
+        ],
+      ),
+    );
+    if (level != null) {
+      await ref.read(appJobsProvider).logContext(AnnotationKind.mood, note: level);
+      toast('Logged mood: $level.');
+    }
   }
 
   Future<void> _number(
