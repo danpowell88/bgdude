@@ -208,8 +208,29 @@ class AlertThresholdsNotifier extends StateNotifier<AlertThresholds> {
   }
 }
 
-/// Display unit (mmol/L default for the AU user).
-final glucoseUnitProvider = StateProvider<GlucoseUnit>((ref) => GlucoseUnit.mmol);
+/// Display unit (mmol/L default for the AU user), persisted encrypted so the choice
+/// survives restarts. Set once during onboarding and changeable in Settings.
+final glucoseUnitProvider =
+    StateNotifierProvider<GlucoseUnitNotifier, GlucoseUnit>(
+        (ref) => GlucoseUnitNotifier());
+
+class GlucoseUnitNotifier extends StateNotifier<GlucoseUnit> {
+  GlucoseUnitNotifier() : super(GlucoseUnit.mmol) {
+    _restore();
+  }
+  static const _key = 'glucose_unit_v1';
+
+  Future<void> _restore() async {
+    final raw = await KvStore.getString(_key);
+    if (raw == 'mgdl') state = GlucoseUnit.mgdl;
+    if (raw == 'mmol') state = GlucoseUnit.mmol;
+  }
+
+  Future<void> set(GlucoseUnit unit) async {
+    state = unit;
+    await KvStore.setString(_key, unit == GlucoseUnit.mgdl ? 'mgdl' : 'mmol');
+  }
+}
 
 /// Whether first-run onboarding (pairing warning + permission grants) is complete.
 /// Initialized from shared_preferences in main(); flipping it persists the flag.
@@ -994,8 +1015,23 @@ final livePredictionStateProvider = Provider<PredictionState?>((ref) {
     context: ref.watch(effectiveSensitivityProvider),
     healthFeatures:
         healthSampler?.featuresAt(latest.time) ?? HealthFeatureSampler.zeros,
+    controlIq: _controlIqStateFrom(snapshot),
   );
 });
+
+/// Map the live pump snapshot's Control-IQ status onto the closed-loop model the
+/// predictor/advisor use. Off unless the loop is actually enabled.
+ControlIqState _controlIqStateFrom(PumpSnapshot? snap) {
+  if (snap == null) return ControlIqState.off;
+  final on = snap.closedLoopEnabled ?? snap.controlIqActive ?? false;
+  if (!on) return ControlIqState.off;
+  return switch (snap.controlIqMode) {
+    ControlIqMode.sleep => ControlIqState.sleep,
+    ControlIqMode.exercise => ControlIqState.exercise,
+    // Standard, or unknown-but-active firmware → treat as Standard.
+    _ => ControlIqState.standard,
+  };
+}
 
 /// Saved-meal library with shared_preferences persistence (the drift `SavedMeals`
 /// table is the eventual home once the encrypted DB is wired through the app).

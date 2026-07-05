@@ -130,7 +130,7 @@ class _StatusCard extends StatelessWidget {
               snap.basalUnitsPerHour == null
                   ? '—'
                   : '${snap.basalUnitsPerHour!.toStringAsFixed(2)} U/hr'),
-          _Row('Control-IQ', (snap.controlIqActive ?? false) ? 'Active' : 'Off'),
+          _Row('Control-IQ', _controlIqLabel(snap)),
           if (snap.lastBolusUnits != null)
             _Row('Last bolus',
                 '${snap.lastBolusUnits!.toStringAsFixed(2)} U · ${_ago(snap.lastBolusTime)}'),
@@ -149,6 +149,15 @@ class _StatusCard extends StatelessWidget {
         GlucoseTrend.doubleDown => '⇊',
         _ => '',
       };
+
+  /// "Off", "Active", or "Active · Sleep" — the mode annotates the on state so the user
+  /// sees which target band the loop is steering to.
+  static String _controlIqLabel(PumpSnapshot snap) {
+    final on = snap.closedLoopEnabled ?? snap.controlIqActive ?? false;
+    if (!on) return 'Off';
+    final mode = snap.controlIqMode;
+    return mode == ControlIqMode.unknown ? 'Active' : 'Active · ${mode.label}';
+  }
 }
 
 class _InsulinTodayCard extends StatelessWidget {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../core/units.dart';
 import '../profile/user_profile.dart';
 import '../state/providers.dart';
 import 'profile_form.dart';
@@ -91,28 +92,48 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
   }
 
-  Widget _profilePage(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: ListView(
-          children: [
-            Icon(Icons.person_outline,
-                size: 48, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 16),
-            Text('About you', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text(
-              'Optional — a few details help tailor the insights. You can change these '
-              'any time in Settings.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 20),
-            ProfileForm(
-              initial: _draftProfile,
-              onChanged: (p) => _draftProfile = p,
-            ),
-          ],
-        ),
-      );
+  Widget _profilePage(BuildContext context) {
+    final unit = ref.watch(glucoseUnitProvider);
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: ListView(
+        children: [
+          Icon(Icons.person_outline,
+              size: 48, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 16),
+          Text('About you', style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          Text(
+            'Optional — a few details help tailor the insights. You can change these '
+            'any time in Settings.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 20),
+          // Glucose units — asked up front so every reading in the app shows the way
+          // the user thinks about their numbers. Defaults to mmol/L (Australia).
+          Row(
+            children: [
+              const Expanded(child: Text('Glucose units')),
+              SegmentedButton<GlucoseUnit>(
+                segments: const [
+                  ButtonSegment(value: GlucoseUnit.mmol, label: Text('mmol/L')),
+                  ButtonSegment(value: GlucoseUnit.mgdl, label: Text('mg/dL')),
+                ],
+                selected: {unit},
+                onSelectionChanged: (s) =>
+                    ref.read(glucoseUnitProvider.notifier).set(s.first),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ProfileForm(
+            initial: _draftProfile,
+            onChanged: (p) => _draftProfile = p,
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _page1(BuildContext context) => _pane(
         context,

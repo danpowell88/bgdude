@@ -116,6 +116,26 @@ class BolusAdvisor {
       }
     }
 
+    // --- Control-IQ awareness ---
+    // When the closed loop is running it changes basal automatically. In Standard /
+    // Exercise it also delivers automatic correction boluses, so a full manual correction
+    // on top risks stacking into a low — halve it and say why. In Sleep it won't
+    // auto-correct, so a manual correction is more likely warranted (just flag it).
+    final ciq = state.controlIq;
+    if (ciq.enabled) {
+      if (ciq.autoCorrects && correctionUnits > 0.05) {
+        correctionUnits *= 0.5;
+        notes.add(
+            'Control-IQ is active and auto-corrects highs — correction halved to avoid '
+            'stacking. Consider letting the loop work before dosing.');
+        confidence = _downgrade(confidence);
+      } else if (!ciq.autoCorrects && correctionUnits > 0.05) {
+        notes.add(
+            'Control-IQ Sleep mode adjusts basal but does not auto-correct — a manual '
+            'correction may be needed.');
+      }
+    }
+
     // --- Predicted-low guardrail ---
     // Always surface a predicted low, even when there is no correction to trim —
     // the user deciding on a meal bolus needs to know either way.

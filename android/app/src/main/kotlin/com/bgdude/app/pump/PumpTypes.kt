@@ -47,6 +47,12 @@ class MutableSnapshot {
     var basalUnitsPerHour: Double? = null
     var controlIqActive: Boolean? = null
 
+    /** Whether the Control-IQ closed loop is switched on (from ControlIQInfo). */
+    var closedLoopEnabled: Boolean? = null
+
+    /** Current Control-IQ user mode: STANDARD, SLEEP or EXERCISE. */
+    var controlIqMode: String? = null
+
     var cgmMgdl: Int? = null
     var cgmTrend: String? = null
     var cgmTimestampEpochMs: Long? = null
@@ -80,6 +86,8 @@ class MutableSnapshot {
         field("iobUnits", iobUnits)
         field("basalUnitsPerHour", basalUnitsPerHour)
         field("controlIqActive", controlIqActive)
+        field("closedLoopEnabled", closedLoopEnabled)
+        field("controlIqMode", controlIqMode)
         field("cgmMgdl", cgmMgdl)
         field("cgmTrend", cgmTrend)
         field("cgmTimestampEpochMs", cgmTimestampEpochMs)

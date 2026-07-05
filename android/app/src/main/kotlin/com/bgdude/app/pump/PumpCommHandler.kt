@@ -9,6 +9,7 @@ import com.jwoglom.pumpx2.pump.bluetooth.PumpReadyState
 import com.jwoglom.pumpx2.pump.bluetooth.TandemBluetoothHandler
 import com.jwoglom.pumpx2.pump.bluetooth.TandemPump
 import com.jwoglom.pumpx2.pump.messages.Message
+import com.jwoglom.pumpx2.pump.messages.builders.ControlIQInfoRequestBuilder
 import com.jwoglom.pumpx2.pump.messages.builders.CurrentBatteryRequestBuilder
 import com.jwoglom.pumpx2.pump.messages.builders.JpakeAuthBuilder
 import com.jwoglom.pumpx2.pump.messages.models.KnownDeviceModel
@@ -97,6 +98,10 @@ class PumpCommHandler(
         }
         sendCommand(p, InsulinStatusRequest())
         sendCommand(p, ControlIQIOBRequest())
+        // Control-IQ info (closed-loop on/off + user mode) is version-matched like battery.
+        PumpState.getPumpAPIVersion()?.let { api ->
+            sendCommand(p, ControlIQInfoRequestBuilder.create(api))
+        }
         sendCommand(p, CurrentBasalStatusRequest())
         sendCommand(p, CurrentEGVGuiDataRequest())
         sendCommand(p, LastBolusStatusV2Request())

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/units.dart';
 import '../state/providers.dart';
 import 'bolus_advisor_screen.dart';
 import 'home_screen.dart';
@@ -43,7 +42,6 @@ class _MainShellState extends ConsumerState<MainShell> {
     PumpPairingListener.attach(ref, context);
 
     final devMode = ref.watch(devModeProvider);
-    final unit = ref.watch(glucoseUnitProvider);
 
     final body = switch (_index) {
       0 => const TodayTab(),
@@ -72,13 +70,6 @@ class _MainShellState extends ConsumerState<MainShell> {
             icon: const Icon(Icons.add_circle_outline),
             tooltip: 'Quick log',
             onPressed: () => QuickLogSheet.show(context),
-          ),
-          IconButton(
-            icon: Icon(
-                unit == GlucoseUnit.mmol ? Icons.water_drop : Icons.science),
-            tooltip: 'Toggle units',
-            onPressed: () => ref.read(glucoseUnitProvider.notifier).state =
-                unit == GlucoseUnit.mmol ? GlucoseUnit.mgdl : GlucoseUnit.mmol,
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),

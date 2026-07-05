@@ -122,7 +122,7 @@
   <ul class="tight">
     <li><b>Intro</b> — what the app does.</li>
     <li><b>Before you pair</b> — you must tick the acknowledgement: pairing with the pump unpairs the official t:connect app, the connection is reverse-engineered (can be finicky), and the app never sends insulin/control commands.</li>
-    <li><b>About you</b> — optional profile (sex, age, diabetes type/duration, weight, height). You can skip and set it later in <a href="#profile">Profile</a>.</li>
+    <li><b>About you</b> — pick your <b>glucose units</b> (mmol/L or mg/dL) up front so every reading shows the way you think about your numbers, plus an optional profile (sex, age, diabetes type/duration, weight, height). You can skip the profile and set it later in <a href="#profile">Profile</a>, and change units any time in <a href="#settings">Settings</a>.</li>
     <li><b>Connect your data</b> — grants Health Connect access and pump/notification permissions, then pairs.</li>
   </ul>
   <div class="note">No hardware? Turn on <b>Dev mode</b> (Settings → Dev mode) to run against a simulated t:slim&nbsp;X2 + Dexcom so every screen is populated. The <span class="chip">DEV</span> badge in the top bar shows when it's on.</div>
@@ -134,7 +134,6 @@
   <h3>Top bar (right side)</h3>
   <table>
     <tr><th>Icon</th><th>What it does</th></tr>
-    <tr><td>💧 / 🧪 water-drop / flask</td><td>Toggle glucose units between mmol/L and mg/dL. The whole app follows your choice.</td></tr>
     <tr><td>⊕ add-circle</td><td>Open the <a href="#quicklog">Quick-log</a> sheet (carbs, bolus, exercise, alcohol, sensor/site change).</td></tr>
     <tr><td>⚙ settings</td><td>Open <a href="#settings">Settings</a> — every screen below that isn't a tab lives here.</td></tr>
     <tr><td><span class="chip">DEV</span></td><td>Shown only in dev mode (simulated pump).</td></tr>
@@ -181,6 +180,7 @@
     <li><b>Scenario lines</b> (in Advanced mode) — IOB-only, with-carbs, unannounced-meal, and no-basal — so you see the spread, not one confident number.</li>
     <li><b>Sensitivity &amp; risk read-outs</b> — today's resistance multiplier and near-term low/high risk with a suggested action.</li>
     <li><b>What-if explorer</b> — sliders for carbs and insulin to project the trajectory before you decide.</li>
+    <li><b>Control-IQ aware.</b> When the pump reports the closed loop is active, the forecast folds in its automatic basal changes and corrections — pulling projected highs and lows back toward the mode's target band (tighter in Sleep, higher in Exercise) instead of assuming an open loop. Rescue-carb advice uses the same softened forecast.</li>
   </ul>
 </section>
 
@@ -231,6 +231,7 @@
   <p class="lead">Open it from the <b>Bolus</b> button on Today. Enter carbs (and it reads your current glucose + IOB); it suggests a dose and <b>always shows the working</b> — BG, target, ISF, carb ratio, IOB and the context multiplier.</p>
   <ul class="tight">
     <li>It leans conservative near predicted lows and never suggests a negative dose (that's a rescue-carb situation).</li>
+    <li><b>Control-IQ aware.</b> When the closed loop is running it also corrects highs and eases off for lows automatically. So in <b>Standard/Exercise</b> mode the advisor <b>halves a standalone correction</b> (to avoid stacking with the pump's auto-corrections) and says so; in <b>Sleep</b> mode — where Control-IQ won't auto-correct — it keeps the full correction and flags that a manual one may be needed.</li>
     <li>It <b>never delivers insulin</b> — enter the dose on your pump yourself.</li>
   </ul>
 </section>
@@ -332,7 +333,7 @@
   <div class="shot"><img src="screenshots/17-pump.png" alt="Pump screen"><div class="cap">Everything synced from the pump</div></div>
   <p class="lead">Settings → <b>Pump</b>. A read-only view of live and derived pump data:</p>
   <ul class="tight">
-    <li><b>Live status</b> — glucose + trend, insulin-on-board, basal rate, Control-IQ, last bolus.</li>
+    <li><b>Live status</b> — glucose + trend, insulin-on-board, basal rate, last bolus, and <b>Control-IQ</b> which shows the closed loop's state and current mode (e.g. "Active · Sleep").</li>
     <li><b>Insulin today</b> — total, bolus/basal split.</li>
     <li><b>Reservoir</b> — units left + a runway estimate.</li>
     <li><b>Site &amp; sensor</b> — age since last change.</li>
@@ -379,7 +380,7 @@
   <p>Everything not on a tab lives in Settings. Beyond the screens above:</p>
   <ul class="tight">
     <li><b>Dev mode</b> — simulated pump + CGM for exploring without hardware.</li>
-    <li><b>Glucose units</b> — mmol/L or mg/dL (also toggled from the top bar).</li>
+    <li><b>Glucose units</b> — mmol/L (Australian default) or mg/dL. You pick this during onboarding; change it here any time and the whole app follows.</li>
     <li><b>Sync health data now</b> — pull sleep, HRV, resting/continuous HR, steps and workouts from Health Connect.</li>
     <li><b>Barcode food lookup</b> — the online food-lookup switch (see <a href="#meals">Meals</a>).</li>
     <li><b>Re-pair / Unpair pump</b> — start a fresh scan or drop the pairing.</li>

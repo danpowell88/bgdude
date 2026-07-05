@@ -5,6 +5,9 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.AlarmStatusRespon
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.AlertStatusResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ApiVersionResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQIOBResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoAbstractResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV1Response
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV2Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBasalStatusResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV1Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV2Response
@@ -43,6 +46,24 @@ object PumpResponseMapper {
             is ControlIQIOBResponse -> {
                 snapshot.iobUnits = message.pumpDisplayedIOB / 1000.0 // milliunits
                 snapshot.controlIqActive = true
+            }
+
+            // Control-IQ info: whether the closed loop is on and the current user mode
+            // (Standard / Sleep / Exercise). Control-IQ changes basal automatically and,
+            // in Standard/Exercise, delivers automatic correction boluses — the analytics
+            // layer needs this to avoid double-correcting and to tighten forecasts.
+            is ControlIQInfoAbstractResponse -> {
+                // getCurrentUserModeType() is public on the abstract response, but the
+                // closed-loop flag only has a public getter on the concrete V1/V2 types
+                // (the abstract field is package-private), so read it per-subclass.
+                val closedLoop = when (message) {
+                    is ControlIQInfoV1Response -> message.closedLoopEnabled
+                    is ControlIQInfoV2Response -> message.closedLoopEnabled
+                    else -> null
+                }
+                snapshot.closedLoopEnabled = closedLoop
+                snapshot.controlIqMode = message.currentUserModeType?.name
+                if (closedLoop == true) snapshot.controlIqActive = true
             }
 
             is CurrentBasalStatusResponse ->

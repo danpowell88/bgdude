@@ -1,6 +1,7 @@
 package com.bgdude.app.pump
 
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQIOBResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV2Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV1Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentEGVGuiDataResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.InsulinStatusResponse
@@ -62,6 +63,30 @@ class PumpResponseMapperTest {
         assertNotNull(snapshot.iobUnits)
         assertEquals(1.5, snapshot.iobUnits!!, 1e-9)
         assertEquals(true, snapshot.controlIqActive)
+    }
+
+    @Test
+    fun controliq_info_maps_closed_loop_and_user_mode() {
+        val snapshot = MutableSnapshot()
+        // Args (confirmed via javap): closedLoopEnabled, weight, weightUnitId,
+        // totalDailyInsulin, currentUserModeTypeId (SLEEP=1), byte6, byte7, byte8,
+        // controlStateType, exerciseChoice, exerciseDuration, exerciseTimeRemaining.
+        val response = ControlIQInfoV2Response(
+            /* closedLoopEnabled */ true,
+            /* weight */ 70,
+            /* weightUnitId */ 0,
+            /* totalDailyInsulin */ 500,
+            /* currentUserModeTypeId */ 1,
+            0, 0, 0, 0, 0,
+            /* exerciseDuration */ 0L,
+            /* exerciseTimeRemaining */ 0L,
+        )
+        PumpResponseMapper.apply(response, snapshot)
+
+        // The mapper must faithfully mirror the response's own decoded values.
+        assertEquals(true, snapshot.closedLoopEnabled)
+        assertEquals(true, snapshot.controlIqActive)
+        assertEquals(response.currentUserModeType.name, snapshot.controlIqMode)
     }
 
     @Test

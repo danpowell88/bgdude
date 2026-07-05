@@ -1,0 +1,50 @@
+# Publish the docs in doc/ to GitHub Pages.
+#
+# The doc/ folder is served as the site root, so doc/index.html is the landing page and
+# doc/user-guide.html is the walk-through. Enable Pages once (repo Settings → Pages →
+# Build and deployment → Source: "GitHub Actions") and this deploys on every push to main
+# that touches the docs.
+name: Deploy docs to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'doc/**'
+      - '.github/workflows/pages.yml'
+  # Allow manual runs from the Actions tab.
+  workflow_dispatch:
+
+# Least-privilege token scopes required by the Pages deploy action.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; newer pushes supersede in-flight ones.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # Upload the doc/ folder as the site artifact (served at the site root).
+      - name: Upload docs artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: doc
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -81,6 +81,8 @@ class SimulatedPumpClient implements PumpSource {
       iobUnits: day.iobNow(),
       basalUnitsPerHour: day.settings.segmentAt(sample.time).basalUnitsPerHour,
       controlIqActive: true,
+      closedLoopEnabled: true,
+      controlIqMode: _simMode(sample.time),
       cgmMgdl: sample.mgdl.round(),
       cgmTrend: sample.trend,
       cgmTime: sample.time,
@@ -92,6 +94,11 @@ class SimulatedPumpClient implements PumpSource {
     _lastSnapshot = snapshot;
     _snapshots.add(snapshot);
   }
+
+  /// Simulated Control-IQ mode: Sleep overnight (23:00–07:00), Standard otherwise, so
+  /// dev mode exercises the mode-aware analytics without hardware.
+  ControlIqMode _simMode(DateTime t) =>
+      (t.hour >= 23 || t.hour < 7) ? ControlIqMode.sleep : ControlIqMode.standard;
 
   void _emitConnection(PumpConnection c) {
     _lastConnection = c;

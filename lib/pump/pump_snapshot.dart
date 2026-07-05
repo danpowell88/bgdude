@@ -5,6 +5,30 @@ library;
 
 import '../core/samples.dart';
 
+/// The Control-IQ user mode reported by the pump. Control-IQ steers glucose toward a
+/// different target band per mode and (in standard/exercise) delivers automatic
+/// correction boluses; sleep mode is basal-only with a tighter target.
+enum ControlIqMode {
+  standard,
+  sleep,
+  exercise,
+  unknown;
+
+  static ControlIqMode fromName(String? s) => switch (s) {
+        'STANDARD' => ControlIqMode.standard,
+        'SLEEP' => ControlIqMode.sleep,
+        'EXERCISE' => ControlIqMode.exercise,
+        _ => ControlIqMode.unknown,
+      };
+
+  String get label => switch (this) {
+        ControlIqMode.standard => 'Standard',
+        ControlIqMode.sleep => 'Sleep',
+        ControlIqMode.exercise => 'Exercise',
+        ControlIqMode.unknown => 'Unknown',
+      };
+}
+
 enum PumpConnectionStage {
   idle,
   scanning,
@@ -77,6 +101,8 @@ class PumpSnapshot {
     this.iobUnits,
     this.basalUnitsPerHour,
     this.controlIqActive,
+    this.closedLoopEnabled,
+    this.controlIqMode = ControlIqMode.unknown,
     this.cgmMgdl,
     this.cgmTrend,
     this.cgmTime,
@@ -97,6 +123,14 @@ class PumpSnapshot {
   final double? iobUnits;
   final double? basalUnitsPerHour;
   final bool? controlIqActive;
+
+  /// Whether the Control-IQ closed loop is switched on (null on older firmware /
+  /// before the first ControlIQInfo response).
+  final bool? closedLoopEnabled;
+
+  /// Current Control-IQ user mode (standard / sleep / exercise).
+  final ControlIqMode controlIqMode;
+
   final int? cgmMgdl;
   final GlucoseTrend? cgmTrend;
   final DateTime? cgmTime;
@@ -131,6 +165,8 @@ class PumpSnapshot {
         iobUnits: (j['iobUnits'] as num?)?.toDouble(),
         basalUnitsPerHour: (j['basalUnitsPerHour'] as num?)?.toDouble(),
         controlIqActive: j['controlIqActive'] as bool?,
+        closedLoopEnabled: j['closedLoopEnabled'] as bool?,
+        controlIqMode: ControlIqMode.fromName(j['controlIqMode'] as String?),
         cgmMgdl: (j['cgmMgdl'] as num?)?.toInt(),
         cgmTrend: _trend(j['cgmTrend'] as String?),
         cgmTime: _time(j['cgmTimestampEpochMs'] as num?),

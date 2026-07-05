@@ -132,7 +132,7 @@ class SettingsScreen extends ConsumerWidget {
               ],
               selected: {unit},
               onSelectionChanged: (s) =>
-                  ref.read(glucoseUnitProvider.notifier).state = s.first,
+                  ref.read(glucoseUnitProvider.notifier).set(s.first),
             ),
           ),
           ListTile(

@@ -35,6 +35,102 @@ class PredictionLine {
       points.isEmpty ? 0 : points.map((p) => p.mgdl).reduce((a, b) => a > b ? a : b);
 }
 
+/// Approximation of the Control-IQ closed loop for forward simulation.
+///
+/// Control-IQ changes basal automatically — increasing/suspending it, and (in Standard
+/// and Exercise modes) delivering automatic correction boluses — to steer glucose toward
+/// a mode-specific band. An open-loop projection that ignores this over-predicts both
+/// highs and lows. We model it as a rate-limited proportional pull toward the band: a
+/// downward pull above the band (increased basal + auto-corrections) and a gentler upward
+/// pull below it (basal suspension can only *withhold* insulin, not add glucose).
+///
+/// The numbers are deliberately conservative heuristics — enough to attenuate excursions
+/// in the right direction and magnitude, not to reproduce the pump's controller exactly.
+class ControlIqState {
+  const ControlIqState({
+    required this.targetCenterMgdl,
+    required this.highEdgeMgdl,
+    required this.lowEdgeMgdl,
+    required this.maxDownPullPerMin,
+    required this.maxUpPullPerMin,
+    this.enabled = true,
+    this.autoCorrects = true,
+  });
+
+  /// Closed loop off — no modulation (identical to the pure open-loop forecast).
+  static const ControlIqState off = ControlIqState(
+    targetCenterMgdl: 0,
+    highEdgeMgdl: 0,
+    lowEdgeMgdl: 0,
+    maxDownPullPerMin: 0,
+    maxUpPullPerMin: 0,
+    enabled: false,
+    autoCorrects: false,
+  );
+
+  /// Standard: holds ~112.5–160, auto-corrects toward 110 above 180 → strongest downward
+  /// authority (increased basal *and* automatic correction boluses).
+  static const ControlIqState standard = ControlIqState(
+    targetCenterMgdl: 140,
+    highEdgeMgdl: 160,
+    lowEdgeMgdl: 70,
+    maxDownPullPerMin: 0.6,
+    maxUpPullPerMin: 0.35,
+  );
+
+  /// Sleep: tighter 112.5–120 band but **no** automatic correction boluses — basal-only,
+  /// so the downward authority is weaker than Standard.
+  static const ControlIqState sleep = ControlIqState(
+    targetCenterMgdl: 112.5,
+    highEdgeMgdl: 120,
+    lowEdgeMgdl: 75,
+    maxDownPullPerMin: 0.35,
+    maxUpPullPerMin: 0.35,
+    autoCorrects: false,
+  );
+
+  /// Exercise: higher 140–160 band and a raised low floor — protects against lows sooner,
+  /// corrects highs more gently.
+  static const ControlIqState exercise = ControlIqState(
+    targetCenterMgdl: 150,
+    highEdgeMgdl: 160,
+    lowEdgeMgdl: 80,
+    maxDownPullPerMin: 0.45,
+    maxUpPullPerMin: 0.4,
+  );
+
+  final double targetCenterMgdl;
+  final double highEdgeMgdl;
+  final double lowEdgeMgdl;
+  final double maxDownPullPerMin;
+  final double maxUpPullPerMin;
+  final bool enabled;
+
+  /// Whether this mode delivers automatic correction boluses (Standard/Exercise do;
+  /// Sleep is basal-only). Used by the bolus advisor to avoid double-correcting.
+  final bool autoCorrects;
+
+  /// Proportional gain: mg/dL of pull rate per mg/dL of distance beyond the band.
+  static const double _gainPerMin = 0.015;
+
+  /// The glucose delta the loop contributes over [stepMinutes] at projected [bg].
+  /// Negative above the band (basal up / auto-correct), positive below (basal suspended).
+  double stepDelta(double bg, int stepMinutes) {
+    if (!enabled) return 0;
+    if (bg > highEdgeMgdl) {
+      final rate =
+          (_gainPerMin * (bg - targetCenterMgdl)).clamp(0.0, maxDownPullPerMin);
+      return -rate * stepMinutes;
+    }
+    if (bg < lowEdgeMgdl) {
+      final rate =
+          (_gainPerMin * (lowEdgeMgdl - bg)).clamp(0.0, maxUpPullPerMin);
+      return rate * stepMinutes;
+    }
+    return 0;
+  }
+}
+
 /// Inputs describing the current physiological state.
 class PredictionState {
   const PredictionState({
@@ -47,6 +143,7 @@ class PredictionState {
     required this.settings,
     this.context = SensitivityContext.neutral,
     this.healthFeatures = const [0.0, 0.0, 0.0],
+    this.controlIq = ControlIqState.off,
   });
 
   final DateTime now;
@@ -64,6 +161,10 @@ class PredictionState {
   /// Acute activity features (steps / post-exercise) from `HealthFeatureSampler`,
   /// fed to the learned residual forecaster. Zeros when no wearable data covers [now].
   final List<double> healthFeatures;
+
+  /// The Control-IQ closed loop, if active — folded into the forward simulation so the
+  /// forecast reflects automatic basal changes / corrections. Defaults to off.
+  final ControlIqState controlIq;
 }
 
 class GlucosePredictor {
@@ -212,6 +313,14 @@ class GlucosePredictor {
       }
 
       bg += insulinDelta + carbDelta + momentumDelta;
+
+      // Control-IQ closed-loop modulation (skipped for the manual zero-temp hypothetical,
+      // which imagines basal off). Applied after the physiological deltas so it reacts to
+      // the just-projected level, like the pump's 5-minute control cycle.
+      if (!suspendBasal) {
+        bg += s.controlIq.stepDelta(bg, stepMinutes);
+      }
+
       if (bg < 39) bg = 39; // CGM floor
       if (bg > 400) bg = 400; // CGM ceiling
       points.add((time: t, mgdl: bg));
