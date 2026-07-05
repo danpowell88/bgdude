@@ -108,12 +108,24 @@ class TimelineEventCard extends ConsumerWidget {
 
   Future<void> _tag(BuildContext context, WidgetRef ref) async {
     final notifier = ref.read(eventDispositionProvider.notifier);
+    // A contextual header explaining the smart default for this event type.
+    final String header = event.type.isPumpSourced
+        ? 'Pump dosing data — used to train the model by default.'
+        : event.type.defaultDisposition == ModelDisposition.ignore
+            ? 'Suspected ${event.type.label.toLowerCase()} — excluded from the model by '
+                'default. Override below if it was real.'
+            : 'Real signal — used to train the model by default.';
     await showModalBottomSheet<void>(
       context: context,
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(header,
+                  style: Theme.of(context).textTheme.bodySmall),
+            ),
             ListTile(
               leading: const Icon(Icons.check_circle_outline),
               title: const Text('Use for model'),
@@ -124,7 +136,9 @@ class TimelineEventCard extends ConsumerWidget {
               },
             ),
             const Divider(height: 1),
-            for (final reason in IgnoreReason.values)
+            // Only reasons that make sense for this event type (a compression low is
+            // never "missed carbs"; pump dosing isn't a CGM artefact).
+            for (final reason in event.type.relevantReasons)
               ListTile(
                 leading: const Icon(Icons.visibility_off_outlined),
                 title: Text('Ignore — ${reason.label}'),

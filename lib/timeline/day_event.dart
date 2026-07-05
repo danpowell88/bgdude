@@ -49,6 +49,46 @@ extension DayEventTypeX on DayEventType {
         DayEventType.siteChange => '🧷',
         DayEventType.prediction => '🔮',
       };
+
+  /// True for events sourced from the pump's own record — delivered boluses and logged
+  /// meal carbs (dosing/BG). This is ground truth, not a CGM inference, so it should
+  /// always train the models by default.
+  bool get isPumpSourced =>
+      this == DayEventType.meal || this == DayEventType.bolus;
+
+  /// The sensible default disposition for this event type. Compression lows are sensor
+  /// artefacts → excluded by default; everything else trains by default.
+  ModelDisposition get defaultDisposition => this == DayEventType.compressionLow
+      ? ModelDisposition.ignore
+      : ModelDisposition.use;
+
+  /// The default ignore reason when [defaultDisposition] is ignore (else null).
+  IgnoreReason? get defaultIgnoreReason =>
+      this == DayEventType.compressionLow ? IgnoreReason.compressionLow : null;
+
+  /// The ignore reasons that actually make sense for this event type — so a compression
+  /// low isn't offered "missed carbs", and pump dosing isn't offered CGM-artefact reasons.
+  List<IgnoreReason> get relevantReasons => switch (this) {
+        DayEventType.compressionLow || DayEventType.low => const [
+            IgnoreReason.compressionLow,
+            IgnoreReason.sensorWarmup,
+            IgnoreReason.other,
+          ],
+        DayEventType.high => const [
+            IgnoreReason.siteFailure,
+            IgnoreReason.illness,
+            IgnoreReason.missedCarbs,
+            IgnoreReason.other,
+          ],
+        DayEventType.detectedMeal => const [
+            IgnoreReason.missedCarbs,
+            IgnoreReason.sensorWarmup,
+            IgnoreReason.other,
+          ],
+        // Pump dosing / device changes / exercise: real signal — rarely excluded, and
+        // never for a CGM-artefact reason.
+        _ => const [IgnoreReason.other],
+      };
 }
 
 /// How the models should treat an event.
