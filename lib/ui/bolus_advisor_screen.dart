@@ -17,12 +17,17 @@ class BolusAdvisorScreen extends ConsumerStatefulWidget {
 
 class _BolusAdvisorScreenState extends ConsumerState<BolusAdvisorScreen> {
   final _carbs = TextEditingController();
+  final _fat = TextEditingController();
+  final _protein = TextEditingController();
+  FatProteinLevel _fpLevel = FatProteinLevel.none;
   bool _cgmNoisy = false;
   BolusAdvice? _advice;
 
   @override
   void dispose() {
     _carbs.dispose();
+    _fat.dispose();
+    _protein.dispose();
     super.dispose();
   }
 
@@ -32,10 +37,15 @@ class _BolusAdvisorScreenState extends ConsumerState<BolusAdvisorScreen> {
     final unit = ref.read(glucoseUnitProvider);
 
     final carbs = double.tryParse(_carbs.text) ?? 0;
+    final fat = double.tryParse(_fat.text) ?? 0;
+    final protein = double.tryParse(_protein.text) ?? 0;
     setState(() {
       _advice = ref.read(bolusAdvisorProvider).advise(
             state,
             carbsGrams: carbs,
+            fatGrams: fat,
+            proteinGrams: protein,
+            fatProteinLevel: _fpLevel,
             cgmNoisy: _cgmNoisy,
             displayUnit: unit,
           );
@@ -58,6 +68,50 @@ class _BolusAdvisorScreenState extends ConsumerState<BolusAdvisorScreen> {
               hintText: 'Leave blank for a correction only',
               border: OutlineInputBorder(),
             ),
+          ),
+          const SizedBox(height: 16),
+          // Fat/protein for the delayed "pizza effect" rise. Pick a rough load, or enter
+          // exact grams (which override the picker). Produces an extended dose suggestion.
+          Text('Fat & protein (optional)',
+              style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          SegmentedButton<FatProteinLevel>(
+            segments: const [
+              ButtonSegment(value: FatProteinLevel.none, label: Text('None')),
+              ButtonSegment(value: FatProteinLevel.low, label: Text('Low')),
+              ButtonSegment(value: FatProteinLevel.medium, label: Text('Med')),
+              ButtonSegment(value: FatProteinLevel.high, label: Text('High')),
+            ],
+            selected: {_fpLevel},
+            onSelectionChanged: (s) => setState(() => _fpLevel = s.first),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _fat,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                      labelText: 'Fat (g)',
+                      helperText: 'optional · overrides load',
+                      border: OutlineInputBorder()),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _protein,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                      labelText: 'Protein (g)',
+                      helperText: 'optional',
+                      border: OutlineInputBorder()),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           SwitchListTile(
@@ -111,6 +165,23 @@ class _AdviceCard extends StatelessWidget {
                   _ConfidenceChip(confidence: advice.confidence),
                 ],
               ),
+            if (advice.fpuUnits > 0) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.timelapse, size: 16, color: cs.secondary),
+                  const SizedBox(width: 6),
+                  Text(
+                    '+ ${advice.fpuUnits.toStringAsFixed(2)} U extended over '
+                    '${advice.fpuExtendHours}h  ·  ${advice.fpu.toStringAsFixed(1)} FPU',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: cs.secondary),
+                  ),
+                ],
+              ),
+            ],
             const Divider(height: 24),
             Text('Working', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),

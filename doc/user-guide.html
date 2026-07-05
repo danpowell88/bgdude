@@ -135,7 +135,7 @@
   <h3>Top bar (right side)</h3>
   <table>
     <tr><th>Icon</th><th>What it does</th></tr>
-    <tr><td>⊕ add-circle</td><td>Open the <a href="#quicklog">Quick-log</a> sheet (carbs, bolus, exercise, alcohol, sensor/site change).</td></tr>
+    <tr><td>⊕ add-circle</td><td>Open the <a href="#quicklog">Quick-log</a> sheet (carbs, bolus, exercise, alcohol, stress, mood, illness, sensor/site change).</td></tr>
     <tr><td>⚙ settings</td><td>Open <a href="#settings">Settings</a> — every screen below that isn't a tab lives here.</td></tr>
     <tr><td><span class="chip">DEMO</span> + <b>Exit demo</b></td><td>Shown only in demo mode (simulated pump). The <b>Exit demo</b> button switches back to your real pump.</td></tr>
   </table>
@@ -214,8 +214,7 @@
   </ul>
   <h3>Sleep &amp; glucose</h3>
   <p>How your sleep length relates to overnight steadiness, learned from your own nights.</p>
-  <h3>Illness mode</h3>
-  <p>A switch for <b>Sick day mode</b> (raises expected insulin needs). When your data looks illness-like the app suggests turning it on — accept or dismiss. See <a href="#illness">Illness mode</a>.</p>
+  <p class="note"><b>Illness mode</b> no longer lives here — it's auto-suggested in <a href="#confirm">Confirm events</a> and toggled from <a href="#quicklog">Quick-log</a>. See <a href="#illness">Illness mode</a>.</p>
 </section>
 
 <section id="meals">
@@ -247,6 +246,7 @@
   <div class="shot"><img src="screenshots/08-bolus.png" alt="Bolus advisor"><div class="cap">Always shows its working</div></div>
   <p class="lead">Open it from the <b>Bolus</b> button on Today. Enter carbs (and it reads your current glucose + IOB); it suggests a dose and <b>always shows the working</b> — BG, target, ISF, carb ratio, IOB and the context multiplier.</p>
   <ul class="tight">
+    <li><b>Fat &amp; protein.</b> Optionally add the meal's fat/protein — either <b>exact grams</b>, or a quick <b>load picker</b> (None / Low / Med / High) when you don't know the grams. The advisor works out the <b>fat-protein units</b> and suggests an <b>extended</b> dose (e.g. "+2.5&nbsp;U over 5&nbsp;h") to cover the delayed "pizza effect" rise — shown separately from the dose-now figure, since it's best given as a combo/dual-wave bolus. It also flags the delayed rise and a possible later low.</li>
     <li>It leans conservative near predicted lows and never suggests a negative dose (that's a rescue-carb situation).</li>
     <li><b>Control-IQ aware.</b> When the closed loop is running it also corrects highs and eases off for lows automatically. So in <b>Standard/Exercise</b> mode the advisor <b>halves a standalone correction</b> (to avoid stacking with the pump's auto-corrections) and says so; in <b>Sleep</b> mode — where Control-IQ won't auto-correct — it keeps the full correction and flags that a manual one may be needed.</li>
     <li>It <b>never delivers insulin</b> — enter the dose on your pump yourself.</li>
@@ -299,11 +299,13 @@
 
 <section id="illness">
   <h2>Illness mode</h2>
-  <p class="lead">On the <a href="#insights">Insights</a> tab. A <b>Sick day mode</b> switch that boosts expected insulin needs.</p>
+  <p class="lead">Sick days raise insulin needs, so illness mode boosts the models' expected resistance while it's on and tags the period so a sick day doesn't mislead training.</p>
   <ul class="tight">
-    <li>When your data looks illness-like (fever, raised heart rate, low HRV, higher glucose), a card suggests turning it on — <b>Turn on</b> or <b>Not sick</b>.</li>
+    <li><b>Auto-detected.</b> When your data looks illness-like (fever, raised resting heart rate, low HRV, dropped steps, higher glucose), the app raises a suggestion in <a href="#confirm">Confirm events</a> (and a notification). <b>Confirm</b> turns illness mode on; <b>Dismiss</b> clears it.</li>
+    <li><b>Turn it on yourself</b> from <a href="#quicklog">Quick-log</a> → <b>🤒 Illness</b> — pick <b>Mild / Moderate / Severe</b> (how much to boost). Tap it again to <b>End illness</b> when you're better.</li>
     <li>While a sustained high coincides with illness (or a likely site failure, or being very high with little insulin on board), a <b>Check ketones</b> alert fires with sick-day guidance.</li>
   </ul>
+  <div class="note">Illness mode used to live on the Insights tab — it's now auto-suggested in Confirm events and toggled from Quick-log.</div>
 </section>
 
 <section id="weather">

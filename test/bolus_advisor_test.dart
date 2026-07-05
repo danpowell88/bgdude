@@ -104,4 +104,52 @@ void main() {
     expect(advice.working, isNotEmpty);
     expect(advice.working.any((s) => s.label == 'Suggested'), isTrue);
   });
+
+  group('fat/protein (FPU) extended dose', () {
+    test('exact grams: (20·9 + 30·4)/100 = 3.0 FPU → 3.0 U over 5h', () {
+      // bg == target so there's no correction; meal is 40/CR10 = 4U immediate.
+      final advice = BolusAdvisor().advise(
+        state(bg: 100),
+        carbsGrams: 40,
+        fatGrams: 20,
+        proteinGrams: 30,
+      );
+      expect(advice.fpu, closeTo(3.0, 0.01));
+      expect(advice.fpuUnits, closeTo(3.0, 0.05)); // 3.0 FPU × 10g ÷ CR10
+      expect(advice.fpuExtendHours, 5); // ceil(3)+2
+      // Extended is kept OUT of the immediate suggestion.
+      expect(advice.recommendedUnits, closeTo(4.0, 0.05));
+      expect(advice.totalWithFpu, closeTo(7.0, 0.1));
+      expect(advice.notes.any((n) => n.toLowerCase().contains('extended')),
+          isTrue);
+    });
+
+    test('relative levels map low<medium<high', () {
+      double fpuUnitsFor(FatProteinLevel l) => BolusAdvisor()
+          .advise(state(bg: 100), fatProteinLevel: l)
+          .fpuUnits;
+      expect(fpuUnitsFor(FatProteinLevel.none), 0);
+      expect(fpuUnitsFor(FatProteinLevel.low), closeTo(1.0, 0.05));
+      expect(fpuUnitsFor(FatProteinLevel.medium), closeTo(2.0, 0.05));
+      expect(fpuUnitsFor(FatProteinLevel.high), closeTo(3.5, 0.05));
+    });
+
+    test('exact grams override the qualitative level', () {
+      final advice = BolusAdvisor().advise(
+        state(bg: 100),
+        fatGrams: 20,
+        proteinGrams: 30, // → 3.0 FPU
+        fatProteinLevel: FatProteinLevel.high, // would be 3.5 FPU
+      );
+      expect(advice.fpu, closeTo(3.0, 0.01));
+    });
+
+    test('no fat/protein → no extended dose, immediate unchanged', () {
+      final advice = BolusAdvisor().advise(state(bg: 200), carbsGrams: 40);
+      expect(advice.fpu, 0);
+      expect(advice.fpuUnits, 0);
+      expect(advice.fpuExtendHours, 0);
+      expect(advice.recommendedUnits, closeTo(6.0, 0.1)); // 4 meal + 2 correction
+    });
+  });
 }

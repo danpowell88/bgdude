@@ -19,6 +19,31 @@ import 'therapy_settings.dart';
 
 enum AdviceConfidence { high, moderate, low, refused }
 
+/// Qualitative fat/protein load, for when the user can't (or won't) count grams — e.g. a
+/// restaurant meal. Maps to a representative fat-protein-unit estimate.
+enum FatProteinLevel {
+  none,
+  low,
+  medium,
+  high;
+
+  /// Representative fat-protein units. Low ≈ a lean/normal meal, medium ≈ a meat-and-sides
+  /// plate, high ≈ pizza / fried / creamy.
+  double get fpu => switch (this) {
+        FatProteinLevel.none => 0,
+        FatProteinLevel.low => 1,
+        FatProteinLevel.medium => 2,
+        FatProteinLevel.high => 3.5,
+      };
+
+  String get label => switch (this) {
+        FatProteinLevel.none => 'None',
+        FatProteinLevel.low => 'Low',
+        FatProteinLevel.medium => 'Medium',
+        FatProteinLevel.high => 'High',
+      };
+}
+
 /// One line of the shown "working".
 class AdviceStep {
   const AdviceStep(this.label, this.value);
@@ -35,14 +60,31 @@ class BolusAdvice {
     required this.confidence,
     required this.working,
     required this.notes,
+    this.fpu = 0,
+    this.fpuUnits = 0,
+    this.fpuExtendHours = 0,
   });
 
   final double correctionUnits;
   final double mealUnits;
   final double iobUsed;
 
-  /// Final capped, guardrailed suggestion.
+  /// Final capped, guardrailed suggestion for the **immediate** bolus (meal + correction).
   final double recommendedUnits;
+
+  /// Fat-protein units for the meal (0 when no fat/protein given).
+  final double fpu;
+
+  /// Insulin attributable to fat/protein, to deliver **extended** (combo/dual-wave) over
+  /// [fpuExtendHours], not up front. Kept separate from [recommendedUnits] because it's a
+  /// later, slower dose.
+  final double fpuUnits;
+
+  /// Suggested hours to extend [fpuUnits] over.
+  final int fpuExtendHours;
+
+  /// Immediate + extended, for callers that show a combined figure.
+  double get totalWithFpu => recommendedUnits + fpuUnits;
 
   final AdviceConfidence confidence;
 
@@ -63,12 +105,25 @@ class BolusAdvisor {
   final GlucosePredictor _predictor;
   final IobCalculator _iob;
 
+  /// 1 fat-protein unit ≈ this many grams of carb for insulin purposes (Pankowska).
+  static const double _carbEquivPerFpu = 10;
+
   /// [carbsGrams] is the meal being dosed for (0 for a pure correction).
+  ///
+  /// Fat/protein can be given two ways (used for the delayed "pizza effect" rise):
+  ///   * exact [fatGrams] / [proteinGrams], or
+  ///   * a qualitative [fatProteinLevel] (low/medium/high) when grams are unknown.
+  /// Exact grams win when both are supplied. The resulting insulin is returned separately
+  /// as [BolusAdvice.fpuUnits] to deliver *extended*, not folded into the immediate dose.
+  ///
   /// [cgmNoisy] should be set when recent CGM variance is high or the sensor is in
   /// warm-up — the advisor then refuses to compute a correction from the reading.
   BolusAdvice advise(
     PredictionState state, {
     double carbsGrams = 0,
+    double fatGrams = 0,
+    double proteinGrams = 0,
+    FatProteinLevel fatProteinLevel = FatProteinLevel.none,
     bool cgmNoisy = false,
     GlucoseUnit displayUnit = GlucoseUnit.mmol,
   }) {
@@ -91,6 +146,32 @@ class BolusAdvisor {
             'Carb ratio', '1U : ${effectiveCr.toStringAsFixed(1)} g'))
         ..add(AdviceStep('Meal insulin',
             '${carbsGrams.toStringAsFixed(0)} ÷ ${effectiveCr.toStringAsFixed(1)} = ${mealUnits.toStringAsFixed(2)} U'));
+    }
+
+    // --- Fat/protein (FPU) extended component ---
+    // Fat and protein cause a delayed, prolonged rise carb-counting misses. Estimate
+    // fat-protein units from exact grams, else from the qualitative level, and convert to
+    // an insulin amount to deliver *extended* (combo/dual-wave), separate from the dose now.
+    final exactMacros = fatGrams > 0 || proteinGrams > 0;
+    final fpu = exactMacros
+        ? (fatGrams * 9 + proteinGrams * 4) / 100.0
+        : fatProteinLevel.fpu;
+    var fpuUnits = fpu > 0 ? (fpu * _carbEquivPerFpu) / effectiveCr : 0.0;
+    fpuUnits = (fpuUnits * 100).roundToDouble() / 100;
+    final fpuExtendHours = fpu > 0 ? (fpu.ceil() + 2).clamp(3, 8) : 0;
+    if (fpu > 0) {
+      final src = exactMacros
+          ? 'fat ${fatGrams.toStringAsFixed(0)} g + protein ${proteinGrams.toStringAsFixed(0)} g'
+          : '${fatProteinLevel.label.toLowerCase()} load';
+      working
+        ..add(AdviceStep('Fat/protein', src))
+        ..add(AdviceStep('Fat-protein units', '${fpu.toStringAsFixed(1)} FPU'))
+        ..add(AdviceStep('Extended insulin',
+            '${fpu.toStringAsFixed(1)} FPU × ${_carbEquivPerFpu.toStringAsFixed(0)} g ÷ ${effectiveCr.toStringAsFixed(1)} = ${fpuUnits.toStringAsFixed(2)} U'));
+      notes.add(
+          'Fat/protein adds ~${fpuUnits.toStringAsFixed(1)} U — deliver it extended over '
+          '~$fpuExtendHours h (combo/dual-wave), not up front. Expect a delayed rise ~3–5 h '
+          'out, then watch for a later low.');
     }
 
     // --- Correction component ---
@@ -179,6 +260,17 @@ class BolusAdvisor {
     working.add(AdviceStep('Suggested',
         '${total.toStringAsFixed(2)} U  (meal ${shownMeal.toStringAsFixed(2)} + correction ${shownCorrection.toStringAsFixed(2)})'));
 
+    if (fpuUnits > 0) {
+      working.add(AdviceStep('Now + extended',
+          '${total.toStringAsFixed(2)} U now + ${fpuUnits.toStringAsFixed(2)} U over ${fpuExtendHours}h'));
+      if (total + fpuUnits > cap) {
+        notes.add(
+            'Immediate + extended (${(total + fpuUnits).toStringAsFixed(1)} U) is over the '
+            'max bolus ${cap.toStringAsFixed(1)} U — split it across the combo bolus and '
+            're-check.');
+      }
+    }
+
     if (state.context.confidence > 0 && state.context.reasons.isNotEmpty) {
       notes.add(
           'Sensitivity context applied (${state.context.reasons.join(', ')}), ×${mult.toStringAsFixed(2)}.');
@@ -192,6 +284,9 @@ class BolusAdvisor {
       confidence: confidence,
       working: working,
       notes: notes,
+      fpu: fpu,
+      fpuUnits: fpuUnits,
+      fpuExtendHours: fpuExtendHours,
     );
   }
 
