@@ -7,6 +7,7 @@ import '../integrations/nightscout.dart';
 import '../state/providers.dart';
 import 'advanced_screen.dart';
 import 'basal_recommendations_screen.dart';
+import 'confirmation_inbox_screen.dart';
 import 'model_accuracy_screen.dart';
 import 'notification_settings_screen.dart';
 import 'pump_screen.dart';
@@ -127,6 +128,22 @@ class SettingsScreen extends ConsumerWidget {
               selected: {unit},
               onSelectionChanged: (s) =>
                   ref.read(glucoseUnitProvider.notifier).state = s.first,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.fact_check_outlined),
+            title: const Text('Confirm events'),
+            subtitle: const Text(
+                'Review detected meals, compression lows & more as real data'),
+            trailing: ref.watch(pendingConfirmationsProvider).maybeWhen(
+                  data: (items) => items.isEmpty
+                      ? null
+                      : Badge(label: Text('${items.length}')),
+                  orElse: () => null,
+                ),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const ConfirmationInboxScreen()),
             ),
           ),
           ListTile(

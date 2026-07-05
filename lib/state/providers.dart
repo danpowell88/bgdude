@@ -18,6 +18,8 @@ import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
 import '../core/units.dart';
 import '../feedback/annotations.dart';
+import '../feedback/confirmation_service.dart';
+import '../feedback/pending_confirmation.dart';
 import '../insights/a1c_goal.dart';
 import '../insights/alert_monitor.dart';
 import '../insights/care_detectors.dart';
@@ -387,6 +389,28 @@ final basalRecommendationProvider = Provider<BasalRecommendation>((ref) {
 /// banner on the Insights page.
 final illnessSuggestionProvider =
     StateProvider<IllnessSuggestion?>((ref) => null);
+
+/// The Confirmation Inbox: detected-but-unconfirmed events (unannounced meals,
+/// compression lows, illness) over recent history, minus anything already decided or
+/// annotated. Confirming/dismissing goes through [AppJobs.confirmPending]/[dismissPending].
+final pendingConfirmationsProvider =
+    FutureProvider<List<PendingConfirmation>>((ref) async {
+  final repo = ref.read(historyRepositoryProvider);
+  final now = DateTime.now();
+  final from = now.subtract(const Duration(days: 3));
+  final decided = (await ConfirmationDecisionStore.load()).keys.toSet();
+  return const ConfirmationService().scan(
+    now: now,
+    cgm: await repo.cgm(from, now),
+    boluses: await repo.boluses(from, now),
+    basal: await repo.basal(from, now),
+    carbs: await repo.carbs(from, now),
+    settings: ref.read(therapySettingsProvider),
+    annotations: await repo.annotations(from, now),
+    decidedIds: decided,
+    illness: ref.watch(illnessSuggestionProvider),
+  );
+});
 
 /// Illness ("sick day") mode with shared_preferences persistence.
 final illnessModeProvider =
@@ -1298,6 +1322,48 @@ class AppJobs {
           end: now.add(window),
           note: note,
         ));
+  }
+
+  /// Confirm a queued [PendingConfirmation]: write the annotation (feeding reports and
+  /// training) and, for a confirmed unannounced meal, add the carbs to history so COB and
+  /// meal analysis reflect them. [kind]/[carbsGrams] override the suggested defaults when
+  /// the user edits before confirming.
+  Future<void> confirmPending(
+    PendingConfirmation p, {
+    AnnotationKind? kind,
+    double? carbsGrams,
+  }) async {
+    final k = kind ?? p.suggestedKind;
+    final grams = k.relabelsCarbs ? (carbsGrams ?? p.carbsGrams ?? 0) : 0.0;
+    final repo = _ref.read(historyRepositoryProvider);
+    await repo.saveAnnotation(Annotation(
+      id: 'confirm-${p.id}',
+      kind: k,
+      start: p.start,
+      end: p.end,
+      carbsGrams: grams,
+      confidence: 1.0, // user-confirmed → full weight
+    ));
+    if (k.relabelsCarbs && grams > 0) {
+      await repo.saveCarb(CarbEntry(time: p.start, grams: grams));
+      await _ref.read(dayHistoryControllerProvider.notifier).reload();
+    }
+    await ConfirmationDecisionStore.record(
+        p.id, ConfirmationDecision.confirmed, at: DateTime.now());
+    if (p.type == ConfirmationType.illness) {
+      _ref.read(illnessSuggestionProvider.notifier).state = null;
+    }
+    _ref.invalidate(pendingConfirmationsProvider);
+  }
+
+  /// Dismiss a queued item so it doesn't resurface.
+  Future<void> dismissPending(PendingConfirmation p) async {
+    await ConfirmationDecisionStore.record(
+        p.id, ConfirmationDecision.dismissed, at: DateTime.now());
+    if (p.type == ConfirmationType.illness) {
+      _ref.read(illnessSuggestionProvider.notifier).state = null;
+    }
+    _ref.invalidate(pendingConfirmationsProvider);
   }
 
   /// Record a sensor/site change and reset its age.
