@@ -25,6 +25,36 @@ seeded with ~2 weeks of history**. Forecaster = deterministic baseline + learned
 
 ---
 
+## Decided direction (chosen this session)
+- **Focus:** *finish & verify the device-dependent features* — turn "built but unverified"
+  into "proven on real hardware."
+- **Hardware available for testing:** t:slim X2 pump, Dexcom CGM, Accu-Chek Guide Me meter,
+  Garmin watch, Pixel 7 Pro. → every 🔌 item is now verifiable.
+- **LLM scope for now:** *just finish the panel scanner* (verify Gemma inference on-device);
+  hold the new LLM features (meal→carbs, Q&A, NL log) in the backlog.
+- **Audience:** personal (Summer) — skip multi-user pairing UX, store compliance, and public
+  onboarding polish for now.
+
+**These are collaborative:** the physical pump/meter/watch and the Pixel are yours, so most
+verification is "I prepare a build + an exact test procedure (and in-app self-checks where
+possible) → you run it on the device → report back → I fix." I can't touch the hardware.
+
+### Execution order (near-term)
+1. **Panel scanner — verify Gemma on-device** (1.1/1.8). Add an in-app "test the model"
+   self-check (canned panel text → LLM → JSON) so inference is verifiable without a perfect
+   photo; document the exact model-download/license steps; then scan real labels and measure.
+2. **Accu-Chek Guide Me meter** (1.2). Field-test pairing + record sync; fix bonding/re-scan
+   edge cases; dedupe/merge fingersticks with CGM.
+3. **Garmin watch** (1.4 then 1.3). Install the 3 products, verify phone→watch push + the
+   background service; add the modern device to the manifests; then the real complication.
+4. **Pump + Dexcom** (1.6). Harden real pumpx2 pairing / reconnect / error surfacing and
+   validate live CGM data + predictions.
+5. **Neural forecaster** (1.5) — decision, likely after the above (or just drop the comments).
+
+_Deprioritised for now: Part 3 new features, Part 4 release/store, multi-user UX._
+
+---
+
 ## Part 1 — Finish what's started (deferred / unverified)
 
 | # | Item | What's done | Remaining to "fully finished" | Effort | Flags |
