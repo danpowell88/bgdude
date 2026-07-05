@@ -103,6 +103,7 @@
   <div class="grp">Data &amp; analysis</div>
   <a href="#reports">Reports</a>
   <a href="#pump">Pump</a>
+  <a href="#meter">Glucose meter</a>
   <a href="#therapy">Therapy &amp; basal</a>
   <a href="#advanced">Advanced / models</a>
   <div class="grp">Setup</div>
@@ -416,6 +417,19 @@
     <li><b>Device</b> — battery (with a <b>time-to-empty</b> estimate or "charging"), firmware, API version.</li>
     <li><b>Active alarms/alerts</b> and a <b>recent pump-events</b> timeline.</li>
   </ul>
+</section>
+
+<section id="meter">
+  <h2>Glucose meter</h2>
+  <div class="shot"><img src="screenshots/26-glucose-meter.png" alt="Bluetooth glucose-meter import"><div class="cap">Import fingersticks over Bluetooth</div></div>
+  <p class="lead">Settings → <b>Glucose meter</b>. Import fingerstick readings from a Bluetooth meter that speaks the standard <b>Bluetooth Glucose Service</b> — e.g. the <b>Accu-Chek Guide / Guide&nbsp;Me</b> (the same profile xDrip+ uses, so it isn't brand-specific). Imported readings are stored as <b>calibration-type</b> readings, kept distinct from your CGM.</p>
+  <ul class="tight">
+    <li><b>Pair</b> — put the meter in Bluetooth pairing mode (usually after a reading, or by holding its button), tap <b>Scan for meter</b>, pick it from the list, and confirm the pairing on the meter.</li>
+    <li><b>Sync now</b> — pulls every reading the meter has stored since the last sync. It remembers each reading's sequence number, so re-syncing never imports a reading twice.</li>
+    <li><b>Recent fingersticks</b> — the latest imported readings in your unit, plus a running total.</li>
+    <li><b>Unpair</b> — forget the meter and reset the import history.</li>
+  </ul>
+  <div class="note">Each reading's time comes from the <b>meter's own clock</b> — if it has drifted from your phone, imported times can be slightly off. Like everything in bgdude it's read-only: it never sends anything to the meter, and the sync runs on demand (it doesn't hold the Bluetooth connection open).</div>
 </section>
 
 <section id="therapy">

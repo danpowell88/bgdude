@@ -47,6 +47,10 @@ import '../insights/notifications.dart';
 import '../insights/post_meal_movement.dart';
 import '../insights/workout_classifier.dart';
 import '../profile/user_profile.dart';
+import '../integrations/glucose_meter_controller.dart';
+import '../integrations/glucose_meter_service.dart';
+import '../integrations/glucose_meter_transport.dart';
+import '../integrations/glucose_meter_transport_fbp.dart';
 import '../integrations/nightscout.dart';
 import '../logging/device_changes.dart';
 import '../data/health_sync.dart';
@@ -1186,6 +1190,23 @@ class NightscoutConfigNotifier extends StateNotifier<NightscoutConfig> {
 
 final nightscoutClientProvider = Provider<NightscoutClient>(
     (ref) => NightscoutClient(ref.watch(nightscoutConfigProvider)));
+
+/// Bluetooth glucose-meter import (standard GLS, e.g. Accu-Chek Guide Me).
+final glucoseMeterTransportProvider =
+    Provider<GlucoseMeterTransport>((ref) => FbpGlucoseMeterTransport());
+
+final glucoseMeterServiceProvider = Provider<GlucoseMeterService>((ref) =>
+    GlucoseMeterService(
+        transport: ref.watch(glucoseMeterTransportProvider),
+        repository: ref.watch(historyRepositoryProvider)));
+
+final glucoseMeterProvider =
+    StateNotifierProvider<GlucoseMeterController, GlucoseMeterStatus>((ref) =>
+        GlucoseMeterController(
+          service: ref.watch(glucoseMeterServiceProvider),
+          transport: ref.watch(glucoseMeterTransportProvider),
+          demo: ref.watch(devModeProvider),
+        ));
 
 /// CGM sensor / infusion-site change tracking.
 final deviceStateProvider =

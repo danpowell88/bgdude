@@ -13,6 +13,7 @@ import 'medication_mode_screen.dart';
 import 'model_accuracy_screen.dart';
 import 'notification_settings_screen.dart';
 import 'profile_screen.dart';
+import 'glucose_meter_screen.dart';
 import 'pump_screen.dart';
 import 'reports/reports_hub_screen.dart';
 import 'weather_settings_screen.dart';
@@ -214,6 +215,16 @@ class SettingsScreen extends ConsumerWidget {
                 'Live status, insulin today, reservoir, alarms & events'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const PumpScreen()),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.bluetooth_searching),
+            title: const Text('Glucose meter'),
+            subtitle: const Text(
+                'Import fingersticks from a Bluetooth meter (Accu-Chek Guide Me, etc.)'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const GlucoseMeterScreen()),
             ),
           ),
           ListTile(

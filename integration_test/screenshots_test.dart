@@ -180,5 +180,6 @@ void main() {
     await capture('Profile', '19-profile');
     await capture('Exercise mode', '20-exercise');
     await capture('Basal suggestions', '21-basal');
+    await capture('Glucose meter', '26-glucose-meter');
   });
 }
