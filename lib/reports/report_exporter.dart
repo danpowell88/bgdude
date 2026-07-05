@@ -37,7 +37,9 @@ class ReportExporter {
       ['mean_glucose', g(m.meanMgdl)],
       ['gmi_eA1c_pct', m.gmi.toStringAsFixed(1)],
       ['cv_pct', m.cvPercent.toStringAsFixed(1)],
+      ['cv_high_ge36', '${m.variabilityHigh}'],
       ['tir_70_180_pct', (m.timeInRange * 100).toStringAsFixed(1)],
+      ['titr_70_140_pct', (m.timeInTightRange * 100).toStringAsFixed(1)],
       ['tbr_below_70_pct', (m.timeBelow70 * 100).toStringAsFixed(1)],
       ['tbr_below_54_pct', (m.timeBelow54 * 100).toStringAsFixed(1)],
       ['tar_above_180_pct', (m.timeAbove180 * 100).toStringAsFixed(1)],
@@ -104,7 +106,11 @@ class ReportExporter {
         _kv(<List<String>>[
           ['Mean glucose', g(m.meanMgdl)],
           ['GMI (est. A1c)', '${m.gmi.toStringAsFixed(1)}%'],
-          ['Glucose variability (CV)', '${m.cvPercent.toStringAsFixed(1)}%'],
+          [
+            'Glucose variability (CV)',
+            '${m.cvPercent.toStringAsFixed(1)}%'
+                '${m.variabilityHigh ? ' (high, >=36%)' : ''}'
+          ],
           ['Readings', '${m.readingCount}'],
           ['CGM active time', pct(m.activeFraction)],
         ]),
@@ -114,6 +120,7 @@ class ReportExporter {
           ['Very high (>250)', pct(m.timeAbove250)],
           ['High (>180)', pct(m.timeAbove180)],
           ['In range (70-180)', pct(m.timeInRange)],
+          ['Tight range (70-140)', pct(m.timeInTightRange)],
           ['Low (<70)', pct(m.timeBelow70)],
           ['Very low (<54)', pct(m.timeBelow54)],
         ]),

@@ -47,6 +47,10 @@ class GlucoseThresholds {
   /// Upper bound of range.
   static const double high = 180;
 
+  /// Upper bound of the *tight* range (Time in Tight Range, 70–140). An emerging CGM
+  /// metric — people without diabetes sit ~87% of the day in 70–140.
+  static const double tightHigh = 140;
+
   /// Level 2 hyper (very high).
   static const double veryHigh = 250;
 

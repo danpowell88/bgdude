@@ -53,6 +53,7 @@ import '../pump/pump_client.dart';
 import '../pump/pump_events.dart';
 import '../pump/pump_snapshot.dart';
 import '../reports/correlation_report.dart';
+import '../reports/cycle_report.dart';
 import '../reports/events_journal.dart';
 import '../reports/glucose_report.dart';
 import '../reports/insulin_report.dart';
@@ -446,6 +447,18 @@ final correlationReportProvider =
   final range = ref.watch(reportRangeProvider);
   final repo = ref.read(historyRepositoryProvider);
   return const CorrelationReportBuilder().build(
+    cgm: await repo.cgm(range.from, range.to),
+    health: await repo.health(range.from, range.to),
+    range: range,
+    now: DateTime.now(),
+  );
+});
+
+/// Menstrual-cycle glucose comparison (follicular vs luteal) for the range.
+final cycleReportProvider = FutureProvider<CycleReport>((ref) async {
+  final range = ref.watch(reportRangeProvider);
+  final repo = ref.read(historyRepositoryProvider);
+  return const CycleReportBuilder().build(
     cgm: await repo.cgm(range.from, range.to),
     health: await repo.health(range.from, range.to),
     range: range,

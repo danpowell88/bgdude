@@ -91,6 +91,14 @@ class _ReportBody extends StatelessWidget {
           ),
         const SizedBox(height: 12),
         _MetricsRow(m: m, unit: unit),
+        if (m.variabilityHigh)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: _Banner(
+              'Glucose variability is high (CV ${m.cvPercent.round()}% ≥ 36%) — the '
+              'consensus marker for a raised hypo risk. Steadier days lower it.',
+            ),
+          ),
         const SizedBox(height: 16),
         _TirBar(m: m),
         const SizedBox(height: 20),
@@ -188,6 +196,7 @@ class _TirBar extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           'In range ${(inRange * 100).round()}%  ·  '
+          'Tight 70–140 ${(m.timeInTightRange * 100).round()}%  ·  '
           'Below ${(m.timeBelow70 * 100).round()}%  ·  '
           'Above ${(m.timeAbove180 * 100).round()}%',
           style: Theme.of(context).textTheme.bodySmall,

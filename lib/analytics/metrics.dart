@@ -18,6 +18,7 @@ class GlucoseMetrics {
     required this.meanMgdl,
     required this.sdMgdl,
     required this.timeInRange,
+    required this.timeInTightRange,
     required this.timeBelow70,
     required this.timeBelow54,
     required this.timeAbove180,
@@ -33,6 +34,9 @@ class GlucoseMetrics {
 
   /// Fractions in 0..1.
   final double timeInRange;
+
+  /// Time in Tight Range (70–140 mg/dL) — a stricter companion to TIR.
+  final double timeInTightRange;
   final double timeBelow70;
   final double timeBelow54;
   final double timeAbove180;
@@ -50,6 +54,10 @@ class GlucoseMetrics {
 
   /// Coefficient of variation, %. Stable ≤ 36%.
   double get cvPercent => meanMgdl == 0 ? 0 : (sdMgdl / meanMgdl) * 100;
+
+  /// International-consensus threshold: CV ≥ 36% marks "labile" glucose and
+  /// independently predicts serious (<54) hypoglycemia.
+  bool get variabilityHigh => cvPercent >= 36;
 
   /// Fraction of expected readings actually present (CGM active time).
   double get activeFraction =>
@@ -75,6 +83,7 @@ class MetricsCalculator {
         meanMgdl: 0,
         sdMgdl: 0,
         timeInRange: 0,
+        timeInTightRange: 0,
         timeBelow70: 0,
         timeBelow54: 0,
         timeAbove180: 0,
@@ -90,13 +99,16 @@ class MetricsCalculator {
     final expected = period.inMinutes ~/ readingIntervalMinutes + 1;
 
     var sum = 0.0;
-    var inRange = 0, below70 = 0, below54 = 0, above180 = 0, above250 = 0;
+    var inRange = 0, inTight = 0, below70 = 0, below54 = 0, above180 = 0, above250 = 0;
     for (final s in valid) {
       sum += s.mgdl;
       if (s.mgdl < GlucoseThresholds.veryLow) below54++;
       if (s.mgdl < GlucoseThresholds.low) below70++;
       if (s.mgdl >= GlucoseThresholds.low && s.mgdl <= GlucoseThresholds.high) {
         inRange++;
+      }
+      if (s.mgdl >= GlucoseThresholds.low && s.mgdl <= GlucoseThresholds.tightHigh) {
+        inTight++;
       }
       if (s.mgdl > GlucoseThresholds.high) above180++;
       if (s.mgdl > GlucoseThresholds.veryHigh) above250++;
@@ -119,6 +131,7 @@ class MetricsCalculator {
       meanMgdl: mean,
       sdMgdl: sd,
       timeInRange: inRange / n,
+      timeInTightRange: inTight / n,
       timeBelow70: below70 / n,
       timeBelow54: below54 / n,
       timeAbove180: above180 / n,

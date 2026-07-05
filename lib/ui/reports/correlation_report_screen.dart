@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/units.dart';
 import '../../reports/correlation_report.dart';
+import '../../reports/cycle_report.dart';
 import '../../state/providers.dart';
 import 'report_range_picker.dart';
 
@@ -44,6 +46,7 @@ class _Body extends StatelessWidget {
         Text('${report.daysAnalyzed} days analysed',
             style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 8),
+        const _CycleCard(),
         for (final f in report.findings) _FindingCard(finding: f),
         const SizedBox(height: 12),
         Text(
@@ -88,6 +91,60 @@ class _FindingCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(finding.message),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CycleCard extends ConsumerWidget {
+  const _CycleCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final report = ref.watch(cycleReportProvider).valueOrNull;
+    if (report == null || !report.hasData) return const SizedBox.shrink();
+    final unit = ref.watch(glucoseUnitProvider);
+    String tir(CyclePhaseStats s) => '${(s.meanTir * 100).round()}%';
+    String g(CyclePhaseStats s) =>
+        '${Mgdl(s.meanGlucoseMgdl).display(unit)} ${unit.label}';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Menstrual cycle', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(children: [
+                    const Text('Follicular'),
+                    Text('TIR ${tir(report.follicular)}'),
+                    Text(g(report.follicular),
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ]),
+                ),
+                Expanded(
+                  child: Column(children: [
+                    const Text('Luteal'),
+                    Text('TIR ${tir(report.luteal)}'),
+                    Text(g(report.luteal),
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              report.tirDropToLuteal > 1
+                  ? 'Your luteal phase ran ~${report.tirDropToLuteal.round()} TIR points '
+                      'lower — consider a temporary sensitivity bump those days.'
+                  : 'Little cycle-phase difference so far.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
       ),

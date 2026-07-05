@@ -9,6 +9,7 @@ GlucoseMetrics _metrics(double meanMgdl) => GlucoseMetrics(
       meanMgdl: meanMgdl,
       sdMgdl: 40,
       timeInRange: 0.7,
+      timeInTightRange: 0.5,
       timeBelow70: 0.02,
       timeBelow54: 0.0,
       timeAbove180: 0.25,

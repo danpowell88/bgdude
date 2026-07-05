@@ -16,6 +16,7 @@ GlucoseMetrics metrics({
       meanMgdl: meanMgdl,
       sdMgdl: 30,
       timeInRange: timeInRange,
+      timeInTightRange: timeInRange * 0.7,
       timeBelow70: 0,
       timeBelow54: 0,
       timeAbove180: 0,
