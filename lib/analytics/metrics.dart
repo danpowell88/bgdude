@@ -26,6 +26,8 @@ class GlucoseMetrics {
     required this.coveragePeriod,
     required this.expectedReadings,
     required this.sufficient,
+    this.lbgi = 0,
+    this.hbgi = 0,
   });
 
   final int readingCount;
@@ -47,6 +49,23 @@ class GlucoseMetrics {
 
   /// True when ≥14 days and ≥70% active — the threshold for a valid AGP/GMI.
   final bool sufficient;
+
+  /// Low/High Blood Glucose Index (Kovatchev) — validated risk indices computed from the
+  /// raw readings. LBGI: <2.5 minimal, 2.5–5 moderate, >5 high hypo risk. HBGI: <5 low,
+  /// 5–10 moderate, >10 high hyper risk.
+  final double lbgi;
+  final double hbgi;
+
+  /// Glycemia Risk Index (Klonoff 2022): a single 0–100 score (lower is better) weighting
+  /// the AGP hypo/hyper components — closer to clinician risk judgement than TIR alone.
+  double get gri {
+    final vLow = timeBelow54 * 100;
+    final low = (timeBelow70 - timeBelow54) * 100;
+    final vHigh = timeAbove250 * 100;
+    final high = (timeAbove180 - timeAbove250) * 100;
+    final score = 3.0 * vLow + 2.4 * low + 1.6 * vHigh + 0.8 * high;
+    return score.clamp(0.0, 100.0);
+  }
 
   /// Glucose Management Indicator (estimated A1c proxy), %.
   /// GMI = 3.31 + 0.02392 × mean glucose (mg/dL).
@@ -116,9 +135,20 @@ class MetricsCalculator {
     final n = valid.length;
     final mean = sum / n;
     var sqSum = 0.0;
+    // LBGI/HBGI (Kovatchev): a symmetrising transform of each reading, then the mean of
+    // the low- and high-risk halves.
+    var lbgiSum = 0.0, hbgiSum = 0.0;
     for (final s in valid) {
       final d = s.mgdl - mean;
       sqSum += d * d;
+      final bg = s.mgdl.clamp(20.0, 600.0);
+      final f = 1.509 * (math.pow(math.log(bg), 1.084) - 5.381);
+      final r = 10 * f * f;
+      if (f < 0) {
+        lbgiSum += r;
+      } else if (f > 0) {
+        hbgiSum += r;
+      }
     }
     final sd = math.sqrt(sqSum / n);
 
@@ -139,6 +169,8 @@ class MetricsCalculator {
       coveragePeriod: period,
       expectedReadings: expected,
       sufficient: sufficient,
+      lbgi: lbgiSum / n,
+      hbgi: hbgiSum / n,
     );
   }
 }

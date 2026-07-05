@@ -32,6 +32,7 @@ import '../insights/care_detectors.dart';
 import '../insights/daily_narrative.dart';
 import '../insights/exercise_mode.dart';
 import '../insights/illness_mode.dart';
+import '../insights/ketone_risk.dart';
 import '../insights/sleep_insight.dart';
 import '../insights/morning_summary.dart';
 import '../insights/notification_prefs.dart';
@@ -1214,6 +1215,27 @@ class AlertService {
                   : 'High for a while with IOB not bringing it down — watch for a '
                       'possible site issue.',
             );
+      } catch (_) {}
+    }
+
+    // Ketone / DKA sick-day prompt: sustained high + a ketone risk factor (illness,
+    // likely site failure, or very high with minimal IOB).
+    final iob = const IobCalculator()
+        .total(state.boluses, state.basal, now)
+        .units;
+    final ketone = const KetoneRiskDetector().detect(
+      cgm: day.cgm,
+      iobUnits: iob,
+      illnessActive: _ref.read(illnessModeProvider).active,
+      likelySiteIssue: stubborn?.likelySiteIssue ?? false,
+      now: now,
+    );
+    if (ketone.suggestCheck &&
+        _shouldFire(NotificationCategory.ketoneCheck, now)) {
+      try {
+        await _ref.read(notificationServiceProvider).show(
+              NotificationCategory.ketoneCheck, 'Check ketones', ketone.reason,
+              bigText: true);
       } catch (_) {}
     }
 

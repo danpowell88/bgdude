@@ -101,6 +101,8 @@ class _ReportBody extends StatelessWidget {
           ),
         const SizedBox(height: 16),
         _TirBar(m: m),
+        const SizedBox(height: 16),
+        _RiskCard(m: m),
         const SizedBox(height: 20),
         Text('Ambulatory glucose profile',
             style: Theme.of(context).textTheme.titleMedium),
@@ -154,6 +156,40 @@ class _Metric extends StatelessWidget {
           Text(value, style: Theme.of(context).textTheme.titleLarge),
           Text(label, style: Theme.of(context).textTheme.labelSmall),
         ],
+      ),
+    );
+  }
+}
+
+class _RiskCard extends StatelessWidget {
+  const _RiskCard({required this.m});
+  final GlucoseMetrics m;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Risk indices', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _Metric(label: 'GRI', value: m.gri.round().toString()),
+                _Metric(label: 'LBGI', value: m.lbgi.toStringAsFixed(1)),
+                _Metric(label: 'HBGI', value: m.hbgi.toStringAsFixed(1)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'GRI 0–100 (lower better). LBGI hypo risk: <2.5 low, >5 high. '
+              'HBGI hyper risk: <5 low, >10 high.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -12,6 +12,7 @@ enum NotificationCategory {
   predictedHigh,
   missedBolus,
   stubbornHigh,
+  ketoneCheck,
   rescueCarb,
   postMealMovement,
   overnightLowRisk,
@@ -33,6 +34,7 @@ extension NotificationCategoryX on NotificationCategory {
         NotificationCategory.predictedHigh => 'High predicted',
         NotificationCategory.missedBolus => 'Missed bolus',
         NotificationCategory.stubbornHigh => 'Stubborn high / site issue',
+        NotificationCategory.ketoneCheck => 'Check ketones (sick day)',
         NotificationCategory.rescueCarb => 'Rescue carbs',
         NotificationCategory.postMealMovement => 'Move after meals',
         NotificationCategory.overnightLowRisk => 'Overnight low risk',
@@ -56,6 +58,8 @@ extension NotificationCategoryX on NotificationCategory {
           'A meal-sized rise with no bolus logged.',
         NotificationCategory.stubbornHigh =>
           'High for hours with insulin not working — possible site failure.',
+        NotificationCategory.ketoneCheck =>
+          'Sustained high with a ketone risk factor (illness, site failure, missed insulin).',
         NotificationCategory.rescueCarb => 'Suggested fast carbs when low.',
         NotificationCategory.postMealMovement =>
           'A nudge to walk when a post-meal spike is predicted.',
@@ -267,6 +271,13 @@ class NotificationPrefs {
             vibrate: true,
             sound: false,
             repeatMinutes: 0),
+        NotificationCategory.ketoneCheck => const CategoryPref(
+            enabled: true,
+            importance: NotifImportance.high,
+            vibrate: true,
+            sound: true,
+            repeatMinutes: 60), // re-remind while it persists
+
         NotificationCategory.rescueCarb => const CategoryPref(
             enabled: true,
             importance: NotifImportance.high,

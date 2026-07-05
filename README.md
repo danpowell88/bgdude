@@ -154,6 +154,11 @@ already collects:
   not already moving, plus a post-meal-steps vs spike-size correlation.
 - **Fat-protein (FPU) coach** — split/extended-dose advice + a delayed-rise watch for
   fat/protein-heavy meals (`meals/fpu_coach.dart`, Warsaw/Pankowska).
+- **Risk indices** — Glycemia Risk Index (GRI, Klonoff 2022) and LBGI/HBGI (Kovatchev) in
+  the Glucose report/metrics — validated composite risk scores beyond TIR/CV.
+- **Ketone / DKA sick-day prompt** — sustained high plus a ketone risk factor (illness,
+  likely site failure, or very high with minimal IOB) fires a "check ketones" alert with
+  sick-day guidance (`insights/ketone_risk.dart`); pluggable to continuous ketone sensors.
 
 ## Quality-of-life
 

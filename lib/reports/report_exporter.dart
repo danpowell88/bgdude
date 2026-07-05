@@ -38,6 +38,9 @@ class ReportExporter {
       ['gmi_eA1c_pct', m.gmi.toStringAsFixed(1)],
       ['cv_pct', m.cvPercent.toStringAsFixed(1)],
       ['cv_high_ge36', '${m.variabilityHigh}'],
+      ['gri', m.gri.toStringAsFixed(1)],
+      ['lbgi', m.lbgi.toStringAsFixed(2)],
+      ['hbgi', m.hbgi.toStringAsFixed(2)],
       ['tir_70_180_pct', (m.timeInRange * 100).toStringAsFixed(1)],
       ['titr_70_140_pct', (m.timeInTightRange * 100).toStringAsFixed(1)],
       ['tbr_below_70_pct', (m.timeBelow70 * 100).toStringAsFixed(1)],
@@ -111,6 +114,8 @@ class ReportExporter {
             '${m.cvPercent.toStringAsFixed(1)}%'
                 '${m.variabilityHigh ? ' (high, >=36%)' : ''}'
           ],
+          ['Glycemia Risk Index (GRI)', m.gri.toStringAsFixed(0)],
+          ['LBGI / HBGI', '${m.lbgi.toStringAsFixed(1)} / ${m.hbgi.toStringAsFixed(1)}'],
           ['Readings', '${m.readingCount}'],
           ['CGM active time', pct(m.activeFraction)],
         ]),
