@@ -9,6 +9,7 @@ import 'advanced_screen.dart';
 import 'basal_recommendations_screen.dart';
 import 'confirmation_inbox_screen.dart';
 import 'exercise_mode_screen.dart';
+import 'medication_mode_screen.dart';
 import 'model_accuracy_screen.dart';
 import 'notification_settings_screen.dart';
 import 'profile_screen.dart';
@@ -183,6 +184,16 @@ class SettingsScreen extends ConsumerWidget {
                 'Announce a workout — leads low alerts and suggests a pre-snack'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const ExerciseModeScreen()),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.medication_outlined),
+            title: const Text('Medication / steroid mode'),
+            subtitle: const Text(
+                'On a steroid course? Raise expected insulin needs while active'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const MedicationModeScreen()),
             ),
           ),
           ListTile(

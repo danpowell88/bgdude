@@ -34,6 +34,7 @@ import '../insights/exercise_mode.dart';
 import '../insights/illness_mode.dart';
 import '../insights/ketone_risk.dart';
 import '../insights/lab_a1c.dart';
+import '../insights/medication_mode.dart';
 import '../insights/sleep_insight.dart';
 import '../insights/morning_summary.dart';
 import '../insights/notification_prefs.dart';
@@ -780,8 +781,49 @@ final effectiveSensitivityProvider = Provider<SensitivityContext>((ref) {
   if (profile != null && !profile.isNeutral) {
     ctx = profile.contextAt(DateTime.now(), daily: ctx);
   }
-  return illness.overlay(ctx);
+  ctx = illness.overlay(ctx);
+  // A medication (e.g. steroid) course raises resistance on top of everything else.
+  return ref.watch(medicationModeProvider).overlay(ctx);
 });
+
+/// A medication/steroid course that raises insulin resistance while active. Persisted.
+final medicationModeProvider =
+    StateNotifierProvider<MedicationModeNotifier, MedicationMode>(
+        (ref) => MedicationModeNotifier());
+
+class MedicationModeNotifier extends StateNotifier<MedicationMode> {
+  MedicationModeNotifier() : super(const MedicationMode()) {
+    _restore();
+  }
+  static const _key = 'medication_mode_v1';
+
+  Future<void> _restore() async {
+    final raw = await KvStore.getString(_key);
+    if (raw != null) {
+      state = MedicationMode.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    }
+  }
+
+  Future<void> _persist() async =>
+      KvStore.setString(_key, jsonEncode(state.toJson()));
+
+  Future<void> start(MedicationIntensity intensity, {String name = 'Steroid'}) async {
+    state = MedicationMode(
+        active: true, startedAt: DateTime.now(), intensity: intensity, name: name);
+    await _persist();
+  }
+
+  Future<void> stop() async {
+    state = state.copyWith(active: false, startedAt: null);
+    await _persist();
+  }
+
+  /// Remember the intensity choice without (de)activating.
+  Future<void> setIntensity(MedicationIntensity intensity) async {
+    state = state.copyWith(intensity: intensity);
+    await _persist();
+  }
+}
 
 /// The encrypted history repository. Overridden in main() with a SQLCipher-backed
 /// [DriftHistoryRepository]; defaults to in-memory so tests and DB-less contexts work.
