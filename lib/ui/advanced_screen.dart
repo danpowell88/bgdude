@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/units.dart';
 import '../state/providers.dart';
 import 'model_accuracy_screen.dart';
 import 'widgets/error_grid_chart.dart';

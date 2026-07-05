@@ -1,6 +1,8 @@
 package com.bgdude.app.pump
 
 import com.jwoglom.pumpx2.pump.messages.Message
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.AlarmStatusResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.AlertStatusResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ApiVersionResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQIOBResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBasalStatusResponse
@@ -9,6 +11,7 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV2R
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentEGVGuiDataResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.InsulinStatusResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.LastBolusStatusV2Response
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.PumpVersionResponse
 
 /**
  * Maps pumpx2 response objects onto the [MutableSnapshot]. Branches on concrete response
@@ -56,6 +59,18 @@ object PumpResponseMapper {
 
             is ApiVersionResponse ->
                 snapshot.apiVersion = "${message.majorVersion}.${message.minorVersion}"
+
+            // Pump firmware (ARM software version). Auto-sent by the base handler on
+            // connect, and re-requested with the status poll.
+            is PumpVersionResponse ->
+                snapshot.firmwareVersion = message.armSwVer.toString()
+
+            // Active pump alerts (informational) and alarms (higher severity). Each
+            // response carries the full current set, so replace rather than append.
+            is AlertStatusResponse ->
+                snapshot.activeAlerts = message.alerts.map { it.name }.toMutableList()
+            is AlarmStatusResponse ->
+                snapshot.activeAlarms = message.alarms.map { it.name }.toMutableList()
 
             else -> { /* Unhandled response types are ignored (best-effort). */ }
         }

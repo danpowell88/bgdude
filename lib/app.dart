@@ -46,6 +46,10 @@ class BgDudeApp extends ConsumerWidget {
       final c = next.valueOrNull;
       if (c != null) ref.read(connectionAlertServiceProvider).onConnection(c);
     });
+    // Apply notification-preference changes to the live channels.
+    ref.listen(notificationPrefsProvider, (_, prefs) {
+      ref.read(notificationServiceProvider).applyPrefs(prefs);
+    });
     // Import the pump's therapy profile (IDP) when it's read from the pump.
     ref.listen(pumpTherapyProfileProvider, (_, next) {
       final json = next.valueOrNull;

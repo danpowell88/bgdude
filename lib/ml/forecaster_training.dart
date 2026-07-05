@@ -14,6 +14,7 @@ import '../core/samples.dart';
 import '../feedback/annotations.dart';
 import '../feedback/retraining.dart';
 import 'forecast_features.dart';
+import 'health_features.dart';
 import 'model_registry.dart';
 import 'residual_gbm_model.dart';
 
@@ -67,6 +68,7 @@ class ForecasterTrainer {
     required TherapySettings settings,
     required List<Annotation> annotations,
     required DateTime asOf,
+    HealthFeatureSampler? health,
   }) {
     final samples = [...cgm]
       ..removeWhere((s) => s.sensorWarmup || s.mgdl <= 0)
@@ -112,6 +114,7 @@ class ForecasterTrainer {
           carbs: carbs,
           context: SensitivityContext.neutral,
           horizonMinutes: h,
+          health: health?.featuresAt(cur.time) ?? HealthFeatureSampler.zeros,
         );
         if (cur.time.isBefore(splitTime)) {
           rawByHorizon[h]!.add(_Raw(cur.time, feats, residual));

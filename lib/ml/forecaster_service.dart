@@ -17,6 +17,7 @@ import '../feedback/annotations.dart';
 import 'forecast_features.dart';
 import 'forecaster.dart';
 import 'forecaster_training.dart';
+import 'health_features.dart';
 import 'model_registry.dart';
 import 'residual_gbm_model.dart';
 
@@ -44,7 +45,7 @@ class TrainingOutcome {
 /// Loads/saves the active residual model as JSON in shared_preferences, versioned by
 /// the feature layout so a layout change discards stale models.
 class ForecasterModelStore {
-  static const _key = 'residual_model_v1';
+  static const _key = 'residual_model_v2';
   static const _versionKey = 'residual_model_feature_version';
 
   static Future<ResidualModel> load() async {
@@ -89,6 +90,7 @@ class ForecasterModelController extends StateNotifier<ResidualModel> {
     required TherapySettings settings,
     required List<Annotation> annotations,
     required DateTime asOf,
+    HealthFeatureSampler? health,
   }) async {
     final result = ForecasterTrainer().train(
       cgm: cgm,
@@ -98,6 +100,7 @@ class ForecasterModelController extends StateNotifier<ResidualModel> {
       settings: settings,
       annotations: annotations,
       asOf: asOf,
+      health: health,
     );
     if (result == null) {
       lastOutcome = TrainingOutcome.notEnoughData;

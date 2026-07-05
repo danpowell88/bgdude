@@ -291,6 +291,13 @@ class IllnessDetector {
     double? baselineHrv,
     double? dailySteps,
     double? baselineDailySteps,
+    // Extended illness signals from Health Connect.
+    double? bodyTempC,
+    double? baselineBodyTempC,
+    double? respiratoryRate,
+    double? baselineRespiratoryRate,
+    double? spo2,
+    double? baselineSpo2,
   }) {
     var weightSum = 0.0;
     var weightedScore = 0.0;
@@ -344,6 +351,33 @@ class IllnessDetector {
       threshold: _stepsThreshold,
       deviation: (v, b) => 1.0 - v / b,
       describe: (d) => 'steps ~${(d * 100).round()}% below baseline',
+    );
+    // Fever: absolute body-temp rise over baseline (°C).
+    signal(
+      value: bodyTempC,
+      baseline: baselineBodyTempC,
+      weight: 0.25,
+      threshold: 0.7,
+      deviation: (v, b) => v - b,
+      describe: (d) => 'temperature ~${d.toStringAsFixed(1)}°C above baseline',
+    );
+    // Elevated respiratory rate.
+    signal(
+      value: respiratoryRate,
+      baseline: baselineRespiratoryRate,
+      weight: 0.12,
+      threshold: 0.15,
+      deviation: (v, b) => v / b - 1.0,
+      describe: (d) => 'respiratory rate ~${(d * 100).round()}% above baseline',
+    );
+    // Lowered blood-oxygen (absolute % drop).
+    signal(
+      value: spo2,
+      baseline: baselineSpo2,
+      weight: 0.12,
+      threshold: 2.0,
+      deviation: (v, b) => b - v,
+      describe: (d) => 'SpO₂ ~${d.toStringAsFixed(0)}% below baseline',
     );
 
     if (weightSum == 0) return IllnessSuggestion.none;

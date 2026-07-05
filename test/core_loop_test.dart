@@ -1,5 +1,4 @@
 import 'package:bgdude/analytics/context_builder.dart';
-import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/core/units.dart';
 import 'package:bgdude/data/health_sync.dart';
@@ -204,6 +203,6 @@ void main() {
   });
 
   test('mmol display sanity', () {
-    expect(Mgdl(180).display(GlucoseUnit.mmol), '10.0');
+    expect(const Mgdl(180).display(GlucoseUnit.mmol), '10.0');
   });
 }

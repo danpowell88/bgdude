@@ -557,7 +557,7 @@ class ReadingExplainer {
     double csf,
   ) {
     final td = entry.absorptionMinutes.toDouble();
-    final absorbedAt = (DateTime t) =>
+    double absorbedAt(DateTime t) =>
         1 - _carbModel.cobFraction(t.difference(entry.time).inMinutes.toDouble(), td);
     return (absorbedAt(to) - absorbedAt(from)) * entry.grams * csf;
   }

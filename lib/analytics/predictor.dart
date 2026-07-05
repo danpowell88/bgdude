@@ -46,6 +46,7 @@ class PredictionState {
     required this.carbs,
     required this.settings,
     this.context = SensitivityContext.neutral,
+    this.healthFeatures = const [0.0, 0.0],
   });
 
   final DateTime now;
@@ -59,6 +60,10 @@ class PredictionState {
   final List<CarbEntry> carbs;
   final TherapySettings settings;
   final SensitivityContext context;
+
+  /// Acute activity features (steps / post-exercise) from `HealthFeatureSampler`,
+  /// fed to the learned residual forecaster. Zeros when no wearable data covers [now].
+  final List<double> healthFeatures;
 }
 
 class GlucosePredictor {

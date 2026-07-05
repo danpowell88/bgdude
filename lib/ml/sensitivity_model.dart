@@ -32,6 +32,16 @@ class ContextFeatures {
     required this.illnessFlag,
     required this.baselineHrv,
     required this.baselineRestingHr,
+    // Extended Health Connect signals (autonomic / illness / activity proxies). Optional
+    // so older callers/tests keep working; 0 baselines contribute nothing to the vector.
+    this.overnightRespiratoryRate = 0,
+    this.spo2 = 0,
+    this.bodyTempC = 0,
+    this.activeEnergyKcal = 0,
+    this.baselineRespiratoryRate = 0,
+    this.baselineSpo2 = 0,
+    this.baselineBodyTempC = 0,
+    this.baselineActiveEnergyKcal = 0,
   });
 
   final double sleepHours;
@@ -54,18 +64,32 @@ class ContextFeatures {
   final double baselineHrv;
   final double baselineRestingHr;
 
-  /// Feature vector in a fixed order. Relative HRV/HR are used (vs the user's own
-  /// baseline) so the model generalises across individuals' absolute ranges.
+  // Extended signals + their baselines.
+  final double overnightRespiratoryRate;
+  final double spo2;
+  final double bodyTempC;
+  final double activeEnergyKcal;
+  final double baselineRespiratoryRate;
+  final double baselineSpo2;
+  final double baselineBodyTempC;
+  final double baselineActiveEnergyKcal;
+
+  static double _rel(double v, double base) => base == 0 ? 0 : (v - base) / base;
+
+  /// Feature vector in a fixed order. Relative-to-baseline features generalise across
+  /// individuals' absolute ranges; a 0 baseline yields 0 (no signal).
   List<double> toVector() => [
         sleepHours,
         sleepEfficiency,
-        baselineHrv == 0 ? 0 : (overnightHrvRmssd - baselineHrv) / baselineHrv,
-        baselineRestingHr == 0
-            ? 0
-            : (restingHr - baselineRestingHr) / baselineRestingHr,
+        _rel(overnightHrvRmssd, baselineHrv),
+        _rel(restingHr, baselineRestingHr),
         priorDayExerciseLoad,
         menstrualLutealPhase,
         illnessFlag,
+        _rel(overnightRespiratoryRate, baselineRespiratoryRate),
+        baselineSpo2 == 0 ? 0 : (spo2 - baselineSpo2), // absolute SpO2 delta (%)
+        baselineBodyTempC == 0 ? 0 : (bodyTempC - baselineBodyTempC), // °C delta
+        _rel(activeEnergyKcal, baselineActiveEnergyKcal),
       ];
 
   static const List<String> featureNames = [
@@ -76,6 +100,10 @@ class ContextFeatures {
     'prior-day exercise',
     'luteal phase',
     'illness',
+    'respiratory rate vs baseline',
+    'SpO2 delta',
+    'body-temp delta',
+    'active energy vs baseline',
   ];
 }
 
@@ -176,6 +204,14 @@ SensitivityContext heuristicSensitivity(ContextFeatures f) {
   }
   if (f.menstrualLutealPhase > 0.5) mult += 0.10;
   if (f.illnessFlag > 0.5) mult += 0.15;
+  // Elevated body temperature / respiratory rate (illness/stress proxies) → resistance.
+  if (f.baselineBodyTempC > 0 && f.bodyTempC > f.baselineBodyTempC + 0.5) {
+    mult += 0.10;
+  }
+  if (f.baselineRespiratoryRate > 0 &&
+      f.overnightRespiratoryRate > f.baselineRespiratoryRate * 1.12) {
+    mult += 0.05;
+  }
   // Prior-day aerobic exercise raises sensitivity (lowers requirement).
   if (f.priorDayExerciseLoad > 0.5) mult -= 0.08;
 

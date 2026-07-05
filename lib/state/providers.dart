@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../analytics/bolus_advisor.dart';
 import '../analytics/context_builder.dart';
 import '../analytics/insulin_math.dart';
+import '../analytics/insulin_totals.dart';
 import '../analytics/metrics.dart';
 import '../analytics/predictor.dart';
 import '../analytics/rescue_carbs.dart';
@@ -24,6 +25,7 @@ import '../insights/daily_narrative.dart';
 import '../insights/illness_mode.dart';
 import '../insights/sleep_insight.dart';
 import '../insights/morning_summary.dart';
+import '../insights/notification_prefs.dart';
 import '../insights/notifications.dart';
 import '../integrations/nightscout.dart';
 import '../logging/device_changes.dart';
@@ -35,15 +37,18 @@ import '../meals/meal_library.dart';
 import '../meals/meal_log.dart';
 import '../meals/meal_outcome_service.dart';
 import '../meals/prebolus_coach.dart';
+import '../ml/basal_recommender.dart';
 import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
 import '../ml/forecaster_service.dart';
+import '../ml/health_features.dart';
 import '../ml/sensitivity_model.dart';
 import '../ml/sensitivity_training.dart';
 import '../ml/time_of_day_sensitivity.dart';
 import '../ml/uncertainty_calibrator.dart';
 import '../pump/history_backfill.dart';
 import '../pump/pump_client.dart';
+import '../pump/pump_events.dart';
 import '../pump/pump_snapshot.dart';
 import '../pump/pump_source.dart';
 import '../pump/simulated_pump_client.dart';
@@ -58,6 +63,31 @@ export 'day_data.dart';
 /// Notification service (overridden in main() with the initialised instance).
 final notificationServiceProvider =
     Provider<NotificationService>((ref) => throw UnimplementedError());
+
+/// User notification preferences (categories, importance, sound/vibration, repeats),
+/// persisted in the encrypted store. Changes are applied to the live channels.
+final notificationPrefsProvider =
+    StateNotifierProvider<NotificationPrefsNotifier, NotificationPrefs>(
+        (ref) => NotificationPrefsNotifier());
+
+class NotificationPrefsNotifier extends StateNotifier<NotificationPrefs> {
+  NotificationPrefsNotifier() : super(NotificationPrefs.defaults()) {
+    _restore();
+  }
+  static const _key = 'notification_prefs_v1';
+
+  Future<void> _restore() async {
+    final raw = await KvStore.getString(_key);
+    if (raw != null) {
+      state = NotificationPrefs.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    }
+  }
+
+  Future<void> setCategory(NotificationCategory c, CategoryPref pref) async {
+    state = state.withCategory(c, pref);
+    await KvStore.setString(_key, jsonEncode(state.toJson()));
+  }
+}
 
 /// Display unit (mmol/L default for the AU user).
 final glucoseUnitProvider = StateProvider<GlucoseUnit>((ref) => GlucoseUnit.mmol);
@@ -282,6 +312,12 @@ final forecasterProvider = Provider<Forecaster>(
 final bolusAdvisorProvider = Provider<BolusAdvisor>(
     (ref) => BolusAdvisor(predictor: ref.watch(predictorProvider)));
 
+/// Recent Google Fit / Health Connect activity (steps + workouts) as a sampler for the
+/// live forecaster's activity features. Refreshed after each health sync; null (→ zero
+/// features) until the first load or in dev mode where there's no wearable data.
+final forecastHealthSamplerProvider =
+    StateProvider<HealthFeatureSampler?>((ref) => null);
+
 /// Rescue-carb advice when low or predicted-low (null when not needed).
 final rescueCarbAdviceProvider = Provider<RescueCarbAdvice?>((ref) {
   final state = ref.watch(livePredictionStateProvider);
@@ -320,6 +356,32 @@ final homeWidgetServiceProvider = Provider<HomeWidgetService>((ref) {
 /// nightly analysis job has ≥14 days of data to learn from.
 final timeOfDayProfileProvider =
     StateProvider<TimeOfDayProfile?>((ref) => null);
+
+/// Insulin delivered so far today (since local midnight): bolus + integrated basal.
+/// Derived from our own history — a TDD-style running total for the Pump screen.
+final insulinTodayProvider = Provider<InsulinTotals>((ref) {
+  final day = ref.watch(dayDataProvider);
+  final now = DateTime.now();
+  final midnight = DateTime(now.year, now.month, now.day);
+  return insulinTotals(
+      boluses: day.boluses, basal: day.basal, from: midnight, to: now);
+});
+
+/// Recent pump events (alarms/alerts/cartridge changes) decoded from the History Log.
+final pumpEventsProvider =
+    FutureProvider<List<PumpEvent>>((ref) => PumpEventLog.load());
+
+/// Suggested basal-profile changes derived from repeated time-of-day sensitivity
+/// trends. Empty until there's a trusted profile (≥14 days). Informational only —
+/// never writes to the pump.
+final basalRecommendationProvider = Provider<BasalRecommendation>((ref) {
+  final profile = ref.watch(timeOfDayProfileProvider);
+  final settings = ref.watch(therapySettingsProvider);
+  final now = DateTime.now();
+  if (profile == null) return BasalRecommendation.none(now);
+  return const BasalRecommender()
+      .recommend(profile: profile, settings: settings, now: now);
+});
 
 /// A pending illness-mode suggestion from the detector (null when none). Surfaced as a
 /// banner on the Insights page.
@@ -520,6 +582,8 @@ final livePredictionStateProvider = Provider<PredictionState?>((ref) {
   final roc = day.recentRocMgdlPerMin() ??
       (snapshot?.cgmTrend ?? GlucoseTrend.flat).mgdlPerMin;
 
+  final healthSampler = ref.watch(forecastHealthSamplerProvider);
+
   return PredictionState(
     now: latest.time,
     currentMgdl: latest.mgdl,
@@ -529,6 +593,8 @@ final livePredictionStateProvider = Provider<PredictionState?>((ref) {
     carbs: day.carbs,
     settings: day.settings,
     context: ref.watch(effectiveSensitivityProvider),
+    healthFeatures:
+        healthSampler?.featuresAt(latest.time) ?? HealthFeatureSampler.zeros,
   );
 });
 
@@ -681,7 +747,8 @@ class ConnectionAlertService {
       _timer ??= Timer(graceBeforeAlert, () async {
         _timer = null;
         try {
-          await _ref.read(notificationServiceProvider).showNudge(
+          await _ref.read(notificationServiceProvider).show(
+                NotificationCategory.connectionLost,
                 'Pump disconnected',
                 'No pump data for ~10 min — readings and predictions are paused. '
                     'Check Bluetooth and that the pump is in range.',
@@ -699,15 +766,34 @@ final alertServiceProvider = Provider<AlertService>((ref) => AlertService(ref));
 class AlertService {
   AlertService(this._ref);
   final Ref _ref;
-  final Map<GlucoseAlertKind, DateTime> _lastFired = {};
-  final Map<String, DateTime> _lastCare = {};
+  final Map<NotificationCategory, DateTime> _lastFired = {};
   DateTime? _lastPredictionLog;
 
-  static const _careCooldown = Duration(minutes: 60);
-  bool _careReady(String k, DateTime now) =>
-      !_lastCare.containsKey(k) || now.difference(_lastCare[k]!) >= _careCooldown;
+  /// Gate on the category's enabled state and repeat interval (repeatMinutes; a category
+  /// with repeat 0 uses a 30-min re-alert floor so a persistent condition isn't silent
+  /// forever, but doesn't spam).
+  bool _shouldFire(NotificationCategory c, DateTime now) {
+    final pref = _ref.read(notificationPrefsProvider).of(c);
+    if (!pref.enabled) return false;
+    final interval =
+        Duration(minutes: pref.repeatMinutes > 0 ? pref.repeatMinutes : 30);
+    final last = _lastFired[c];
+    if (last != null && now.difference(last) < interval) return false;
+    _lastFired[c] = now;
+    return true;
+  }
+
+  static NotificationCategory _categoryFor(GlucoseAlertKind k) => switch (k) {
+        GlucoseAlertKind.urgentLow => NotificationCategory.urgentLow,
+        GlucoseAlertKind.predictedLow => NotificationCategory.predictedLow,
+        GlucoseAlertKind.predictedHigh => NotificationCategory.predictedHigh,
+      };
 
   Future<void> onSnapshot() async {
+    // Pump-status alerts (alarms + low reservoir) come straight off the snapshot and
+    // don't depend on a CGM/prediction being available, so check them first.
+    await _checkPumpStatus();
+
     final state = _ref.read(livePredictionStateProvider);
     if (state == null) return;
     final forecasts = const UncertaintyCalibrator().calibrateAll(
@@ -716,19 +802,37 @@ class AlertService {
     );
     final now = DateTime.now();
 
-    final alert = const AlertMonitor().evaluate(
+    // Evaluate without an internal cooldown — repeat/opt-out is governed by prefs here.
+    final alert = const AlertMonitor(cooldown: Duration.zero).evaluate(
       forecasts: forecasts,
       currentMgdl: state.currentMgdl,
       now: now,
-      lastFired: _lastFired,
+      lastFired: const {},
       unit: _ref.read(glucoseUnitProvider),
     );
     if (alert != null) {
-      _lastFired[alert.kind] = now;
+      final category = _categoryFor(alert.kind);
+      if (_shouldFire(category, now)) {
+        try {
+          await _ref
+              .read(notificationServiceProvider)
+              .show(category, alert.title, alert.body);
+        } catch (_) {}
+      }
+    }
+
+    // Rescue carbs: fire the act-now case (urgent) as its own category so it can be
+    // tuned/opted separately from the predictive low alert above.
+    final rescue = _ref.read(rescueCarbAdviceProvider);
+    if (rescue != null &&
+        rescue.urgent &&
+        _shouldFire(NotificationCategory.rescueCarb, now)) {
       try {
-        await _ref
-            .read(notificationServiceProvider)
-            .showNudge(alert.title, alert.body);
+        await _ref.read(notificationServiceProvider).show(
+              NotificationCategory.rescueCarb,
+              'Take rescue carbs',
+              '~${rescue.grams.round()}g fast carbs now — ${rescue.reason}',
+            );
       } catch (_) {}
     }
 
@@ -742,10 +846,10 @@ class AlertService {
       settings: day.settings,
       now: now,
     );
-    if (missed != null && _careReady('missedBolus', now)) {
-      _lastCare['missedBolus'] = now;
+    if (missed != null && _shouldFire(NotificationCategory.missedBolus, now)) {
       try {
-        await _ref.read(notificationServiceProvider).showNudge(
+        await _ref.read(notificationServiceProvider).show(
+              NotificationCategory.missedBolus,
               'Missed bolus?',
               'A ~${missed.estimatedCarbsGrams.round()}g rise with no bolus logged — '
                   'correct now if you ate.',
@@ -762,10 +866,10 @@ class AlertService {
       siteAgeHours: siteMin == null ? null : siteMin / 60.0,
       now: now,
     );
-    if (stubborn != null && _careReady('stubbornHigh', now)) {
-      _lastCare['stubbornHigh'] = now;
+    if (stubborn != null && _shouldFire(NotificationCategory.stubbornHigh, now)) {
       try {
-        await _ref.read(notificationServiceProvider).showNudge(
+        await _ref.read(notificationServiceProvider).show(
+              NotificationCategory.stubbornHigh,
               'Stubborn high',
               stubborn.likelySiteIssue
                   ? 'High for a while with insulin doing little, and your site is '
@@ -797,6 +901,63 @@ class AlertService {
       }
     }
   }
+
+  /// Below this many units left, warn about the reservoir.
+  static const double _reservoirLowUnits = 15.0;
+  String? _lastAlarmSignature;
+
+  /// Surface active pump alarms and a low reservoir from the latest snapshot.
+  Future<void> _checkPumpStatus() async {
+    final snap = _ref.read(pumpSnapshotProvider).valueOrNull;
+    if (snap == null) return;
+    final now = DateTime.now();
+
+    // Active alarms/alerts on the pump. Fire when the active set changes (so a new alarm
+    // notifies) and re-alert per the category's repeat interval while it persists.
+    final active = [...snap.activeAlarms, ...snap.activeAlerts];
+    final signature = active.join('|');
+    if (active.isNotEmpty) {
+      final changed = signature != _lastAlarmSignature;
+      if ((changed || _shouldFire(NotificationCategory.pumpAlarm, now))) {
+        _lastAlarmSignature = signature;
+        try {
+          await _ref.read(notificationServiceProvider).show(
+                NotificationCategory.pumpAlarm,
+                snap.activeAlarms.isNotEmpty ? 'Pump alarm' : 'Pump alert',
+                '${active.map(_humanizeAlarm).join(', ')} — check your pump.',
+              );
+        } catch (_) {}
+      }
+    } else {
+      _lastAlarmSignature = null;
+    }
+
+    final reservoir = snap.reservoirUnits;
+    if (reservoir != null &&
+        reservoir <= _reservoirLowUnits &&
+        _shouldFire(NotificationCategory.reservoirLow, now)) {
+      try {
+        await _ref.read(notificationServiceProvider).show(
+              NotificationCategory.reservoirLow,
+              'Low reservoir',
+              '~${reservoir.round()} U left — plan a cartridge change soon.',
+            );
+      } catch (_) {}
+    }
+  }
+
+  /// Turn a pumpx2 enum-ish alarm name (e.g. "LOW_INSULIN_ALARM") into readable text.
+  static String _humanizeAlarm(String raw) {
+    final words = raw
+        .replaceAll('_', ' ')
+        .toLowerCase()
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .toList();
+    if (words.isEmpty) return raw;
+    return words.first[0].toUpperCase() + words.first.substring(1) +
+        (words.length > 1 ? ' ${words.sublist(1).join(' ')}' : '');
+  }
 }
 
 /// Background jobs run at startup (and on demand): close the meal-outcome loop,
@@ -813,6 +974,9 @@ class AppJobs {
         await syncHealth();
       } catch (_) {}
     }
+    try {
+      await refreshForecastHealthSampler();
+    } catch (_) {}
     try {
       await runMealOutcomeLoop();
     } catch (_) {}
@@ -862,10 +1026,26 @@ class AppJobs {
   /// Backfill historical pump data from the History Log (best-effort; no-op in dev/sim).
   Future<int> backfillHistory() async {
     final now = DateTime.now();
-    return HistoryBackfillService(_ref.read(historyRepositoryProvider)).backfill(
+    final siteChanges = <DateTime>[];
+    final events = <PumpEvent>[];
+    final count =
+        await HistoryBackfillService(_ref.read(historyRepositoryProvider)).backfill(
       from: now.subtract(const Duration(days: 14)),
       to: now,
+      onDeviceChange: (kind, at) {
+        if (kind == DeviceKind.site) siteChanges.add(at);
+      },
+      onPumpEvent: events.add,
     );
+    // Record the most recent decoded site change so infusion-set age tracks the pump.
+    if (siteChanges.isNotEmpty) {
+      siteChanges.sort();
+      await _ref
+          .read(deviceStateProvider.notifier)
+          .record(DeviceKind.site, at: siteChanges.last);
+    }
+    if (events.isNotEmpty) await PumpEventLog.append(events);
+    return count;
   }
 
   /// Assemble per-day inputs and train the sensitivity + time-of-day models from
@@ -949,9 +1129,26 @@ class AppJobs {
       baselineRestingHr: ctx?.baselineRestingHr,
       hrvRmssd: ctx?.overnightHrvRmssd,
       baselineHrv: ctx?.baselineHrv,
+      bodyTempC: ctx?.bodyTempC,
+      baselineBodyTempC: ctx?.baselineBodyTempC,
+      respiratoryRate: ctx?.overnightRespiratoryRate,
+      baselineRespiratoryRate: ctx?.baselineRespiratoryRate,
+      spo2: ctx?.spo2,
+      baselineSpo2: ctx?.baselineSpo2,
     );
     if (s.suggestActivation) {
       _ref.read(illnessSuggestionProvider.notifier).state = s;
+      // Also notify (opt-out/style governed by the illnessSuggestion category), since
+      // the in-app banner is easy to miss.
+      try {
+        await _ref.read(notificationServiceProvider).show(
+              NotificationCategory.illnessSuggestion,
+              'Possible illness',
+              '${s.reasons.join('; ')}. Consider sick-day mode '
+                  '(raises targets, adds correction).',
+              bigText: true,
+            );
+      } catch (_) {}
     }
   }
 
@@ -1021,8 +1218,20 @@ class AppJobs {
     if (samples.isNotEmpty) {
       await _ref.read(historyRepositoryProvider).saveHealth(samples);
       await _ref.read(dayHistoryControllerProvider.notifier).reload();
+      await refreshForecastHealthSampler();
     }
     return samples.length;
+  }
+
+  /// Load the last few hours of stored activity into the live forecaster's sampler so
+  /// its BG predictions reflect recent steps/workouts. Cheap; safe to call at startup.
+  Future<void> refreshForecastHealthSampler() async {
+    final now = DateTime.now();
+    final recent = await _ref
+        .read(historyRepositoryProvider)
+        .health(now.subtract(const Duration(hours: 6)), now);
+    _ref.read(forecastHealthSamplerProvider.notifier).state =
+        HealthFeatureSampler(recent);
   }
 
   /// Retrain the residual forecaster from all stored history, recording a model-run
@@ -1040,6 +1249,8 @@ class AppJobs {
           settings: settings,
           annotations: await repo.annotations(from, now),
           asOf: now,
+          // Feed Google Fit / Health Connect activity into the residual model.
+          health: HealthFeatureSampler(await repo.health(from, now)),
         );
     if (outcome.trained) {
       try {
@@ -1101,7 +1312,8 @@ class AppJobs {
       if (state.isOverdue(kind, now)) {
         final age = state.age(kind, now)!;
         try {
-          await _ref.read(notificationServiceProvider).showNudge(
+          await _ref.read(notificationServiceProvider).show(
+                NotificationCategory.deviceReminder,
                 '${kind.label} is overdue',
                 'It\'s been ${age.inDays}d ${age.inHours % 24}h — consider changing it.',
               );

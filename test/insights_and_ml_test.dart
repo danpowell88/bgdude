@@ -41,7 +41,7 @@ void main() {
         );
 
     test('emits a short-sleep insight only when sleep is short', () {
-      final gen = const MorningSummaryGenerator();
+      const gen = MorningSummaryGenerator();
       final good = gen.generate(
         date: DateTime(2026, 7, 4),
         overnightMetrics: _metrics(),
@@ -60,7 +60,7 @@ void main() {
     });
 
     test('flags overnight lows as caution', () {
-      final gen = const MorningSummaryGenerator();
+      const gen = MorningSummaryGenerator();
       final s = gen.generate(
         date: DateTime(2026, 7, 4),
         overnightMetrics: _metrics(tir: 0.6, tbr: 0.1),
@@ -75,7 +75,7 @@ void main() {
     });
 
     test('headline reflects a resistant sensitivity context', () {
-      final gen = const MorningSummaryGenerator();
+      const gen = MorningSummaryGenerator();
       final s = gen.generate(
         date: DateTime(2026, 7, 4),
         overnightMetrics: _metrics(),

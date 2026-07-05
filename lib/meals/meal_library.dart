@@ -386,11 +386,11 @@ class MealLibrary {
         [for (final o in outcomes) o.timeAbove180Minutes.toDouble()]);
     if (medianAbove >= 5) {
       insights.add('Typically ${medianAbove.round()} min above '
-          '${Mgdl(GlucoseThresholds.high).display(mmol)} ${mmol.label} in the '
+          '${const Mgdl(GlucoseThresholds.high).display(mmol)} ${mmol.label} in the '
           '3 h after eating.');
     } else {
       insights.add('Usually stays under '
-          '${Mgdl(GlucoseThresholds.high).display(mmol)} ${mmol.label} for the '
+          '${const Mgdl(GlucoseThresholds.high).display(mmol)} ${mmol.label} for the '
           'full 3 h — nice.');
     }
 

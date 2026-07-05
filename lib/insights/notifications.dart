@@ -1,79 +1,100 @@
-/// Notification + background scheduling. Two roles:
-///   * the morning summary (scheduled daily via WorkManager, delivered as a local
-///     notification), and
-///   * real-time nudges (predicted low/high, connection lost) fired from the running app.
+/// Category-aware notifications. Each [NotificationCategory] has its own Android channel
+/// whose importance / sound / vibration come from the user's [NotificationPrefs], so
+/// alerts can be opted in/out and tuned for intensity. Repeated-alert timing is handled
+/// by the caller (AlertService) using each category's `repeatMinutes`.
 ///
-/// Real-time alerts are *additive* to the pump/CGM's own alarms — this never suppresses
-/// or replaces them.
+/// All alerts are *additive* to the pump/CGM's own alarms — never a replacement.
 library;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
+import 'notification_prefs.dart';
+
 class NotificationService {
-  NotificationService({FlutterLocalNotificationsPlugin? plugin})
-      : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+  NotificationService({
+    FlutterLocalNotificationsPlugin? plugin,
+    NotificationPrefs? prefs,
+  })  : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+        _prefs = prefs ?? NotificationPrefs.defaults();
 
   final FlutterLocalNotificationsPlugin _plugin;
+  NotificationPrefs _prefs;
 
-  static const _summaryChannel = AndroidNotificationChannel(
-    'morning_summary',
-    'Morning summary',
-    description: 'Your daily diabetes briefing',
-    importance: Importance.defaultImportance,
-  );
-
-  static const _alertChannel = AndroidNotificationChannel(
-    'glucose_alerts',
-    'Glucose nudges',
-    description: 'Predicted-low/high and connection alerts (additive to CGM alarms)',
-    importance: Importance.high,
-  );
+  NotificationPrefs get prefs => _prefs;
 
   Future<void> init() async {
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     await _plugin.initialize(const InitializationSettings(android: androidInit));
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    await android?.createNotificationChannel(_summaryChannel);
-    await android?.createNotificationChannel(_alertChannel);
-    await android?.requestNotificationsPermission();
+    await _createChannels();
+    await _android?.requestNotificationsPermission();
   }
 
-  /// Show the generated morning summary immediately (called by the WorkManager job).
-  Future<void> showMorningSummary(String headline, String body) async {
+  AndroidFlutterLocalNotificationsPlugin? get _android =>
+      _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+
+  /// Apply updated preferences: channels are recreated so importance/sound/vibration
+  /// changes take effect (Android channel settings are fixed at creation).
+  Future<void> applyPrefs(NotificationPrefs prefs) async {
+    _prefs = prefs;
+    for (final c in NotificationCategory.values) {
+      await _android?.deleteNotificationChannel(c.name);
+    }
+    await _createChannels();
+  }
+
+  Future<void> _createChannels() async {
+    for (final c in NotificationCategory.values) {
+      final p = _prefs.of(c);
+      await _android?.createNotificationChannel(AndroidNotificationChannel(
+        c.name,
+        c.label,
+        description: c.description,
+        importance: _importance(p.importance),
+        playSound: p.sound,
+        enableVibration: p.vibrate,
+      ));
+    }
+  }
+
+  /// Show a notification for [category], respecting its enabled state and style.
+  /// Returns true if it fired (false if the category is opted out).
+  Future<bool> show(
+    NotificationCategory category,
+    String title,
+    String body, {
+    int? id,
+    bool bigText = false,
+  }) async {
+    final p = _prefs.of(category);
+    if (!p.enabled) return false;
     await _plugin.show(
-      1001,
-      headline,
+      id ?? 2000 + category.index,
+      title,
       body,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'morning_summary',
-          'Morning summary',
-          styleInformation: BigTextStyleInformation(''),
-        ),
-      ),
+      _details(category, p, bigText: bigText),
     );
+    return true;
   }
 
-  /// Schedule the summary to be generated + shown at [hour]:[minute] local each day.
-  /// The WorkManager task (registered in `main.dart`) does the generation; this schedules
-  /// the fallback local notification time for reliability.
+  Future<void> showMorningSummary(String headline, String body) =>
+      show(NotificationCategory.morningSummary, headline, body,
+          id: 1001, bigText: true);
+
+  /// Schedule the daily summary reminder at [hour]:[minute] local.
   Future<void> scheduleDailySummary({int hour = 7, int minute = 0}) async {
     final now = tz.TZDateTime.now(tz.local);
     var scheduled =
         tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (scheduled.isBefore(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
+    if (scheduled.isBefore(now)) scheduled = scheduled.add(const Duration(days: 1));
     await _plugin.zonedSchedule(
       1000,
       'Preparing your morning summary…',
       '',
       scheduled,
-      const NotificationDetails(
-        android: AndroidNotificationDetails('morning_summary', 'Morning summary'),
-      ),
+      _details(NotificationCategory.morningSummary,
+          _prefs.of(NotificationCategory.morningSummary)),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
@@ -81,8 +102,7 @@ class NotificationService {
     );
   }
 
-  /// Schedule a one-shot pre-bolus timer: fires "time to eat" after [lead].
-  /// Survives the app being backgrounded/killed (unlike an in-process delay).
+  /// Schedule a one-shot pre-bolus timer that survives the app being backgrounded.
   Future<void> schedulePreBolusTimer(Duration lead, String mealName) async {
     final when = tz.TZDateTime.now(tz.local).add(lead);
     await _plugin.zonedSchedule(
@@ -90,34 +110,42 @@ class NotificationService {
       'Time to eat',
       '${lead.inMinutes} min pre-bolus for $mealName is up — enjoy.',
       when,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'glucose_alerts',
-          'Glucose nudges',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-      ),
+      _details(NotificationCategory.preBolusTimer,
+          _prefs.of(NotificationCategory.preBolusTimer)),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
-  /// Fire a real-time nudge (predicted low/high, connection lost). Additive to CGM alarms.
-  Future<void> showNudge(String title, String body) async {
-    await _plugin.show(
-      2000,
-      title,
-      body,
-      const NotificationDetails(
+  NotificationDetails _details(NotificationCategory category, CategoryPref p,
+          {bool bigText = false}) =>
+      NotificationDetails(
         android: AndroidNotificationDetails(
-          'glucose_alerts',
-          'Glucose nudges',
-          importance: Importance.high,
-          priority: Priority.high,
+          category.name,
+          category.label,
+          channelDescription: category.description,
+          importance: _importance(p.importance),
+          priority: _priority(p.importance),
+          playSound: p.sound,
+          enableVibration: p.vibrate,
+          styleInformation: bigText ? const BigTextStyleInformation('') : null,
         ),
-      ),
-    );
-  }
+      );
+
+  static Importance _importance(NotifImportance i) => switch (i) {
+        NotifImportance.silent => Importance.min,
+        NotifImportance.low => Importance.low,
+        NotifImportance.normal => Importance.defaultImportance,
+        NotifImportance.high => Importance.high,
+        NotifImportance.urgent => Importance.max,
+      };
+
+  static Priority _priority(NotifImportance i) => switch (i) {
+        NotifImportance.silent => Priority.min,
+        NotifImportance.low => Priority.low,
+        NotifImportance.normal => Priority.defaultPriority,
+        NotifImportance.high => Priority.high,
+        NotifImportance.urgent => Priority.max,
+      };
 }

@@ -6,7 +6,10 @@ import '../core/units.dart';
 import '../integrations/nightscout.dart';
 import '../state/providers.dart';
 import 'advanced_screen.dart';
+import 'basal_recommendations_screen.dart';
 import 'model_accuracy_screen.dart';
+import 'notification_settings_screen.dart';
+import 'pump_screen.dart';
 import 'therapy_settings_screen.dart';
 
 /// Nightscout upload configuration section.
@@ -127,6 +130,25 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           ListTile(
+            leading: const Icon(Icons.notifications_active_outlined),
+            title: const Text('Notifications'),
+            subtitle: const Text(
+                'Opt in/out per alert, set intensity, sound & repeat alerts'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const NotificationSettingsScreen()),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.bloodtype_outlined),
+            title: const Text('Pump'),
+            subtitle: const Text(
+                'Live status, insulin today, reservoir, alarms & events'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const PumpScreen()),
+            ),
+          ),
+          ListTile(
             leading: const Icon(Icons.medication_outlined),
             title: const Text('Therapy profile'),
             subtitle: const Text('Basal, ISF, carb ratio & targets from your pump'),
@@ -151,6 +173,16 @@ class SettingsScreen extends ConsumerWidget {
                 'Sensitivity, time-of-day profile, forecaster & error grid'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const AdvancedScreen()),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.schedule),
+            title: const Text('Basal suggestions'),
+            subtitle: const Text(
+                'Profile changes from repeated fasting trends (advisory)'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const BasalRecommendationsScreen()),
             ),
           ),
           const Divider(),

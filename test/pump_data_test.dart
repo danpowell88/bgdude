@@ -1,0 +1,163 @@
+import 'package:bgdude/analytics/insulin_totals.dart';
+import 'package:bgdude/core/samples.dart';
+import 'package:bgdude/data/history_repository.dart';
+import 'package:bgdude/data/kv_store.dart';
+import 'package:bgdude/logging/device_changes.dart';
+import 'package:bgdude/pump/history_backfill.dart';
+import 'package:bgdude/pump/pump_events.dart';
+import 'package:bgdude/pump/pump_snapshot.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('insulinTotals', () {
+    final from = DateTime(2026, 7, 4, 0);
+    final to = DateTime(2026, 7, 4, 24);
+
+    test('sums boluses in-window and integrates basal', () {
+      final totals = insulinTotals(
+        boluses: [
+          BolusEvent(time: DateTime(2026, 7, 4, 8), units: 5),
+          BolusEvent(time: DateTime(2026, 7, 4, 18), units: 3),
+          // Out of window — ignored.
+          BolusEvent(time: DateTime(2026, 7, 3, 23), units: 10),
+        ],
+        basal: [
+          // 1.0 U/hr for the whole 24h day = 24 U.
+          BasalSegment(start: from, end: to, unitsPerHour: 1.0),
+        ],
+        from: from,
+        to: to,
+      );
+      expect(totals.bolus, 8);
+      expect(totals.basal, closeTo(24, 1e-9));
+      expect(totals.total, closeTo(32, 1e-9));
+      expect(totals.basalFraction, closeTo(24 / 32, 1e-9));
+    });
+
+    test('clips basal segments straddling the window edges', () {
+      final totals = insulinTotals(
+        boluses: const [],
+        basal: [
+          // Starts before window: only the in-window 2h counts (0.5 U/hr → 1 U).
+          BasalSegment(
+              start: DateTime(2026, 7, 3, 22),
+              end: DateTime(2026, 7, 4, 2),
+              unitsPerHour: 0.5),
+        ],
+        from: from,
+        to: to,
+      );
+      expect(totals.basal, closeTo(1.0, 1e-9)); // 2h × 0.5
+    });
+
+    test('empty is zero, no divide-by-zero', () {
+      final t = insulinTotals(
+          boluses: const [], basal: const [], from: from, to: to);
+      expect(t.total, 0);
+      expect(t.basalFraction, 0);
+    });
+  });
+
+  group('PumpSnapshot alerts', () {
+    test('parses active alerts/alarms arrays from JSON', () {
+      final s = PumpSnapshot.fromJson({
+        'timestampEpochMs': 1_700_000_000_000,
+        'reservoirUnits': 12.0,
+        'activeAlarms': ['LOW_INSULIN_ALARM'],
+        'activeAlerts': ['LOW_POWER_ALERT', 'CGM_SIGNAL_LOSS'],
+      });
+      expect(s.activeAlarms, ['LOW_INSULIN_ALARM']);
+      expect(s.activeAlerts, hasLength(2));
+      expect(s.reservoirUnits, 12.0);
+    });
+
+    test('defaults to empty lists when absent', () {
+      final s = PumpSnapshot.fromJson({'timestampEpochMs': 1_700_000_000_000});
+      expect(s.activeAlarms, isEmpty);
+      expect(s.activeAlerts, isEmpty);
+    });
+  });
+
+  group('PumpEventLog', () {
+    setUp(KvStore.useMemory);
+
+    test('appends, sorts newest-first, and de-dups on re-append', () async {
+      final a = PumpEvent(
+          time: DateTime(2026, 7, 4, 8),
+          kind: PumpEventKind.alarm,
+          detail: 'LOW_INSULIN');
+      final b = PumpEvent(
+          time: DateTime(2026, 7, 4, 10),
+          kind: PumpEventKind.cannulaChange,
+          detail: 'Cannula filled');
+      await PumpEventLog.append([a, b]);
+      await PumpEventLog.append([a]); // duplicate
+      final events = await PumpEventLog.load();
+      expect(events, hasLength(2));
+      expect(events.first.time, b.time); // newest first
+    });
+
+    test('caps at maxEvents', () async {
+      await PumpEventLog.append([
+        for (var i = 0; i < PumpEventLog.maxEvents + 20; i++)
+          PumpEvent(
+              time: DateTime(2026, 7, 4).add(Duration(minutes: i)),
+              kind: PumpEventKind.alert,
+              detail: 'a$i'),
+      ]);
+      expect((await PumpEventLog.load()).length, PumpEventLog.maxEvents);
+    });
+  });
+
+  group('HistoryBackfillService routing', () {
+    setUp(KvStore.useMemory);
+
+    test('routes new history types to repo + callbacks', () async {
+      const channel = MethodChannel('bgdude/pump_commands');
+      final t = DateTime(2026, 7, 4, 12).millisecondsSinceEpoch;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        if (call.method != 'fetchHistory') return null;
+        return <Map<Object?, Object?>>[
+          {'epochMs': t, 'type': 'bolus', 'units': 4.0, 'carbsGrams': 40.0},
+          {'epochMs': t + 1000, 'type': 'carb', 'carbsGrams': 30.0},
+          {'epochMs': t + 2000, 'type': 'cannulaFilled', 'primeSize': 0.3},
+          {'epochMs': t + 3000, 'type': 'cartridgeFilled', 'units': 200.0},
+          {'epochMs': t + 4000, 'type': 'alarm', 'name': 'LOW_INSULIN_ALARM'},
+          {'epochMs': t + 5000, 'type': 'alert', 'name': 'LOW_POWER_ALERT'},
+        ];
+      });
+
+      final repo = InMemoryHistoryRepository();
+      final deviceChanges = <(DeviceKind, DateTime)>[];
+      final events = <PumpEvent>[];
+      final imported = await HistoryBackfillService(repo).backfill(
+        from: DateTime(2026, 7, 4),
+        to: DateTime(2026, 7, 5),
+        onDeviceChange: (k, at) => deviceChanges.add((k, at)),
+        onPumpEvent: events.add,
+      );
+
+      expect(imported, 6);
+      // Carb + bolus landed in the repository.
+      final carbs = await repo.carbs(DateTime(2026, 7, 4), DateTime(2026, 7, 5));
+      expect(carbs, hasLength(1));
+      expect(carbs.single.grams, 30.0);
+      // Cannula fill → a site device-change callback.
+      expect(deviceChanges, hasLength(1));
+      expect(deviceChanges.single.$1, DeviceKind.site);
+      // Cartridge + alarm + alert → pump events.
+      expect(events.map((e) => e.kind), containsAll(<PumpEventKind>[
+        PumpEventKind.cartridgeChange,
+        PumpEventKind.alarm,
+        PumpEventKind.alert,
+      ]));
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+  });
+}

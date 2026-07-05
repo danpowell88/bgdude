@@ -83,6 +83,8 @@ class PumpSnapshot {
     this.lastBolusTime,
     this.apiVersion,
     this.firmwareVersion,
+    this.activeAlerts = const [],
+    this.activeAlarms = const [],
   });
 
   final DateTime time;
@@ -98,6 +100,10 @@ class PumpSnapshot {
   final DateTime? lastBolusTime;
   final String? apiVersion;
   final String? firmwareVersion;
+
+  /// Active pump alerts (informational) and alarms (higher severity), by name.
+  final List<String> activeAlerts;
+  final List<String> activeAlarms;
 
   static GlucoseTrend _trend(String? s) => switch (s) {
         'doubleUp' => GlucoseTrend.doubleUp,
@@ -127,7 +133,12 @@ class PumpSnapshot {
         lastBolusTime: _time(j['lastBolusTimestampEpochMs'] as num?),
         apiVersion: j['apiVersion'] as String?,
         firmwareVersion: j['firmwareVersion'] as String?,
+        activeAlerts: _stringList(j['activeAlerts']),
+        activeAlarms: _stringList(j['activeAlarms']),
       );
+
+  static List<String> _stringList(Object? v) =>
+      v is List ? [for (final e in v) e.toString()] : const [];
 
   /// Convert the current CGM reading to a domain sample, if present.
   CgmSample? toCgmSample() {

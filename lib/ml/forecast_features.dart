@@ -12,12 +12,15 @@ import '../analytics/predictor.dart';
 import '../core/samples.dart';
 import '../analytics/therapy_settings.dart';
 import 'forecaster.dart';
+import 'health_features.dart';
 
 class ForecastFeatures {
   const ForecastFeatures._();
 
   /// Bump when the feature layout changes so stale models are discarded.
-  static const int version = 1;
+  /// v2: appended the [HealthFeatureSampler] activity features (Google Fit / Health
+  /// Connect) so the residual model can learn exercise/activity effects on BG.
+  static const int version = 2;
 
   static const List<String> names = [
     'bg/100',
@@ -28,12 +31,15 @@ class ForecastFeatures {
     'hour_cos',
     'sensitivity',
     'horizon/60',
+    ...HealthFeatureSampler.names,
   ];
 
-  static final _iob = const IobCalculator();
+  static const _iob = IobCalculator();
   static const _carb = CarbModel();
 
-  /// Build the feature vector at [now] for a given [horizonMinutes].
+  /// Build the feature vector at [now] for a given [horizonMinutes]. [health] is the
+  /// activity-feature contribution (defaults to zeros when no wearable data covers
+  /// [now]); it must have length [HealthFeatureSampler.featureCount].
   static List<double> build({
     required DateTime now,
     required double currentMgdl,
@@ -43,6 +49,7 @@ class ForecastFeatures {
     required List<CarbEntry> carbs,
     required SensitivityContext context,
     required int horizonMinutes,
+    List<double> health = HealthFeatureSampler.zeros,
   }) {
     final iob = _iob.total(boluses, basal, now).units;
     final cob = _carb.cob(carbs, now);
@@ -56,6 +63,7 @@ class ForecastFeatures {
       math.cos(2 * math.pi * hour / 24),
       context.effectiveMultiplier,
       horizonMinutes / 60.0,
+      ...health,
     ];
   }
 }
@@ -64,7 +72,9 @@ class ForecastFeatures {
 /// residual model receives the same layout it was trained on. The sensitivity feature
 /// is fixed to neutral here to match training (the trainer builds features with a
 /// neutral context), avoiding a train/serve skew where the GBM sees an out-of-
-/// distribution value it never learned to split on.
+/// distribution value it never learned to split on. The activity features come from the
+/// live [PredictionState.healthFeatures], computed by the same [HealthFeatureSampler]
+/// logic the trainer uses.
 extension ForecasterStateExt on Forecaster {
   List<HorizonForecast> forecastState(PredictionState s) => forecast(
         s,
@@ -77,6 +87,7 @@ extension ForecasterStateExt on Forecaster {
           carbs: s.carbs,
           context: SensitivityContext.neutral,
           horizonMinutes: h,
+          health: s.healthFeatures,
         ),
       );
 }

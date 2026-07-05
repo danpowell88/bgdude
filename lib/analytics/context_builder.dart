@@ -13,13 +13,17 @@ class ContextBuilder {
   const ContextBuilder._();
 
   /// Returns null when there isn't enough health data to say anything useful.
+  /// [menstrualLutealPhase] can be passed explicitly; otherwise it is inferred from
+  /// Health Connect menstruation-flow records.
   static ContextFeatures? build({
     required List<HealthSample> today,
     required List<HealthSample> baseline,
-    double menstrualLutealPhase = 0,
+    double? menstrualLutealPhase,
     double illnessFlag = 0,
+    DateTime? now,
   }) {
     if (today.isEmpty && baseline.isEmpty) return null;
+    final ref = now ?? DateTime.now();
 
     double? latest(List<HealthSample> src, String type) {
       final matching = [for (final s in src) if (s.type == type) s]
@@ -52,16 +56,66 @@ class ContextBuilder {
     final baselineHrv = median(baseline, 'hrvRmssd');
     final baselineRestingHr = median(baseline, 'restingHr');
 
+    // Extended signals.
+    final respiratory = latest(today, 'respiratoryRate') ??
+        median(baseline, 'respiratoryRate');
+    final spo2 = latest(today, 'spo2') ?? median(baseline, 'spo2');
+    final bodyTemp = latest(today, 'bodyTempC') ?? median(baseline, 'bodyTempC');
+    var activeEnergy = 0.0;
+    for (final s in today) {
+      if (s.type == 'activeEnergyKcal') activeEnergy += s.value;
+    }
+    // Baseline active energy: median of per-day totals over the baseline window.
+    final energyByDay = <DateTime, double>{};
+    for (final s in baseline) {
+      if (s.type != 'activeEnergyKcal') continue;
+      final d = DateTime(s.time.year, s.time.month, s.time.day);
+      energyByDay[d] = (energyByDay[d] ?? 0) + s.value;
+    }
+    final energyTotals = energyByDay.values.toList()..sort();
+    final baselineEnergy = energyTotals.isEmpty
+        ? 0.0
+        : energyTotals[energyTotals.length ~/ 2];
+
+    // Infer luteal phase from menstruation-flow records (roughly days 14–28 after the
+    // most recent period start), unless the caller passed it explicitly.
+    final luteal = menstrualLutealPhase ?? _lutealFromFlow([...today, ...baseline], ref);
+
     return ContextFeatures(
       sleepHours: sleepHours,
       sleepEfficiency: sleepEfficiency,
       overnightHrvRmssd: hrv,
       restingHr: restingHr,
       priorDayExerciseLoad: exerciseLoad,
-      menstrualLutealPhase: menstrualLutealPhase,
+      menstrualLutealPhase: luteal,
       illnessFlag: illnessFlag,
       baselineHrv: baselineHrv,
       baselineRestingHr: baselineRestingHr,
+      overnightRespiratoryRate: respiratory,
+      spo2: spo2,
+      bodyTempC: bodyTemp,
+      activeEnergyKcal: activeEnergy,
+      baselineRespiratoryRate: median(baseline, 'respiratoryRate'),
+      baselineSpo2: median(baseline, 'spo2'),
+      baselineBodyTempC: median(baseline, 'bodyTempC'),
+      baselineActiveEnergyKcal: baselineEnergy,
     );
+  }
+
+  static double _lutealFromFlow(List<HealthSample> samples, DateTime now) {
+    final flows = [for (final s in samples) if (s.type == 'menstruationFlow') s.time]
+      ..sort();
+    if (flows.isEmpty) return 0;
+    // Most recent period start = the earliest flow day of the latest contiguous run.
+    var start = flows.last;
+    for (var i = flows.length - 1; i > 0; i--) {
+      if (flows[i].difference(flows[i - 1]).inDays <= 2) {
+        start = flows[i - 1];
+      } else {
+        break;
+      }
+    }
+    final days = now.difference(start).inDays;
+    return (days >= 14 && days <= 28) ? 1.0 : 0.0;
   }
 }

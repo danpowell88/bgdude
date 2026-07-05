@@ -1,4 +1,3 @@
-import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/dev/sim_data.dart';
 import 'package:bgdude/insights/notifications.dart';

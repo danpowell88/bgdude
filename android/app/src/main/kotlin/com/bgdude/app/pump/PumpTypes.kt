@@ -56,6 +56,7 @@ class MutableSnapshot {
     var apiVersion: String? = null
     var firmwareVersion: String? = null
     var activeAlerts: MutableList<String> = mutableListOf()
+    var activeAlarms: MutableList<String> = mutableListOf()
 
     /** JSON string streamed over the EventChannel (compact, hand-rolled to avoid deps).
      *  Non-null fields are collected and comma-joined so the output is always valid JSON
@@ -84,6 +85,13 @@ class MutableSnapshot {
         field("lastBolusTimestampEpochMs", lastBolusTimestampEpochMs)
         field("apiVersion", apiVersion)
         field("firmwareVersion", firmwareVersion)
+        fun stringArray(name: String, values: List<String>) {
+            if (values.isEmpty()) return
+            val items = values.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" }
+            parts.add("\"$name\":[$items]")
+        }
+        stringArray("activeAlerts", activeAlerts)
+        stringArray("activeAlarms", activeAlarms)
         return parts.joinToString(",", prefix = "{", postfix = "}")
     }
 }

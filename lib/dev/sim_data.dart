@@ -87,7 +87,7 @@ class SimulatedDay {
 
     // Forward-simulate BG with the app's physiology, stepping every 5 min.
     const step = 5;
-    final iob = const IobCalculator();
+    const iob = IobCalculator();
     const carbModel = CarbModel();
     final csf = carbSensitivityFactor(isf: seg.isf, carbRatio: seg.carbRatio);
 
@@ -149,7 +149,7 @@ class SimulatedDay {
 
     // Context: a slightly-short, slightly-poor night to make the sensitivity model
     // and morning summary say something interesting.
-    final context = ContextFeatures(
+    const context = ContextFeatures(
       sleepHours: 5.8,
       sleepEfficiency: 0.86,
       overnightHrvRmssd: 42,
@@ -184,7 +184,7 @@ class SimulatedDay {
     return GlucoseTrend.doubleDown;
   }
 
-  static final TherapySettings _defaultSettings = const TherapySettings(
+  static const TherapySettings _defaultSettings = TherapySettings(
     segments: [
       TherapySegment(
         startMinuteOfDay: 0,

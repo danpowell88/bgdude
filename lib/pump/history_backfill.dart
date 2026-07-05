@@ -14,6 +14,8 @@ import 'package:logging/logging.dart';
 import '../core/samples.dart';
 import '../data/history_repository.dart';
 import '../data/kv_store.dart';
+import '../logging/device_changes.dart';
+import 'pump_events.dart';
 
 class HistoryBackfillService {
   HistoryBackfillService(this._repo, {MethodChannel? commands})
@@ -26,10 +28,16 @@ class HistoryBackfillService {
 
   /// Fetch and persist history in [from, to). Returns the number of entries imported.
   /// Only fetches entries newer than the stored high-water mark unless [force].
+  ///
+  /// [onDeviceChange] is invoked for infusion-site changes decoded from the log (so site
+  /// age tracks reality without manual logging); [onPumpEvent] for alarms/alerts and
+  /// cartridge changes (the Pump screen's timeline).
   Future<int> backfill({
     required DateTime from,
     required DateTime to,
     bool force = false,
+    void Function(DeviceKind kind, DateTime at)? onDeviceChange,
+    void Function(PumpEvent event)? onPumpEvent,
   }) async {
     final hwm = force ? 0 : ((await KvStore.getDouble(_hwmKey))?.toInt() ?? 0);
     final effectiveFrom = DateTime.fromMillisecondsSinceEpoch(
@@ -85,6 +93,29 @@ class HistoryBackfillService {
                 unitsPerHour: rate));
             imported++;
           }
+        case 'cannulaFilled':
+          onDeviceChange?.call(DeviceKind.site, time);
+          onPumpEvent?.call(PumpEvent(
+              time: time, kind: PumpEventKind.cannulaChange, detail: 'Cannula filled'));
+          imported++;
+        case 'cartridgeFilled':
+          onPumpEvent?.call(PumpEvent(
+              time: time,
+              kind: PumpEventKind.cartridgeChange,
+              detail: 'Cartridge filled'));
+          imported++;
+        case 'alarm':
+          onPumpEvent?.call(PumpEvent(
+              time: time,
+              kind: PumpEventKind.alarm,
+              detail: (m['name'] as String?) ?? 'Alarm'));
+          imported++;
+        case 'alert':
+          onPumpEvent?.call(PumpEvent(
+              time: time,
+              kind: PumpEventKind.alert,
+              detail: (m['name'] as String?) ?? 'Alert'));
+          imported++;
         default:
           break; // unknown/undecodable — skip
       }

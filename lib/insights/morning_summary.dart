@@ -8,7 +8,6 @@
 library;
 
 import '../analytics/metrics.dart';
-import '../analytics/therapy_settings.dart';
 import '../core/units.dart';
 import '../ml/sensitivity_model.dart';
 

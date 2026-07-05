@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../analytics/rescue_carbs.dart';
 import '../core/samples.dart';
+import '../feedback/annotations.dart';
 import '../core/units.dart';
 import '../insights/reading_explainer.dart';
 import '../pump/pump_snapshot.dart';
@@ -218,8 +219,8 @@ class _Dashboard extends ConsumerWidget {
       wasAsleep: latest.time.hour >= 23 || latest.time.hour < 7,
     );
     if (!context.mounted) return;
-    final annotation = await Navigator.of(context).push<dynamic>(
-      MaterialPageRoute<dynamic>(
+    final annotation = await Navigator.of(context).push<Annotation>(
+      MaterialPageRoute<Annotation>(
         builder: (_) => ExplainReadingScreen(
           at: latest.time,
           mgdl: latest.mgdl,

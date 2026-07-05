@@ -52,6 +52,28 @@ class MutableSnapshotTest {
     }
 
     @Test
+    fun toJson_emits_active_alerts_and_alarms_as_arrays() {
+        val snapshot = MutableSnapshot().apply {
+            batteryPercent = 50
+            activeAlerts = mutableListOf("LOW_POWER_ALERT", "CGM_SIGNAL_LOSS")
+            activeAlarms = mutableListOf("LOW_INSULIN_ALARM")
+        }
+        val json = snapshot.toJson()
+
+        assertTrue(json, json.contains(
+            "\"activeAlerts\":[\"LOW_POWER_ALERT\",\"CGM_SIGNAL_LOSS\"]"))
+        assertTrue(json, json.contains("\"activeAlarms\":[\"LOW_INSULIN_ALARM\"]"))
+        assertFalse(json, json.contains(",}"))
+    }
+
+    @Test
+    fun toJson_omits_empty_alert_arrays() {
+        val json = MutableSnapshot().apply { batteryPercent = 50 }.toJson()
+        assertFalse(json, json.contains("activeAlerts"))
+        assertFalse(json, json.contains("activeAlarms"))
+    }
+
+    @Test
     fun toJson_is_valid_regardless_of_which_field_is_last() {
         // Fields are comma-joined, so the output never has a dangling ",}" no matter
         // which fields are set (the Dart side jsonDecodes this).

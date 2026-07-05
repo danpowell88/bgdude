@@ -52,12 +52,12 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData.dark(),
-        home: Scaffold(
+        home: const Scaffold(
           body: SizedBox(
             width: 300,
             height: 300,
             child: ErrorGridChart(
-              points: const [(referenceMgdl: 120, predictedMgdl: 118)],
+              points: [(referenceMgdl: 120, predictedMgdl: 118)],
               unit: GlucoseUnit.mgdl,
             ),
           ),

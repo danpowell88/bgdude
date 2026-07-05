@@ -13,6 +13,8 @@ import com.jwoglom.pumpx2.pump.messages.builders.CurrentBatteryRequestBuilder
 import com.jwoglom.pumpx2.pump.messages.builders.JpakeAuthBuilder
 import com.jwoglom.pumpx2.pump.messages.models.KnownDeviceModel
 import com.jwoglom.pumpx2.pump.messages.models.PairingCodeType as X2PairingCodeType
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.AlarmStatusRequest
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.AlertStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.ControlIQIOBRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CurrentBasalStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CurrentEGVGuiDataRequest
@@ -23,6 +25,7 @@ import com.jwoglom.pumpx2.pump.messages.request.currentStatus.IDPSettingsRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.InsulinStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.LastBolusStatusV2Request
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.ProfileStatusRequest
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.PumpVersionRequest
 import com.jwoglom.pumpx2.pump.messages.response.authentication.AbstractCentralChallengeResponse
 import com.jwoglom.pumpx2.pump.messages.response.authentication.AbstractPumpChallengeResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.HistoryLogStatusResponse
@@ -97,6 +100,10 @@ class PumpCommHandler(
         sendCommand(p, CurrentBasalStatusRequest())
         sendCommand(p, CurrentEGVGuiDataRequest())
         sendCommand(p, LastBolusStatusV2Request())
+        // Active alerts/alarms (for the user's awareness) + firmware version.
+        sendCommand(p, AlertStatusRequest())
+        sendCommand(p, AlarmStatusRequest())
+        sendCommand(p, PumpVersionRequest())
     }
 
     /** Read the active Insulin Delivery Profile (basal/ISF/CR/targets). */
