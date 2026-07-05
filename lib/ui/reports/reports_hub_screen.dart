@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
+import 'correlation_report_screen.dart';
 import 'events_journal_screen.dart';
 import 'glucose_report_screen.dart';
 import 'insulin_report_screen.dart';
 import 'meals_report_screen.dart';
+import 'model_report_screen.dart';
 import 'therapy_report_screen.dart';
 
 /// Hub for the reporting section. Currently the Glucose report; insulin, meals, therapy
@@ -68,10 +70,22 @@ class ReportsHubScreen extends ConsumerWidget {
             builder: () => const TherapyReportScreen(),
           ),
           _ReportCard(
+            icon: Icons.insights_outlined,
+            title: 'Correlations',
+            subtitle: 'Glucose vs sleep, exercise, HRV & resting HR',
+            builder: () => const CorrelationReportScreen(),
+          ),
+          _ReportCard(
             icon: Icons.event_note_outlined,
             title: 'Events journal',
             subtitle: 'Confirmed notes, pump events, changes & episodes',
             builder: () => const EventsJournalScreen(),
+          ),
+          _ReportCard(
+            icon: Icons.model_training,
+            title: 'Model performance',
+            subtitle: 'Forecast accuracy, error grid & calibration',
+            builder: () => const ModelReportScreen(),
           ),
           const SizedBox(height: 8),
           const Padding(

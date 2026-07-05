@@ -39,6 +39,7 @@ Future<void> main() async {
   if (onboarded) {
     await notifications.init();
     await notifications.scheduleDailySummary(hour: 7);
+    await notifications.scheduleWeeklyReport();
     // Background morning-summary backstop for days the app isn't opened.
     try {
       await registerBackgroundSummary();

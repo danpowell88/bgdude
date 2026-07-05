@@ -102,6 +102,28 @@ class NotificationService {
     );
   }
 
+  /// Schedule a weekly "your report is ready" nudge on [weekday] (1=Mon..7=Sun) at
+  /// [hour]:00 local. Opting out via the reportDigest category disables the channel.
+  Future<void> scheduleWeeklyReport({int weekday = DateTime.monday, int hour = 8}) async {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour);
+    while (scheduled.weekday != weekday || !scheduled.isAfter(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+    await _plugin.zonedSchedule(
+      1002,
+      'Your weekly report is ready',
+      'Tap to review your glucose, insulin and trends from the past week.',
+      scheduled,
+      _details(NotificationCategory.reportDigest,
+          _prefs.of(NotificationCategory.reportDigest)),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+    );
+  }
+
   /// Schedule a one-shot pre-bolus timer that survives the app being backgrounded.
   Future<void> schedulePreBolusTimer(Duration lead, String mealName) async {
     final when = tz.TZDateTime.now(tz.local).add(lead);

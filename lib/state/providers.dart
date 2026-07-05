@@ -52,10 +52,12 @@ import '../pump/history_backfill.dart';
 import '../pump/pump_client.dart';
 import '../pump/pump_events.dart';
 import '../pump/pump_snapshot.dart';
+import '../reports/correlation_report.dart';
 import '../reports/events_journal.dart';
 import '../reports/glucose_report.dart';
 import '../reports/insulin_report.dart';
 import '../reports/meals_report.dart';
+import '../reports/model_report.dart';
 import '../reports/report_range.dart';
 import '../reports/therapy_report.dart';
 import '../pump/pump_source.dart';
@@ -435,6 +437,35 @@ final therapyReportProvider = FutureProvider<TherapyReport>((ref) async {
     settings: ref.read(therapySettingsProvider),
     range: range,
     now: DateTime.now(),
+  );
+});
+
+/// Correlation report: daily glycemic outcomes vs confirmed lifestyle inputs.
+final correlationReportProvider =
+    FutureProvider<CorrelationReport>((ref) async {
+  final range = ref.watch(reportRangeProvider);
+  final repo = ref.read(historyRepositoryProvider);
+  return const CorrelationReportBuilder().build(
+    cgm: await repo.cgm(range.from, range.to),
+    health: await repo.health(range.from, range.to),
+    range: range,
+    now: DateTime.now(),
+  );
+});
+
+/// Model-performance report: forecast accuracy, Clarke zones, interval calibration.
+final modelReportProvider = FutureProvider<ModelReport>((ref) async {
+  final range = ref.watch(reportRangeProvider);
+  final repo = ref.read(historyRepositoryProvider);
+  final now = DateTime.now();
+  try {
+    await repo.reconcilePredictions(now); // back-fill actuals before scoring
+  } catch (_) {}
+  return const ModelReportBuilder().build(
+    predictions: await repo.predictions(range.from, range.to),
+    modelRuns: await repo.modelRuns(),
+    range: range,
+    now: now,
   );
 });
 

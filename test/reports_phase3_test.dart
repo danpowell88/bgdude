@@ -1,4 +1,3 @@
-import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/core/units.dart';
 import 'package:bgdude/feedback/annotations.dart';
 import 'package:bgdude/logging/device_changes.dart';

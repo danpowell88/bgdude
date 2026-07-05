@@ -19,6 +19,7 @@ enum NotificationCategory {
   deviceReminder,
   illnessSuggestion,
   morningSummary,
+  reportDigest,
   preBolusTimer,
 }
 
@@ -36,6 +37,7 @@ extension NotificationCategoryX on NotificationCategory {
         NotificationCategory.deviceReminder => 'Sensor / site reminders',
         NotificationCategory.illnessSuggestion => 'Illness detected',
         NotificationCategory.morningSummary => 'Morning summary',
+        NotificationCategory.reportDigest => 'Weekly report',
         NotificationCategory.preBolusTimer => 'Pre-bolus timer',
       };
 
@@ -60,6 +62,8 @@ extension NotificationCategoryX on NotificationCategory {
         NotificationCategory.illnessSuggestion =>
           'Your data looks illness-like.',
         NotificationCategory.morningSummary => 'Your daily briefing.',
+        NotificationCategory.reportDigest =>
+          'A weekly nudge that your report is ready to review.',
         NotificationCategory.preBolusTimer => 'Time to eat after pre-bolusing.',
       };
 }
@@ -228,6 +232,12 @@ class NotificationPrefs {
             importance: NotifImportance.normal,
             vibrate: false,
             sound: true,
+            repeatMinutes: 0),
+        NotificationCategory.reportDigest => const CategoryPref(
+            enabled: true,
+            importance: NotifImportance.low,
+            vibrate: false,
+            sound: false,
             repeatMinutes: 0),
         NotificationCategory.preBolusTimer => const CategoryPref(
             enabled: true,

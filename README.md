@@ -24,10 +24,11 @@ tools/gen_docs.sh --video      # macOS / Linux
 
 ## Status
 
-Greenfield implementation, built from the plan in
-`~/.claude/plans/come-up-with-a-gentle-feather.md`. Flutter is **not** installed on the
-build machine used to author this code, so the codebase is complete and internally
-consistent but has not been compiled here — see **Building** below.
+Actively built out. The full app — read-only pump sync, Health Connect context, on-device
+prediction & insight, dosing advisor, a customisable notification system, a Confirmation
+Inbox, and a reporting suite — is implemented, analyzer-clean, and covered by **243 Dart
+tests** plus a native Kotlin test suite (`./gradlew :app:testDebugUnitTest`), all green on
+this machine.
 
 ## Architecture
 
@@ -45,16 +46,17 @@ Layered Dart modules under `lib/`:
 
 | Module | Responsibility |
 |---|---|
-| `pump/` | Dart client for the native bridge, connection state, pump models |
+| `pump/` | Dart client for the native bridge, connection state, pump models, history backfill, pump-events timeline |
 | `data/` | drift schema (SQLCipher-encrypted), DAOs, Health Connect sync, units |
-| `analytics/` | TIR/GMI/CV/AGP metrics, IOB/COB curves, what-if + bolus advisor |
-| `ml/` | sensitivity index, model registry, BG forecaster, event detectors, error grid |
-| `feedback/` | annotations → robust retraining pipeline |
-| `insights/` | morning summary, reading explainer, illness mode, notifications |
+| `analytics/` | TIR/GMI/CV/AGP metrics, IOB/COB curves, insulin totals, what-if + bolus advisor |
+| `ml/` | sensitivity index, model registry, BG forecaster (with health/activity features), basal recommender, event detectors, error grid |
+| `feedback/` | annotations → robust retraining pipeline; the Confirmation Inbox (scan + decisions) |
+| `insights/` | morning summary, reading explainer, illness mode, notification categories/preferences |
+| `reports/` | glucose (AGP) · insulin · meals · therapy · correlations · events journal · model performance; PDF/CSV export |
 | `timeline/` | day event-stream model + builder (meals, highs/lows, detected events) |
 | `meals/` | meal library (learned absorption curves) + pre-bolus coach |
 | `dev/` | simulated t:slim X2 + CGM day, for dev mode |
-| `ui/` | tab shell (Today · Predict · Insights · Meals), screens, onboarding |
+| `ui/` | tab shell (Today · Predict · Insights · Meals), screens (incl. `ui/reports/`), onboarding |
 
 ## Dev mode (no hardware needed)
 
@@ -91,9 +93,36 @@ compression low, a new sensor, a new infusion site, illness, etc. Ignoring write
 [`Annotation`](lib/feedback/annotations.dart) the retraining pipeline already knows how to
 exclude or relabel — closing the feedback loop from the UI.
 
-The pure-Dart domain logic (`analytics/`, `ml/`, `feedback/`) is deterministic and unit
-tested (`test/`), so it can be validated off-device with the replay harness even before
-a pump is connected.
+The pure-Dart domain logic (`analytics/`, `ml/`, `feedback/`, `reports/`) is deterministic
+and unit tested (`test/`), so it can be validated off-device with the replay harness even
+before a pump is connected.
+
+## Confirmation Inbox & reports
+
+The **Confirmation Inbox** (`feedback/confirmation_service.dart`, *Settings → Confirm
+events*) scans recent history for detected-but-unconfirmed events — unannounced meals,
+compression lows, illness — and queues them for one-tap **confirm / edit / dismiss**.
+Confirming writes a full-weight annotation (feeding both reports and training) and, for a
+meal, adds the carbs to history. This is the "real & confirmed" data tier the reports
+stand on.
+
+The **Reports** section (`reports/`, *Settings → Reports*) is built strictly on that
+confirmed data — sensor-artifact windows you've marked are excluded, while site-failure
+highs are kept as real exposure. It covers a **Glucose report** (AGP percentile bands,
+TIR/GMI/CV, hypo/hyper episodes, coverage) with **clinician-ready PDF + CSV export**
+(`pdf` + `share_plus`, generated on-device), plus **Insulin**, **Meals**, **Therapy**,
+**Correlations** (glucose vs sleep/exercise/HRV with a minimum-days gate), an **Events
+journal**, and a **Model-performance** report. Every report takes a 7/14/30/90-day range.
+
+## Notifications
+
+Every alert is a **category** tuned in *Settings → Notifications*
+(`insights/notification_prefs.dart`): opt in/out, intensity (silent → urgent), sound and
+vibration, and a **repeat-until-clear** interval so critical alerts (e.g. urgent low)
+re-notify while the condition persists. Categories cover predicted/urgent lows and highs,
+missed bolus, stubborn high, rescue carbs, pump alarms, low reservoir, connection loss,
+device reminders, illness, the morning summary, a weekly report digest, and the pre-bolus
+timer. Preferences persist encrypted and apply live to the Android channels.
 
 ## Building
 
@@ -127,5 +156,12 @@ flutter test
 ```
 
 Domain tests cover: IOB curve shape, TIR/GMI/CV formulas, bolus math edge cases
-(high IOB, predicted low, noisy CGM), sensitivity-index bounds, and the error-grid
-classifier.
+(high IOB, predicted low, noisy CGM), sensitivity-index bounds, the error-grid classifier,
+the health→forecaster feature sampler, the basal recommender, notification preferences,
+the Confirmation Inbox scan/decisions, and every report builder (glucose episodes &
+exclusion policy, insulin split, meal aggregation, journal merge, correlations, model
+scoring) plus CSV/PDF export. Native Kotlin tests run with:
+
+```bash
+cd android && ./gradlew :app:testDebugUnitTest
+```

@@ -102,7 +102,7 @@
       <span class="badge">Flutter · Android 17 (API 37)</span>
       <span class="badge">pumpx2 (read-only)</span>
       <span class="badge">on-device ML</span>
-      <span class="badge">155 unit + 12 integration tests</span>
+      <span class="badge">243 Dart tests + native suite</span>
     </div>
   </div>
 </header>
@@ -120,8 +120,11 @@
   <a href="#therapy">Therapy</a>
   <a href="#advanced">Advanced</a>
   <a href="#accuracy">Accuracy</a>
+  <a href="#reports">Reports</a>
+  <a href="#confirm">Confirm</a>
+  <a href="#pump">Pump</a>
   <a href="#loop">Learning loop</a>
-  <a href="#alerts">Alerts &amp; helpers</a>
+  <a href="#alerts">Alerts &amp; notifications</a>
   <a href="#integrations">Integrations</a>
   <a href="#safety">Safety</a>
   <a href="#regen">Regenerate</a>
@@ -233,6 +236,8 @@
         <li><b>Scenario lines</b> — IOB-only, with-carbs (COB), unannounced-meal (UAM) and no-basal
         (zero-temp), so you see the spread rather than one confident number.</li>
         <li><b>Sensitivity readiness</b> — today's resistance multiplier and its drivers.</li>
+        <li><b>Activity-aware</b> — recent steps and post-workout sensitivity from Google&nbsp;Fit /
+        Health&nbsp;Connect feed the learned residual, consistently at training and inference.</li>
         <li><b>Overnight / near-term risk</b> read-out with a suggested action.</li>
         <li><b>What-if explorer</b> — sliders for carbs and insulin project the trajectory.</li>
       </ul>
@@ -327,6 +332,9 @@
       window. These feed the what-if engine, the bolus advisor and the predictions directly, so getting
       them right matters. Basal is also reconstructed live from the pump's reported rate to keep IOB
       accurate.</p>
+      <p><b>Basal suggestions.</b> From repeated carb-free (fasting) time-of-day trends, the app proposes
+      conservative, confidence-gated per-segment basal changes — advisory only, for you to make on the pump
+      and discuss with your care team. It never writes to the pump.</p>
     </div>
   </div>
 </section>
@@ -388,29 +396,38 @@
 </section>
 
 <section id="alerts">
-  <h2>Alerts &amp; real-time helpers</h2>
+  <h2>Alerts &amp; notifications</h2>
   <p class="lead">Beyond the forecast, the app watches for the situations that matter and offers help in the moment —
   all additive to your CGM/pump alarms, never a replacement.</p>
   <div class="grid2">
     <div class="card"><h3 style="margin-top:0">Proactive alerts</h3>
       <ul class="tight">
-        <li><b>Predicted low / high</b> nudges with a suggested action and cooldowns.</li>
+        <li><b>Predicted low / high &amp; urgent low</b> nudges, driven by the ML forecast.</li>
         <li><b>Missed-bolus?</b> — a sustained unbolused rise triggers "did you forget to bolus?".</li>
         <li><b>Stubborn high</b> — high for hours with IOB doing nothing (and an old site) → possible site failure.</li>
-        <li><b>Connection lost</b> — a heads-up when the pump has been unreachable for ~10 minutes.</li>
-        <li><b>Sensor/site overdue</b> reminders from the age tracker.</li>
+        <li><b>Rescue carbs</b>, <b>pump alarms/alerts</b>, <b>low reservoir</b>, <b>connection lost</b>,
+        <b>sensor/site overdue</b>, and an <b>illness</b> suggestion.</li>
       </ul>
     </div>
-    <div class="card"><h3 style="margin-top:0">In-the-moment help</h3>
+    <div class="card"><h3 style="margin-top:0">Notification preferences</h3>
+      <p style="margin:.2em 0">Every alert is a <b>category</b> you tune in <em>Settings → Notifications</em>:</p>
       <ul class="tight">
-        <li><b>Rescue-carb helper</b> — when low or predicted-low, a 15-15-aware "take ~Ng" card that
-        accounts for IOB and the predicted nadir.</li>
-        <li><b>Explain this reading</b> — from the dashboard or any timeline event, ranked causal hypotheses
-        you can accept as a one-tap annotation.</li>
-        <li><b>Calibrated uncertainty</b> — the prediction cone widens from the forecaster's <em>recent live
-        error</em>, not just training-time sigma.</li>
+        <li><b>Opt in / out</b> per category, with its own Android channel.</li>
+        <li><b>Intensity</b> (silent → urgent), plus <b>sound</b> and <b>vibration</b> toggles.</li>
+        <li><b>Repeat until clear</b> — critical alerts (e.g. urgent low) re-notify every N minutes
+        while the condition persists.</li>
+        <li>Preferences are stored encrypted and applied live to the channels.</li>
       </ul>
     </div>
+  </div>
+  <div class="card" style="margin-top:16px"><h3 style="margin-top:0">In-the-moment help</h3>
+    <ul class="tight">
+      <li><b>Rescue-carb helper</b> — when low or predicted-low, a 15-15-aware "take ~Ng" card that
+      accounts for IOB and the predicted nadir.</li>
+      <li><b>Explain this reading</b> — ranked causal hypotheses you can accept as a one-tap annotation.</li>
+      <li><b>Calibrated uncertainty</b> — the prediction cone widens from the forecaster's <em>recent live
+      error</em>, not just training-time sigma.</li>
+    </ul>
   </div>
 </section>
 
@@ -429,6 +446,95 @@
   <div class="shot" style="margin-top:20px; justify-self:start">
     <div class="phone" style="width:280px"><img src="screenshots/10-settings.png" alt="Settings"></div>
     <div class="cap">Settings — dev mode, units, therapy, accuracy, health sync, Nightscout</div>
+  </div>
+</section>
+
+<section id="reports">
+  <h2>Reports &amp; analysis</h2>
+  <p class="lead">A reporting suite built on <b>real, confirmed data</b>. Sensor artifacts you've marked
+  (compression lows, warm-up) are excluded; site-failure highs are kept as real exposure. Every report
+  takes a date range (7 / 14 / 30 / 90 days) and states the data behind it.</p>
+  <div class="grid2">
+    <div class="card"><h3 style="margin-top:0">Glucose report (AGP)</h3>
+      <ul class="tight">
+        <li>Ambulatory Glucose Profile — median with 25–75% and 5–95% percentile bands.</li>
+        <li>Time-in-range breakdown, GMI/estimated A1c, CV, mean, and CGM coverage.</li>
+        <li>Hypo/hyper <b>episodes</b> (≥15 min, merged across brief blips).</li>
+        <li><b>PDF + CSV export</b> — a clinician-ready PDF plus summary &amp; raw-readings CSVs, shared via
+        the system sheet, all generated on-device.</li>
+      </ul>
+    </div>
+    <div class="card"><h3 style="margin-top:0">Insulin &amp; meals</h3>
+      <ul class="tight">
+        <li><b>Insulin</b> — daily TDD (bolus + integrated basal), the basal/bolus split, and bolus
+        behaviour (meal vs correction, size, frequency).</li>
+        <li><b>Meals</b> — per-meal performance from confirmed, matured outcomes: excursion, time-to-peak,
+        time-above-180, pre-bolus timing, and return-to-baseline.</li>
+      </ul>
+    </div>
+    <div class="card"><h3 style="margin-top:0">Therapy &amp; correlations</h3>
+      <ul class="tight">
+        <li><b>Therapy</b> — the learned daily sensitivity trend (Autotune) vs your settings, the
+        time-of-day profile, and the basal suggestions.</li>
+        <li><b>Correlations</b> — daily glucose outcomes vs confirmed sleep, exercise, HRV and resting HR,
+        with a minimum-days gate so weak or thin associations aren't shown.</li>
+      </ul>
+    </div>
+    <div class="card"><h3 style="margin-top:0">Journal &amp; model</h3>
+      <ul class="tight">
+        <li><b>Events journal</b> — one filterable, newest-first timeline of confirmed notes, pump events,
+        device changes and episodes; a clinic-visit-ready log.</li>
+        <li><b>Model performance</b> — forecast accuracy by horizon, Clarke error-grid zones, prediction-
+        interval calibration, and training-run history (the <em>inferred</em> tier, kept separate from real
+        numbers).</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note"><b>Weekly digest.</b> An optional low-key "your weekly report is ready" nudge (its own
+  notification category) surfaces the reports without you having to remember to look.</div>
+</section>
+
+<section id="confirm">
+  <h2>Confirmation Inbox</h2>
+  <p class="lead">The bridge between detection and trustworthy data. The app scans recent history for
+  detected-but-unconfirmed events and queues them for a one-tap decision.</p>
+  <div class="grid2">
+    <div class="card"><h3 style="margin-top:0">What it catches</h3>
+      <ul class="tight">
+        <li><b>Unannounced meals</b> — an unexplained rise with no carbs logged.</li>
+        <li><b>Compression lows</b> — sharp overnight dips that rebound too fast to be real.</li>
+        <li><b>Illness</b> — when recent data looks illness-like.</li>
+      </ul>
+    </div>
+    <div class="card"><h3 style="margin-top:0">One tap, three payoffs</h3>
+      <p style="margin:.2em 0">Confirming writes a full-weight annotation that (1) counts as confirmed data
+      in reports, (2) relabels/excludes correctly in model training, and (3) for a meal, adds the carbs to
+      history so COB and meal analysis reflect them. Decisions persist so nothing you've acted on
+      resurfaces. Reachable from <em>Settings → Confirm events</em> with a live pending badge.</p>
+    </div>
+  </div>
+</section>
+
+<section id="pump">
+  <h2>Pump data</h2>
+  <p class="lead">A read-only view of everything synced from the pump, and fuller history decoding
+  informed by the xDrip Tandem integration.</p>
+  <div class="grid2">
+    <div class="card"><h3 style="margin-top:0">Live &amp; derived</h3>
+      <ul class="tight">
+        <li>Battery, reservoir + runway estimate, IOB, basal rate, Control-IQ state, CGM, last bolus,
+        firmware.</li>
+        <li><b>Insulin today</b> (TDD) derived from our own history; infusion-site age.</li>
+        <li><b>Active alarms/alerts</b> from the pump, surfaced as notifications and on-screen.</li>
+      </ul>
+    </div>
+    <div class="card"><h3 style="margin-top:0">History decode</h3>
+      <ul class="tight">
+        <li>Carb entries, cartridge &amp; cannula fills, alarms and alerts are decoded from the History Log.</li>
+        <li>Cannula fills auto-update infusion-site age; alarms/alerts feed a pump-events timeline.</li>
+        <li>Still best-effort until validated on real hardware — decoding is partial upstream.</li>
+      </ul>
+    </div>
   </div>
 </section>
 
