@@ -21,6 +21,9 @@ import '../core/units.dart';
 import '../feedback/annotations.dart';
 import '../feedback/confirmation_service.dart';
 import '../feedback/pending_confirmation.dart';
+import '../food/food_database.dart';
+import '../food/offline_afcd.dart';
+import '../food/open_food_facts.dart';
 import '../insights/a1c_goal.dart';
 import '../insights/alcohol_watch.dart';
 import '../insights/alert_monitor.dart';
@@ -113,6 +116,39 @@ class NotificationPrefsNotifier extends StateNotifier<NotificationPrefs> {
     await KvStore.setString(_key, jsonEncode(state.toJson()));
   }
 }
+
+/// Whether barcode/food lookup may query Open Food Facts (an outbound request). On by
+/// default; when off, only the bundled offline Australian food set is used. Persisted.
+final barcodeLookupEnabledProvider =
+    StateNotifierProvider<BarcodeLookupNotifier, bool>(
+        (ref) => BarcodeLookupNotifier());
+
+class BarcodeLookupNotifier extends StateNotifier<bool> {
+  BarcodeLookupNotifier() : super(true) {
+    _restore();
+  }
+  static const _key = 'barcode_lookup_enabled';
+  Future<void> _restore() async {
+    final v = await KvStore.getBool(_key);
+    if (v != null) state = v;
+  }
+
+  Future<void> set(bool v) async {
+    state = v;
+    await KvStore.setBool(_key, v);
+  }
+}
+
+/// The active food database: Open Food Facts (when lookup is enabled) for barcodes +
+/// branded search, plus the bundled offline Australian generic set. Swappable/pluggable.
+final foodDatabaseProvider = FutureProvider<FoodDatabase>((ref) async {
+  final offline = await OfflineAfcdDatabase.load();
+  final online = ref.watch(barcodeLookupEnabledProvider);
+  return CompositeFoodDatabase([
+    if (online) OpenFoodFactsDatabase(),
+    offline,
+  ]);
+});
 
 /// The user's personal profile (sex, age, diabetes history, body metrics), persisted
 /// encrypted. Fed into the models where usable (menstrual gating, hypo-awareness alerts).

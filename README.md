@@ -114,6 +114,22 @@ TIR/GMI/CV, hypo/hyper episodes, coverage) with **clinician-ready PDF + CSV expo
 **Correlations** (glucose vs sleep/exercise/HRV with a minimum-days gate), an **Events
 journal**, and a **Model-performance** report. Every report takes a 7/14/30/90-day range.
 
+## Food lookup & barcode scanning
+
+Add meals by **scanning a barcode** or **searching by name** (meal library → Add meal).
+Lookups fill carbs plus fat/protein (feeding the FPU coach). The source layer is pluggable
+(`food/food_database.dart`):
+
+- **Open Food Facts** (`food/open_food_facts.dart`) — free, no API key, barcode + name
+  search, Australian-inclusive. On by default (a one-time notice explains that only the
+  code/text is sent to the public database — no health data); toggle in *Settings →
+  Barcode food lookup*.
+- **Offline Australian foods** (`food/offline_afcd.dart`) — a bundled curated generic-food
+  set (`assets/food/afcd_generic.json`) for no-network name search, always available.
+- A `CompositeFoodDatabase` tries barcodes online-first and merges name-search results, so
+  an offline device still works. Other providers (e.g. FatSecret) slot in behind the same
+  interface. Scanning uses `mobile_scanner` (camera stays on-device).
+
 ## Profile
 
 A personal profile (sex, age, diabetes type/duration, weight, height) is collected in

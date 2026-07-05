@@ -232,6 +232,16 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const Divider(),
+          SwitchListTile(
+            secondary: const Icon(Icons.qr_code_scanner),
+            title: const Text('Barcode food lookup'),
+            subtitle: const Text(
+                'Scan/search sends the code to Open Food Facts (public, free). '
+                'Off = bundled offline Australian foods only.'),
+            value: ref.watch(barcodeLookupEnabledProvider),
+            onChanged: (v) =>
+                ref.read(barcodeLookupEnabledProvider.notifier).set(v),
+          ),
           ListTile(
             leading: const Icon(Icons.favorite_border),
             title: const Text('Sync health data now'),

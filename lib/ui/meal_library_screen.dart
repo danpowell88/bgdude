@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/kv_store.dart';
+import '../food/food_item.dart';
 import '../meals/meal_library.dart';
 import '../state/providers.dart';
+import 'barcode_scan_screen.dart';
 import 'meal_detail_screen.dart';
 
 /// The saved-meal library: searchable list plus an add-meal sheet. Each meal carries
@@ -111,24 +114,102 @@ class _MealLibraryScreenState extends ConsumerState<MealLibraryScreen> {
   }
 }
 
-class _AddMealSheet extends StatefulWidget {
+class _AddMealSheet extends ConsumerStatefulWidget {
   const _AddMealSheet();
 
   @override
-  State<_AddMealSheet> createState() => _AddMealSheetState();
+  ConsumerState<_AddMealSheet> createState() => _AddMealSheetState();
 }
 
-class _AddMealSheetState extends State<_AddMealSheet> {
+class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
   final _name = TextEditingController();
   final _carbs = TextEditingController();
   MealCategory _category = MealCategory.other;
   bool _fatProteinHeavy = false;
+  double? _fatGrams;
+  double? _proteinGrams;
 
   @override
   void dispose() {
     _name.dispose();
     _carbs.dispose();
     super.dispose();
+  }
+
+  /// Prefill the form from a looked-up food. Uses the product's serving size when known,
+  /// else per-100 g, keeping carbs and fat/protein on the same basis for the FPU coach.
+  void _prefill(FoodItem item) {
+    final grams = item.servingSizeG ?? 100.0;
+    final carbs = item.carbsForGrams(grams);
+    setState(() {
+      _name.text = item.displayName;
+      if (carbs != null) _carbs.text = carbs.round().toString();
+      _fatGrams = item.fatForGrams(grams);
+      _proteinGrams = item.proteinForGrams(grams);
+      // Flag fat/protein-heavy when they'd add ≥1 fat-protein unit vs the carbs.
+      final fpu = ((_fatGrams ?? 0) * 9 + (_proteinGrams ?? 0) * 4) / 100.0;
+      _fatProteinHeavy = fpu >= 1.0;
+    });
+  }
+
+  /// Show the one-time notice before the first online (Open Food Facts) lookup.
+  Future<bool> _confirmOnlineLookup() async {
+    if (!ref.read(barcodeLookupEnabledProvider)) return true; // offline-only, no notice
+    const key = 'off_notice_shown';
+    if ((await KvStore.getBool(key)) == true) return true;
+    if (!mounted) return true;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Food lookup'),
+        content: const Text(
+            'Looking up a barcode or food name sends just that code/text to Open Food '
+            'Facts, a free public database. No personal or health data is sent. You can '
+            'turn this off in Settings (offline Australian foods still work).'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Not now')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('OK')),
+        ],
+      ),
+    );
+    if (ok == true) await KvStore.setBool(key, true);
+    return ok ?? false;
+  }
+
+  Future<void> _scan() async {
+    if (!await _confirmOnlineLookup()) return;
+    if (!mounted) return;
+    final gtin = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScanScreen()),
+    );
+    if (gtin == null || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final db = await ref.read(foodDatabaseProvider.future);
+    final item = await db.lookupBarcode(gtin);
+    if (!mounted) return;
+    if (item == null || !item.hasCarbs) {
+      messenger.showSnackBar(SnackBar(
+          content: Text(item == null
+              ? 'Barcode not found — enter it manually.'
+              : 'Found "${item.name}" but no carbs on record — enter manually.')));
+      if (item != null) _prefill(item);
+      return;
+    }
+    _prefill(item);
+  }
+
+  Future<void> _search() async {
+    if (!await _confirmOnlineLookup()) return;
+    if (!mounted) return;
+    final item = await showDialog<FoodItem>(
+      context: context,
+      builder: (_) => _FoodSearchDialog(ref: ref),
+    );
+    if (item != null && mounted) _prefill(item);
   }
 
   @override
@@ -148,6 +229,26 @@ class _AddMealSheetState extends State<_AddMealSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text('New meal', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: const Text('Scan barcode'),
+                  onPressed: _scan,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.search),
+                  label: const Text('Search foods'),
+                  onPressed: _search,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           TextField(
             key: const Key('meal-name-field'),
@@ -194,6 +295,8 @@ class _AddMealSheetState extends State<_AddMealSheet> {
                         emoji: _category.defaultEmoji,
                         category: _category,
                         carbsGrams: carbs,
+                        fatGrams: _fatGrams ?? 0,
+                        proteinGrams: _proteinGrams ?? 0,
                         fatProteinHeavy: _fatProteinHeavy,
                       ),
                     )
@@ -202,6 +305,90 @@ class _AddMealSheetState extends State<_AddMealSheet> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A simple food-name search dialog backed by the active [foodDatabaseProvider].
+class _FoodSearchDialog extends StatefulWidget {
+  const _FoodSearchDialog({required this.ref});
+  final WidgetRef ref;
+  @override
+  State<_FoodSearchDialog> createState() => _FoodSearchDialogState();
+}
+
+class _FoodSearchDialogState extends State<_FoodSearchDialog> {
+  final _q = TextEditingController();
+  List<FoodItem> _results = const [];
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _q.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run() async {
+    final q = _q.text.trim();
+    if (q.length < 2) return;
+    setState(() => _loading = true);
+    try {
+      final db = await widget.ref.read(foodDatabaseProvider.future);
+      final r = await db.searchByName(q);
+      if (mounted) setState(() => _results = r);
+    } catch (_) {
+      // ignore — leave results as-is
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Search foods'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _q,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'e.g. white rice',
+                suffixIcon: IconButton(
+                    icon: const Icon(Icons.search), onPressed: _run),
+              ),
+              onSubmitted: (_) => _run(),
+            ),
+            const SizedBox(height: 8),
+            if (_loading) const LinearProgressIndicator(),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final f in _results)
+                    ListTile(
+                      dense: true,
+                      title: Text(f.displayName),
+                      subtitle: Text(f.hasCarbs
+                          ? '${f.carbsPer100g!.round()} g carbs / 100 g · ${f.source}'
+                          : f.source),
+                      onTap: () => Navigator.of(context).pop(f),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel')),
+      ],
     );
   }
 }
