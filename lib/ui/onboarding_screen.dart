@@ -54,9 +54,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     // path can complete here rather than only inside the main shell.
     PumpPairingListener.attach(ref, context);
 
-    // Persist and latch a successful pairing so the gate stays satisfied even if the
-    // link later drops mid-onboarding.
+    final devMode = ref.watch(devModeProvider);
+
+    // Persist and latch a successful pairing so the gate stays satisfied even if the link
+    // later drops mid-onboarding. Ignore demo mode: the simulator reports "connected" the
+    // instant demo is chosen, and that must never be mistaken for a real paired pump.
     ref.listen(pumpConnectionProvider, (_, next) async {
+      if (ref.read(devModeProvider)) return;
       if (next.valueOrNull?.isConnected ?? false) {
         if (!_pumpEverPaired && mounted) setState(() => _pumpEverPaired = true);
         final prefs = await SharedPreferences.getInstance();
@@ -64,17 +68,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       }
     });
 
-    final connected =
-        ref.watch(pumpConnectionProvider).valueOrNull?.isConnected ?? false;
-    final pumpReady = connected || _pumpEverPaired;
-    // The final step needs a pump (paired now or already) or an explicit demo choice.
-    final lastStepSatisfied = pumpReady || _demoChosen;
+    // A real pump connection only counts outside demo mode (see above).
+    final realConnected = !devMode &&
+        (ref.watch(pumpConnectionProvider).valueOrNull?.isConnected ?? false);
+    final pumpReady = realConnected || _pumpEverPaired;
+    // The final step needs an explicit demo choice or a pump (paired now or already).
+    final lastStepSatisfied = _demoChosen || pumpReady;
     final canAdvance = _page == 1
         ? _acceptedPairing
         : _page == _pageCount - 1
             ? lastStepSatisfied
             : true;
-    final demoOnly = _demoChosen && !pumpReady;
+    // Demo is whatever the user explicitly chose — then we skip pump/health permissions.
+    final demoOnly = _demoChosen;
 
     return Scaffold(
       body: SafeArea(
@@ -249,6 +255,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   /// these is done (enforced by [canAdvance] in [build]).
   Widget _connectGate(BuildContext context, {required bool pumpReady}) {
     final theme = Theme.of(context);
+    // The pump path is "selected" only when a real pump is ready AND the user hasn't
+    // chosen demo — so the two cards are mutually exclusive on the explicit choice.
+    final pumpSelected = pumpReady && !_demoChosen;
     return Padding(
       padding: const EdgeInsets.all(24),
       child: ListView(
@@ -276,12 +285,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     const SizedBox(width: 8),
                     Text('Pair your pump', style: theme.textTheme.titleMedium),
                     const Spacer(),
-                    if (pumpReady)
+                    if (pumpSelected)
                       Icon(Icons.check_circle, color: theme.colorScheme.primary),
                   ]),
                   const SizedBox(height: 8),
                   Text(
-                    pumpReady
+                    pumpSelected
                         ? 'Pump connected. You\'re ready to go.'
                         : _pairing
                             ? 'Scanning… put your pump on its Bluetooth pairing screen '
@@ -291,9 +300,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
-                    onPressed: pumpReady ? null : _startPairing,
+                    onPressed: pumpSelected ? null : _startPairing,
                     icon: const Icon(Icons.bluetooth_searching),
-                    label: Text(_pairing && !pumpReady
+                    label: Text(_pairing && !pumpSelected
                         ? 'Scanning…'
                         : 'Pair your pump'),
                   ),
@@ -317,7 +326,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     Text('Explore in demo mode',
                         style: theme.textTheme.titleMedium),
                     const Spacer(),
-                    if (_demoChosen && !pumpReady)
+                    if (_demoChosen)
                       Icon(Icons.check_circle, color: theme.colorScheme.primary),
                   ]),
                   const SizedBox(height: 8),
@@ -328,9 +337,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
-                    onPressed: _demoChosen && !pumpReady ? null : _chooseDemo,
+                    onPressed: _demoChosen ? null : _chooseDemo,
                     icon: const Icon(Icons.play_circle_outline),
-                    label: Text(_demoChosen && !pumpReady
+                    label: Text(_demoChosen
                         ? 'Demo mode selected'
                         : 'Use demo mode'),
                   ),
