@@ -176,16 +176,15 @@
     <div class="shot" style="max-width:180px"><img src="screenshots/25-garmin-datafield.png" alt="bgdude Garmin data field"><div class="cap">Data field (activity screen)</div></div>
   </div>
   <p class="cap">Rendered in the Connect IQ simulator (fēnix&nbsp;8) with a sample reading.</p>
-  <h3>Four ways to see it on the watch</h3>
+  <h3>Three ways to see it on the watch</h3>
   <ul class="tight">
     <li><b>Widget</b> (+ glance) — a full panel: unit, <b>range-coloured</b> BG with trend arrow, delta + reading age, and IOB / pump battery / reservoir. The glance is a one-liner (<span class="kbd">7.3 → +0.6  IOB 1.4</span>).</li>
     <li><b>Watch face</b> — time + date with a range-coloured BG line (value, trend, delta, IOB/age); drops per-second work in low-power mode.</li>
     <li><b>Data field</b> — range-coloured BG on an activity screen, font auto-scaled to the field size.</li>
-    <li><b>Complication</b> — publishes BG as a system complication (Connect IQ 4.1+) that any compatible face can display.</li>
   </ul>
   <ul class="tight">
-    <li>All four share one source of truth for units, <b>range colours</b> (red&nbsp;&lt;&nbsp;70&nbsp;mg/dL, green 70–180, amber&nbsp;&gt;&nbsp;180) and the trend arrow, and follow your in-app unit (mmol/L or mg/dL). Data older than <b>15 minutes greys out</b> and is marked "(stale)".</li>
-    <li>Readings are <b>queued by Connect IQ</b> — the last value shows the moment you open the widget/glance, even if it was sent while closed.</li>
+    <li>All three share one source of truth for units, <b>range colours</b> (red&nbsp;&lt;&nbsp;70&nbsp;mg/dL, green 70–180, amber&nbsp;&gt;&nbsp;180) and the trend arrow, and follow your in-app unit (mmol/L or mg/dL). Data older than <b>15 minutes greys out</b> and is marked "(stale)".</li>
+    <li>The <b>widget</b> receives phone pushes in the foreground; the <b>watch face</b> and <b>data field</b> can't, so they use a small <b>background service</b> that stores each reading for the view to pick up. Readings are queued by Connect IQ, so the last value shows the moment the view refreshes even if it arrived while closed.</li>
   </ul>
   <div class="note">The watch companion isn't on the Connect IQ store — it's the project under <span class="kbd">garmin/</span>, built and side-loaded with Garmin's Connect IQ SDK (see <span class="kbd">garmin/README.md</span>). Like everything else, it's display-only — the watch never doses.</div>
 </section>

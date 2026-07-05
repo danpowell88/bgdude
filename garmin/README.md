@@ -3,7 +3,7 @@
 Connect IQ products that show the current BG (mmol/L or mg/dL), trend arrow,
 delta, reading age and IOB, pushed from the bgdude Android app over the free
 **Connect IQ Mobile SDK** (the same pattern xDrip+ and GarminHomeAssistant use
-— no paid Garmin Health API involved). Four product types, all sharing one
+— no paid Garmin Health API involved). Three product types, all sharing one
 `source-common/BgData.mc` module so unit handling, range colouring and the
 primitive-drawn trend arrow are defined once:
 
@@ -12,12 +12,22 @@ primitive-drawn trend arrow are defined once:
 | **Widget** (+ glance) | `widget`    | `manifest.xml` / `monkey.jungle`          | full BG panel + one-line glance |
 | **Watch face** | `watchface` | `manifest-watchface.xml` / `watchface.jungle` | time + date + BG/trend/IOB |
 | **Data field** | `datafield` | `manifest-datafield.xml` / `datafield.jungle` | range-coloured BG on activity screens |
-| **Complication** | (published) | `source-common/BgComplication.mc`         | BG as a system complication any face can show (CIQ 4.1+) — see [COMPLICATIONS.md](COMPLICATIONS.md) |
 
 A Connect IQ app has exactly one `type` per manifest, so the widget, watch face
-and data field are three builds/`.prg`s sharing `source-common`; each registers
-for phone messages under its own UUID (all three are listed on the Android side,
-see below) and additionally publishes the BG complication.
+and data field are three builds/`.prg`s sharing `source-common`, each addressed
+by the phone under its own UUID (listed on the Android side, see below).
+
+**Receiving phone messages.** The **widget** registers for phone app messages in
+the foreground (`Communications.registerForPhoneAppMessages`). Watch faces and
+data fields aren't allowed to do that, so they register for the phone-app-message
+**background** event (`Background.registerForPhoneAppMessageEvent`) and a shared
+`source-service/BgServiceDelegate.mc` stores each snapshot to `Application.Storage`
+for the view to read on its next redraw.
+
+> Publishing BG as a *system complication* other faces can subscribe to is
+> **deferred** — the Connect IQ publisher API (`Complications.updateComplication`,
+> 4.2.0+) needs a resource-defined application complication, not the runtime
+> approach first attempted. See [COMPLICATIONS.md](COMPLICATIONS.md).
 
 ```
 bgdude (Android)                          Garmin watch
@@ -126,6 +136,21 @@ Or use the wrapper (builds, starts the simulator if needed, runs `-t`):
 powershell -File tools/run_tests.ps1 -Device fenix7   # Windows
 tools/run_tests.sh fenix7                              # macOS/Linux
 ```
+
+## Screenshots (for the user guide)
+
+`tools/screenshots.ps1` regenerates the watch screenshots in the user guide
+(`doc/screenshots/23–25-garmin-*.png`). It builds each product, runs it in the
+Connect IQ simulator with a **sample reading** (temporarily seeded, then the
+source is restored), and captures + crops the device. Windows only (the CIQ
+simulator + the screen capture are Windows).
+
+```bash
+powershell -ExecutionPolicy Bypass -File tools/screenshots.ps1 -Device fenix847mm
+```
+
+Pass any installed device with `-Device` (the script temporarily enables it in
+the manifests for the build, then reverts).
 
 ## 4. Sideload the .prg onto the watch
 

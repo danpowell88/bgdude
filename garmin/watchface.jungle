@@ -2,5 +2,5 @@
 # Build:  monkeyc -f watchface.jungle -d <device> -o bin/bgdude-watchface.prg -y developer_key.der -w
 project.manifest = manifest-watchface.xml
 
-base.sourcePath = source-common;source-watchface
+base.sourcePath = source-common;source-watchface;source-service
 base.resourcePath = resources

@@ -3,7 +3,7 @@
 # Run:    monkeydo bin/test.prg fenix7 -t
 #
 # Reuses the widget manifest so the app links; the (:test) functions in tests/ are only
-# included by --unit-test builds. Includes source-common (BgData/BgComplication) + the
+# included by --unit-test builds. Includes source-common (BgData) + the
 # widget source + tests.
 project.manifest = manifest.xml
 

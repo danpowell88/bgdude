@@ -8,9 +8,8 @@ import Toybox.WatchUi;
 //! queued by the system, so payloads sent while the widget was closed are delivered as soon
 //! as the listener registers.
 //!
-//! The shared BG state/formatting lives in `source-common/BgData.mc`; on each message we
-//! also publish a system Complication (see `source-common/BgComplication.mc`) so any watch
-//! face can show the reading.
+//! The shared BG state/formatting lives in `source-common/BgData.mc`. (Publishing BG as a
+//! system complication for third-party faces is deferred — see COMPLICATIONS.md.)
 (:glance)
 class BgDudeApp extends Application.AppBase {
 
@@ -29,7 +28,6 @@ class BgDudeApp extends Application.AppBase {
         if (Communications has :registerForPhoneAppMessages) {
             Communications.registerForPhoneAppMessages(method(:onPhoneMessage));
         }
-        BgComplication.register();
     }
 
     function onStop(state as Dictionary or Null) as Void {
@@ -39,13 +37,12 @@ class BgDudeApp extends Application.AppBase {
     }
 
     //! Message from the phone: {bg, trend, delta, ageSec, iob, unit, battery, reservoir}.
-    //! Persist it, publish the complication, and force a redraw of whatever view is showing.
+    //! Persist it and force a redraw of whatever view is showing.
     function onPhoneMessage(msg as Communications.PhoneAppMessage) as Void {
         var data = msg.data;
         if (data instanceof Lang.Dictionary) {
             mLastMessage = data;
             BgData.save(data);
-            BgComplication.publish();
             WatchUi.requestUpdate();
         }
     }
@@ -55,7 +52,7 @@ class BgDudeApp extends Application.AppBase {
     }
 
     (:glance)
-    function getGlanceView() as [WatchUi.GlanceView] or Null {
+    function getGlanceView() as [WatchUi.GlanceView] or [WatchUi.GlanceView, WatchUi.GlanceViewDelegate] or Null {
         return [new BgDudeGlanceView()];
     }
 }

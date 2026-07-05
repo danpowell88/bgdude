@@ -1,12 +1,14 @@
 import Toybox.Application;
-import Toybox.Communications;
+import Toybox.Background;
 import Toybox.Lang;
+import Toybox.System;
 import Toybox.WatchUi;
 
-//! Entry point for the bgdude **watch face**. Like the widget it registers for phone
-//! messages (its own app UUID — see manifest-watchface.xml) and stores each snapshot via
-//! the shared BgData module, so the face shows the last-known reading immediately and
-//! updates live as the phone pushes new ones. It also publishes the BG complication.
+//! Entry point for the bgdude **watch face**. A watch face cannot receive phone messages in
+//! the foreground, so it registers for the phone-app-message *background* event and a
+//! [BgServiceDelegate] (source-common) stores each snapshot; the face reads it from
+//! Application.Storage on redraw. (Complications are published only by the widget/app
+//! build — publishing is not permitted from a watch face.)
 class BgDudeWatchFaceApp extends Application.AppBase {
 
     function initialize() {
@@ -14,25 +16,25 @@ class BgDudeWatchFaceApp extends Application.AppBase {
     }
 
     function onStart(state as Dictionary or Null) as Void {
-        if (Communications has :registerForPhoneAppMessages) {
-            Communications.registerForPhoneAppMessages(method(:onPhoneMessage));
+        // Wake a background service whenever the phone pushes a reading.
+        if (Toybox has :Background &&
+                (Background has :registerForPhoneAppMessageEvent)) {
+            Background.registerForPhoneAppMessageEvent();
         }
-        BgComplication.register();
     }
 
     function onStop(state as Dictionary or Null) as Void {
-        if (Communications has :registerForPhoneAppMessages) {
-            Communications.registerForPhoneAppMessages(null);
-        }
     }
 
-    function onPhoneMessage(msg as Communications.PhoneAppMessage) as Void {
-        var data = msg.data;
-        if (data instanceof Lang.Dictionary) {
-            BgData.save(data);
-            BgComplication.publish();
-            WatchUi.requestUpdate();
-        }
+    //! The framework asks for the background worker that handles the phone-message event.
+    function getServiceDelegate() as [System.ServiceDelegate] {
+        return [new BgServiceDelegate()];
+    }
+
+    //! The background finished with a fresh payload while we're on screen — redraw now
+    //! (otherwise the face picks it up on its next scheduled update).
+    function onBackgroundData(data as Application.PersistableType) as Void {
+        WatchUi.requestUpdate();
     }
 
     function getInitialView() as [Views] or [Views, InputDelegates] {

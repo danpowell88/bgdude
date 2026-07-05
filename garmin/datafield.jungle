@@ -2,5 +2,5 @@
 # Build:  monkeyc -f datafield.jungle -d <device> -o bin/bgdude-datafield.prg -y developer_key.der -w
 project.manifest = manifest-datafield.xml
 
-base.sourcePath = source-common;source-datafield
+base.sourcePath = source-common;source-datafield;source-service
 base.resourcePath = resources

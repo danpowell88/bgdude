@@ -1,36 +1,38 @@
-# bgdude BG complication
+# bgdude BG complication — deferred
 
-`source-common/BgComplication.mc` publishes the current glucose as a **system
-Complication** (Connect IQ **4.1.0+**), so any watch face — including
-third-party faces — can display the bgdude reading by picking it in the face's
-complication slot, without that face needing its own phone link.
+Publishing the current glucose as a **system Complication** (so any watch face —
+including third-party faces — could show the bgdude reading in a complication
+slot, without its own phone link) is **not implemented**. The three products
+(widget, watch face, data field) each display BG directly instead.
 
-## How it works
+## Why it was removed
 
-- Each product (widget, watch face, data field) calls `BgComplication.register()`
-  once in `onStart`, then `BgComplication.publish()` on every phone message.
-- `register()` sets up a change-callback so the system can ask us to refresh;
-  `publish()` pushes the current value + `BG` / `Blood Glucose` labels + unit.
-- Everything is guarded by `Toybox has :Complications`, so on watches older than
-  CIQ 4.1.0 the calls are no-ops (the widget/watch face/data field still work).
+An earlier attempt (`source-common/BgComplication.mc`) built the complication at
+runtime — `new Complications.Id(42)`, `new Complications.Complication(id)`,
+setting `comp.value` / `comp.shortLabel`, and `registerComplicationChangeCallback`.
+That does not match the Connect IQ API and does not compile:
 
-To display it: on a watch face that supports Connect IQ complications, edit the
-face and choose **bgdude** for a data slot.
+- `Complications.Id` takes a `Complications.Type`, not an arbitrary `Number`.
+- `registerComplicationChangeCallback` is a **subscriber** API and needs the
+  `ComplicationSubscriber` permission — it's for a *face reading* complications,
+  not an app publishing one.
+- Publishing is only valid for `app`/`widget` product types, so calling it from
+  the watch-face / data-field builds fails outright.
 
-## Enabling / disabling
+## The correct approach (if revisited)
 
-It is on by default (the three entry points call it). To build **without**
-complications — e.g. if your installed SDK errors on the publisher API — remove
-the two `BgComplication.register()` / `BgComplication.publish()` lines from each
-`source-*/BgDude*App.mc`, or delete `source-common/BgComplication.mc` and its
-calls. Nothing else depends on it.
+Connect IQ's publisher API is `Complications.updateComplication(index, data)`
+(SDK **4.2.0+**), which updates an **application complication defined in a
+resource file**, not one constructed at runtime:
 
-## SDK note
+1. Define the complication in `resources/` (an `<iq:complications>` / complication
+   resource with an id, type and boundary).
+2. Add the `ComplicationPublisher` permission to `manifest.xml` (the widget/app
+   only — watch faces and data fields cannot publish).
+3. From the widget app, call `Complications.updateComplication(index,
+   new Complications.Data(...))` whenever a fresh reading arrives.
+4. Verify on-device with a face that subscribes to Connect IQ complications
+   (the simulator can't fully exercise the publish→subscribe path).
 
-The Complications *publisher* API (`Complications.Complication`,
-`Complications.Id`, `Complications.updateComplication`,
-`registerComplicationChangeCallback`) landed in SDK 4.1.0. This module targets
-that API; if your installed SDK's signatures differ, the only file that needs
-adjusting is `BgComplication.mc` — align the field/method names with your SDK's
-`Toybox.Complications` reference. Compile it in the simulator to confirm before
-sideloading.
+It was left out rather than shipped broken; the watch face already surfaces BG
+prominently, which covers most of the "glance at my glucose" need.
