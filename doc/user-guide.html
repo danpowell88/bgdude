@@ -173,8 +173,9 @@
   <h3>Glucose &amp; "Next few hours" chart</h3>
   <ul class="tight">
     <li>The big number is your <b>current glucose</b> with its trend arrow.</li>
-    <li>The <b>Next few hours</b> chart shows a trailing CGM trace leading into the forward forecast. The dashed vertical line is <b>now</b>; the green band is your target range; the x-axis marks <span class="kbd">-2h</span>, <span class="kbd">now</span>, <span class="kbd">+2h</span>.</li>
-    <li><b>Tip:</b> touch-and-hold anywhere on a line to read the exact time and value in the tooltip.</li>
+    <li>The <b>Next few hours</b> chart shows a trailing CGM trace leading into the forward forecast. The <b>y-axis is glucose in your chosen unit</b> (mmol/L or mg/dL); the dashed vertical line is <b>now</b>; the green band is your target range; the x-axis marks <span class="kbd">-2h</span>, <span class="kbd">now</span>, <span class="kbd">+2h</span>. A small legend names each line.</li>
+    <li>Below it, an <b>On board</b> chart projects the <b>insulin (IOB)</b> and <b>carbs (COB)</b> already working — plus your scheduled <b>basal</b> — over the next few hours. These are the drivers behind the glucose forecast. Insulin reads on the left axis (U, U/h), carbs on the right (g).</li>
+    <li><b>Tip:</b> touch-and-hold anywhere on a line to read the exact time and value (with units) in the tooltip; on the scenario chart the tooltip names each line.</li>
   </ul>
   <h3>Rescue-carb card</h3>
   <p>Appears only when you're low or a low is predicted. It suggests fast carbs (≈15 g, adjusted for insulin-on-board and the predicted nadir). Informational — act on the pump/with food yourself.</p>
@@ -192,7 +193,7 @@
   <div class="shot"><img src="screenshots/03-predict.png" alt="Predict tab"><div class="cap">Forecast horizons &amp; scenarios</div></div>
   <ul class="tight">
     <li><b>Horizon forecasts</b> (30 / 60 / 120 min) with uncertainty bands — a physiological baseline plus a learned correction once trained.</li>
-    <li><b>Scenario lines</b> (in Advanced mode) — IOB-only, with-carbs, unannounced-meal, and no-basal — so you see the spread, not one confident number.</li>
+    <li><b>Scenario lines</b> (in Advanced mode) — the same glucose forecast under four different assumptions about what's driving you: <b>IOB</b> (insulin only), <b>COB</b> (insulin + logged carbs), <b>UAM</b> (an unannounced meal is pushing you up), and <b>Zero-temp</b> (basal suspended). They spread apart because the assumptions differ — the gap <em>is</em> the uncertainty. The bold <b>Predicted</b> line is the best single estimate. A colour legend labels each, and tapping the chart shows every line's value (named, with units) at that moment. An <b>On board</b> chart of projected IOB/COB/basal sits below.</li>
     <li><b>Sensitivity &amp; risk read-outs</b> — today's resistance multiplier and near-term low/high risk with a suggested action.</li>
     <li><b>What-if explorer</b> — sliders for carbs and insulin to project the trajectory before you decide.</li>
     <li><b>Control-IQ aware.</b> When the pump reports the closed loop is active, the forecast folds in its automatic basal changes and corrections — pulling projected highs and lows back toward the mode's target band (tighter in Sleep, higher in Exercise) instead of assuming an open loop. Rescue-carb advice uses the same softened forecast.</li>
@@ -258,7 +259,8 @@
   <p class="lead">The ⊕ button in the top bar. Log the things the models want to know:</p>
   <ul class="tight">
     <li><b>Carbs / bolus</b> you took (that the pump didn't capture).</li>
-    <li><b>Context</b> — exercise, alcohol, stress. Logging <b>alcohol</b> also opens an overnight-low watch (alcohol causes delayed lows) and a heads-up.</li>
+    <li><b>Wellbeing</b> — exercise, alcohol, <b>stress</b>, <b>mood</b> (great/ok/low), and <b>illness</b>. Logging <b>alcohol</b> also opens an overnight-low watch (alcohol causes delayed lows) and a heads-up.</li>
+    <li><b>🤒 Illness</b> — turn <b>illness mode</b> on/off here (pick Mild / Moderate / Severe). It raises expected insulin needs while sick and tags the period for the models; end it when you're better. The app also auto-suggests illness in <a href="#confirm">Confirm events</a> when your data looks illness-like.</li>
     <li><b>Sensor / infusion-site change</b> — resets the age tracker used for reminders and the site-failure story.</li>
   </ul>
 </section>

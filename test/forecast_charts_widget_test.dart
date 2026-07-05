@@ -1,0 +1,52 @@
+import 'package:bgdude/state/providers.dart';
+import 'package:bgdude/ui/widgets/on_board_forecast_chart.dart';
+import 'package:bgdude/ui/widgets/prediction_chart.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+Widget _host(Widget child) => ProviderScope(
+      overrides: [devModeProvider.overrideWith((ref) => true)],
+      child: MaterialApp(
+        home: Scaffold(body: SingleChildScrollView(child: child)),
+      ),
+    );
+
+void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('prediction chart + legend render with a glucose unit axis',
+      (tester) async {
+    await tester.pumpWidget(_host(
+      const Column(children: [
+        SizedBox(height: 200, child: PredictionChart(showScenarios: true)),
+        PredictionChartLegend(scenarios: true),
+      ]),
+    ));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    // The y-axis unit label + the scenario legend entries are present.
+    expect(find.text('mmol/L'), findsWidgets); // default display unit
+    expect(find.textContaining('Predicted'), findsWidgets);
+    expect(find.textContaining('IOB'), findsWidgets);
+    expect(find.textContaining('Zero-temp'), findsWidgets);
+  });
+
+  testWidgets('on-board forecast chart renders with IOB/COB/basal legend',
+      (tester) async {
+    await tester.pumpWidget(_host(
+      const Column(children: [
+        OnBoardForecastChart(),
+        OnBoardForecastLegend(),
+      ]),
+    ));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    expect(find.text('IOB (U)'), findsOneWidget);
+    expect(find.text('COB (g)'), findsOneWidget);
+    expect(find.text('Basal (U/h)'), findsOneWidget);
+  });
+}

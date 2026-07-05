@@ -11,6 +11,7 @@ import '../state/providers.dart';
 import 'explain_reading_screen.dart';
 import 'timeline_screen.dart';
 import 'widgets/glucose_hero.dart';
+import 'widgets/on_board_forecast_chart.dart';
 import 'widgets/prediction_chart.dart';
 import 'your_day_panel.dart';
 
@@ -182,8 +183,24 @@ class _Dashboard extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         Text('Next few hours', style: Theme.of(context).textTheme.titleMedium),
+        Text('Projected glucose (the y-axis is in your chosen unit). Tap the line to read '
+            'a value at any time.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.outline)),
         const SizedBox(height: 8),
         const SizedBox(height: 200, child: PredictionChart()),
+        const SizedBox(height: 6),
+        const PredictionChartLegend(),
+        const SizedBox(height: 16),
+        Text('On board', style: Theme.of(context).textTheme.titleMedium),
+        Text('How the insulin (IOB) and carbs (COB) already working — and your scheduled '
+            'basal — trend over the next few hours. These drive the glucose forecast above.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.outline)),
+        const SizedBox(height: 8),
+        const OnBoardForecastChart(),
+        const SizedBox(height: 6),
+        const OnBoardForecastLegend(),
         const SizedBox(height: 4),
         Align(
           alignment: Alignment.centerLeft,

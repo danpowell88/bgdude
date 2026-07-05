@@ -7,9 +7,10 @@ import '../../core/units.dart';
 import '../../state/providers.dart';
 
 /// Prediction chart: a trailing CGM trace leading into the forward forecast, with the
-/// target range shaded and a "now" marker. Showing recent history means the panel is
-/// never a blank forward line (which read as empty, especially in dev mode), and a styled
-/// touch tooltip makes hovering the lines legible.
+/// target range shaded, a glucose y-axis (with units), and a "now" marker. Showing recent
+/// history means the panel is never a blank forward line (which reads as empty, especially
+/// in dev mode). Hovering shows a labelled tooltip per line so it's clear which scenario
+/// each value belongs to.
 class PredictionChart extends ConsumerWidget {
   const PredictionChart({super.key, this.showScenarios});
 
@@ -18,6 +19,16 @@ class PredictionChart extends ConsumerWidget {
 
   /// How much recent CGM history to show before "now".
   static const _historyMinutes = 150;
+
+  /// Distinct colour per series so the legend and the multi-line hover are legible.
+  static Color seriesColor(String label, ColorScheme cs) => switch (label) {
+        'Predicted' => cs.primary,
+        'IOB' => const Color(0xFF3D6DF2), // insulin-only
+        'COB' => const Color(0xFFE08A1E), // with carbs
+        'UAM' => const Color(0xFF8A5CF0), // unannounced meal
+        'Zero-temp' => const Color(0xFF17A2A5), // no basal
+        _ => cs.onSurfaceVariant, // CGM history
+      };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -49,6 +60,8 @@ class PredictionChart extends ConsumerWidget {
           FlSpot(xMin(s.time), toDisplay(s.mgdl)),
     ]..sort((a, b) => a.x.compareTo(b.x));
 
+    final cs = Theme.of(context).colorScheme;
+
     LineChartBarData forecast(PredictionLine line, Color color,
         {bool thick = false}) {
       return LineChartBarData(
@@ -63,14 +76,26 @@ class PredictionChart extends ConsumerWidget {
       );
     }
 
-    final cs = Theme.of(context).colorScheme;
-    final historyBar = LineChartBarData(
+    // Build the bars and a parallel list of labels so the tooltip can name each line.
+    final bars = <LineChartBarData>[];
+    final labels = <String>[];
+    bars.add(LineChartBarData(
       spots: history,
       isCurved: true,
-      color: cs.onSurfaceVariant,
+      color: seriesColor('CGM', cs),
       barWidth: 2.5,
       dotData: const FlDotData(show: false),
-    );
+    ));
+    labels.add('CGM');
+    for (final l in scenarios) {
+      bars.add(forecast(l, seriesColor(l.label, cs)));
+      labels.add(l.label);
+    }
+    bars.add(forecast(primary, cs.primary, thick: true));
+    labels.add('Predicted');
+
+    // A round y-axis interval in the display unit.
+    final yInterval = unit == GlucoseUnit.mmol ? 4.0 : 72.0; // ~4 mmol / ~4 mmol in mg/dL
 
     return LineChart(
       LineChartData(
@@ -78,11 +103,40 @@ class PredictionChart extends ConsumerWidget {
         maxX: 240,
         minY: toDisplay(GlucoseThresholds.veryLow - 10),
         maxY: toDisplay(GlucoseThresholds.veryHigh),
-        gridData: const FlGridData(show: false),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: yInterval,
+          getDrawingHorizontalLine: (_) =>
+              FlLine(color: cs.outlineVariant.withValues(alpha: 0.25), strokeWidth: 1),
+        ),
         titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            axisNameSize: 16,
+            axisNameWidget: Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(unit.label,
+                  style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+            ),
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: yInterval,
+              reservedSize: 30,
+              getTitlesWidget: (v, meta) {
+                if (v <= meta.min || v >= meta.max) return const SizedBox.shrink();
+                return Text(
+                  unit == GlucoseUnit.mmol
+                      ? v.toStringAsFixed(0)
+                      : v.round().toString(),
+                  style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant),
+                );
+              },
+            ),
+          ),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -118,9 +172,11 @@ class PredictionChart extends ConsumerWidget {
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
             getTooltipColor: (_) => cs.inverseSurface,
+            maxContentWidth: 220,
             getTooltipItems: (spots) => [
               for (final s in spots)
                 LineTooltipItem(
+                  '${_labelFor(labels, s.barIndex)}  '
                   '${_when(s.x)}  ${_fmt(s.y, unit)}',
                   TextStyle(
                     color: cs.onInverseSurface,
@@ -141,15 +197,13 @@ class PredictionChart extends ConsumerWidget {
               ),
           ],
         ),
-        lineBarsData: [
-          historyBar,
-          for (final l in scenarios)
-            forecast(l, cs.outline.withValues(alpha: 0.5)),
-          forecast(primary, cs.primary, thick: true),
-        ],
+        lineBarsData: bars,
       ),
     );
   }
+
+  static String _labelFor(List<String> labels, int barIndex) =>
+      (barIndex >= 0 && barIndex < labels.length) ? labels[barIndex] : '';
 
   static String _when(double minutes) {
     final m = minutes.round();
@@ -164,4 +218,47 @@ class PredictionChart extends ConsumerWidget {
   static String _fmt(double display, GlucoseUnit unit) =>
       '${unit == GlucoseUnit.mmol ? display.toStringAsFixed(1) : display.round()} '
       '${unit.label}';
+}
+
+/// A colour legend for [PredictionChart]. Shows the primary forecast, the trailing CGM
+/// trace, and (when [scenarios] is set) each decomposed scenario line.
+class PredictionChartLegend extends StatelessWidget {
+  const PredictionChartLegend({super.key, this.scenarios = false});
+
+  final bool scenarios;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final entries = <(String, String)>[
+      ('Predicted', 'best estimate'),
+      ('CGM', 'recent readings'),
+      if (scenarios) ...[
+        ('IOB', 'insulin only'),
+        ('COB', 'with carbs'),
+        ('UAM', 'unannounced meal'),
+        ('Zero-temp', 'basal off'),
+      ],
+    ];
+    return Wrap(
+      spacing: 12,
+      runSpacing: 4,
+      children: [
+        for (final (label, hint) in entries)
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 14,
+              height: 3,
+              decoration: BoxDecoration(
+                color: PredictionChart.seriesColor(label, cs),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text('$label — $hint',
+                style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+          ]),
+      ],
+    );
+  }
 }

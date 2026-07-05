@@ -7,6 +7,7 @@ import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
 import '../ml/uncertainty_calibrator.dart';
 import '../state/providers.dart';
+import 'widgets/on_board_forecast_chart.dart';
 import 'widgets/prediction_chart.dart';
 
 /// Every model's forward-looking output in one place: the BG forecaster horizons
@@ -74,11 +75,33 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
         const SizedBox(height: 20),
         Text('Scenario lines', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 4),
-        Text('How glucose could move under insulin-only (IOB), with carbs (COB), '
-            'unannounced-meal (UAM), and no-basal (zero-temp) assumptions.',
+        Text(
+            'Each line is the same glucose forecast (y-axis in ${unit.label}) under a '
+            'different assumption about what\'s driving your glucose. They spread apart '
+            'because those assumptions differ — the gap between them is the uncertainty:\n'
+            '• IOB — insulin on board only (no carbs)\n'
+            '• COB — insulin + the carbs you\'ve logged\n'
+            '• UAM — an unannounced meal is pushing you up\n'
+            '• Zero-temp — what happens if basal were suspended\n'
+            'The bold "Predicted" line is the best single estimate. Tap anywhere on the '
+            'chart to read every line\'s value at that time — the tooltip now names each one.',
             style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 8),
         const SizedBox(height: 220, child: PredictionChart(showScenarios: true)),
+        const SizedBox(height: 6),
+        const PredictionChartLegend(scenarios: true),
+        const SizedBox(height: 20),
+        Text('On board', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 4),
+        Text(
+            'The insulin (IOB) and carbs (COB) already working, plus scheduled basal, over '
+            'the next ${predictor.horizonMinutes ~/ 60} h — the drivers behind the '
+            'forecast above. Insulin uses the left axis (U, U/h), carbs the right (g).',
+            style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 8),
+        OnBoardForecastChart(horizonMinutes: predictor.horizonMinutes),
+        const SizedBox(height: 6),
+        const OnBoardForecastLegend(),
         const SizedBox(height: 20),
         _SensitivityCard(context0: ctx),
         const SizedBox(height: 20),
