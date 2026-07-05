@@ -6,8 +6,8 @@ import '../../analytics/metrics.dart';
 import '../../core/units.dart';
 import '../../reports/glucose_report.dart';
 import '../../reports/report_exporter.dart';
-import '../../reports/report_range.dart';
 import '../../state/providers.dart';
+import 'report_range_picker.dart';
 
 /// The Glucose report: AGP, time-in-range, key metrics, and episodes over the selected
 /// range — built from real, confirmed data, exportable as PDF + CSV.
@@ -52,7 +52,7 @@ class GlucoseReportScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          const _RangePicker(),
+          const ReportRangePicker(),
           Expanded(
             child: async.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -63,40 +63,6 @@ class GlucoseReportScreen extends ConsumerWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RangePicker extends ConsumerWidget {
-  const _RangePicker();
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final range = ref.watch(reportRangeProvider);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: SizedBox(
-        height: 40,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: [
-            for (final p in const [
-              ReportPreset.last7,
-              ReportPreset.last14,
-              ReportPreset.last30,
-              ReportPreset.last90,
-            ])
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(p.label),
-                  selected: range.preset == p,
-                  onSelected: (_) => ref.read(reportRangeProvider.notifier).state =
-                      ReportRange.preset(p, now: DateTime.now()),
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }

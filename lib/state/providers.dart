@@ -52,8 +52,12 @@ import '../pump/history_backfill.dart';
 import '../pump/pump_client.dart';
 import '../pump/pump_events.dart';
 import '../pump/pump_snapshot.dart';
+import '../reports/events_journal.dart';
 import '../reports/glucose_report.dart';
+import '../reports/insulin_report.dart';
+import '../reports/meals_report.dart';
 import '../reports/report_range.dart';
+import '../reports/therapy_report.dart';
 import '../pump/pump_source.dart';
 import '../pump/simulated_pump_client.dart';
 import '../timeline/day_event.dart';
@@ -394,6 +398,60 @@ final glucoseReportProvider =
   final confirmed = GlucoseReportBuilder.confirmedSamples(
       cgm: cgm, annotations: annotations, range: range);
   return (report: report, confirmed: confirmed);
+});
+
+/// Insulin report (TDD trend, basal/bolus split, bolus behaviour) for the range.
+final insulinReportProvider = FutureProvider<InsulinReport>((ref) async {
+  final range = ref.watch(reportRangeProvider);
+  final repo = ref.read(historyRepositoryProvider);
+  return const InsulinReportBuilder().build(
+    boluses: await repo.boluses(range.from, range.to),
+    basal: await repo.basal(range.from, range.to),
+    range: range,
+    now: DateTime.now(),
+  );
+});
+
+/// Meals report (per-meal performance from confirmed outcomes) for the range.
+final mealsReportProvider = Provider<MealsReport>((ref) {
+  final range = ref.watch(reportRangeProvider);
+  return const MealsReportBuilder().build(
+    library: ref.watch(mealLibraryProvider),
+    range: range,
+    now: DateTime.now(),
+  );
+});
+
+/// Therapy report (learned daily sensitivity trend via Autotune) for the range.
+final therapyReportProvider = FutureProvider<TherapyReport>((ref) async {
+  final range = ref.watch(reportRangeProvider);
+  final repo = ref.read(historyRepositoryProvider);
+  final from = range.from.subtract(const Duration(hours: 6)); // IOB lookback
+  return TherapyReportBuilder().build(
+    cgm: await repo.cgm(from, range.to),
+    boluses: await repo.boluses(from, range.to),
+    basal: await repo.basal(from, range.to),
+    carbs: await repo.carbs(from, range.to),
+    settings: ref.read(therapySettingsProvider),
+    range: range,
+    now: DateTime.now(),
+  );
+});
+
+/// Events journal: a merged, newest-first timeline of confirmed events for the range.
+final eventsJournalProvider = FutureProvider<List<JournalEntry>>((ref) async {
+  final range = ref.watch(reportRangeProvider);
+  final repo = ref.read(historyRepositoryProvider);
+  final glucose = await ref.watch(glucoseReportProvider.future);
+  return const EventsJournalBuilder().build(
+    range: range,
+    annotations: await repo.annotations(range.from, range.to),
+    pumpEvents: await PumpEventLog.load(),
+    deviceChanges: ref.read(deviceStateProvider).changes,
+    lowEpisodes: glucose.report.lowEpisodes,
+    highEpisodes: glucose.report.highEpisodes,
+    unit: ref.read(glucoseUnitProvider),
+  );
 });
 
 /// Suggested basal-profile changes derived from repeated time-of-day sensitivity

@@ -1,0 +1,163 @@
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../reports/insulin_report.dart';
+import '../../state/providers.dart';
+import 'report_range_picker.dart';
+
+/// The Insulin report: daily TDD (basal + bolus) with the split and bolus behaviour.
+class InsulinReportScreen extends ConsumerWidget {
+  const InsulinReportScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(insulinReportProvider);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Insulin report')),
+      body: Column(
+        children: [
+          const ReportRangePicker(),
+          Expanded(
+            child: async.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Could not build report: $e')),
+              data: (r) => r.hasData
+                  ? _Body(report: r)
+                  : const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Text('No insulin history in this range yet.'),
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Body extends StatelessWidget {
+  const _Body({required this.report});
+  final InsulinReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
+          children: [
+            _Stat(label: 'Avg TDD', value: '${report.avgTdd.toStringAsFixed(1)} U'),
+            _Stat(label: 'Basal', value: '${(report.basalFraction * 100).round()}%'),
+            _Stat(
+                label: 'Boluses/day',
+                value: report.bolusesPerDay.toStringAsFixed(1)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text('Daily total insulin', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        SizedBox(height: 200, child: _TddChart(report: report)),
+        const SizedBox(height: 6),
+        _Legend(),
+        const SizedBox(height: 20),
+        Text('Bolus behaviour', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        _Row('Boluses', '${report.bolusCount}'),
+        _Row('Meal boluses', '${report.mealBolusCount}'),
+        _Row('Correction boluses', '${report.correctionBolusCount}'),
+        _Row('Average size', '${report.avgBolusUnits.toStringAsFixed(1)} U'),
+        _Row('Average basal/day', '${report.avgBasal.toStringAsFixed(1)} U'),
+        _Row('Average bolus/day', '${report.avgBolus.toStringAsFixed(1)} U'),
+        const SizedBox(height: 12),
+        Text('Basal is integrated from recorded rate changes and may under-count on '
+            'days with sparse pump history.',
+            style: Theme.of(context).textTheme.bodySmall),
+      ],
+    );
+  }
+}
+
+class _TddChart extends StatelessWidget {
+  const _TddChart({required this.report});
+  final InsulinReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final days = report.days;
+    final maxTdd = days.fold<double>(1, (m, d) => d.total > m ? d.total : m);
+    return BarChart(
+      BarChartData(
+        maxY: maxTdd * 1.15,
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        titlesData: const FlTitlesData(show: false),
+        barGroups: [
+          for (var i = 0; i < days.length; i++)
+            BarChartGroupData(x: i, barRods: [
+              BarChartRodData(
+                toY: days[i].total,
+                width: days.length > 45 ? 2 : 6,
+                borderRadius: BorderRadius.zero,
+                rodStackItems: [
+                  BarChartRodStackItem(0, days[i].basal, cs.primary),
+                  BarChartRodStackItem(
+                      days[i].basal, days[i].total, cs.tertiary),
+                ],
+              ),
+            ]),
+        ],
+      ),
+    );
+  }
+}
+
+class _Legend extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    Widget dot(Color c, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 10, height: 10, color: c),
+          const SizedBox(width: 4),
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ]);
+    return Row(children: [
+      dot(cs.primary, 'Basal'),
+      const SizedBox(width: 16),
+      dot(cs.tertiary, 'Bolus'),
+    ]);
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.label, required this.value});
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Column(children: [
+          Text(value, style: Theme.of(context).textTheme.titleLarge),
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
+        ]),
+      );
+}
+
+class _Row extends StatelessWidget {
+  const _Row(this.label, this.value);
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: Theme.of(context).textTheme.bodyMedium),
+            Text(value, style: Theme.of(context).textTheme.bodyLarge),
+          ],
+        ),
+      );
+}
