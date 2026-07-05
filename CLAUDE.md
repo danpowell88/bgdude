@@ -21,3 +21,12 @@ See the memory `git-workflow`.
 `flutter analyze` clean, `flutter test` green, and — when native Kotlin changed —
 `cd android && ./gradlew :app:testDebugUnitTest`. Native code is buildable/testable here
 (JDK + Android SDK present); verify pumpx2 APIs via `javap` on the cached jar before writing.
+
+## Emulator (integration) tests for every feature
+Every user-facing screen/flow should have on-device coverage under `integration_test/`
+(shared helpers in `integration_test/harness.dart`; run in demo mode). When you add or
+change a screen, panel, mode, report, or setting, add/extend an integration test so it's
+exercised on a device. Run: `flutter test integration_test/<file>.dart -d <device-id>`
+(an emulator, e.g. `emulator-5554`, is available). The `screenshots_test.dart` /
+`walkthrough_test.dart` files need `flutter drive`, so run the functional `*_test.dart`
+files explicitly rather than the whole folder.

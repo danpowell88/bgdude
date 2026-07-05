@@ -12,6 +12,17 @@ void main() {
       }
     });
 
+    test('every default repeat interval is a standard dropdown option', () {
+      // The Notifications screen's "Repeat until clear" dropdown offers this set; a
+      // default outside it used to crash the DropdownButton (assert on unmatched value).
+      const options = {0, 5, 15, 30, 60};
+      final prefs = NotificationPrefs.defaults();
+      for (final c in NotificationCategory.values) {
+        expect(options.contains(prefs.of(c).repeatMinutes), isTrue,
+            reason: '${c.name} repeats every ${prefs.of(c).repeatMinutes}m');
+      }
+    });
+
     test('urgent low is the loudest default and repeats', () {
       final p = NotificationPrefs.defaults().of(NotificationCategory.urgentLow);
       expect(p.enabled, isTrue);

@@ -227,11 +227,13 @@ class _CategoryTile extends StatelessWidget {
               onChanged: pref.enabled
                   ? (v) => onChanged(pref.copyWith(repeatMinutes: v))
                   : null,
-              items: const [
-                DropdownMenuItem(value: 0, child: Text('Once')),
-                DropdownMenuItem(value: 5, child: Text('Every 5m')),
-                DropdownMenuItem(value: 15, child: Text('Every 15m')),
-                DropdownMenuItem(value: 30, child: Text('Every 30m')),
+              // Always include the current value (categories default to 15 or 60, and a
+              // persisted custom value could be anything) so the dropdown never asserts.
+              items: [
+                for (final m in {0, 5, 15, 30, 60, pref.repeatMinutes}.toList()
+                  ..sort())
+                  DropdownMenuItem(
+                      value: m, child: Text(m == 0 ? 'Once' : 'Every ${m}m')),
               ],
             ),
           ],

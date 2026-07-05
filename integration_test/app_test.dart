@@ -101,6 +101,8 @@ void main() {
     await _pumpApp(tester);
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Forecast accuracy'), 200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('Forecast accuracy'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Nightscout'), 200,
         scrollable: find.byType(Scrollable).first);
@@ -225,12 +227,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // In demo mode Settings shows a read-only status row with an Exit action (no
-    // manual switch back into demo).
+    // manual switch back into demo). These sit at the top and are visible immediately.
     expect(find.text('Demo mode'), findsOneWidget);
     expect(find.widgetWithText(OutlinedButton, 'Exit'), findsOneWidget);
     expect(find.text('Glucose units'), findsOneWidget);
-    expect(find.text('Advanced mode'), findsOneWidget);
-    expect(find.text('Therapy profile'), findsOneWidget);
+    // A core option lower in the (lazy) list confirms the rest of Settings renders.
+    // Individual sub-screens have their own coverage in features_settings_test.dart.
+    await tester.scrollUntilVisible(find.text('Model internals'), 200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('Model internals'), findsOneWidget);
   });
 
