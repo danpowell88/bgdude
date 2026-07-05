@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/samples.dart';
 import '../../core/units.dart';
 
-/// The big current-glucose display with a trend arrow and range colouring.
+/// The big current-glucose display with a trend arrow and range colouring. Behind the
+/// number sits a subtle sparkline of what glucose has done across the day, so the current
+/// reading is shown in the context of its own trend.
 class GlucoseHero extends StatelessWidget {
   const GlucoseHero({
     super.key,
@@ -11,12 +13,16 @@ class GlucoseHero extends StatelessWidget {
     required this.trend,
     required this.unit,
     this.time,
+    this.dayTrend = const [],
   });
 
   final double? mgdl;
   final GlucoseTrend trend;
   final GlucoseUnit unit;
   final DateTime? time;
+
+  /// The day's glucose readings (mg/dL), oldest→newest, drawn faintly behind the number.
+  final List<double> dayTrend;
 
   @override
   Widget build(BuildContext context) {
@@ -27,37 +33,54 @@ class GlucoseHero extends StatelessWidget {
     final display = value == null ? '—' : Mgdl(value).display(unit);
     final staleness = _staleness();
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-        child: Column(
+    final content = Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  display,
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(width: 12),
-                Icon(_trendIcon(trend), size: 40, color: color),
-              ],
+            Text(
+              display,
+              style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
-            const SizedBox(height: 4),
-            Text(unit.label, style: Theme.of(context).textTheme.bodyMedium),
-            if (staleness != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(staleness,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.outline)),
-              ),
+            const SizedBox(width: 12),
+            Icon(_trendIcon(trend), size: 40, color: color),
           ],
         ),
+        const SizedBox(height: 4),
+        Text(unit.label, style: Theme.of(context).textTheme.bodyMedium),
+        if (staleness != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(staleness,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline)),
+          ),
+      ],
+    );
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // The day's trend, drawn faintly across the whole card behind the number.
+          if (dayTrend.length >= 2)
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _DayTrendPainter(
+                  values: dayTrend,
+                  color: color,
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: content,
+          ),
+        ],
       ),
     );
   }
@@ -86,4 +109,73 @@ class GlucoseHero extends StatelessWidget {
         GlucoseTrend.doubleDown => Icons.keyboard_double_arrow_down,
         GlucoseTrend.unknown => Icons.help_outline,
       };
+}
+
+/// Paints the day's glucose as a faint line + gradient fill spanning the card, scaled to
+/// the min/max of the data (with a small margin). Decorative context behind the number —
+/// intentionally axis-free; the labelled charts live below on the Today tab.
+class _DayTrendPainter extends CustomPainter {
+  _DayTrendPainter({required this.values, required this.color});
+
+  final List<double> values;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.length < 2) return;
+    var lo = values.first, hi = values.first;
+    for (final v in values) {
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+    // A little vertical margin so the line never hugs the top/bottom edge.
+    final span = (hi - lo).abs() < 1 ? 1.0 : (hi - lo);
+    final pad = span * 0.15;
+    lo -= pad;
+    hi += pad;
+
+    // Keep the trend in the lower ~70% of the card so it reads as a backdrop under the
+    // number rather than crossing straight through it.
+    final top = size.height * 0.30;
+    final usableH = size.height - top;
+
+    double x(int i) => size.width * (i / (values.length - 1));
+    double y(double v) => top + usableH * (1 - (v - lo) / (hi - lo));
+
+    final path = Path()..moveTo(x(0), y(values[0]));
+    for (var i = 1; i < values.length; i++) {
+      path.lineTo(x(i), y(values[i]));
+    }
+
+    final fill = Path.from(path)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(
+      fill,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color.withValues(alpha: 0.16),
+            color.withValues(alpha: 0.02),
+          ],
+        ).createShader(Offset.zero & size),
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = color.withValues(alpha: 0.35),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_DayTrendPainter old) =>
+      old.values != values || old.color != color;
 }

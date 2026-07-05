@@ -136,6 +136,7 @@ class _Dashboard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rescue = ref.watch(rescueCarbAdviceProvider);
+    final day = ref.watch(dayDataProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -144,6 +145,8 @@ class _Dashboard extends ConsumerWidget {
           trend: snapshot.cgmTrend ?? GlucoseTrend.unknown,
           unit: unit,
           time: snapshot.cgmTime,
+          // The day's readings (oldest→newest) drawn faintly behind the number.
+          dayTrend: [for (final s in day.cgm) s.mgdl],
         ),
         if (rescue != null) ...[
           const SizedBox(height: 12),

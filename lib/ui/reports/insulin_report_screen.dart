@@ -94,7 +94,32 @@ class _TddChart extends StatelessWidget {
         maxY: maxTdd * 1.15,
         gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
-        titlesData: const FlTitlesData(show: false),
+        titlesData: FlTitlesData(
+          show: true,
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          // Y-axis: total daily insulin in units.
+          leftTitles: AxisTitles(
+            axisNameSize: 14,
+            axisNameWidget: Text('U/day',
+                style:
+                    TextStyle(fontSize: 9, color: cs.onSurfaceVariant)),
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 28,
+              interval: (maxTdd / 2).clamp(1, double.infinity),
+              getTitlesWidget: (v, meta) => (v <= meta.min || v >= meta.max)
+                  ? const SizedBox.shrink()
+                  : Text(v.toStringAsFixed(0),
+                      style:
+                          TextStyle(fontSize: 9, color: cs.onSurfaceVariant)),
+            ),
+          ),
+        ),
         barGroups: [
           for (var i = 0; i < days.length; i++)
             BarChartGroupData(x: i, barRods: [
