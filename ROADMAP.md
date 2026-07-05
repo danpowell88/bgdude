@@ -21,7 +21,9 @@ alcohol/stress/mood/**illness**/sensor/site), Confirm-events inbox, Exercise/Med
 Illness/Weather modes, Notifications (19 categories incl. **anomaly "Unusual pattern"** +
 morning summary), 7 Reports + PDF/CSV, Pump screen (Control-IQ mode), Therapy/Basal, Advanced/
 models, Profile, Home-screen widget, **Garmin** widget/watch-face/data-field, **demo mode
-seeded with ~2 weeks of history**. Forecaster = deterministic baseline + learned GBM residual.
+seeded with ~2 weeks of history**. Forecaster = deterministic baseline + learned GBM residual
+(promotion A/Bs candidate vs baseline *and* the live model on the same held-out tail; sigma from
+held-out error; no future-dose leakage in training; trains off the UI isolate ~once a day).
 
 ---
 
@@ -63,10 +65,10 @@ _Deprioritised for now: Part 3 new features, Part 4 release/store, multi-user UX
 | 1.2 | **Bluetooth glucose meter (Accu-Chek Guide Me)** | Decoder, RACP sync, `flutter_blue_plus` transport, pair/manage UI, unit tests | Field-test pairing + record sync on the real meter; bonding/re-discovery edge cases; dedupe + merge fingersticks with CGM (calibration vs standalone); background sync | M | 🔌 |
 | 1.3 | **Garmin complication** | 3 products build/run in sim; complication removed (was mis-implemented) | Implement the *real* publisher path (resource-defined app complication + `updateComplication`); verify on-watch with a subscribing face | M | 🔌 |
 | 1.4 | **Garmin on-watch verification + device list** | Sim-verified; screenshots | Install on a paired watch, confirm phone→watch push + background service; add modern devices (fenix 8, fr970, venu 3) to the manifests | S–M | 🔌 |
-| 1.5 | **Neural (LiteRT) residual forecaster** | Interface + Dart GBM residual work; comments promise a `residual_model_litert.dart` that doesn't exist | Decide: build the neural residual (LiteRT on-device, train overnight) **or** remove the aspirational comments and commit to the GBM. Validate accuracy uplift vs GBM before promoting | L (build) / S (remove) | 🧠 |
+| 1.5 | **Neural (LiteRT) residual forecaster** | ~~Decide~~ **Decided (Jul 2026): committed to the pure-Dart GBM.** Aspirational LiteRT comments removed; with one user's data a <100k-param sequence model has no realistic edge over the depth-3 GBM and would cost determinism/auditability. Revisit only if real-hardware accuracy plateaus. | — (done) | S | |
 | 1.6 | **Pump pairing robustness (pumpx2)** | Native read path, pairing dialog, reconnect | Real-hardware reliability pass: pairing retries, reconnection, clear error surfacing, handling t:connect mutual-exclusion, long-run stability | M | 🔌 |
 | 1.7 | **Mood logging** | 🙂 Mood captured as an annotation | Make it *do* something (feed the sensitivity context / surface a mood↔glucose correlation) or explicitly keep it as journal-only | S | |
-| 1.8 | **Inference-quality of the panel LLM** | Prompt + JSON parse tested | Once 1.1 runs on-device, measure real image→values accuracy (the on-device accuracy test exists) and tune prompt / few-shot | S | 🔌🧠 |
+| 1.8 | **Inference-quality of the panel LLM** | Prompt + JSON parse tested | Once 1.1 runs on-device, measure real image→values accuracy (the on-device accuracy test exists) and tune prompt / few-shot. **Full improvement plan (validation, OCR-grounding, few-shot, model integrity): [doc/plans/panel-llm.md](doc/plans/panel-llm.md)** | S | 🔌🧠 |
 
 ---
 
@@ -104,6 +106,22 @@ _Deprioritised for now: Part 3 new features, Part 4 release/store, multi-user UX
 - **More Health Connect / wearable data** — SpO2, respiration, stress, menstrual, workouts. (S–M)
 - **Other Bluetooth meters/devices** — ketone meter (DKA safety), smart scale, BP cuff. (M) 🔒
 - **Tandem Mobi** support (pumpx2 already knows the model). (M) 🔌
+
+### 3B′. Pump read-outs we already can get but don't surface 🔌
+From the BLE protocol recon (see **`doc/pump-protocol.md`**) — all read-only, all decode
+today, none shown in the app yet:
+- **Live "pump home-screen mirror"** — `HomeScreenMirror` gives the exact icons the pump is
+  showing (basal state, Control-IQ/AP state, CGM trend arrow, status icons). A one-glance
+  "what my pump shows right now" card. **(S–M, high delight)**
+- **Adapt to `PumpFeatures`** — enable/disable UI by what the pump actually supports (Dexcom
+  G6, Control-IQ, BLE control, settings-in-IDP…). (S)
+- **Settings mirror & reminders** from `PumpSettings` / `PumpGlobals` — auto-shutdown,
+  cannula-prime size, low-insulin threshold, OLED timeout, quick-bolus config. (S–M)
+- **Control-IQ sleep schedule on the timeline** — `ControlIQSleepSchedule` (start/end/days)
+  to explain closed-loop behaviour overnight. (S) 🔒
+- **Malfunction watch** — surface `MalfunctionStatus` as a proactive safety alert. (S) 🔒
+- _Note: the last few reads (BasalIQ + minor tail) need the on-device Android BLE bond;
+  desktop `bleak`/WinRT can't form the LESC bond the pump requires (documented in the doc)._
 
 ### 3C. UX & surfaces
 - **Wear OS / Apple Watch** companions (parallel to Garmin). (L) 🔌
@@ -146,8 +164,8 @@ _Deprioritised for now: Part 3 new features, Part 4 release/store, multi-user UX
 4. **Audience** — strictly personal (Summer), shareable with other T1Ds later, or heading
    toward a public release? (changes how much we invest in pairing UX, model download, safety
    copy, store compliance.)
-5. **Neural forecaster** — worth building the LiteRT residual, or commit to the GBM and drop
-   the "neural" comments?
+5. ~~**Neural forecaster** — worth building the LiteRT residual, or commit to the GBM and drop
+   the "neural" comments?~~ **Answered (Jul 2026): committed to the GBM (see 1.5).**
 6. **Any dream features** not listed here? (voice, a specific integration, a particular report,
    automation…)
 
