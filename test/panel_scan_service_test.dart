@@ -44,8 +44,8 @@ void main() {
   });
 
   test('falls back to the LLM when the parser finds nothing', () async {
-    // Foreign-language label the deterministic parser can't read.
-    const foreign = 'Valori nutrizionali\nCarboidrati 64 g\nProteine 11 g';
+    // Japanese label — outside the parser's Latin-script keyword set.
+    const foreign = '栄養成分表示\n炭水化物 64g\nタンパク質 11g';
     const aiPanel = PanelNutrition(carbs: PanelValue(per100g: 64));
     final llm = _FakeLlm(aiPanel);
     final svc = PanelScanService(ocr: _FakeOcr(foreign), llm: llm);
@@ -57,12 +57,12 @@ void main() {
   });
 
   test('no LLM available → parser-only, may be null', () async {
-    const foreign = 'Valori nutrizionali\nCarboidrati 64 g';
+    const foreign = '栄養成分表示\n炭水化物 64g'; // Japanese, unsupported script
     final svc = PanelScanService(
         ocr: _FakeOcr(foreign), llm: const NoopPanelLlm());
     final r = await svc.scan('x.jpg');
     expect(r.usedLlm, isFalse);
-    expect(r.panel, isNull); // parser can't read Italian; no fallback
+    expect(r.panel, isNull); // parser can't read it; no fallback
   });
 
   test('empty OCR yields no result', () async {

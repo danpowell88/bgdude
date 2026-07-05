@@ -87,6 +87,50 @@ Salt 0,72 g
     expect(parser.parse(''), isNull);
   });
 
+  test('French per-100 g label (Glucides/Lipides/Protéines, comma decimals)', () {
+    const text = '''
+Valeurs nutritionnelles pour 100 g
+Énergie 1540 kJ
+Matières grasses 1,3 g
+Glucides 64,0 g
+dont sucres 3,3 g
+Protéines 11,3 g
+Sel 0,72 g
+''';
+    final p = parser.parse(text)!;
+    expect(p.carbs.per100g, closeTo(64.0, 0.01));
+    expect(p.fat.per100g, closeTo(1.3, 0.01));
+    expect(p.protein.per100g, closeTo(11.3, 0.01));
+    expect(p.sugars.per100g, closeTo(3.3, 0.01));
+  });
+
+  test('German label excludes the "gesättigte" saturated row from fat', () {
+    const text = '''
+Nährwerte pro 100 g
+Fett 12,0 g
+davon gesättigte Fettsäuren 4,0 g
+Kohlenhydrate 58,0 g
+Eiweiß 7,0 g
+''';
+    final p = parser.parse(text)!;
+    expect(p.fat.per100g, closeTo(12.0, 0.01)); // not the 4.0 saturated row
+    expect(p.carbs.per100g, closeTo(58.0, 0.01));
+    expect(p.protein.per100g, closeTo(7.0, 0.01));
+  });
+
+  test('follow-line fallback: value printed under its label', () {
+    const text = '''
+Nutrition
+Carbohydrate
+40g
+Protein
+5g
+''';
+    final p = parser.parse(text)!;
+    expect(p.carbs.perServe, closeTo(40, 0.01));
+    expect(p.protein.perServe, closeTo(5, 0.01));
+  });
+
   test('does not confuse the sugars sub-row for carbohydrate', () {
     const text = '''
 Per 100g
