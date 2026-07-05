@@ -21,6 +21,7 @@ import '../feedback/annotations.dart';
 import '../feedback/confirmation_service.dart';
 import '../feedback/pending_confirmation.dart';
 import '../insights/a1c_goal.dart';
+import '../insights/alcohol_watch.dart';
 import '../insights/alert_monitor.dart';
 import '../insights/care_detectors.dart';
 import '../insights/daily_narrative.dart';
@@ -29,6 +30,7 @@ import '../insights/sleep_insight.dart';
 import '../insights/morning_summary.dart';
 import '../insights/notification_prefs.dart';
 import '../insights/notifications.dart';
+import '../insights/workout_classifier.dart';
 import '../integrations/nightscout.dart';
 import '../logging/device_changes.dart';
 import '../data/health_sync.dart';
@@ -951,8 +953,16 @@ class AlertService {
     );
     final now = DateTime.now();
 
+    // Alcohol raises the low-alert threshold (earlier warning) while its watch is active.
+    const alcohol = AlcoholWatch();
+    final recentAnnotations = await _ref
+        .read(historyRepositoryProvider)
+        .annotations(now.subtract(alcohol.window), now);
+    final lowMgdl =
+        alcohol.activeAt(recentAnnotations, now) ? alcohol.raisedLowMgdl : 70.0;
+
     // Evaluate without an internal cooldown — repeat/opt-out is governed by prefs here.
-    final alert = const AlertMonitor(cooldown: Duration.zero).evaluate(
+    final alert = AlertMonitor(cooldown: Duration.zero, lowMgdl: lowMgdl).evaluate(
       forecasts: forecasts,
       currentMgdl: state.currentMgdl,
       now: now,
@@ -1368,9 +1378,40 @@ class AppJobs {
       await _ref.read(historyRepositoryProvider).saveHealth(samples);
       await _ref.read(dayHistoryControllerProvider.notifier).reload();
       await refreshForecastHealthSampler();
+      try {
+        await checkExerciseHypoRisk(samples);
+      } catch (_) {}
     }
     return samples.length;
   }
+
+  /// After an aerobic workout, warn about the raised nocturnal-hypo risk (aerobic
+  /// exercise drops glucose for hours afterwards). Gated to once per day.
+  Future<void> checkExerciseHypoRisk(List<HealthSample> samples) async {
+    final now = DateTime.now();
+    const classifier = WorkoutClassifier();
+    final aerobicToday = samples.any((s) =>
+        s.type == 'exercise' &&
+        s.value >= 20 && // a meaningful session
+        _sameDay(s.time, now) &&
+        classifier
+            .classify((s.meta['activity'] as String?) ?? '')
+            .raisesHypoRisk);
+    if (!aerobicToday) return;
+
+    final key = 'exercise_hypo_warned_${now.year}-${now.month}-${now.day}';
+    if ((await KvStore.getBool(key)) == true) return;
+    final fired = await _ref.read(notificationServiceProvider).show(
+          NotificationCategory.overnightLowRisk,
+          'Aerobic exercise today',
+          'Aerobic exercise can keep lowering glucose for hours — watch for overnight '
+              'lows and consider a slightly higher overnight target or a snack.',
+        );
+    if (fired) await KvStore.setBool(key, true);
+  }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   /// Load the last few hours of stored activity into the live forecaster's sampler so
   /// its BG predictions reflect recent steps/workouts. Cheap; safe to call at startup.
@@ -1447,6 +1488,17 @@ class AppJobs {
           end: now.add(window),
           note: note,
         ));
+    // Alcohol → a delayed-low heads-up; low alerts also tighten while the watch is active.
+    if (kind == AnnotationKind.alcohol) {
+      try {
+        await _ref.read(notificationServiceProvider).show(
+              NotificationCategory.overnightLowRisk,
+              'Watch for delayed lows',
+              'Alcohol can cause lows overnight and into tomorrow morning. Low alerts '
+                  'will trigger earlier — consider a snack and check overnight.',
+            );
+      } catch (_) {}
+    }
   }
 
   /// Confirm a queued [PendingConfirmation]: write the annotation (feeding reports and

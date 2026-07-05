@@ -168,11 +168,19 @@ class HealthSyncService {
           out.add(HealthSample(
               time: point.dateFrom, type: 'menstruationFlow', value: _numeric(point)));
         case HealthDataType.WORKOUT:
+          final v = point.value;
           out.add(HealthSample(
             time: point.dateFrom,
             type: 'exercise',
             value: point.dateTo.difference(point.dateFrom).inMinutes.toDouble(),
-            meta: {'activity': point.sourceName},
+            // Capture the workout activity type (RUNNING, STRENGTH_TRAINING, …) so the
+            // aerobic-vs-resistance classifier can tailor post-exercise hypo risk.
+            meta: {
+              'activity': v is WorkoutHealthValue
+                  ? v.workoutActivityType.name
+                  : point.sourceName,
+              'source': point.sourceName,
+            },
           ));
         case HealthDataType.SLEEP_ASLEEP:
         case HealthDataType.SLEEP_LIGHT:
