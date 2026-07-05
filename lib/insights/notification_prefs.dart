@@ -13,6 +13,7 @@ enum NotificationCategory {
   missedBolus,
   stubbornHigh,
   rescueCarb,
+  postMealMovement,
   overnightLowRisk,
   pumpAlarm,
   reservoirLow,
@@ -32,6 +33,7 @@ extension NotificationCategoryX on NotificationCategory {
         NotificationCategory.missedBolus => 'Missed bolus',
         NotificationCategory.stubbornHigh => 'Stubborn high / site issue',
         NotificationCategory.rescueCarb => 'Rescue carbs',
+        NotificationCategory.postMealMovement => 'Move after meals',
         NotificationCategory.overnightLowRisk => 'Overnight low risk',
         NotificationCategory.pumpAlarm => 'Pump alarms',
         NotificationCategory.reservoirLow => 'Low reservoir',
@@ -53,6 +55,8 @@ extension NotificationCategoryX on NotificationCategory {
         NotificationCategory.stubbornHigh =>
           'High for hours with insulin not working — possible site failure.',
         NotificationCategory.rescueCarb => 'Suggested fast carbs when low.',
+        NotificationCategory.postMealMovement =>
+          'A nudge to walk when a post-meal spike is predicted.',
         NotificationCategory.overnightLowRisk =>
           'A heads-up that tonight/tomorrow carries a higher low risk (after alcohol '
               'or aerobic exercise).',
@@ -201,6 +205,12 @@ class NotificationPrefs {
             importance: NotifImportance.high,
             vibrate: true,
             sound: true,
+            repeatMinutes: 0),
+        NotificationCategory.postMealMovement => const CategoryPref(
+            enabled: true,
+            importance: NotifImportance.low,
+            vibrate: false,
+            sound: false,
             repeatMinutes: 0),
         NotificationCategory.overnightLowRisk => const CategoryPref(
             enabled: true,

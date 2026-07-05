@@ -30,6 +30,7 @@ import '../insights/sleep_insight.dart';
 import '../insights/morning_summary.dart';
 import '../insights/notification_prefs.dart';
 import '../insights/notifications.dart';
+import '../insights/post_meal_movement.dart';
 import '../insights/workout_classifier.dart';
 import '../integrations/nightscout.dart';
 import '../logging/device_changes.dart';
@@ -425,6 +426,23 @@ final mealsReportProvider = Provider<MealsReport>((ref) {
     range: range,
     now: DateTime.now(),
   );
+});
+
+/// Post-meal movement correlation: your post-meal steps vs the size of the spike.
+final postMealMovementProvider =
+    FutureProvider<PostMealMovementResult>((ref) async {
+  final range = ref.watch(reportRangeProvider);
+  final library = ref.watch(mealLibraryProvider);
+  final meals = [
+    for (final m in library.meals)
+      for (final o in m.outcomes)
+        if (range.contains(o.eatenAt))
+          (eatenAt: o.eatenAt, excursionMgdl: o.peakMgdl - o.bgAtMealMgdl),
+  ];
+  final steps = await ref
+      .read(historyRepositoryProvider)
+      .health(range.from, range.to);
+  return const PostMealMovementAnalyzer().analyze(meals: meals, steps: steps);
 });
 
 /// Therapy report (learned daily sensitivity trend via Autotune) for the range.
@@ -978,6 +996,33 @@ class AlertService {
               .show(category, alert.title, alert.body);
         } catch (_) {}
       }
+    }
+
+    // Post-meal "walk it off": a spike predicted soon after a meal, and not already
+    // moving → suggest a short walk (a short post-meal walk blunts the spike).
+    final dayForMeal = _ref.read(dayDataProvider);
+    final ateRecently = dayForMeal.carbs.any((c) =>
+        !c.time.isAfter(now) && now.difference(c.time) <= const Duration(minutes: 45));
+    final peak = forecasts.isEmpty
+        ? state.currentMgdl
+        : forecasts.map((f) => f.mgdl).reduce((a, b) => a > b ? a : b);
+    final activity =
+        _ref.read(forecastHealthSamplerProvider)?.featuresAt(now).first ?? 0.0;
+    if (const PostMealMovementCoach().shouldNudge(
+          ateWithinWindow: ateRecently,
+          currentMgdl: state.currentMgdl,
+          forecastPeakMgdl: peak,
+          recentStepsPerMin: activity * 100, // activity feature ≈ steps/min ÷ 100
+        ) &&
+        _shouldFire(NotificationCategory.postMealMovement, now)) {
+      try {
+        await _ref.read(notificationServiceProvider).show(
+              NotificationCategory.postMealMovement,
+              'A short walk would help',
+              'A post-meal rise is on the way — even 10 minutes of walking now will '
+                  'blunt the spike.',
+            );
+      } catch (_) {}
     }
 
     // Rescue carbs: fire the act-now case (urgent) as its own category so it can be

@@ -65,11 +65,34 @@ class _Body extends StatelessWidget {
             ),
           ),
         ),
+        const _MovementCard(),
         const SizedBox(height: 8),
         Text('By meal (biggest rise first)',
             style: Theme.of(context).textTheme.titleSmall),
         for (final m in report.meals) _MealCard(m: m, unit: unit),
       ],
+    );
+  }
+}
+
+class _MovementCard extends ConsumerWidget {
+  const _MovementCard();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final r = ref.watch(postMealMovementProvider).valueOrNull;
+    if (r == null || !r.hasSignal) return const SizedBox.shrink();
+    return Card(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.directions_walk),
+            const SizedBox(width: 12),
+            Expanded(child: Text(r.message)),
+          ],
+        ),
+      ),
     );
   }
 }
