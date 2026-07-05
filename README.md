@@ -139,6 +139,16 @@ already collects:
 - **Fat-protein (FPU) coach** — split/extended-dose advice + a delayed-rise watch for
   fat/protein-heavy meals (`meals/fpu_coach.dart`, Warsaw/Pankowska).
 
+## Quality-of-life
+
+- **Quiet hours** — a do-not-disturb window (*Settings → Notifications*) that holds back
+  non-critical notifications; urgent/predicted lows and pump alarms always come through.
+- **Custom alert thresholds** — set your own low/high alert lines; safety modifiers (age,
+  alcohol, exercise) can only make the low alert lead *earlier*, never later.
+- **Exercise mode** (*Settings → Exercise mode*) — announce a workout to raise the
+  low-alert threshold for the session + recovery tail (bigger/longer for aerobic), get a
+  pre-exercise snack suggestion from live BG/IOB, and arm the overnight-low watch.
+
 ## Notifications
 
 Every alert is a **category** tuned in *Settings → Notifications*

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/units.dart';
 import '../insights/notification_prefs.dart';
 import '../state/providers.dart';
 
@@ -25,6 +26,9 @@ class NotificationSettingsScreen extends ConsumerWidget {
               'them. Tune each category below.',
             ),
           ),
+          const _ThresholdsCard(),
+          const _QuietHoursCard(),
+          const Divider(),
           for (final c in NotificationCategory.values)
             _CategoryTile(
               category: c,
@@ -32,6 +36,122 @@ class NotificationSettingsScreen extends ConsumerWidget {
               onChanged: (p) => notifier.setCategory(c, p),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _ThresholdsCard extends ConsumerWidget {
+  const _ThresholdsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unit = ref.watch(glucoseUnitProvider);
+    final t = ref.watch(alertThresholdsProvider);
+    final notifier = ref.read(alertThresholdsProvider.notifier);
+    String g(double mgdl) => '${Mgdl(mgdl).display(unit)} ${unit.label}';
+
+    Widget stepper(String label, double value, ValueChanged<double> onSet,
+            double min, double max) =>
+        Row(
+          children: [
+            Expanded(child: Text(label)),
+            IconButton(
+              icon: const Icon(Icons.remove_circle_outline),
+              onPressed:
+                  value - 5 >= min ? () => onSet(value - 5) : null,
+            ),
+            SizedBox(width: 78, child: Text(g(value), textAlign: TextAlign.center)),
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              onPressed: value + 5 <= max ? () => onSet(value + 5) : null,
+            ),
+          ],
+        );
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Alert thresholds',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            stepper('Low alert', t.lowMgdl,
+                (v) => notifier.save(t.copyWith(lowMgdl: v)), 60, 110),
+            stepper('High alert', t.highMgdl,
+                (v) => notifier.save(t.copyWith(highMgdl: v)), 140, 300),
+            Text('Predicted-low/high nudges use these. Safety modifiers (age, alcohol, '
+                'exercise) can only make the low alert lead earlier.',
+                style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuietHoursCard extends ConsumerWidget {
+  const _QuietHoursCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = ref.watch(notificationPrefsProvider);
+    final notifier = ref.read(notificationPrefsProvider.notifier);
+    final q = prefs.quietHours;
+    String hhmm(int m) =>
+        '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
+
+    Future<void> pick(bool start) async {
+      final initial = start ? q.startMinute : q.endMinute;
+      final picked = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay(hour: initial ~/ 60, minute: initial % 60),
+      );
+      if (picked == null) return;
+      final m = picked.hour * 60 + picked.minute;
+      await notifier.setQuietHours(
+          start ? q.copyWith(startMinute: m) : q.copyWith(endMinute: m));
+    }
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Quiet hours'),
+              subtitle: const Text(
+                  'Hold back non-critical alerts overnight. Urgent lows and pump '
+                  'alarms always come through.'),
+              value: q.enabled,
+              onChanged: (v) => notifier.setQuietHours(q.copyWith(enabled: v)),
+            ),
+            if (q.enabled)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => pick(true),
+                      child: Text('From ${hhmm(q.startMinute)}'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => pick(false),
+                      child: Text('To ${hhmm(q.endMinute)}'),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }

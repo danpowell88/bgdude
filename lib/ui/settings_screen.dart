@@ -8,6 +8,7 @@ import '../state/providers.dart';
 import 'advanced_screen.dart';
 import 'basal_recommendations_screen.dart';
 import 'confirmation_inbox_screen.dart';
+import 'exercise_mode_screen.dart';
 import 'model_accuracy_screen.dart';
 import 'notification_settings_screen.dart';
 import 'profile_screen.dart';
@@ -173,6 +174,15 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                   builder: (_) => const NotificationSettingsScreen()),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.directions_run),
+            title: const Text('Exercise mode'),
+            subtitle: const Text(
+                'Announce a workout — leads low alerts and suggests a pre-snack'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ExerciseModeScreen()),
             ),
           ),
           ListTile(

@@ -69,6 +69,11 @@ class NotificationService {
   }) async {
     final p = _prefs.of(category);
     if (!p.enabled) return false;
+    // Hold back non-critical notifications during quiet hours (urgent lows still fire).
+    if (_prefs.quietHours.activeAt(DateTime.now()) &&
+        !category.bypassesQuietHours) {
+      return false;
+    }
     await _plugin.show(
       id ?? 2000 + category.index,
       title,

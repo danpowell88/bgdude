@@ -24,8 +24,10 @@ import '../feedback/pending_confirmation.dart';
 import '../insights/a1c_goal.dart';
 import '../insights/alcohol_watch.dart';
 import '../insights/alert_monitor.dart';
+import '../insights/alert_thresholds.dart';
 import '../insights/care_detectors.dart';
 import '../insights/daily_narrative.dart';
+import '../insights/exercise_mode.dart';
 import '../insights/illness_mode.dart';
 import '../insights/sleep_insight.dart';
 import '../insights/morning_summary.dart';
@@ -103,6 +105,11 @@ class NotificationPrefsNotifier extends StateNotifier<NotificationPrefs> {
     state = state.withCategory(c, pref);
     await KvStore.setString(_key, jsonEncode(state.toJson()));
   }
+
+  Future<void> setQuietHours(QuietHours q) async {
+    state = state.withQuietHours(q);
+    await KvStore.setString(_key, jsonEncode(state.toJson()));
+  }
 }
 
 /// The user's personal profile (sex, age, diabetes history, body metrics), persisted
@@ -127,6 +134,34 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
   Future<void> save(UserProfile profile) async {
     state = profile;
     await KvStore.setString(_key, jsonEncode(profile.toJson()));
+  }
+}
+
+/// An announced exercise session (null when none). In-memory/transient — exercise is a
+/// short-lived state. Raises the low-alert threshold while it's in effect.
+final exercisePlanProvider = StateProvider<ExercisePlan?>((ref) => null);
+
+/// User-customisable low/high glucose alert thresholds, persisted encrypted.
+final alertThresholdsProvider =
+    StateNotifierProvider<AlertThresholdsNotifier, AlertThresholds>(
+        (ref) => AlertThresholdsNotifier());
+
+class AlertThresholdsNotifier extends StateNotifier<AlertThresholds> {
+  AlertThresholdsNotifier() : super(const AlertThresholds()) {
+    _restore();
+  }
+  static const _key = 'alert_thresholds_v1';
+
+  Future<void> _restore() async {
+    final raw = await KvStore.getString(_key);
+    if (raw != null) {
+      state = AlertThresholds.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    }
+  }
+
+  Future<void> save(AlertThresholds t) async {
+    state = t;
+    await KvStore.setString(_key, jsonEncode(t.toJson()));
   }
 }
 
@@ -1004,8 +1039,10 @@ class AlertService {
     );
     final now = DateTime.now();
 
-    // The low-alert threshold leads more for impaired-awareness risk factors (older age,
-    // long-standing diabetes) and while an alcohol watch is active (delayed lows).
+    // Start from the user's own alert thresholds, then let safety modifiers raise the
+    // low line: impaired-awareness risk (older age, long-standing diabetes), an active
+    // alcohol watch (delayed lows), and an announced exercise session.
+    final thresholds = _ref.read(alertThresholdsProvider);
     final profile = _ref.read(userProfileProvider);
     final hypoBump =
         const HypoAwarenessRisk().lowThresholdBump(profile, now);
@@ -1013,13 +1050,23 @@ class AlertService {
     final recentAnnotations = await _ref
         .read(historyRepositoryProvider)
         .annotations(now.subtract(alcohol.window), now);
-    var lowMgdl = 70.0 + hypoBump;
+    var lowMgdl = thresholds.lowMgdl + hypoBump;
     if (alcohol.activeAt(recentAnnotations, now)) {
-      lowMgdl = math.max(lowMgdl, alcohol.raisedLowMgdl);
+      lowMgdl = math.max(lowMgdl, thresholds.lowMgdl + 10);
+    }
+    final exercise = _ref.read(exercisePlanProvider);
+    if (exercise != null && exercise.affectsAt(now)) {
+      lowMgdl = math.max(
+          lowMgdl, thresholds.lowMgdl + const ExerciseModeCoach().lowBump(exercise.type));
     }
 
     // Evaluate without an internal cooldown — repeat/opt-out is governed by prefs here.
-    final alert = AlertMonitor(cooldown: Duration.zero, lowMgdl: lowMgdl).evaluate(
+    final alert = AlertMonitor(
+      cooldown: Duration.zero,
+      lowMgdl: lowMgdl,
+      highMgdl: thresholds.highMgdl,
+      urgentLowMgdl: thresholds.urgentLowMgdl,
+    ).evaluate(
       forecasts: forecasts,
       currentMgdl: state.currentMgdl,
       now: now,
@@ -1629,6 +1676,26 @@ class AppJobs {
     }
     _ref.invalidate(pendingConfirmationsProvider);
   }
+
+  /// Announce an upcoming/active exercise session: arm the raised low-alert threshold and
+  /// (for aerobic) a heads-up about the raised during/after/overnight low risk.
+  Future<void> announceExercise(ExercisePlan plan) async {
+    _ref.read(exercisePlanProvider.notifier).state = plan;
+    if (plan.type.raisesHypoRisk) {
+      try {
+        await _ref.read(notificationServiceProvider).show(
+              NotificationCategory.overnightLowRisk,
+              'Exercise mode on',
+              'Low alerts will lead earlier during and after your session, and '
+                  'overnight — keep fast carbs handy.',
+            );
+      } catch (_) {}
+    }
+  }
+
+  /// Clear an announced exercise session.
+  void endExercise() =>
+      _ref.read(exercisePlanProvider.notifier).state = null;
 
   /// Record a sensor/site change and reset its age.
   Future<void> recordDeviceChange(DeviceKind kind) =>

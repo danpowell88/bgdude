@@ -140,29 +140,92 @@ class CategoryPref {
       );
 }
 
+extension NotificationCategoryQuietHours on NotificationCategory {
+  /// Critical alerts still fire during quiet hours — you can always be woken for these.
+  bool get bypassesQuietHours =>
+      this == NotificationCategory.urgentLow ||
+      this == NotificationCategory.predictedLow ||
+      this == NotificationCategory.pumpAlarm;
+}
+
+/// A do-not-disturb window during which non-critical notifications are held back
+/// (critical ones — urgent/predicted low, pump alarms — always come through).
+class QuietHours {
+  const QuietHours({
+    this.enabled = false,
+    this.startMinute = 22 * 60, // 22:00
+    this.endMinute = 7 * 60, // 07:00
+  });
+
+  final bool enabled;
+
+  /// Minutes since local midnight. The window wraps past midnight when start > end.
+  final int startMinute;
+  final int endMinute;
+
+  bool activeAt(DateTime t) {
+    if (!enabled) return false;
+    final m = t.hour * 60 + t.minute;
+    return startMinute <= endMinute
+        ? (m >= startMinute && m < endMinute)
+        : (m >= startMinute || m < endMinute);
+  }
+
+  QuietHours copyWith({bool? enabled, int? startMinute, int? endMinute}) =>
+      QuietHours(
+        enabled: enabled ?? this.enabled,
+        startMinute: startMinute ?? this.startMinute,
+        endMinute: endMinute ?? this.endMinute,
+      );
+
+  Map<String, dynamic> toJson() =>
+      {'enabled': enabled, 'startMinute': startMinute, 'endMinute': endMinute};
+
+  factory QuietHours.fromJson(Map<String, dynamic> j) => QuietHours(
+        enabled: j['enabled'] as bool? ?? false,
+        startMinute: (j['startMinute'] as num?)?.toInt() ?? 22 * 60,
+        endMinute: (j['endMinute'] as num?)?.toInt() ?? 7 * 60,
+      );
+}
+
 class NotificationPrefs {
-  const NotificationPrefs(this.byCategory);
+  const NotificationPrefs(this.byCategory,
+      {this.quietHours = const QuietHours()});
 
   final Map<NotificationCategory, CategoryPref> byCategory;
+  final QuietHours quietHours;
 
   CategoryPref of(NotificationCategory c) =>
       byCategory[c] ?? _defaultFor(c);
 
   NotificationPrefs withCategory(NotificationCategory c, CategoryPref pref) =>
-      NotificationPrefs({...byCategory, c: pref});
+      NotificationPrefs({...byCategory, c: pref}, quietHours: quietHours);
 
-  Map<String, dynamic> toJson() =>
-      {for (final e in byCategory.entries) e.key.name: e.value.toJson()};
+  NotificationPrefs withQuietHours(QuietHours q) =>
+      NotificationPrefs(byCategory, quietHours: q);
+
+  Map<String, dynamic> toJson() => {
+        'categories': {
+          for (final e in byCategory.entries) e.key.name: e.value.toJson()
+        },
+        'quietHours': quietHours.toJson(),
+      };
 
   factory NotificationPrefs.fromJson(Map<String, dynamic> j) {
+    // Backward-compatible: older data stored the category map at the top level.
+    final cats = (j['categories'] as Map?)?.cast<String, dynamic>() ?? j;
     final map = <NotificationCategory, CategoryPref>{};
     for (final c in NotificationCategory.values) {
-      final raw = j[c.name];
+      final raw = cats[c.name];
       map[c] = raw == null
           ? _defaultFor(c)
           : CategoryPref.fromJson((raw as Map).cast<String, dynamic>());
     }
-    return NotificationPrefs(map);
+    final q = j['quietHours'];
+    return NotificationPrefs(map,
+        quietHours: q == null
+            ? const QuietHours()
+            : QuietHours.fromJson((q as Map).cast<String, dynamic>()));
   }
 
   factory NotificationPrefs.defaults() => NotificationPrefs(
