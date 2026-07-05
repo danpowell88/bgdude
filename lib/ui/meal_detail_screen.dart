@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/units.dart';
+import '../meals/fpu_coach.dart';
 import '../meals/meal_library.dart';
 import '../meals/prebolus_coach.dart';
 import '../state/providers.dart';
@@ -70,6 +71,7 @@ class MealDetailScreen extends ConsumerWidget {
                     'connect the pump first.'),
               ),
             ),
+          _FpuCard(meal: meal),
           const SizedBox(height: 16),
           Text('Learned curve', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
@@ -134,6 +136,66 @@ class MealDetailScreen extends ConsumerWidget {
 
   static String _date(DateTime t) =>
       '${t.day}/${t.month}/${t.year % 100}';
+}
+
+/// Fat-protein-unit dosing help for meals with macros (or flagged fat/protein-heavy).
+class _FpuCard extends ConsumerWidget {
+  const _FpuCard({required this.meal});
+  final SavedMeal meal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    const coach = FpuCoach();
+    if (!coach.warrantsSplit(
+      fatGrams: meal.fatGrams,
+      proteinGrams: meal.proteinGrams,
+      fatProteinHeavy: meal.fatProteinHeavy,
+    )) {
+      return const SizedBox.shrink();
+    }
+    final settings = ref.watch(therapySettingsProvider);
+    final icr = settings.segmentAt(DateTime.now()).carbRatio;
+    final hasMacros = meal.fatGrams > 0 || meal.proteinGrams > 0;
+    final a = coach.advise(
+      carbsGrams: meal.carbsGrams,
+      fatGrams: meal.fatGrams,
+      proteinGrams: meal.proteinGrams,
+      insulinToCarbRatio: icr,
+    );
+    final cs = Theme.of(context).colorScheme;
+
+    return Card(
+      color: cs.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.hourglass_bottom),
+              const SizedBox(width: 8),
+              Text('Fat/protein — extend the dose',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ]),
+            const SizedBox(height: 8),
+            if (hasMacros && a.recommendSplit) ...[
+              Text('${a.fpu.toStringAsFixed(1)} fat-protein units. Consider splitting: '
+                  '~${a.immediateUnits.toStringAsFixed(1)} U now for carbs and '
+                  '~${a.extendedUnits.toStringAsFixed(1)} U extended over '
+                  '${a.extendHours} h.'),
+              const SizedBox(height: 6),
+            ],
+            Text(
+              'This meal tends to raise glucose late — watch for a delayed rise '
+              '${a.delayedRiseFromHours}–${a.delayedRiseToHours} h after eating. An '
+              'extended/split bolus handles it better than one up-front dose.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _CoachCard extends ConsumerWidget {

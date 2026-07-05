@@ -176,6 +176,8 @@ class SavedMeal {
     this.emoji = '🍽️',
     this.category = MealCategory.other,
     required this.carbsGrams,
+    this.fatGrams = 0,
+    this.proteinGrams = 0,
     this.fatProteinHeavy = false,
     this.absorptionMinutes = 180,
     this.peakOffsetMinutes = 90,
@@ -198,6 +200,11 @@ class SavedMeal {
   final MealCategory category;
   final double carbsGrams;
 
+  /// Optional macros for fat-protein-unit dosing (0 = unknown). When present the FPU
+  /// coach can advise a split/extended bolus for the delayed fat/protein rise.
+  final double fatGrams;
+  final double proteinGrams;
+
   /// Fat/protein-heavy meals absorb late and long (pizza effect); the coach and
   /// insights call this out.
   final bool fatProteinHeavy;
@@ -217,6 +224,8 @@ class SavedMeal {
     String? emoji,
     MealCategory? category,
     double? carbsGrams,
+    double? fatGrams,
+    double? proteinGrams,
     bool? fatProteinHeavy,
     int? absorptionMinutes,
     int? peakOffsetMinutes,
@@ -228,6 +237,8 @@ class SavedMeal {
         emoji: emoji ?? this.emoji,
         category: category ?? this.category,
         carbsGrams: carbsGrams ?? this.carbsGrams,
+        fatGrams: fatGrams ?? this.fatGrams,
+        proteinGrams: proteinGrams ?? this.proteinGrams,
         fatProteinHeavy: fatProteinHeavy ?? this.fatProteinHeavy,
         absorptionMinutes: absorptionMinutes ?? this.absorptionMinutes,
         peakOffsetMinutes: peakOffsetMinutes ?? this.peakOffsetMinutes,
@@ -251,6 +262,8 @@ class SavedMeal {
         'emoji': emoji,
         'category': category.name,
         'carbsGrams': carbsGrams,
+        'fatGrams': fatGrams,
+        'proteinGrams': proteinGrams,
         'fatProteinHeavy': fatProteinHeavy,
         'absorptionMinutes': absorptionMinutes,
         'peakOffsetMinutes': peakOffsetMinutes,
@@ -264,6 +277,8 @@ class SavedMeal {
         category: MealCategory.values.asNameMap()[json['category']] ??
             MealCategory.other,
         carbsGrams: (json['carbsGrams'] as num).toDouble(),
+        fatGrams: (json['fatGrams'] as num?)?.toDouble() ?? 0,
+        proteinGrams: (json['proteinGrams'] as num?)?.toDouble() ?? 0,
         fatProteinHeavy: json['fatProteinHeavy'] as bool? ?? false,
         absorptionMinutes: (json['absorptionMinutes'] as num?)?.toInt() ?? 180,
         peakOffsetMinutes: (json['peakOffsetMinutes'] as num?)?.toInt() ?? 90,

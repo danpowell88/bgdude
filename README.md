@@ -114,6 +114,22 @@ TIR/GMI/CV, hypo/hyper episodes, coverage) with **clinician-ready PDF + CSV expo
 **Correlations** (glucose vs sleep/exercise/HRV with a minimum-days gate), an **Events
 journal**, and a **Model-performance** report. Every report takes a 7/14/30/90-day range.
 
+## Evidence-based helpers
+
+Several features are grounded in recent CGM/T1D literature and ride the data the app
+already collects:
+
+- **Time in Tight Range (70–140)** and a **CV ≥ 36%** hypo-risk flag in the Glucose report.
+- **Menstrual-cycle panel** — follicular vs luteal TIR/mean (T1DEXI).
+- **Alcohol overnight-hypo watch** — an alcohol annotation tightens the low-alert threshold
+  for ~14 h (delayed lows) and fires a heads-up.
+- **Workout-type-aware warnings** — aerobic sessions raise a nocturnal-hypo heads-up
+  (`insights/workout_classifier.dart`).
+- **Post-meal "walk it off"** — a nudge when a spike is predicted after a meal and you're
+  not already moving, plus a post-meal-steps vs spike-size correlation.
+- **Fat-protein (FPU) coach** — split/extended-dose advice + a delayed-rise watch for
+  fat/protein-heavy meals (`meals/fpu_coach.dart`, Warsaw/Pankowska).
+
 ## Notifications
 
 Every alert is a **category** tuned in *Settings → Notifications*
