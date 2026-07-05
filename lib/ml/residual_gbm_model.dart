@@ -25,7 +25,8 @@ class ResidualGbmModel implements ResidualModel {
   /// Trained GBM per horizon in minutes (e.g. 30/60/120).
   final Map<int, GbmRegressor> _models;
 
-  /// Weighted RMSE of training residuals per horizon → 1-sigma uncertainty.
+  /// 1-sigma uncertainty per horizon: held-out residual RMSE when a holdout was
+  /// provided at training time, else training-set RMSE.
   final Map<int, double> _sigmas;
 
   /// Horizons that have a trained model.
@@ -82,6 +83,7 @@ class ResidualGbmTrainer {
     this.nEstimators = 50,
     this.learningRate = 0.1,
     this.minSamplesLeaf = 5,
+    this.minHoldoutForSigma = 20,
   });
 
   /// Horizons with fewer than this many samples are skipped (left untrained).
@@ -92,7 +94,17 @@ class ResidualGbmTrainer {
   final double learningRate;
   final int minSamplesLeaf;
 
-  ResidualGbmModel train(Map<int, List<TrainingSample>> samplesByHorizon) {
+  /// Below this many held-out rows for a horizon, sigma falls back to training RMSE.
+  final int minHoldoutForSigma;
+
+  /// Fit one GBM per horizon. [holdoutByHorizon] optionally provides held-out
+  /// (features, residual-target) rows per horizon; when a horizon has enough of them,
+  /// its sigma is the out-of-sample residual RMSE instead of the (optimistically
+  /// biased) training-set RMSE.
+  ResidualGbmModel train(
+    Map<int, List<TrainingSample>> samplesByHorizon, {
+    Map<int, List<({List<double> features, double target})>>? holdoutByHorizon,
+  }) {
     final models = <int, GbmRegressor>{};
     final sigmas = <int, double>{};
 
@@ -113,10 +125,21 @@ class ResidualGbmTrainer {
       )..fit(x, y, sampleWeights: w);
 
       models[horizon] = gbm;
-      // Sigma = weighted RMSE of residuals on the training set, floored so we never
-      // report an overconfident zero-width band.
-      final rmse = gbm.weightedRmse(x, y, sampleWeights: w);
-      sigmas[horizon] = math.max(rmse, 1.0);
+      // Sigma: held-out residual RMSE when available (honest out-of-sample error),
+      // else training-set RMSE. Floored so we never report a zero-width band.
+      final holdout = holdoutByHorizon?[horizon];
+      double sigma;
+      if (holdout != null && holdout.length >= minHoldoutForSigma) {
+        var se = 0.0;
+        for (final s in holdout) {
+          final e = s.target - gbm.predict(s.features);
+          se += e * e;
+        }
+        sigma = math.sqrt(se / holdout.length);
+      } else {
+        sigma = gbm.weightedRmse(x, y, sampleWeights: w);
+      }
+      sigmas[horizon] = math.max(sigma, 1.0);
     }
 
     return ResidualGbmModel(models: models, sigmas: sigmas);

@@ -105,12 +105,18 @@ class HypoDetectionStats {
   final int falsePositives;
   final int trueNegatives;
 
-  double get sensitivity => (truePositives + falseNegatives) == 0
-      ? 0
+  /// Fraction of true lows the model also predicted low. Null when the window
+  /// contains no true lows at all — "no lows to detect" is not the same as "missed
+  /// every low", and reporting 0 here used to spuriously fail the promotion gate on
+  /// hypo-free evaluation windows.
+  double? get sensitivity => (truePositives + falseNegatives) == 0
+      ? null
       : truePositives / (truePositives + falseNegatives);
 
-  double get falseAlarmRate => (falsePositives + trueNegatives) == 0
-      ? 0
+  /// Fraction of true not-lows the model wrongly flagged low. Null when the window
+  /// contains no true not-lows.
+  double? get falseAlarmRate => (falsePositives + trueNegatives) == 0
+      ? null
       : falsePositives / (falsePositives + trueNegatives);
 
   static HypoDetectionStats fromPairs(

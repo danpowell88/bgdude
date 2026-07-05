@@ -90,6 +90,10 @@ void main() {
     expect(find.text('Effective sensitivity'), findsOneWidget);
     expect(find.text('Forecaster'), findsOneWidget);
     expect(find.text('Clarke error grid'), findsOneWidget);
+    // The forecaster card always states whether the learned residual is live;
+    // after a training run it also shows candidate/baseline (and, once an
+    // incumbent exists, active) RMSE plus the gate's keep/reject reasons.
+    expect(find.text('Learned residual'), findsOneWidget);
   });
 
   testWidgets('changing units to mg/dL propagates to the Pump screen',

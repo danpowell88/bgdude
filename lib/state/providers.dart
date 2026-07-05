@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1742,12 +1743,30 @@ class AppJobs {
     try {
       await checkIllnessSuggestion();
     } catch (_) {}
+    // The forecaster GBM is persisted, so retraining it on *every* launch is wasted
+    // heat — once a day is plenty. (Sensitivity models are held in memory only, so
+    // they still train each startup; their heavy lifting runs off the UI isolate.)
     try {
-      await trainForecaster();
+      if (await _forecasterTrainingDue()) {
+        final outcome = await trainForecaster();
+        if (outcome.trained) {
+          await KvStore.setString(
+              _forecasterTrainStampKey, DateTime.now().toIso8601String());
+        }
+      }
     } catch (_) {}
     try {
       await trainSensitivity();
     } catch (_) {}
+  }
+
+  static const _forecasterTrainStampKey = 'forecaster_last_trained_at';
+
+  Future<bool> _forecasterTrainingDue() async {
+    final raw = await KvStore.getString(_forecasterTrainStampKey);
+    final last = raw == null ? null : DateTime.tryParse(raw);
+    return last == null ||
+        DateTime.now().difference(last) >= const Duration(hours: 20);
   }
 
   /// Recompute per-horizon live forecast RMSE from reconciled predictions and publish it
@@ -1827,12 +1846,17 @@ class AppJobs {
     }
     if (days.isEmpty) return;
 
-    const svc = SensitivityTrainingService();
-    final profile = svc.trainTimeOfDay(days);
+    // Autotune over 21 days + LOO-CV ridge fitting is CPU-bound pure Dart — run it
+    // off the UI isolate and bring back just the fitted models.
+    final trained = await Isolate.run(() {
+      const svc = SensitivityTrainingService();
+      return (profile: svc.trainTimeOfDay(days), model: svc.train(days));
+    });
+    final profile = trained.profile;
     if (profile != null) {
       _ref.read(timeOfDayProfileProvider.notifier).state = profile;
     }
-    final model = svc.train(days);
+    final model = trained.model;
     if (model != null) {
       final todayCtx = ContextBuilder.build(
         today: await repo.health(

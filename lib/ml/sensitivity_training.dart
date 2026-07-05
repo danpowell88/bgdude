@@ -47,11 +47,14 @@ class SensitivityDayInput {
 /// Builds training examples and fits sensitivity models from per-day history.
 class SensitivityTrainingService {
   const SensitivityTrainingService({
-    this.minDays = 14,
+    this.minDays = SensitivityModel.defaultMinExamples,
     this.minCarbFreeMinutes = 120,
   });
 
   /// Fewer than this many *usable* examples => we don't trust a learned model.
+  /// Defaults to the model's own floor so the two gates can't silently disagree
+  /// (a lower value here would just produce a dead band where `train` runs but the
+  /// model declines).
   final int minDays;
 
   /// A day needs at least this much carb-free observation time for its Autotune

@@ -165,5 +165,27 @@ void main() {
       expect(result.promoted, isTrue);
       expect(registry.active?.id, 'c2');
     });
+
+    test('hypo-free evaluation window skips the sensitivity criterion', () {
+      // No true lows in the window → hypoSensitivity is null ("nothing to
+      // detect"), which must not read as 0% and spuriously block promotion.
+      final registry = ModelRegistry();
+      final candidate = ModelVersion(
+        id: 'c3',
+        stage: ModelStage.candidate,
+        createdAt: DateTime(2026, 7, 4),
+        trainedOnDays: 30,
+        metrics: const ModelEvaluation(
+          rmseMgdl: 18,
+          abFraction: 0.97,
+          dangerousFraction: 0.01,
+          hypoSensitivity: null,
+          hypoFalseAlarmRate: 0.0,
+          sampleCount: 500,
+        ),
+      );
+      final result = registry.tryPromote(candidate);
+      expect(result.promoted, isTrue);
+    });
   });
 }

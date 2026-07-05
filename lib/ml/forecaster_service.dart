@@ -1,12 +1,14 @@
 /// Persists the learned residual model and runs the train → gate → promote cycle.
 ///
 /// A newly trained candidate is only promoted (and persisted as the active model) if it
-/// passes the registry's [PromotionGate] AND actually improves RMSE over the
-/// deterministic baseline on the held-out tail — so a bad or useless retraining run
-/// can never degrade the live forecast.
+/// passes the registry's [PromotionGate] AND improves RMSE on the held-out tail over
+/// BOTH the deterministic baseline and the currently-active residual model (scored on
+/// the same tail) — so a retraining run can never degrade the live forecast, not even
+/// relative to the model already running.
 library;
 
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,6 +30,7 @@ class TrainingOutcome {
     this.reasons = const [],
     this.baselineRmse,
     this.candidateRmse,
+    this.incumbentRmse,
     this.trainSamples = 0,
   });
 
@@ -36,6 +39,10 @@ class TrainingOutcome {
   final List<String> reasons;
   final double? baselineRmse;
   final double? candidateRmse;
+
+  /// Held-out RMSE of the model that was live when training ran (null when the
+  /// forecast was still baseline-only).
+  final double? incumbentRmse;
   final int trainSamples;
 
   static const TrainingOutcome notEnoughData =
@@ -92,24 +99,40 @@ class ForecasterModelController extends StateNotifier<ResidualModel> {
     required DateTime asOf,
     HealthFeatureSampler? health,
   }) async {
-    final result = ForecasterTrainer().train(
-      cgm: cgm,
-      boluses: boluses,
-      basal: basal,
-      carbs: carbs,
-      settings: settings,
-      annotations: annotations,
-      asOf: asOf,
-      health: health,
-    );
+    // The in-memory state is version-consistent with the current feature layout
+    // (the store discards mismatched versions at load), so it can be scored on the
+    // freshly built held-out features. Capture it locally so the isolate closure
+    // ships plain model data, not this notifier.
+    final incumbent = state;
+    // CART/GBM fitting over ~a month of strided samples is CPU-heavy; keep it off
+    // the UI isolate so training can't jank the app.
+    final result = await Isolate.run(() => ForecasterTrainer().train(
+          cgm: cgm,
+          boluses: boluses,
+          basal: basal,
+          carbs: carbs,
+          settings: settings,
+          annotations: annotations,
+          asOf: asOf,
+          health: health,
+          incumbent: incumbent,
+        ));
     if (result == null) {
       lastOutcome = TrainingOutcome.notEnoughData;
       return lastOutcome;
     }
 
-    final gate = _gate.evaluate(result.candidateEval, incumbent: result.baselineEval);
-    final improves = result.candidateEval.rmseMgdl < result.baselineEval.rmseMgdl;
-    final promoted = gate.pass && improves;
+    // Gate against the toughest available incumbent, and require the candidate to
+    // actually improve on both the deterministic baseline and the live model —
+    // a retrain that is worse than what's already running must never ship.
+    final incumbentEval = result.incumbentEval;
+    final gate = _gate.evaluate(result.candidateEval,
+        incumbent: incumbentEval ?? result.baselineEval);
+    final improvesBaseline =
+        result.candidateEval.rmseMgdl < result.baselineEval.rmseMgdl;
+    final improvesIncumbent = incumbentEval == null ||
+        result.candidateEval.rmseMgdl < incumbentEval.rmseMgdl;
+    final promoted = gate.pass && improvesBaseline && improvesIncumbent;
 
     if (promoted) {
       await ForecasterModelStore.save(result.model);
@@ -121,10 +144,12 @@ class ForecasterModelController extends StateNotifier<ResidualModel> {
       promoted: promoted,
       reasons: [
         ...gate.reasons,
-        if (!improves) 'no RMSE improvement over baseline',
+        if (!improvesBaseline) 'no RMSE improvement over baseline',
+        if (!improvesIncumbent) 'no RMSE improvement over the active model',
       ],
       baselineRmse: result.baselineEval.rmseMgdl,
       candidateRmse: result.candidateEval.rmseMgdl,
+      incumbentRmse: incumbentEval?.rmseMgdl,
       trainSamples: result.trainSamples,
     );
     return lastOutcome;

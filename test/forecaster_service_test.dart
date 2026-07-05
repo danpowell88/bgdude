@@ -1,0 +1,89 @@
+import 'package:bgdude/data/kv_store.dart';
+import 'package:bgdude/dev/sim_data.dart';
+import 'package:bgdude/ml/forecaster.dart';
+import 'package:bgdude/ml/forecaster_service.dart';
+import 'package:bgdude/ml/forecaster_training.dart';
+import 'package:bgdude/ml/residual_gbm_model.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  setUp(KvStore.useMemory);
+
+  final day = SimulatedDay.generate(now: DateTime(2026, 7, 4, 22), seed: 3);
+
+  Future<TrainingOutcome> trainController(ForecasterModelController c) =>
+      c.train(
+        cgm: day.cgm,
+        boluses: day.boluses,
+        basal: day.basal,
+        carbs: day.carbs,
+        settings: day.settings,
+        annotations: const [],
+        asOf: day.end,
+      );
+
+  group('ForecasterModelStore', () {
+    test('save → load round-trips a trained model', () async {
+      final result = ForecasterTrainer().train(
+        cgm: day.cgm,
+        boluses: day.boluses,
+        basal: day.basal,
+        carbs: day.carbs,
+        settings: day.settings,
+        annotations: const [],
+        asOf: day.end,
+      );
+      expect(result, isNotNull);
+
+      await ForecasterModelStore.save(result!.model);
+      final loaded = await ForecasterModelStore.load();
+      expect(loaded, isA<ResidualGbmModel>());
+      expect(loaded.isTrained, isTrue);
+    });
+
+    test('load without a saved model falls back to NoResidualModel', () async {
+      expect(await ForecasterModelStore.load(), isA<NoResidualModel>());
+    });
+  });
+
+  group('ForecasterModelController promotion', () {
+    test('first training has no incumbent to compare against', () async {
+      final controller = ForecasterModelController();
+      await pumpEventQueue();
+
+      final outcome = await trainController(controller);
+      expect(outcome.trained, isTrue);
+      expect(outcome.incumbentRmse, isNull);
+      expect(outcome.candidateRmse, isNotNull);
+      expect(outcome.baselineRmse, isNotNull);
+    });
+
+    test('identical retrain against a live incumbent is not promoted', () async {
+      // Persist an incumbent produced by the exact same (deterministic) trainer
+      // configuration the controller uses.
+      final incumbent = ForecasterTrainer().train(
+        cgm: day.cgm,
+        boluses: day.boluses,
+        basal: day.basal,
+        carbs: day.carbs,
+        settings: day.settings,
+        annotations: const [],
+        asOf: day.end,
+      );
+      await ForecasterModelStore.save(incumbent!.model);
+
+      final controller = ForecasterModelController();
+      await pumpEventQueue();
+
+      // Retraining on identical data yields an identical candidate — RMSE ties
+      // the incumbent exactly, and a tie must NOT ship a new model.
+      final outcome = await trainController(controller);
+      expect(outcome.trained, isTrue);
+      expect(outcome.incumbentRmse, isNotNull);
+      expect(outcome.candidateRmse, outcome.incumbentRmse);
+      expect(outcome.promoted, isFalse);
+      expect(outcome.reasons,
+          contains('no RMSE improvement over the active model'));
+    });
+  });
+}

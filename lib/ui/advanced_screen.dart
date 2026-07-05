@@ -97,6 +97,9 @@ class AdvancedScreen extends ConsumerWidget {
                         lastOutcome.promoted ? 'promoted' : 'kept previous'),
                     _kv(context, 'RMSE cand/base',
                         '${lastOutcome.candidateRmse?.toStringAsFixed(1) ?? '—'} / ${lastOutcome.baselineRmse?.toStringAsFixed(1) ?? '—'}'),
+                    if (lastOutcome.incumbentRmse != null)
+                      _kv(context, 'RMSE active',
+                          lastOutcome.incumbentRmse!.toStringAsFixed(1)),
                     if (lastOutcome.reasons.isNotEmpty)
                       _kv(context, 'Notes', lastOutcome.reasons.join('; ')),
                   ],

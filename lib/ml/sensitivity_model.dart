@@ -125,30 +125,101 @@ class SensitivityExample {
 }
 
 class SensitivityModel {
-  SensitivityModel({this.model, this.minExamples = 21});
+  SensitivityModel({this.model, this.minExamples = defaultMinExamples});
+
+  /// The single source for the "enough days to learn from" floor — the training
+  /// service references it so its own gate can't silently disagree.
+  static const int defaultMinExamples = 21;
+
+  /// Candidate L2 penalties tried by leave-one-out cross-validation at train time.
+  static const List<double> lambdaGrid = [0.5, 1.0, 2.0, 4.0, 8.0];
 
   RidgeModel? model;
 
   /// Below this many days of data we don't trust a learned model and stay neutral.
   final int minExamples;
 
+  /// R²-style out-of-sample skill from leave-one-out CV: 1 − cvMSE / var(y),
+  /// clamped to [0, 1]. 0 = no better than predicting the mean. Null until trained.
+  double? cvSkill;
+
+  /// The lambda the CV grid search settled on. Null until trained.
+  double? chosenLambda;
+
   bool get isTrained => model != null;
 
-  /// Fit from history. Uses ridge with moderate shrinkage so a handful of unusual days
-  /// can't swing the multiplier wildly.
+  /// Fit from history. The ridge penalty is chosen by weighted leave-one-out CV over
+  /// [lambdaGrid] (the datasets here are ~a few dozen rows, so this is cheap), and the
+  /// resulting out-of-sample skill drives [contextFor]'s confidence.
   void train(List<SensitivityExample> examples) {
     if (examples.length < minExamples) {
       model = null;
+      cvSkill = null;
+      chosenLambda = null;
       return;
     }
     final x = examples.map((e) => e.features.toVector()).toList();
     final y = examples.map((e) => e.sensitivityDeviation).toList();
     final w = examples.map((e) => e.weight).toList();
-    model = const RidgeRegression(lambda: 2.0).fit(x, y, sampleWeights: w);
+
+    var bestLambda = lambdaGrid.first;
+    var bestMse = double.infinity;
+    for (final lambda in lambdaGrid) {
+      final mse = _looMse(x, y, w, lambda);
+      if (mse < bestMse) {
+        bestMse = mse;
+        bestLambda = lambda;
+      }
+    }
+
+    // Skill baseline: predicting the weighted mean scores 0.
+    var wSum = 0.0, wy = 0.0;
+    for (var i = 0; i < y.length; i++) {
+      wSum += w[i];
+      wy += w[i] * y[i];
+    }
+    final mean = wSum > 0 ? wy / wSum : 0.0;
+    var varY = 0.0;
+    for (var i = 0; i < y.length; i++) {
+      varY += w[i] * (y[i] - mean) * (y[i] - mean);
+    }
+    varY = wSum > 0 ? varY / wSum : 0.0;
+
+    cvSkill = varY <= 0 ? 0.0 : (1 - bestMse / varY).clamp(0.0, 1.0).toDouble();
+    chosenLambda = bestLambda;
+    model = RidgeRegression(lambda: bestLambda).fit(x, y, sampleWeights: w);
   }
 
-  /// Produce today's sensitivity context. Confidence scales with data volume and
-  /// shrinks the multiplier toward neutral when the model is unsure.
+  /// Weighted leave-one-out mean squared error for one lambda.
+  static double _looMse(
+    List<List<double>> x,
+    List<double> y,
+    List<double> w,
+    double lambda,
+  ) {
+    var se = 0.0, sw = 0.0;
+    for (var i = 0; i < x.length; i++) {
+      final xTrain = <List<double>>[];
+      final yTrain = <double>[];
+      final wTrain = <double>[];
+      for (var j = 0; j < x.length; j++) {
+        if (j == i) continue;
+        xTrain.add(x[j]);
+        yTrain.add(y[j]);
+        wTrain.add(w[j]);
+      }
+      final fitted =
+          RidgeRegression(lambda: lambda).fit(xTrain, yTrain, sampleWeights: wTrain);
+      final err = y[i] - fitted.predict(x[i]);
+      se += w[i] * err * err;
+      sw += w[i];
+    }
+    return sw > 0 ? se / sw : double.infinity;
+  }
+
+  /// Produce today's sensitivity context. Confidence combines the model's measured
+  /// out-of-sample skill (LOO CV) with a data-volume ramp, so a model that merely
+  /// memorised noise reports ~0 confidence no matter how many days it has seen.
   SensitivityContext contextFor(
     ContextFeatures today, {
     required int trainingDays,
@@ -157,7 +228,8 @@ class SensitivityModel {
     final raw = model!.predict(today.toVector());
     // Clamp to the physiologically plausible band.
     final mult = raw.clamp(0.6, 1.5);
-    final confidence = (trainingDays / 60.0).clamp(0.0, 0.9);
+    final volume = (trainingDays / 30.0).clamp(0.0, 1.0);
+    final confidence = ((cvSkill ?? 0.0) * volume).clamp(0.0, 0.9);
 
     final reasons = _reasons(today);
     return SensitivityContext(

@@ -60,6 +60,46 @@ void main() {
       expect(c.sigma, lessThan(9 + 30 * 0.30));
     });
 
+    test('sigma comes from held-out residuals when a holdout is provided', () {
+      // Model fits the training targets nearly perfectly (training RMSE ≈ 0), but
+      // the holdout targets are offset by a constant 25 mg/dL — an honest sigma
+      // must reflect that out-of-sample error, not the training fit.
+      double f(double x0, double x1) => 5 * x0 - 3 * x1;
+      final samples = _samples(f);
+      final holdout = [
+        for (final s in samples.take(30))
+          (features: s.features, target: f(s.features[0], s.features[1]) + 25),
+      ];
+
+      final inSample = const ResidualGbmTrainer().train({30: samples});
+      final outSample = const ResidualGbmTrainer()
+          .train({30: samples}, holdoutByHorizon: {30: holdout});
+
+      final sigmaIn =
+          inSample.correct(features: const [0.0, 0.0], horizonMinutes: 30).sigma;
+      final sigmaOut =
+          outSample.correct(features: const [0.0, 0.0], horizonMinutes: 30).sigma;
+
+      expect(sigmaOut, closeTo(25, 5));
+      expect(sigmaOut, greaterThan(sigmaIn));
+    });
+
+    test('thin holdout falls back to training RMSE', () {
+      double f(double x0, double x1) => 5 * x0 - 3 * x1;
+      final samples = _samples(f);
+      final thin = [
+        for (final s in samples.take(5)) // < minHoldoutForSigma (20)
+          (features: s.features, target: f(s.features[0], s.features[1]) + 50),
+      ];
+      final withThin = const ResidualGbmTrainer()
+          .train({30: samples}, holdoutByHorizon: {30: thin});
+      final without = const ResidualGbmTrainer().train({30: samples});
+      expect(
+        withThin.correct(features: const [0.0, 0.0], horizonMinutes: 30).sigma,
+        without.correct(features: const [0.0, 0.0], horizonMinutes: 30).sigma,
+      );
+    });
+
     test('untrained horizon returns residual 0 and a larger, widening sigma', () {
       final samples = _samples((x0, x1) => x0 - x1);
       final model = const ResidualGbmTrainer().train({60: samples});

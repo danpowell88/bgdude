@@ -10,7 +10,6 @@ import '../analytics/carb_math.dart';
 import '../analytics/insulin_math.dart';
 import '../analytics/predictor.dart';
 import '../core/samples.dart';
-import '../analytics/therapy_settings.dart';
 import 'forecaster.dart';
 import 'health_features.dart';
 
@@ -21,7 +20,10 @@ class ForecastFeatures {
   /// v2: appended the [HealthFeatureSampler] activity features (Google Fit / Health
   /// Connect) so the residual model can learn exercise/activity effects on BG.
   /// v3: added the heart-rate-relative feature (exercise/stress signal).
-  static const int version = 3;
+  /// v4: dropped the sensitivity-multiplier slot — both trainer and server always
+  /// passed the neutral context, so it was a constant-1.0 column the GBM could
+  /// never split on.
+  static const int version = 4;
 
   static const List<String> names = [
     'bg/100',
@@ -30,7 +32,6 @@ class ForecastFeatures {
     'cob/10',
     'hour_sin',
     'hour_cos',
-    'sensitivity',
     'horizon/60',
     ...HealthFeatureSampler.names,
   ];
@@ -48,7 +49,6 @@ class ForecastFeatures {
     required List<BolusEvent> boluses,
     required List<BasalSegment> basal,
     required List<CarbEntry> carbs,
-    required SensitivityContext context,
     required int horizonMinutes,
     List<double> health = HealthFeatureSampler.zeros,
   }) {
@@ -62,7 +62,6 @@ class ForecastFeatures {
       cob / 10.0,
       math.sin(2 * math.pi * hour / 24),
       math.cos(2 * math.pi * hour / 24),
-      context.effectiveMultiplier,
       horizonMinutes / 60.0,
       ...health,
     ];
@@ -70,12 +69,9 @@ class ForecastFeatures {
 }
 
 /// Forecast directly from a [PredictionState], wiring the feature builder so the
-/// residual model receives the same layout it was trained on. The sensitivity feature
-/// is fixed to neutral here to match training (the trainer builds features with a
-/// neutral context), avoiding a train/serve skew where the GBM sees an out-of-
-/// distribution value it never learned to split on. The activity features come from the
-/// live [PredictionState.healthFeatures], computed by the same [HealthFeatureSampler]
-/// logic the trainer uses.
+/// residual model receives the same layout it was trained on. The activity features
+/// come from the live [PredictionState.healthFeatures], computed by the same
+/// [HealthFeatureSampler] logic the trainer uses.
 extension ForecasterStateExt on Forecaster {
   List<HorizonForecast> forecastState(PredictionState s) => forecast(
         s,
@@ -86,7 +82,6 @@ extension ForecasterStateExt on Forecaster {
           boluses: s.boluses,
           basal: s.basal,
           carbs: s.carbs,
-          context: SensitivityContext.neutral,
           horizonMinutes: h,
           health: s.healthFeatures,
         ),

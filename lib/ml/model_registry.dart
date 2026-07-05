@@ -7,6 +7,8 @@
 /// handled by the data layer.
 library;
 
+import 'dart:math' as math;
+
 import 'error_grid.dart';
 
 enum ModelStage { base, candidate, active, retired }
@@ -52,8 +54,13 @@ class ModelEvaluation {
   final double rmseMgdl;
   final double abFraction;
   final double dangerousFraction;
-  final double hypoSensitivity;
-  final double hypoFalseAlarmRate;
+
+  /// Null when the evaluation window has no true lows (nothing to detect); the
+  /// promotion gate skips the hypo-sensitivity criterion in that case.
+  final double? hypoSensitivity;
+
+  /// Null when the evaluation window has no true not-lows.
+  final double? hypoFalseAlarmRate;
   final int sampleCount;
 }
 
@@ -91,9 +98,12 @@ class PromotionGate {
       reasons.add(
           'dangerous zone ${(candidate.dangerousFraction * 100).toStringAsFixed(1)}% > ${(maxDangerousFraction * 100).toStringAsFixed(0)}%');
     }
-    if (candidate.hypoSensitivity < minHypoSensitivity) {
+    // Skipped when the held-out window has no true lows: there was nothing to
+    // detect, which must not read as "missed every low".
+    final hypoSens = candidate.hypoSensitivity;
+    if (hypoSens != null && hypoSens < minHypoSensitivity) {
       reasons.add(
-          'hypo sensitivity ${(candidate.hypoSensitivity * 100).toStringAsFixed(0)}% < ${(minHypoSensitivity * 100).toStringAsFixed(0)}%');
+          'hypo sensitivity ${(hypoSens * 100).toStringAsFixed(0)}% < ${(minHypoSensitivity * 100).toStringAsFixed(0)}%');
     }
     if (incumbent != null &&
         candidate.rmseMgdl > incumbent.rmseMgdl + maxRmseRegressionMgdl) {
@@ -118,7 +128,7 @@ class ModelEvaluator {
       final d = p.predicted - p.reference;
       se += d * d;
     }
-    final rmse = pairs.isEmpty ? double.infinity : _sqrt(se / pairs.length);
+    final rmse = pairs.isEmpty ? double.infinity : math.sqrt(se / pairs.length);
     return ModelEvaluation(
       rmseMgdl: rmse,
       abFraction: grid.abFraction,
@@ -127,15 +137,6 @@ class ModelEvaluator {
       hypoFalseAlarmRate: hypo.falseAlarmRate,
       sampleCount: pairs.length,
     );
-  }
-
-  static double _sqrt(double x) {
-    if (x <= 0) return 0;
-    var g = x;
-    for (var i = 0; i < 40; i++) {
-      g = 0.5 * (g + x / g);
-    }
-    return g;
   }
 }
 

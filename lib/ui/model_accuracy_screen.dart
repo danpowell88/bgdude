@@ -67,7 +67,8 @@ class ModelAccuracyScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   Text(
                     'Clarke A+B is the clinically-safe fraction; a retrained model must '
-                    'clear 95% here (and beat the physics baseline) before it goes live.',
+                    'clear 95% here and beat both the physics baseline and the '
+                    'currently active model before it goes live.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.outline),
                   ),
@@ -97,8 +98,12 @@ class _HorizonAccuracyCard extends StatelessWidget {
             _stat(context, 'RMSE', '${eval.rmseMgdl.toStringAsFixed(1)} mg/dL'),
             _stat(context, 'Clarke A+B',
                 '${(eval.abFraction * 100).toStringAsFixed(1)}%'),
-            _stat(context, 'Hypo sensitivity',
-                '${(eval.hypoSensitivity * 100).toStringAsFixed(0)}%'),
+            _stat(
+                context,
+                'Hypo sensitivity',
+                eval.hypoSensitivity == null
+                    ? '— (no lows in window)'
+                    : '${(eval.hypoSensitivity! * 100).toStringAsFixed(0)}%'),
             _stat(context, 'Samples', '${eval.sampleCount}'),
           ],
         ),

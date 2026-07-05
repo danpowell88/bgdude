@@ -122,6 +122,14 @@ void main() {
       expect(service.train(_usableDays(10)), isNull);
     });
 
+    test('CV picks a lambda from the grid and measures real skill', () {
+      final model = service.train(_usableDays(24))!;
+      // Sleep alternates in lockstep with the label, so LOO-CV skill is high.
+      expect(model.cvSkill, isNotNull);
+      expect(model.cvSkill!, greaterThan(0.5));
+      expect(SensitivityModel.lambdaGrid, contains(model.chosenLambda));
+    });
+
     test('trained model responds to a short-sleep context', () {
       final model = service.train(_usableDays(24))!;
 

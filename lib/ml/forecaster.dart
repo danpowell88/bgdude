@@ -6,14 +6,16 @@
 /// baseline (e.g. dawn phenomenon, consistent post-meal overshoot). The residual model
 /// is optional — until it exists / earns trust, the forecast is the pure baseline.
 ///
-/// The neural residual (a <100k-param GRU/TCN) runs via LiteRT on device and is
-/// fine-tuned overnight through training signatures. That native path is wrapped behind
-/// [ResidualModel] so the rest of the app is agnostic to it and the deterministic path
-/// stays fully testable.
+/// The learned residual is the pure-Dart per-horizon GBM (`ResidualGbmModel`): fully
+/// on-device, deterministic, auditable, and retrained from the feedback pipeline. It
+/// sits behind [ResidualModel] so the deterministic path stays fully testable.
 library;
 
 import '../analytics/predictor.dart';
 import '../core/units.dart';
+
+/// z-value for the ~90% prediction interval (±1.64σ), shared by every band builder.
+const double kForecastZ90 = 1.64;
 
 /// Forecast at a single horizon.
 class HorizonForecast {
@@ -35,8 +37,8 @@ class HorizonForecast {
   double get intervalWidth => upperMgdl - lowerMgdl;
 }
 
-/// Interface for the learned residual model. Implemented natively (LiteRT) in
-/// `residual_model_litert.dart`; a no-op default keeps the app deterministic-only.
+/// Interface for the learned residual model. Implemented by the pure-Dart
+/// `ResidualGbmModel`; a no-op default keeps the app deterministic-only.
 abstract interface class ResidualModel {
   /// Residual (mg/dL) to add to the baseline prediction at [horizonMinutes], plus a
   /// 1-sigma uncertainty. Returns (0, wideSigma) when untrained.
@@ -90,12 +92,11 @@ class Forecaster {
       final feats = featureBuilder?.call(h) ?? const <double>[];
       final c = _residual.correct(features: feats, horizonMinutes: h);
       final mgdl = (baseline + c.residual).clamp(39.0, 400.0);
-      // 90% interval ≈ ±1.64σ.
       out.add(HorizonForecast(
         horizonMinutes: h,
         mgdl: mgdl,
-        lowerMgdl: (mgdl - 1.64 * c.sigma).clamp(39.0, 400.0),
-        upperMgdl: (mgdl + 1.64 * c.sigma).clamp(39.0, 400.0),
+        lowerMgdl: (mgdl - kForecastZ90 * c.sigma).clamp(39.0, 400.0),
+        upperMgdl: (mgdl + kForecastZ90 * c.sigma).clamp(39.0, 400.0),
       ));
     }
     return out;

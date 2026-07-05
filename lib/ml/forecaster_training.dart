@@ -14,6 +14,7 @@ import '../core/samples.dart';
 import '../feedback/annotations.dart';
 import '../feedback/retraining.dart';
 import 'forecast_features.dart';
+import 'forecaster.dart';
 import 'health_features.dart';
 import 'model_registry.dart';
 import 'residual_gbm_model.dart';
@@ -25,6 +26,7 @@ class ForecasterTrainingResult {
     required this.candidateEval,
     required this.trainSamples,
     required this.heldOutSamples,
+    this.incumbentEval,
   });
 
   final ResidualGbmModel model;
@@ -34,6 +36,11 @@ class ForecasterTrainingResult {
 
   /// Baseline + learned residual accuracy on the same held-out tail.
   final ModelEvaluation candidateEval;
+
+  /// Baseline + *currently live* residual model accuracy on the same held-out tail
+  /// (null when no trained incumbent was passed in). This is what the candidate must
+  /// beat to be promoted — not just the deterministic baseline.
+  final ModelEvaluation? incumbentEval;
 
   final int trainSamples;
   final int heldOutSamples;
@@ -60,6 +67,9 @@ class ForecasterTrainer {
 
   /// Returns null when there isn't enough data to train (needs a few hundred usable
   /// (timestep, horizon) pairs).
+  ///
+  /// [incumbent] is the currently-live residual model; when trained, it is scored on
+  /// the same held-out tail so the promotion decision can A/B candidate vs live.
   ForecasterTrainingResult? train({
     required List<CgmSample> cgm,
     required List<BolusEvent> boluses,
@@ -69,6 +79,7 @@ class ForecasterTrainer {
     required List<Annotation> annotations,
     required DateTime asOf,
     HealthFeatureSampler? health,
+    ResidualModel? incumbent,
   }) {
     final samples = [...cgm]
       ..removeWhere((s) => s.sensorWarmup || s.mgdl <= 0)
@@ -79,6 +90,16 @@ class ForecasterTrainer {
     final splitIdx = (samples.length * (1 - heldOutFraction)).floor();
     final splitTime = samples[splitIdx].time;
 
+    // Sorted event lists so each timestep sees only doses/carbs known at that moment.
+    // The basal *schedule* stays full — it is programmed ahead and the live forecaster
+    // knows it too. Boluses and carbs after `now` must not leak into the baseline,
+    // otherwise training residuals are computed against a future-aware baseline the
+    // live system can never have (train/serve skew).
+    final sortedBoluses = [...boluses]..sort((a, b) => a.time.compareTo(b.time));
+    final sortedCarbs = [...carbs]..sort((a, b) => a.time.compareTo(b.time));
+    var bolusEnd = 0;
+    var carbEnd = 0;
+
     final rawByHorizon = {for (final h in horizons) h: <_Raw>[]};
     final heldOut = <int, List<_Held>>{for (final h in horizons) h: []};
 
@@ -88,13 +109,24 @@ class ForecasterTrainer {
       final gap = cur.time.difference(prev.time).inMinutes;
       final roc = gap > 0 && gap <= 15 ? (cur.mgdl - prev.mgdl) / gap : 0.0;
 
+      while (bolusEnd < sortedBoluses.length &&
+          !sortedBoluses[bolusEnd].time.isAfter(cur.time)) {
+        bolusEnd++;
+      }
+      while (carbEnd < sortedCarbs.length &&
+          !sortedCarbs[carbEnd].time.isAfter(cur.time)) {
+        carbEnd++;
+      }
+      final knownBoluses = sortedBoluses.sublist(0, bolusEnd);
+      final knownCarbs = sortedCarbs.sublist(0, carbEnd);
+
       final state = PredictionState(
         now: cur.time,
         currentMgdl: cur.mgdl,
         recentRocMgdlPerMin: roc,
-        boluses: boluses,
+        boluses: knownBoluses,
         basal: basal,
-        carbs: carbs,
+        carbs: knownCarbs,
         settings: settings,
       );
       final line = _predictor.predict(state);
@@ -109,10 +141,9 @@ class ForecasterTrainer {
           now: cur.time,
           currentMgdl: cur.mgdl,
           recentRocMgdlPerMin: roc,
-          boluses: boluses,
+          boluses: knownBoluses,
           basal: basal,
-          carbs: carbs,
-          context: SensitivityContext.neutral,
+          carbs: knownCarbs,
           horizonMinutes: h,
           health: health?.featuresAt(cur.time) ?? HealthFeatureSampler.zeros,
         );
@@ -141,11 +172,23 @@ class ForecasterTrainer {
     }
     if (trainCount < 150) return null;
 
-    final model = const ResidualGbmTrainer().train(trainingByHorizon);
+    // Held-out (features, residual-target) rows drive the model's sigma so the
+    // reported uncertainty is out-of-sample, not training error.
+    final holdoutByHorizon = {
+      for (final h in horizons)
+        h: [
+          for (final held in heldOut[h]!)
+            (features: held.features, target: held.actual - held.baseline),
+        ],
+    };
+    final model = const ResidualGbmTrainer()
+        .train(trainingByHorizon, holdoutByHorizon: holdoutByHorizon);
 
-    // Score baseline vs baseline+residual on the held-out tail.
+    // Score baseline vs incumbent vs baseline+candidate on the held-out tail.
     final baselinePairs = <({double reference, double predicted})>[];
     final candidatePairs = <({double reference, double predicted})>[];
+    final incumbentPairs = <({double reference, double predicted})>[];
+    final scoreIncumbent = incumbent != null && incumbent.isTrained;
     var heldCount = 0;
     for (final h in horizons) {
       for (final held in heldOut[h]!) {
@@ -154,6 +197,12 @@ class ForecasterTrainer {
         baselinePairs.add((reference: held.actual, predicted: held.baseline));
         candidatePairs
             .add((reference: held.actual, predicted: corrected.clamp(39.0, 400.0)));
+        if (scoreIncumbent) {
+          final liveCorrected = held.baseline +
+              incumbent.correct(features: held.features, horizonMinutes: h).residual;
+          incumbentPairs.add(
+              (reference: held.actual, predicted: liveCorrected.clamp(39.0, 400.0)));
+        }
         heldCount++;
       }
     }
@@ -163,6 +212,7 @@ class ForecasterTrainer {
       model: model,
       baselineEval: evaluator.evaluate(baselinePairs),
       candidateEval: evaluator.evaluate(candidatePairs),
+      incumbentEval: scoreIncumbent ? evaluator.evaluate(incumbentPairs) : null,
       trainSamples: trainCount,
       heldOutSamples: heldCount,
     );

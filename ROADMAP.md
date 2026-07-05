@@ -51,7 +51,7 @@ possible) → you run it on the device → report back → I fix." I can't touch
    background service; add the modern device to the manifests; then the real complication.
 4. **Pump + Dexcom** (1.6). Harden real pumpx2 pairing / reconnect / error surfacing and
    validate live CGM data + predictions.
-5. **Neural forecaster** (1.5) — decision, likely after the above (or just drop the comments).
+5. ~~**Neural forecaster** (1.5)~~ — decided: committed to the GBM (see 1.5).
 
 _Deprioritised for now: Part 3 new features, Part 4 release/store, multi-user UX._
 

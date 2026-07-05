@@ -40,13 +40,13 @@ class UncertaintyCalibrator {
   HorizonForecast calibrate(HorizonForecast f, Map<int, double> recentRmse) {
     final recent = recentRmse[f.horizonMinutes];
     if (recent == null) return f;
-    final modelSigma = (f.upperMgdl - f.mgdl) / 1.64;
+    final modelSigma = (f.upperMgdl - f.mgdl) / kForecastZ90;
     final sigma = math.max(modelSigma, recent);
     return HorizonForecast(
       horizonMinutes: f.horizonMinutes,
       mgdl: f.mgdl,
-      lowerMgdl: (f.mgdl - 1.64 * sigma).clamp(39.0, 400.0),
-      upperMgdl: (f.mgdl + 1.64 * sigma).clamp(39.0, 400.0),
+      lowerMgdl: (f.mgdl - kForecastZ90 * sigma).clamp(39.0, 400.0),
+      upperMgdl: (f.mgdl + kForecastZ90 * sigma).clamp(39.0, 400.0),
     );
   }
 

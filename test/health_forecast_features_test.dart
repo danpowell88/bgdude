@@ -1,4 +1,3 @@
-import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/data/health_sync.dart';
 import 'package:bgdude/ml/forecast_features.dart';
 import 'package:bgdude/ml/health_features.dart';
@@ -87,8 +86,8 @@ void main() {
   });
 
   group('ForecastFeatures with health', () {
-    test('vector length and names include the health features (v3)', () {
-      expect(ForecastFeatures.version, 3);
+    test('vector length and names include the health features (v4)', () {
+      expect(ForecastFeatures.version, 4);
       final v = ForecastFeatures.build(
         now: DateTime(2026, 7, 4, 9),
         currentMgdl: 140,
@@ -96,7 +95,6 @@ void main() {
         boluses: const [],
         basal: const [],
         carbs: const [],
-        context: SensitivityContext.neutral,
         horizonMinutes: 30,
       );
       expect(v.length, ForecastFeatures.names.length);
@@ -114,7 +112,6 @@ void main() {
         boluses: const [],
         basal: const [],
         carbs: const [],
-        context: SensitivityContext.neutral,
         horizonMinutes: 30,
         health: const [0.8, 0.3, 0.4],
       );
