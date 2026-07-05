@@ -200,6 +200,9 @@ void main() {
 
     await tester.tap(find.text('Add meal'));
     await tester.pumpAndSettle();
+    // The three lookup entry points, including the on-device nutrition-label scanner.
+    expect(find.text('Scan barcode'), findsOneWidget);
+    expect(find.text('Scan nutrition label'), findsOneWidget);
     await tester.enterText(
         find.byKey(const Key('meal-name-field')), 'Test pasta');
     await tester.enterText(find.byKey(const Key('meal-carbs-field')), '60');

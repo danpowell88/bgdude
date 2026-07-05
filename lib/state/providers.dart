@@ -24,6 +24,10 @@ import '../feedback/pending_confirmation.dart';
 import '../food/food_database.dart';
 import '../food/offline_afcd.dart';
 import '../food/open_food_facts.dart';
+import '../food/panel_llm.dart';
+import '../food/panel_ocr.dart';
+import '../food/panel_ocr_mlkit.dart';
+import '../food/panel_scan_service.dart';
 import '../insights/a1c_goal.dart';
 import '../insights/alcohol_watch.dart';
 import '../insights/alert_monitor.dart';
@@ -155,6 +159,19 @@ final foodDatabaseProvider = FutureProvider<FoodDatabase>((ref) async {
     offline,
   ]);
 });
+
+/// On-device OCR for the nutrition-panel photo reader (ML Kit; image stays on-device).
+final panelOcrProvider = Provider<PanelOcr>((ref) => MlKitPanelOcr());
+
+/// Optional small-LLM normaliser for panel OCR text. Defaults to a no-op (deterministic
+/// parser only) until an on-device model is wired/downloaded.
+final panelLlmProvider =
+    Provider<PanelLlmExtractor>((ref) => const NoopPanelLlm());
+
+/// Reads a nutrition panel from a photo: OCR → deterministic parse → LLM fallback.
+final panelScanServiceProvider = Provider<PanelScanService>((ref) =>
+    PanelScanService(
+        ocr: ref.watch(panelOcrProvider), llm: ref.watch(panelLlmProvider)));
 
 /// The user's personal profile (sex, age, diabetes history, body metrics), persisted
 /// encrypted. Fed into the models where usable (menstrual gating, hypo-awareness alerts).

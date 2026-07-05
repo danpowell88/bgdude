@@ -71,6 +71,11 @@ dependencies:
   # Barcode scanning for food lookup (CameraX/ML Kit; camera stays on-device)
   mobile_scanner: ^5.2.3
 
+  # Nutrition-panel photo reader: on-device OCR of the label text + a camera/gallery
+  # picker. The image is processed on-device (ML Kit) and never uploaded.
+  google_mlkit_text_recognition: ^0.13.1
+  image_picker: ^1.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../data/kv_store.dart';
 import '../food/food_item.dart';
@@ -223,6 +224,43 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
     if (item != null && mounted) _prefill(item);
   }
 
+  /// Photograph the nutrition panel and read carbs/fat/protein off it on-device (OCR, with
+  /// an optional small-LLM fallback). Everything lands in the editable fields to confirm —
+  /// the scan never doses anything by itself.
+  Future<void> _scanLabel() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final picker = ImagePicker();
+    final shot = await picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1600,
+      imageQuality: 90,
+    );
+    if (shot == null || !mounted) return;
+    messenger.showSnackBar(
+        const SnackBar(content: Text('Reading the label…')));
+    try {
+      final result = await ref.read(panelScanServiceProvider).scan(shot.path);
+      if (!mounted) return;
+      if (!result.hasResult || !result.panel!.hasCarbs) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text(
+                'Couldn\'t read the panel — try a straight, well-lit photo, or enter it '
+                'manually.')));
+        return;
+      }
+      final name = _name.text.trim().isEmpty ? 'Scanned label' : _name.text.trim();
+      _prefill(result.panel!.toFoodItem(name: name));
+      messenger.showSnackBar(SnackBar(
+          content: Text(result.usedLlm
+              ? 'Read with on-device AI — check the values below.'
+              : 'Read from the label — check the values below.')));
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+          SnackBar(content: Text('Label scan failed: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final carbs = double.tryParse(_carbs.text);
@@ -259,6 +297,12 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.document_scanner_outlined),
+            label: const Text('Scan nutrition label'),
+            onPressed: _scanLabel,
           ),
           const SizedBox(height: 12),
           TextField(
