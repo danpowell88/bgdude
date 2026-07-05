@@ -82,6 +82,7 @@
   <p class="tag">User guide</p>
   <a href="#start">Getting started</a>
   <a href="#layout">App layout &amp; icons</a>
+  <a href="#widget">Home-screen widget</a>
   <div class="grp">The four tabs</div>
   <a href="#today">Today</a>
   <a href="#predict">Predict</a>
@@ -148,6 +149,20 @@
     <tr><td>💡 <b>Insights</b></td><td>Daily briefing, sensitivity, A1c, sleep, illness — read together.</td></tr>
     <tr><td>🍽️ <b>Meals</b></td><td>Your saved-meal library and the add-meal flow (incl. barcode scan).</td></tr>
   </table>
+</section>
+
+<section id="widget">
+  <h2>Home-screen widget</h2>
+  <div class="shot"><img src="screenshots/22-widget.png" alt="Home-screen glucose widget"><div class="cap">Glucose at a glance, no app open</div></div>
+  <p class="lead">Add the bgdude widget to your Android home screen to see your latest glucose without opening the app. Long-press the home screen → <b>Widgets</b> → <b>bgdude</b>, and drop it in (it's a 2×1 cell and resizes).</p>
+  <h3>What it shows</h3>
+  <ul class="tight">
+    <li><b>Glucose + trend arrow</b> in your chosen unit (mmol/L or mg/dL — it follows the in-app setting), <b>colour-coded by range</b>: <span style="color:#66BB6A"><b>green</b></span> in range, <span style="color:#EF5350"><b>red</b></span> below 70&nbsp;mg/dL (3.9), <span style="color:#FFA726"><b>orange</b></span> above 180&nbsp;mg/dL (10.0).</li>
+    <li><b>IOB</b> — insulin on board — and how long ago the reading was taken ("7m ago").</li>
+    <li>If the reading is <b>missing or older than 15 minutes</b> it greys out and reads "Stale · Xm ago" (or "no data"), so a frozen number never looks current.</li>
+    <li><b>Tap</b> the widget to open the app.</li>
+  </ul>
+  <div class="note">The widget updates whenever a new CGM reading arrives while the app/service is running, and refreshes the "ago" text on its own — the times and grey-out stay honest even between readings and after a launcher restart.</div>
 </section>
 
 <section id="today">
@@ -309,7 +324,39 @@
   <h3>Quiet hours</h3>
   <p>A do-not-disturb window that holds back non-critical notifications overnight. Urgent/predicted lows and pump alarms <b>always come through</b>. Toggle it on and set the From/To times.</p>
   <h3>Per-category controls</h3>
-  <p>Each category (predicted/urgent low, high, missed bolus, stubborn high, check-ketones, rescue carbs, move-after-meals, overnight-low risk, pump alarms, low reservoir, low battery, disconnected, device reminders, illness, morning/weekly summary, pre-bolus timer) can be tuned: <b>on/off</b>, <b>intensity</b> (silent→urgent), <b>sound</b>, <b>vibration</b>, and a <b>repeat-until-clear</b> interval.</p>
+  <p>Every alert below is its own <b>category</b> you can tune: <b>on/off</b>, <b>intensity</b> (silent → urgent), <b>sound</b>, <b>vibration</b>, and a <b>repeat-until-clear</b> interval (Once / every 5 / 15 / 30 / 60 min). Categories marked <b>†</b> always come through even during quiet hours.</p>
+  <h4>Glucose &amp; care (real-time, fired the moment a reading suggests it)</h4>
+  <table>
+    <tr><th>Alert</th><th>Fires when</th><th>Default</th></tr>
+    <tr><td><b>Urgent low predicted</b> †</td><td>A <em>severe</em> low is predicted soon.</td><td>Urgent · repeats every 15 min until it clears</td></tr>
+    <tr><td><b>Low predicted</b> †</td><td>A low is predicted within the forecast horizon.</td><td>High</td></tr>
+    <tr><td><b>Rescue carbs</b></td><td>You're low/heading low and should take fast carbs now — with a gram estimate.</td><td>High</td></tr>
+    <tr><td><b>High predicted</b></td><td>Glucose is trending above your high line.</td><td>Normal</td></tr>
+    <tr><td><b>Missed bolus?</b></td><td>A meal-sized rise with no bolus logged.</td><td>High</td></tr>
+    <tr><td><b>Stubborn high / site issue</b></td><td>High for hours with insulin doing little — possible infusion-set failure.</td><td>Normal</td></tr>
+    <tr><td><b>Check ketones (sick day)</b></td><td>A sustained high plus a ketone risk factor (illness, likely site failure, or very high with little insulin on board).</td><td>High · re-reminds hourly</td></tr>
+    <tr><td><b>Unusual pattern</b></td><td>The catch-all: glucose is moving faster than your carbs and insulin explain, and none of the named alerts above fit — an early heads-up that something out of the norm is happening (unannounced meal, sensor/site trouble, stress, illness onset).</td><td>Normal</td></tr>
+    <tr><td><b>Move after meals</b></td><td>A post-meal spike is predicted and you're not already moving — a nudge to walk.</td><td>Low</td></tr>
+    <tr><td><b>Overnight low risk</b></td><td>Tonight/tomorrow carries a higher low risk (after alcohol or aerobic exercise).</td><td>Normal</td></tr>
+    <tr><td><b>Illness detected</b></td><td>Your data looks illness-like (persistent unexplained highs / resistance).</td><td>Low</td></tr>
+  </table>
+  <h4>Pump &amp; device</h4>
+  <table>
+    <tr><th>Alert</th><th>Fires when</th><th>Default</th></tr>
+    <tr><td><b>Pump alarms</b> †</td><td>An alarm/alert is active on the pump (mirrored through, in plain language).</td><td>High</td></tr>
+    <tr><td><b>Low reservoir</b></td><td>Insulin is running low (~15 U) — plan a cartridge change.</td><td>Normal</td></tr>
+    <tr><td><b>Low pump battery</b></td><td>Battery is low or predicted to run out soon (e.g. "won't last the night") — earlier than the pump's own alarm.</td><td>Normal</td></tr>
+    <tr><td><b>Pump disconnected</b></td><td>No pump data for ~10 min — readings and predictions are paused.</td><td>Normal</td></tr>
+    <tr><td><b>Sensor / site reminders</b></td><td>Your CGM sensor or infusion site is overdue for a change.</td><td>Low</td></tr>
+  </table>
+  <h4>Digests &amp; timers</h4>
+  <table>
+    <tr><th>Alert</th><th>Fires when</th><th>Default</th></tr>
+    <tr><td><b>Morning summary</b></td><td>A daily briefing at <b>07:00</b> — overnight time-in-range plus prescriptive notes. A background job posts it even on days you don't open the app.</td><td>Normal</td></tr>
+    <tr><td><b>Weekly report</b></td><td>A weekly nudge (Mon 08:00) that your report is ready to review.</td><td>Low</td></tr>
+    <tr><td><b>Pre-bolus timer</b></td><td>The pre-bolus countdown you started for a meal is up — time to eat. Survives the app being backgrounded.</td><td>High</td></tr>
+  </table>
+  <div class="note">These are all <b>additive</b> to your CGM/pump alarms, never a replacement — and the app is read-only, so a notification is a prompt to act, never an automatic dose.</div>
 </section>
 
 <section id="reports">
