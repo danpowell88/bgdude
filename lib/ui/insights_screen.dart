@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../analytics/metrics.dart';
 import '../core/samples.dart';
 import '../insights/illness_mode.dart';
+import '../insights/lab_a1c.dart';
 import '../insights/morning_summary.dart';
 import '../state/providers.dart';
 
@@ -121,6 +122,8 @@ class InsightsScreen extends ConsumerWidget {
                 ),
               ),
             ),
+        const SizedBox(height: 8),
+        const _LabA1cSection(),
 
         const SizedBox(height: 16),
         // --- Sleep & glucose ---
@@ -340,5 +343,74 @@ class _SensitivityCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Log a lab HbA1c and show its discordance with the CGM-derived GMI.
+class _LabA1cSection extends ConsumerWidget {
+  const _LabA1cSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gap = ref.watch(glycationGapProvider);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.science_outlined),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('Lab A1c vs GMI')),
+                TextButton(
+                  onPressed: () => _logLabA1c(context, ref),
+                  child: const Text('Log lab A1c'),
+                ),
+              ],
+            ),
+            if (gap != null) ...[
+              const SizedBox(height: 6),
+              Text(gap.message,
+                  style: Theme.of(context).textTheme.bodySmall),
+            ] else
+              Text('Enter a recent lab HbA1c to compare it with your CGM GMI.',
+                  style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _logLabA1c(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final value = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log lab A1c'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          autofocus: true,
+          decoration:
+              const InputDecoration(labelText: 'HbA1c', suffixText: '%'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(ctx, double.tryParse(controller.text)),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (value != null && value > 3 && value < 20) {
+      await ref
+          .read(labA1cProvider.notifier)
+          .add(LabA1c(percent: value, date: DateTime.now()));
+    }
   }
 }

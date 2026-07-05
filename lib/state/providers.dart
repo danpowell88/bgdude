@@ -33,6 +33,7 @@ import '../insights/daily_narrative.dart';
 import '../insights/exercise_mode.dart';
 import '../insights/illness_mode.dart';
 import '../insights/ketone_risk.dart';
+import '../insights/lab_a1c.dart';
 import '../insights/sleep_insight.dart';
 import '../insights/morning_summary.dart';
 import '../insights/notification_prefs.dart';
@@ -343,6 +344,35 @@ final a1cStatusProvider = FutureProvider<GmiStatus>((ref) async {
     dailyMeanMgdlHistory: means,
     targetGmiPercent: target,
   );
+});
+
+/// Manually entered lab HbA1c results (persisted). Compared to the CGM GMI to surface a
+/// glycation gap.
+final labA1cProvider =
+    StateNotifierProvider<LabA1cNotifier, List<LabA1c>>((ref) => LabA1cNotifier());
+
+class LabA1cNotifier extends StateNotifier<List<LabA1c>> {
+  LabA1cNotifier() : super(const []) {
+    _restore();
+  }
+  Future<void> _restore() async {
+    state = await LabA1cStore.load();
+  }
+
+  Future<void> add(LabA1c entry) async {
+    await LabA1cStore.add(entry);
+    state = await LabA1cStore.load();
+  }
+}
+
+/// The discordance between the latest lab A1c and the current CGM-derived GMI (null until
+/// both exist).
+final glycationGapProvider = Provider<GlycationGap?>((ref) {
+  final labs = ref.watch(labA1cProvider);
+  if (labs.isEmpty) return null;
+  final gmi = ref.watch(a1cStatusProvider).valueOrNull?.currentGmiPercent;
+  if (gmi == null) return null;
+  return GlycationGap(labPercent: labs.last.percent, gmiPercent: gmi);
 });
 
 /// Sleep ↔ glucose-steadiness correlation over recent nights.
