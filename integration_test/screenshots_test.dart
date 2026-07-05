@@ -128,5 +128,57 @@ void main() {
         scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Forecast accuracy'));
     await shot(tester, '13-accuracy');
+
+    // Newer surfaces are all one level below Settings. Scroll the settings list to the
+    // top so scrollUntilVisible (which scrolls down) can find any entry.
+    Future<void> scrollTop() async {
+      final s = find.byType(Scrollable);
+      if (s.evaluate().isEmpty) return;
+      for (var i = 0; i < 15; i++) {
+        await tester.drag(s.first, const Offset(0, 600));
+        await tester.pumpAndSettle();
+      }
+    }
+    Future<void> backToSettings() async {
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      await scrollTop();
+    }
+    Future<void> capture(String label, String name) async {
+      try {
+        await tester.scrollUntilVisible(find.text(label), 250,
+            scrollable: find.byType(Scrollable).first);
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        await shot(tester, name);
+        await backToSettings();
+      } catch (_) {
+        // Non-fatal: skip a surface that can't be reached rather than abort the run.
+      }
+    }
+
+    await backToSettings(); // leave the accuracy screen, back to Settings (top)
+
+    // 14/15 — Reports hub + Glucose report (AGP)
+    try {
+      await tester.scrollUntilVisible(find.text('Reports'), 250,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(find.text('Reports'));
+      await tester.pumpAndSettle();
+      await shot(tester, '14-reports');
+      await tester.tap(find.text('Glucose report'));
+      await tester.pumpAndSettle();
+      await shot(tester, '15-glucose-report');
+      await tester.tap(find.byTooltip('Back')); // → hub
+      await tester.pumpAndSettle();
+      await backToSettings(); // → settings
+    } catch (_) {}
+
+    await capture('Confirm events', '16-confirm');
+    await capture('Pump', '17-pump');
+    await capture('Notifications', '18-notifications');
+    await capture('Profile', '19-profile');
+    await capture('Exercise mode', '20-exercise');
+    await capture('Basal suggestions', '21-basal');
   });
 }
