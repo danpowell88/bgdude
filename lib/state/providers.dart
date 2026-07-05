@@ -25,6 +25,8 @@ import '../food/food_database.dart';
 import '../food/offline_afcd.dart';
 import '../food/open_food_facts.dart';
 import '../food/panel_llm.dart';
+import '../food/panel_llm_gemma.dart';
+import '../food/panel_model_manager.dart';
 import '../food/panel_ocr.dart';
 import '../food/panel_ocr_mlkit.dart';
 import '../food/panel_scan_service.dart';
@@ -168,10 +170,87 @@ final foodDatabaseProvider = FutureProvider<FoodDatabase>((ref) async {
 /// On-device OCR for the nutrition-panel photo reader (ML Kit; image stays on-device).
 final panelOcrProvider = Provider<PanelOcr>((ref) => MlKitPanelOcr());
 
-/// Optional small-LLM normaliser for panel OCR text. Defaults to a no-op (deterministic
-/// parser only) until an on-device model is wired/downloaded.
-final panelLlmProvider =
-    Provider<PanelLlmExtractor>((ref) => const NoopPanelLlm());
+/// Optional small on-device LLM (Gemma) normaliser for panel OCR text — used only when a
+/// model has been downloaded (see [panelModelProvider]); otherwise a no-op so the
+/// deterministic parser is the sole path.
+final panelLlmProvider = Provider<PanelLlmExtractor>((ref) =>
+    ref.watch(panelModelProvider).installed
+        ? const GemmaPanelExtractor()
+        : const NoopPanelLlm());
+
+/// State of the downloadable nutrition-panel LLM model.
+class PanelModelStatus {
+  const PanelModelStatus({
+    required this.installed,
+    this.url,
+    this.downloading = false,
+    this.progress = 0,
+  });
+
+  final bool installed;
+  final String? url;
+  final bool downloading;
+  final int progress; // 0–100 while downloading
+
+  PanelModelStatus copyWith(
+          {bool? installed, String? url, bool? downloading, int? progress}) =>
+      PanelModelStatus(
+        installed: installed ?? this.installed,
+        url: url ?? this.url,
+        downloading: downloading ?? this.downloading,
+        progress: progress ?? this.progress,
+      );
+}
+
+final panelModelProvider =
+    StateNotifierProvider<PanelModelController, PanelModelStatus>(
+        (ref) => PanelModelController());
+
+class PanelModelController extends StateNotifier<PanelModelStatus> {
+  PanelModelController() : super(const PanelModelStatus(installed: false)) {
+    _restore();
+  }
+
+  static const _urlKey = 'panel_llm_url_v1';
+  final _mgr = const PanelModelManager();
+
+  Future<void> _restore() async {
+    final url = await KvStore.getString(_urlKey);
+    if (url == null || url.isEmpty) return;
+    final ok = await _mgr.isInstalled(url);
+    if (mounted) state = PanelModelStatus(installed: ok, url: url);
+  }
+
+  /// Download + activate the model from [url] (with optional gated-download [token]).
+  Future<void> download(String url, {String? token}) async {
+    state = PanelModelStatus(
+        installed: false, url: url, downloading: true, progress: 0);
+    try {
+      await _mgr.download(
+        url: url,
+        token: token,
+        onProgress: (p) {
+          if (mounted && state.downloading) {
+            state = state.copyWith(progress: p);
+          }
+        },
+      );
+      await KvStore.setString(_urlKey, url);
+      if (mounted) state = PanelModelStatus(installed: true, url: url);
+    } catch (_) {
+      if (mounted) {
+        state = PanelModelStatus(installed: false, url: url, downloading: false);
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> remove() async {
+    final url = state.url;
+    if (url != null) await _mgr.delete(url);
+    if (mounted) state = PanelModelStatus(installed: false, url: url);
+  }
+}
 
 /// Reads a nutrition panel from a photo: OCR → deterministic parse → LLM fallback.
 final panelScanServiceProvider = Provider<PanelScanService>((ref) =>

@@ -84,6 +84,12 @@ dependencies:
   google_mlkit_text_recognition: ^0.15.1
   image_picker: ^1.1.2
 
+  # Optional small on-device LLM (Gemma) to normalise messy/foreign nutrition-panel OCR
+  # into structured values. Model downloaded on demand (not bundled); deterministic parser
+  # is the always-on fallback. flutter_gemma needs the AGP 8.x line (see android/).
+  flutter_gemma: ^1.0.0
+  flutter_gemma_mediapipe: ^1.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -6,6 +6,7 @@ import '../core/units.dart';
 import '../integrations/nightscout.dart';
 import '../state/providers.dart';
 import 'advanced_screen.dart';
+import 'ai_model_screen.dart';
 import 'basal_recommendations_screen.dart';
 import 'confirmation_inbox_screen.dart';
 import 'exercise_mode_screen.dart';
@@ -284,6 +285,16 @@ class SettingsScreen extends ConsumerWidget {
             value: ref.watch(barcodeLookupEnabledProvider),
             onChanged: (v) =>
                 ref.read(barcodeLookupEnabledProvider.notifier).set(v),
+          ),
+          ListTile(
+            leading: const Icon(Icons.auto_awesome_outlined),
+            title: const Text('Nutrition-label AI'),
+            subtitle: Text(ref.watch(panelModelProvider).installed
+                ? 'On-device Gemma model installed'
+                : 'Optional on-device model for tricky labels'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const AiModelScreen()),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.favorite_border),

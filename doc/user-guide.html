@@ -251,7 +251,7 @@
   <ul class="tight">
     <li><b>Scan barcode</b> — point the camera at a product; carbs (and fat/protein) fill in from the food database.</li>
     <li><b>Search foods</b> — type a name to look it up (packaged products + a bundled offline Australian generic-food set).</li>
-    <li><b>Scan nutrition label</b> — photograph the <b>nutrition panel</b> (the facts table, not the food). The label text is read <b>on-device</b> (OCR; the photo never leaves your phone), the carbs/fat/protein/serving are parsed out, and — for unusual or foreign layouts — an optional small on-device AI model can normalise the reading. It's a reading aid: values land in the editable fields for you to confirm, and it never doses anything by itself.</li>
+    <li><b>Scan nutrition label</b> — photograph the <b>nutrition panel</b> (the facts table, not the food). The label text is read <b>on-device</b> (OCR; the photo never leaves your phone), the carbs/fat/protein/serving are parsed out, and — for unusual or foreign layouts — an optional small on-device AI model (Gemma, downloaded from <b>Settings → Nutrition-label AI</b>) can normalise the reading. It's a reading aid: values land in the editable fields for you to confirm, and it never doses anything by itself.</li>
     <li>Every looked-up value lands in an <b>editable field</b> — correct anything the database got wrong, or adjust to your portion. Fat/Protein (optional) feed the fat-protein-unit coach.</li>
   </ul>
   <div class="note">Food lookup uses Open Food Facts (free, public). A one-time notice explains that only the barcode/text is sent — no health data. Turn it off in <b>Settings → Barcode food lookup</b> to stay fully offline. The <b>nutrition-label scan</b> is always fully on-device.</div>
@@ -472,6 +472,7 @@
     <li><b>Glucose units</b> — mmol/L (Australian default) or mg/dL. You pick this during onboarding; change it here any time and the whole app follows.</li>
     <li><b>Sync health data now</b> — pull sleep, HRV, resting/continuous HR, steps and workouts from Health Connect.</li>
     <li><b>Barcode food lookup</b> — the online food-lookup switch (see <a href="#meals">Meals</a>).</li>
+    <li><b>Nutrition-label AI</b> — optionally download a small on-device model (Gemma, ~0.5&nbsp;GB) that helps the <a href="#meals">label scanner</a> read unusual or foreign-language panels. Paste a Gemma&nbsp;3&nbsp;1B <code>.task</code> model URL (Gemma is licence-gated, so it isn't bundled) with an access token if the host needs one; it downloads once and runs entirely on your phone. Everything works without it — the deterministic parser is the always-on path.</li>
     <li><b>Re-pair / Unpair pump</b> — start a fresh scan or drop the pairing.</li>
     <li><b>Nightscout</b> — optional upload of entries, treatments and device status; enter your site URL + API secret and <b>Test connection</b>.</li>
   </ul>
