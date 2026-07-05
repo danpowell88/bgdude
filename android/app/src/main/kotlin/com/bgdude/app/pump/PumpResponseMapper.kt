@@ -30,8 +30,12 @@ object PumpResponseMapper {
             // Ibc (internal battery capacity) is the value the pump UI shows as %.
             is CurrentBatteryV1Response ->
                 snapshot.batteryPercent = message.currentBatteryIbc
-            is CurrentBatteryV2Response ->
+            is CurrentBatteryV2Response -> {
                 snapshot.batteryPercent = message.currentBatteryIbc
+                // V2 also reports charging state — essential for drain estimation (a
+                // charge resets the discharge slope). V1 pumps leave this null.
+                snapshot.isCharging = message.isCharging
+            }
 
             is InsulinStatusResponse ->
                 snapshot.reservoirUnits = message.currentInsulinAmount.toDouble()

@@ -67,6 +67,20 @@ class MutableSnapshotTest {
     }
 
     @Test
+    fun toJson_emits_charging_state_when_set() {
+        val charging = MutableSnapshot().apply {
+            batteryPercent = 45
+            isCharging = true
+        }.toJson()
+        assertTrue(charging, charging.contains("\"batteryPercent\":45"))
+        assertTrue(charging, charging.contains("\"isCharging\":true"))
+
+        // Unset → omitted (V1 pumps don't report it).
+        val noCharge = MutableSnapshot().apply { batteryPercent = 45 }.toJson()
+        assertFalse(noCharge, noCharge.contains("isCharging"))
+    }
+
+    @Test
     fun toJson_omits_empty_alert_arrays() {
         val json = MutableSnapshot().apply { batteryPercent = 50 }.toJson()
         assertFalse(json, json.contains("activeAlerts"))

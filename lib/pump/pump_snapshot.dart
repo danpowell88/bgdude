@@ -72,6 +72,7 @@ class PumpSnapshot {
   const PumpSnapshot({
     required this.time,
     this.batteryPercent,
+    this.isCharging,
     this.reservoirUnits,
     this.iobUnits,
     this.basalUnitsPerHour,
@@ -89,6 +90,9 @@ class PumpSnapshot {
 
   final DateTime time;
   final int? batteryPercent;
+
+  /// Whether the pump is charging (V2 battery response only; null on V1 / unknown).
+  final bool? isCharging;
   final double? reservoirUnits;
   final double? iobUnits;
   final double? basalUnitsPerHour;
@@ -122,6 +126,7 @@ class PumpSnapshot {
   static PumpSnapshot fromJson(Map<String, dynamic> j) => PumpSnapshot(
         time: _time(j['timestampEpochMs'] as num?) ?? DateTime.now(),
         batteryPercent: (j['batteryPercent'] as num?)?.toInt(),
+        isCharging: j['isCharging'] as bool?,
         reservoirUnits: (j['reservoirUnits'] as num?)?.toDouble(),
         iobUnits: (j['iobUnits'] as num?)?.toDouble(),
         basalUnitsPerHour: (j['basalUnitsPerHour'] as num?)?.toDouble(),

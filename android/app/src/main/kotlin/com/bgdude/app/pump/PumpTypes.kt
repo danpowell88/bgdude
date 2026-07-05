@@ -41,6 +41,7 @@ class MutableSnapshot {
     var jpakeProgress: Int? = null
 
     var batteryPercent: Int? = null
+    var isCharging: Boolean? = null
     var reservoirUnits: Double? = null
     var iobUnits: Double? = null
     var basalUnitsPerHour: Double? = null
@@ -74,6 +75,7 @@ class MutableSnapshot {
         field("timestampEpochMs", System.currentTimeMillis())
         field("model", model.name)
         field("batteryPercent", batteryPercent)
+        field("isCharging", isCharging)
         field("reservoirUnits", reservoirUnits)
         field("iobUnits", iobUnits)
         field("basalUnitsPerHour", basalUnitsPerHour)

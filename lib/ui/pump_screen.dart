@@ -221,24 +221,38 @@ class _SiteCard extends StatelessWidget {
   }
 }
 
-class _DeviceCard extends StatelessWidget {
+class _DeviceCard extends ConsumerWidget {
   const _DeviceCard({required this.snap});
   final PumpSnapshot snap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final battery = snap.batteryPercent == null ? '—' : '${snap.batteryPercent}%';
+    final drain = ref.watch(batteryDrainProvider).valueOrNull;
+    final String batteryDetail;
+    if (snap.isCharging == true) {
+      batteryDetail = '$battery · charging';
+    } else if (drain != null && drain.hasEstimate && drain.timeToEmpty != null) {
+      batteryDetail = '$battery · ~${_hrs(drain.timeToEmpty!)} left';
+    } else {
+      batteryDetail = battery;
+    }
     return _Section(
       title: 'Device',
       child: Column(
         children: [
-          _Row('Battery',
-              snap.batteryPercent == null ? '—' : '${snap.batteryPercent}%'),
+          _Row('Battery', batteryDetail),
           _Row('Firmware', snap.firmwareVersion ?? '—'),
           _Row('API version', snap.apiVersion ?? '—'),
           _Row('Updated', _ago(snap.time)),
         ],
       ),
     );
+  }
+
+  static String _hrs(Duration d) {
+    final h = d.inMinutes / 60.0;
+    return h < 1 ? '${d.inMinutes}m' : '${h.toStringAsFixed(h < 3 ? 1 : 0)}h';
   }
 }
 

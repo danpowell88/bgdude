@@ -141,6 +141,11 @@ already collects:
 
 ## Quality-of-life
 
+- **Pump battery drain** — the native side now captures charging state; a persisted
+  battery history + a robust Theil–Sen discharge slope (`pump/battery_drain.dart`) give a
+  time-to-empty on the Pump screen and a **Low pump battery** alert that fires on a low
+  level *or* a predicted soon-drain ("won't last the night"). A deliberate heuristic, not
+  ML — the discharge is near-linear and single-device, so a slope beats a model.
 - **Quiet hours** — a do-not-disturb window (*Settings → Notifications*) that holds back
   non-critical notifications; urgent/predicted lows and pump alarms always come through.
 - **Custom alert thresholds** — set your own low/high alert lines; safety modifiers (age,

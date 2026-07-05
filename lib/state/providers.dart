@@ -55,6 +55,8 @@ import '../ml/sensitivity_model.dart';
 import '../ml/sensitivity_training.dart';
 import '../ml/time_of_day_sensitivity.dart';
 import '../ml/uncertainty_calibrator.dart';
+import '../pump/battery_drain.dart';
+import '../pump/battery_history.dart';
 import '../pump/history_backfill.dart';
 import '../pump/pump_client.dart';
 import '../pump/pump_events.dart';
@@ -446,6 +448,14 @@ final insulinTodayProvider = Provider<InsulinTotals>((ref) {
 /// Recent pump events (alarms/alerts/cartridge changes) decoded from the History Log.
 final pumpEventsProvider =
     FutureProvider<List<PumpEvent>>((ref) => PumpEventLog.load());
+
+/// Estimated pump-battery time-to-empty from the recent discharge slope (heuristic, not
+/// ML). Re-reads when a new snapshot arrives.
+final batteryDrainProvider = FutureProvider<BatteryDrainEstimate>((ref) async {
+  ref.watch(pumpSnapshotProvider); // refresh alongside live status
+  return const BatteryDrainEstimator()
+      .estimate(await BatteryHistoryStore.load(), now: DateTime.now());
+});
 
 /// The date range the Reports section is showing (default: last 14 days).
 final reportRangeProvider = StateProvider<ReportRange>(
@@ -1234,6 +1244,50 @@ class AlertService {
             );
       } catch (_) {}
     }
+
+    await _checkBattery(snap, now);
+  }
+
+  /// Log a battery sample and warn on a low level or a predicted soon-drain (e.g. "won't
+  /// last the night"). The pump raises its own critical-battery alarms; this is the
+  /// earlier, predictive heads-up.
+  static const int _batteryLowPercent = 20;
+  static const Duration _batteryWarnWithin = Duration(hours: 6);
+  Future<void> _checkBattery(PumpSnapshot snap, DateTime now) async {
+    final pct = snap.batteryPercent;
+    if (pct == null) return;
+    try {
+      await BatteryHistoryStore.append(
+          BatterySample(time: now, percent: pct, charging: snap.isCharging));
+    } catch (_) {}
+    if (snap.isCharging == true) return; // no warning while charging
+
+    final estimate = const BatteryDrainEstimator()
+        .estimate(await BatteryHistoryStore.load(), now: now);
+    final tte = estimate.timeToEmpty;
+    final soon = tte != null && tte <= _batteryWarnWithin;
+    if ((pct <= _batteryLowPercent || soon) &&
+        _shouldFire(NotificationCategory.batteryLow, now)) {
+      final body = soon
+          ? 'About ${_hoursText(tte)} of battery left at the current rate — '
+              'charge before it runs out${_overnight(now, tte) ? ' (it won’t last the night)' : ''}.'
+          : 'Pump battery at $pct% — charge it soon.';
+      try {
+        await _ref.read(notificationServiceProvider).show(
+              NotificationCategory.batteryLow, 'Low pump battery', body);
+      } catch (_) {}
+    }
+  }
+
+  static String _hoursText(Duration d) {
+    final h = d.inMinutes / 60.0;
+    return h < 1 ? '${d.inMinutes} min' : '${h.toStringAsFixed(h < 3 ? 1 : 0)} h';
+  }
+
+  /// True when the predicted empty time lands during typical sleep hours (23:00–07:00).
+  static bool _overnight(DateTime now, Duration tte) {
+    final at = now.add(tte);
+    return at.hour >= 23 || at.hour < 7;
   }
 
   /// Turn a pumpx2 enum-ish alarm name (e.g. "LOW_INSULIN_ALARM") into readable text.

@@ -17,6 +17,7 @@ enum NotificationCategory {
   overnightLowRisk,
   pumpAlarm,
   reservoirLow,
+  batteryLow,
   connectionLost,
   deviceReminder,
   illnessSuggestion,
@@ -37,6 +38,7 @@ extension NotificationCategoryX on NotificationCategory {
         NotificationCategory.overnightLowRisk => 'Overnight low risk',
         NotificationCategory.pumpAlarm => 'Pump alarms',
         NotificationCategory.reservoirLow => 'Low reservoir',
+        NotificationCategory.batteryLow => 'Low pump battery',
         NotificationCategory.connectionLost => 'Pump disconnected',
         NotificationCategory.deviceReminder => 'Sensor / site reminders',
         NotificationCategory.illnessSuggestion => 'Illness detected',
@@ -64,6 +66,8 @@ extension NotificationCategoryX on NotificationCategory {
           'An alarm/alert is active on the pump.',
         NotificationCategory.reservoirLow =>
           'The insulin reservoir is running low.',
+        NotificationCategory.batteryLow =>
+          'The pump battery is low or predicted to run out soon.',
         NotificationCategory.connectionLost =>
           'No pump data for a sustained period.',
         NotificationCategory.deviceReminder =>
@@ -288,6 +292,12 @@ class NotificationPrefs {
             sound: true,
             repeatMinutes: 0),
         NotificationCategory.reservoirLow => const CategoryPref(
+            enabled: true,
+            importance: NotifImportance.normal,
+            vibrate: true,
+            sound: false,
+            repeatMinutes: 0),
+        NotificationCategory.batteryLow => const CategoryPref(
             enabled: true,
             importance: NotifImportance.normal,
             vibrate: true,
