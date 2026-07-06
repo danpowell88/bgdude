@@ -147,6 +147,9 @@ today, none shown in the app yet:
 ---
 
 ## Part 4 — Quality & infrastructure
+
+_Architecture & design review with a ranked change plan (god-file split, KV seam,
+alert aliveness, data-layer hardening): [doc/plans/architecture.md](doc/plans/architecture.md)._
 - **Git remote + push** so CI + the GitHub Pages workflow actually run (nothing is pushed
   today). (S)
 - **Broaden emulator/integration coverage** for the newer screens (meter, AI model, Garmin
