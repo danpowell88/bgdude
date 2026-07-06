@@ -4,6 +4,7 @@ title: 3.A Split providers.dart + PersistedStateNotifier
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:44'
 labels:
   - roadmap
   - §3
@@ -17,7 +18,9 @@ ordinal: 35000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-providers.dart is 2,239 lines / 85 providers / 20 inline notifiers + AlertService (~358) + AppJobs (~520); 33/43 silent catches and 45/78 raw DateTime.now() live here. Target modules: state/{persisted_state_notifier,settings_providers,mode_providers,meal_providers,pump_providers,forecast_providers,integration_providers}.dart; services/{alert_service,app_jobs}.dart. PersistedStateNotifier<T> first (fixes ~12 un-awaited _restore() races): _ready future; saves queue behind it; subclasses provide encode/decode/kvKey; migrate two + a race test, then sweep. AlertService/AppJobs take explicit deps, not Ref. One pattern per state kind, documented in the module header. No riverpod codegen migration.
+**Background.** Nearly all of bgdude's app-wide state is crammed into one 2,239-line file ("providers.dart") — 85 separate pieces of state plus two big background services. It also holds most of the app's silently-ignored errors and hard-to-test "what time is it now" calls, and about a dozen pieces of state have a subtle save/load race that can lose a write.
+
+**Reason for change.** This one file is the project's biggest structural problem: it makes the code hard to test and blocks the background-alert safety work. Splitting it into focused files — and fixing the save/load race with a shared base class — is the refactor most other cleanups depend on.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -27,6 +30,14 @@ providers.dart is 2,239 lines / 85 providers / 20 inline notifiers + AlertServic
 - [ ] #3 providers.dart split into the target modules
 - [ ] #4 One documented pattern per state kind
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** PersistedStateNotifier<T> first: a _ready future completed by restore; saves queue behind it; subclasses provide encode/decode/kvKey. Migrate two notifiers + a race test, then sweep. AlertService/AppJobs take explicit deps (repository, notification service, thresholds, clock), not Ref. Split into state/{settings,mode,meal,pump,forecast,integration}_providers.dart + services/{alert_service,app_jobs}.dart. One documented pattern per state kind. No riverpod codegen migration.
+
+**Testing.** A restore-then-save race test on PersistedStateNotifier; unit tests for AlertService/AppJobs now that they take explicit deps; provider-module tests after the split. Refactor must be behaviour-preserving: full `flutter test` + `flutter analyze` green before and after; add the new unit tests the refactor unlocks.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

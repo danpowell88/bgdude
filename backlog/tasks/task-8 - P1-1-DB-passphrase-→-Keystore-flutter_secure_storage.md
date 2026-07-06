@@ -4,6 +4,7 @@ title: P1-1 DB passphrase → Keystore (flutter_secure_storage)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:43'
 labels:
   - roadmap
   - §1-P1
@@ -17,7 +18,9 @@ ordinal: 8000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-At-rest encryption is theatre: the SQLCipher passphrase sits in plaintext SharedPreferences next to the ciphertext while comments/README claim Keystore. Move to flutter_secure_storage (Keystore), migrate off prefs, await the write, and fix the false comments.
+**Background.** bgdude stores your data in an encrypted database. The encryption key (a passphrase) is meant to be protected by the Android Keystore (secure hardware), and the code comments and README say it is. In reality the passphrase sits in plain text in ordinary app settings storage, right next to the encrypted file.
+
+**Reason for change.** Anyone who can read the app's files also gets the key, so the "encryption at rest" is effectively for show — and the false "Keystore" claims make it worse by implying protection that is not there. This is health data.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -27,6 +30,14 @@ At-rest encryption is theatre: the SQLCipher passphrase sits in plaintext Shared
 - [ ] #3 Write awaited before DB open
 - [ ] #4 False security comments corrected
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** Move the passphrase to flutter_secure_storage (Android Keystore); migrate any existing prefs value across on first run; await the write before opening the DB (secure_key.dart, database.dart:187, main.dart). Correct the misleading comments/README.
+
+**Testing.** Test the migration path (prefs → secure storage) and that the DB opens with the migrated key; verify the passphrase is absent from prefs afterward. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

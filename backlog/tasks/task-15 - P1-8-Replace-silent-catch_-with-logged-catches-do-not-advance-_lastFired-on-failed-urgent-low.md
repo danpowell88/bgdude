@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:43'
 labels:
   - roadmap
   - §1-P1
@@ -19,7 +20,9 @@ ordinal: 15000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Replace bare catch(_){} with logged catches. Two behavioural fixes: a failed urgent-low must not advance _lastFired; runStartup records per-job failures. See §3.D.
+**Background.** Across the codebase there are 43 places that catch an error and do nothing with it ("swallow" it), 33 of them in one file. Two of these hide real problems: a failed urgent-low alert still records itself as "fired" (which can stop the retry), and the startup routine doesn't note when one of its jobs fails.
+
+**Reason for change.** Silently swallowed errors make real failures invisible in the field — including an urgent-low that failed to send, or a startup job that never runs. Errors that matter should be logged.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -28,6 +31,14 @@ Replace bare catch(_){} with logged catches. Two behavioural fixes: a failed urg
 - [ ] #2 Failed urgent-low does not advance _lastFired
 - [ ] #3 Per-job startup failures recorded
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** Sweep providers.dart: a swallow is legal only if the op is optional AND it logs (via the §3.D app_log). Do not advance _lastFired on a failed urgent-low; make runStartup record per-job failures.
+
+**Testing.** Unit test that a failed urgent-low leaves _lastFired unchanged (so it retries); assert startup records a failing job. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

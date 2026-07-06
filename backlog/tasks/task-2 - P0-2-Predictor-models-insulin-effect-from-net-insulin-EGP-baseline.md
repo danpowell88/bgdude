@@ -4,6 +4,7 @@ title: P0-2 Predictor models insulin effect from net insulin (EGP baseline)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:43'
 labels:
   - roadmap
   - §1-P0
@@ -17,7 +18,9 @@ ordinal: 2000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Model insulin effect from net insulin (boluses + delivered−scheduled basal) or add an EGP term, treating scheduled basal as EGP-neutral. Re-tune constants + tests after. This is the single highest-ROI fix; every learned label inherits the baseline drift until it lands.
+**Background.** bgdude predicts where your glucose is heading and helps size insulin, which needs a model of how insulin lowers blood sugar. That model has two flaws today: it treats insulin as a force that only ever pushes glucose down (ignoring the sugar your liver steadily releases — "endogenous glucose production", EGP), and it counts all of your background "basal" insulin as active drug. As a result, someone whose pump settings are actually well-tuned looks, to the app, extremely insulin-resistant.
+
+**Reason for change.** This is the single highest-value fix. It cancels correction doses to nearly zero (under-treating highs), and it corrupts every figure the app learns about your body until fixed — so no other prediction work should begin before it.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -26,6 +29,14 @@ Model insulin effect from net insulin (boluses + delivered−scheduled basal) or
 - [ ] #2 Constants re-tuned with tests
 - [ ] #3 A well-tuned fasting user no longer reads as maximally insulin-resistant
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** In predictor.dart:290-291 / insulin_math.dart:107-145, model insulin effect from NET insulin (boluses + delivered−scheduled basal), treating scheduled basal as EGP-neutral — or add an explicit EGP term. Re-tune the model constants afterward.
+
+**Testing.** A well-tuned fasting user must score ≈1.0 (not maximally resistant). Re-tune constants with tests; regression-test corrections no longer collapse. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

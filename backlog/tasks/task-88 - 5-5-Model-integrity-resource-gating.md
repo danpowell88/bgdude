@@ -4,6 +4,7 @@ title: 5-5 Model integrity & resource gating
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:47'
 labels:
   - roadmap
   - §5
@@ -19,7 +20,9 @@ ordinal: 88000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-URL + SHA-256 stored and verified (with P1-9's host/HTTPS rules); free-space check before download, RAM check before load (silent-null failure today); reconcile the 0.5 GB vs 1.5 GB claims by measuring on the Pixel.
+**Background.** The AI model file is large and downloaded on demand. Today there's no integrity check on the download, and no check that the phone has enough free space or memory before using it (it just silently fails).
+
+**Reason for change.** Verifying the download's fingerprint (SHA-256) and checking free space/RAM up front — with a clear message on failure — makes model management safe and predictable. Overlaps the download-security fix (P1-9).
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -28,6 +31,14 @@ URL + SHA-256 stored and verified (with P1-9's host/HTTPS rules); free-space che
 - [ ] #2 Free-space + RAM checks before download/load
 - [ ] #3 Space/RAM figures reconciled by measurement
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** Store + verify the model URL and SHA-256 (with P1-9 host/HTTPS rules); free-space check before download, RAM check before load (silent-null failure today); reconcile the 0.5 GB vs 1.5 GB size claims by measuring on the Pixel.
+
+**Testing.** Unit tests: wrong SHA-256 rejected; insufficient space/RAM blocks with a clear message. Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model; `flutter analyze`/`flutter test` green.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

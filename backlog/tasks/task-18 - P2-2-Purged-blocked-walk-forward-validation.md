@@ -4,7 +4,7 @@ title: P2-2 Purged/blocked walk-forward validation
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:27'
+updated_date: '2026-07-06 03:43'
 labels:
   - roadmap
   - §1-P2
@@ -18,16 +18,10 @@ ordinal: 18000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Replace the single chronological train/test split with purged, blocked walk-forward validation so promotion reflects out-of-sample skill. Fully specified in §4-1.10 / TASK-55 (K=3–4 contiguous folds, purge gap = maxHorizon, pooled metrics gate promotion).
+**Background.** To decide whether a newly-trained prediction model is better than the old one, bgdude tests it on data it wasn't trained on. Today it uses one simple "train on the first part, test on the last part" split. Because glucose readings minutes apart are highly related, that single split can flatter a model that has really just memorised.
+
+**Reason for change.** A misleading test can promote a worse model into daily use. A more rigorous scheme (several rolling test windows with a gap to prevent leakage) gives an honest verdict. Fully specified in the walk-forward-validation task (TASK-55).
 <!-- SECTION:DESCRIPTION:END -->
-
-## Implementation Notes
-
-<!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P2-2 → §4-1.10
-Effort: M
-Roadmap status: open
-<!-- SECTION:NOTES:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
@@ -36,3 +30,19 @@ Roadmap status: open
 - [ ] #3 Promotion decided on pooled fold metrics
 - [ ] #4 Detailed implementation tracked in TASK-55 (§4-1.10)
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** K=3–4 contiguous blocked folds with a purge gap ≥ maxHorizon (the ±6 min label slop makes the gap mandatory); pooled fold metrics gate promotion; final model retrains on everything; <~10 days falls back to the single split.
+
+**Testing.** Purge-gap leakage assertion (no train row within maxHorizon of a test label); pooled-gate test. Detailed in TASK-55. ML-honesty tests first (coverage + bias, synthetic-data recovery); `flutter analyze` clean, `flutter test` green.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Source: ROADMAP §1 P2-2 → §4-1.10
+Effort: M
+Roadmap status: open
+<!-- SECTION:NOTES:END -->

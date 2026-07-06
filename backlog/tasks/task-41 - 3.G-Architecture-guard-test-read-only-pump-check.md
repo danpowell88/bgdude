@@ -4,6 +4,7 @@ title: 3.G Architecture guard test (+ read-only-pump check)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:44'
 labels:
   - roadmap
   - §3
@@ -19,7 +20,9 @@ ordinal: 41000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Rule: UI may import value/DTO types from any layer, never interfaces/stores/services (those come via providers). Current violations: meal_library_screen.dart→kv_store.dart; protocol_explorer_screen.dart→pump_source.dart. Enforce with test/architecture_test.dart (~30 lines walking lib/ui/** imports); in the same file, FAIL the build if any Kotlin file imports request.control (mechanical read-only-pump guarantee).
+**Background.** bgdude has a layering rule: screens may use plain data types from anywhere, but must not reach directly into the app's services or storage. Two screens currently break that rule, and the "the app never sends write/control commands to the pump" promise is only enforced by discipline, not by any check.
+
+**Reason for change.** A tiny automated test can enforce both the layering rule and the read-only-pump guarantee, turning "we promise" into "the build fails if anyone breaks it".
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -28,6 +31,14 @@ Rule: UI may import value/DTO types from any layer, never interfaces/stores/serv
 - [ ] #2 Existing violations fixed (meal_library_screen, protocol_explorer_screen)
 - [ ] #3 Build fails if any Kotlin imports request.control
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** Add test/architecture_test.dart (~30 lines) walking lib/ui/** imports: UI may import value/DTO types from any layer, never interfaces/stores/services. Fix the two current violations. In the same test, fail the build if any Kotlin file imports request.control.
+
+**Testing.** The test fails on a deliberately-added bad import and on a deliberately-added request.control import; passes once violations are fixed. Add/extend unit tests under `test/`. `flutter analyze` clean, `flutter test` green before commit.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

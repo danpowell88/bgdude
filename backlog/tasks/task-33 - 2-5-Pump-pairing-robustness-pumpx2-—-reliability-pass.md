@@ -4,6 +4,7 @@ title: 2-5 Pump pairing robustness (pumpx2) — reliability pass
 status: In Progress
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:44'
 labels:
   - roadmap
   - §2
@@ -18,7 +19,9 @@ ordinal: 33000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Native read path, pairing dialog, reconnect done; JPAKE pairing VERIFIED end-to-end on a real t:slim X2 (Jul 2026) after two fixes: (a) scheme defaulted to 16-char, never JPAKE 6-digit — now selects SHORT_6CHAR when no derived secret cached; (b) submitPairingCode only called pair() with a CentralChallenge, but JPAKE supplies none — now always calls pair(). Remaining: real-hardware reliability pass — pairing retries, reconnect, error surfacing, t:connect mutual-exclusion, long-run stability; tighten the reconnect/pairing-window loop (pump drops the link before service discovery when not actively on its Pair screen); consider gating the derived-secret reuse path. P1-4/P1-5 first.
+**Background.** bgdude connects to the Tandem t:slim X2 pump over Bluetooth to read (never write) data. Pairing was proven end-to-end on a real pump in July 2026 after fixing two bugs in the pairing handshake ("JPAKE", the pump's 6-digit-code exchange). It works, but the connection is still fragile.
+
+**Reason for change.** The pump drops the link if it isn't sitting on its pairing screen at just the right moment, and long-run stability plus the "only one app can pair at a time" rule with Tandem's official app are unproven. Two prerequisite crash fixes (P1-4/P1-5) must land first.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -29,6 +32,14 @@ Native read path, pairing dialog, reconnect done; JPAKE pairing VERIFIED end-to-
 - [ ] #4 Long-run stability verified
 - [ ] #5 Reconnect/pairing-window loop tightened
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** Reliability pass: pairing retries, reconnect after drop, error surfacing to the UI, t:connect mutual-exclusion handling, long-run stability; tighten the reconnect/pairing-window loop; consider gating the derived-secret reuse path.
+
+**Testing.** On-device: repeated pair/unpair, reconnect after sleep/range-loss, multi-hour stability; confirm the read-only guarantee (only currentStatus sent) holds throughout. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests still green.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

@@ -4,6 +4,7 @@ title: 3.F Restore ml/ purity
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:44'
 labels:
   - roadmap
   - §3
@@ -17,7 +18,9 @@ ordinal: 40000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-ml/forecaster_service.dart is the only ml/ file importing Riverpod. Split: store + train/gate/promote logic stay in ml/ (pure; takes KeyValueStore after §3.B); the thin StateNotifier controller moves to state/forecast_providers.dart. Enables a dart test-only CI lane for analytics/ + ml/.
+**Background.** bgdude's machine-learning code is meant to be "pure" — free of the app framework, so it can be tested quickly on its own. One file breaks that rule by importing the framework (Riverpod).
+
+**Reason for change.** Keeping the ML layer framework-free lets it run in a fast test lane and keeps the model logic clean. The fix splits the offending file so the pure logic stays put and only a thin controller touches the framework.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -26,6 +29,14 @@ ml/forecaster_service.dart is the only ml/ file importing Riverpod. Split: store
 - [ ] #2 Controller moved to state/forecast_providers.dart
 - [ ] #3 dart-test-only lane for analytics/+ml/ possible
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** Split: store + train/gate/promote logic stay in ml/ (pure; takes KeyValueStore after §3.B); the thin StateNotifier controller moves to state/forecast_providers.dart.
+
+**Testing.** A `dart test` (no Flutter) lane runs analytics/+ml/; controller test lives with the providers. Refactor must be behaviour-preserving: full `flutter test` + `flutter analyze` green before and after; add the new unit tests the refactor unlocks.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

@@ -4,6 +4,7 @@ title: P1-3 Dedupe bolus/carb/basal inserts; fix _lastBolusTime restart race
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:43'
 labels:
   - roadmap
   - §1-P1
@@ -17,7 +18,9 @@ ordinal: 10000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-No dedupe on bolus/carb/basal inserts inflates IOB/TDD used for advice. Add a unique key or event-id + upsert; fix the _lastBolusTime restart race.
+**Background.** Every insulin dose, carb entry and basal change is saved to the database. There is currently no guard against saving the same event twice, so re-reading history (for example after the app restarts) can double-count events; a related timing bug can also mis-handle the "last bolus" on restart.
+
+**Reason for change.** Duplicated events inflate two numbers the advisor relies on — insulin on board and total daily dose — so dosing advice built on double-counted insulin is unsafe. Inserts need to be de-duplicated.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -26,6 +29,14 @@ No dedupe on bolus/carb/basal inserts inflates IOB/TDD used for advice. Add a un
 - [ ] #2 _lastBolusTime restart race fixed
 - [ ] #3 ingestSnapshot restart/dedupe test
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** Add a unique key or event-id + upsert for bolus/carb/basal (database.dart, history_backfill.dart); fix the _lastBolusTime restart race in day_history_controller.dart.
+
+**Testing.** ingestSnapshot restart/dedupe test (re-ingest yields no duplicates); repo upsert test on NativeDatabase.memory(). Repository tests on `NativeDatabase.memory()`; add drift schema-export + step-migration tests BEFORE any schema change (§3.H).
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

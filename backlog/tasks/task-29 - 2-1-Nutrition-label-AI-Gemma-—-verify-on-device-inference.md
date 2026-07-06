@@ -4,6 +4,7 @@ title: 2-1 Nutrition-label AI (Gemma) — verify on-device inference
 status: In Progress
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:44'
 labels:
   - roadmap
   - §2
@@ -19,7 +20,9 @@ ordinal: 29000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Runtime wired (flutter_gemma on AGP 8.9), download/manage UI, gated fallback, builds+launches. Remaining: verify inference on a real device with a real model; curate a known-good Gemma 3 1B .task URL + licence flow; auto-suggest download on scan failure; RAM/space gating (→ §5-5); consider fine-tuned Gemma 3 270M (→ §5-8).
+**Background.** bgdude can read a nutrition label with the phone camera. For hard labels it can fall back to a small AI language model that runs entirely on the phone (Google's "Gemma", via the flutter_gemma library). The plumbing is built and the app launches, but the AI has never actually been run against a real model on a real phone.
+
+**Reason for change.** Until it is proven on-device, the AI label-reading is capability that exists on paper only. It must wait behind the safety checks (§5 items 1–3) that stop the AI inventing numbers, since its output influences carb dosing.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -29,6 +32,14 @@ Runtime wired (flutter_gemma on AGP 8.9), download/manage UI, gated fallback, bu
 - [ ] #3 Auto-suggest download on scan failure
 - [ ] #4 RAM/space gating
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** Curate a known-good Gemma 3 1B `.task` URL + licence flow; verify inference on the Pixel; auto-suggest download on scan failure; add RAM/space gating (→ §5-5); evaluate a fine-tuned Gemma 3 270M (→ §5-8).
+
+**Testing.** On-device accuracy integration test with the LLM enabled; record numbers. Verify graceful degradation when no model/insufficient RAM. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests still green.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

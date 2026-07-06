@@ -4,6 +4,7 @@ title: 5-2 OCR-grounding check (anti-hallucination + injection guard)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:47'
 labels:
   - roadmap
   - §5
@@ -18,7 +19,9 @@ ordinal: 85000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Accept an LLM value only if the number literally appears in the OCR text (± comma/rounding). Post-parse filter in PanelScanService so it applies to any model.
+**Background.** A language model can "hallucinate" — confidently state a number that isn't on the label — and a malicious label could even try to trick it.
+
+**Reason for change.** A grounding check accepts an AI-reported number only if that exact number actually appears in the text the camera read. It's both an anti-hallucination guard and a defence against prompt-injection, and it works for any model.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -26,6 +29,14 @@ Accept an LLM value only if the number literally appears in the OCR text (± com
 - [ ] #1 LLM values accepted only if present in OCR text
 - [ ] #2 Applied as a post-parse filter for any model
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** Post-parse filter in PanelScanService (applies to any model): accept an LLM value only if the number literally appears in the OCR text (± comma/rounding). This is both an anti-hallucination and a prompt-injection guard.
+
+**Testing.** Test that an LLM value absent from the OCR text is rejected; present-with-rounding is accepted. Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model; `flutter analyze`/`flutter test` green.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

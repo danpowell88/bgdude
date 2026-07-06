@@ -4,7 +4,7 @@ title: 6.3 Data integrity edges
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:27'
+updated_date: '2026-07-06 03:47'
 labels:
   - roadmap
   - §6
@@ -17,16 +17,10 @@ ordinal: 94000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Edge-case hardening: CGM gap handling, sensor warm-up/compression robustness, timezone/DST across history, and meter clock drift (PumpSnapshot.fromJson currently falls back to DateTime.now() with no skew detection).
+**Background.** Real-world data has messy edges: gaps in the CGM stream, the noisy sensor warm-up period, a compression low, time-zone/daylight-saving shifts across your history, and a meter whose clock has drifted.
+
+**Reason for change.** Handling these edges prevents corrupted statistics and misplaced events — the kind of subtle bugs that only show up on real data over time.
 <!-- SECTION:DESCRIPTION:END -->
-
-## Implementation Notes
-
-<!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §6
-Effort: M
-Roadmap status: open
-<!-- SECTION:NOTES:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
@@ -35,3 +29,19 @@ Roadmap status: open
 - [ ] #3 Timezone/DST correct across historical data
 - [ ] #4 Meter clock-skew detected and surfaced
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** CGM gap handling, sensor warm-up/compression robustness, timezone/DST across history, and meter clock-drift detection (PumpSnapshot.fromJson falls back to DateTime.now() with no skew detection).
+
+**Testing.** Unit tests per edge (gaps, warm-up, DST boundary, clock skew). Add/extend unit tests under `test/`. `flutter analyze` clean, `flutter test` green before commit.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Source: ROADMAP §6
+Effort: M
+Roadmap status: open
+<!-- SECTION:NOTES:END -->

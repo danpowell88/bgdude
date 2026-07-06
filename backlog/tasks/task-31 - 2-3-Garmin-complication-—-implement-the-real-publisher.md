@@ -4,6 +4,7 @@ title: 2-3 Garmin complication — implement the real publisher
 status: In Progress
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:44'
 labels:
   - roadmap
   - §2
@@ -18,7 +19,9 @@ ordinal: 31000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-3 products build/run in sim; mis-implemented complication removed. Implement the real publisher (resource-defined complication + updateComplication, gated on `has :Complications` per garmin/COMPLICATIONS.md); verify on-watch. Highest-leverage Garmin item.
+**Background.** A Garmin "complication" is a small element you can place on a watch face (like the little date or steps readouts). bgdude's Garmin apps run in the simulator, but the complication publisher was mis-built and removed, so BG can't yet appear on the watch face itself.
+
+**Reason for change.** A complication puts your glucose on the watch face you already glance at — the highest-value Garmin surface. It needs the real publisher, gated to watches that support complications.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -27,6 +30,14 @@ ordinal: 31000
 - [ ] #2 Gated on has :Complications
 - [ ] #3 Verified on a real watch
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** Implement the real publisher: resource-defined complication + updateComplication, gated on `has :Complications`; verify on-watch.
+
+**Testing.** On-watch: complication shows BG and updates; falls back cleanly on devices lacking :Complications. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests still green.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

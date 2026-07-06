@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:43'
 labels:
   - roadmap
   - §1-P1
@@ -19,7 +20,9 @@ ordinal: 16000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Reject HTTP, send tokens only to HF/Kaggle hosts, SHA-256 verify downloads, and never echo URL/token. Overlaps §5-5.
+**Background.** bgdude can download an optional on-device AI model to read tricky nutrition labels. The downloader currently accepts insecure HTTP, isn't careful about where it sends access tokens, doesn't check the downloaded file is genuine, and can print the URL/token into logs.
+
+**Reason for change.** A tampered or intercepted model file runs on your phone and drives label-reading that feeds carb dosing; a leaked token is a credential exposure. The download needs to be locked down (HTTPS-only, trusted hosts, integrity check).
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -29,6 +32,14 @@ Reject HTTP, send tokens only to HF/Kaggle hosts, SHA-256 verify downloads, and 
 - [ ] #3 SHA-256 verification
 - [ ] #4 URL/token never logged
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+**Technical notes.** In panel_model_manager.dart / ai_model_screen.dart: reject non-HTTPS; send the token only to allowlisted HF/Kaggle hosts; SHA-256 verify the downloaded file against a pinned hash; never log URL/token.
+
+**Testing.** Unit tests: HTTP rejected; token withheld from non-allowlisted host; wrong SHA-256 rejected; assert no URL/token in log output. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
