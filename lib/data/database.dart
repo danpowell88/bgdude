@@ -50,6 +50,13 @@ class BolusEvents extends Table {
   BoolColumn get isExtended => boolean().withDefault(const Constant(false))();
   IntColumn get durationMinutes => integer().withDefault(const Constant(0))();
   BoolColumn get isAutomatic => boolean().withDefault(const Constant(false))();
+
+  // A bolus is identified by its time + amount, so re-reading pump history (e.g. after a
+  // restart) upserts rather than double-counting IOB/TDD (TASK-10).
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {time, units},
+      ];
 }
 
 @DataClassName('BasalRow')
@@ -58,6 +65,12 @@ class BasalSegments extends Table {
   DateTimeColumn get start => dateTime()();
   DateTimeColumn get end => dateTime()();
   RealColumn get unitsPerHour => real()();
+
+  // One segment per start time; a re-observed segment updates its end/rate (TASK-10).
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {start},
+      ];
 }
 
 @DataClassName('CarbRow')
@@ -67,6 +80,12 @@ class CarbEntries extends Table {
   RealColumn get grams => real()();
   IntColumn get absorptionMinutes => integer().withDefault(const Constant(180))();
   TextColumn get source => text().withDefault(const Constant('user'))();
+
+  // Same time + grams is the same carb entry (TASK-10).
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {time, grams},
+      ];
 }
 
 @DataClassName('HealthRow')
@@ -147,7 +166,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   /// Read a value from the encrypted key-value store.
   Future<String?> readKv(String key) async {
@@ -175,6 +194,26 @@ class AppDatabase extends _$AppDatabase {
             // TASK-9: distinguish sensor readings from finger-prick / calibration ones.
             await m.addColumn(cgmReadings, cgmReadings.isCalibration);
             await m.addColumn(cgmReadings, cgmReadings.source);
+          }
+          if (from < 4) {
+            // TASK-10: dedupe bolus/carb/basal so re-read history can't double-count.
+            // Drop existing duplicates (keep the lowest id), then enforce uniqueness with an
+            // index (a fresh v4 db gets the table-level UNIQUE constraint via uniqueKeys).
+            await customStatement(
+                'DELETE FROM bolus_events WHERE id NOT IN '
+                '(SELECT MIN(id) FROM bolus_events GROUP BY time, units)');
+            await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS '
+                'uq_bolus_time_units ON bolus_events(time, units)');
+            await customStatement(
+                'DELETE FROM carb_entries WHERE id NOT IN '
+                '(SELECT MIN(id) FROM carb_entries GROUP BY time, grams)');
+            await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS '
+                'uq_carb_time_grams ON carb_entries(time, grams)');
+            await customStatement(
+                'DELETE FROM basal_segments WHERE id NOT IN '
+                '(SELECT MIN(id) FROM basal_segments GROUP BY start)');
+            await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS '
+                'uq_basal_start ON basal_segments(start)');
           }
         },
         beforeOpen: (details) async {

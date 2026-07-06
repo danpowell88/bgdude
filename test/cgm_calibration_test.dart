@@ -25,6 +25,25 @@ void main() {
             UNIQUE(time)
           );
         ''');
+        // The v4 (TASK-10) step dedupes these tables, so they must exist at v2 too.
+        raw.execute('''
+          CREATE TABLE bolus_events (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, time INTEGER NOT NULL,
+            units REAL NOT NULL, carbs_grams REAL NOT NULL DEFAULT 0,
+            is_extended INTEGER NOT NULL DEFAULT 0, duration_minutes INTEGER NOT NULL DEFAULT 0,
+            is_automatic INTEGER NOT NULL DEFAULT 0);
+        ''');
+        raw.execute('''
+          CREATE TABLE carb_entries (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, time INTEGER NOT NULL,
+            grams REAL NOT NULL, absorption_minutes INTEGER NOT NULL DEFAULT 180,
+            source TEXT NOT NULL DEFAULT 'user');
+        ''');
+        raw.execute('''
+          CREATE TABLE basal_segments (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, start INTEGER NOT NULL,
+            "end" INTEGER NOT NULL, units_per_hour REAL NOT NULL);
+        ''');
         raw.execute('INSERT INTO cgm_readings (time, mgdl) VALUES (1700000000, 120.0);');
         raw.execute('PRAGMA user_version = 2;');
       }));

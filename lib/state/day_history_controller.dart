@@ -120,11 +120,21 @@ class DayHistoryController extends StateNotifier<DayData> {
 
     await _repo.saveCgm([sample]);
 
-    // Persist a newly-observed last bolus.
+    // Persist a newly-observed last bolus. On a fresh start _lastBolusTime is null, and the
+    // first snapshot reports the pump's last bolus — which was already saved before the
+    // restart. Seed _lastBolusTime from persisted history first so we don't re-insert it
+    // (restart race, TASK-10); the {time, units} upsert is the backstop.
     final lb = snapshot.lastBolusTime;
-    if (lb != null && snapshot.lastBolusUnits != null && lb != _lastBolusTime) {
-      _lastBolusTime = lb;
-      await _repo.saveBolus(BolusEvent(time: lb, units: snapshot.lastBolusUnits!));
+    if (lb != null && snapshot.lastBolusUnits != null) {
+      if (_lastBolusTime == null) {
+        final now = _clock();
+        final recent = await _repo.boluses(now.subtract(const Duration(days: 2)), now);
+        if (recent.isNotEmpty) _lastBolusTime = recent.last.time;
+      }
+      if (lb != _lastBolusTime) {
+        _lastBolusTime = lb;
+        await _repo.saveBolus(BolusEvent(time: lb, units: snapshot.lastBolusUnits!));
+      }
     }
 
     // Reconstruct basal from the reported rate.

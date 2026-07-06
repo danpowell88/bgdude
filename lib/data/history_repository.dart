@@ -150,14 +150,28 @@ class DriftHistoryRepository implements HistoryRepository {
 
   @override
   Future<void> saveBolus(BolusEvent bolus) async {
-    await _db.into(_db.bolusEvents).insert(BolusEventsCompanion.insert(
-          time: bolus.time,
-          units: bolus.units,
-          carbsGrams: Value(bolus.carbsGrams),
-          isExtended: Value(bolus.isExtended),
-          durationMinutes: Value(bolus.durationMinutes),
-          isAutomatic: Value(bolus.isAutomatic),
-        ));
+    // Upsert on the {time, units} unique key so re-reading history doesn't double-count
+    // (TASK-10). The conflict target must be named explicitly — the default is the primary
+    // key (id), which would never match a re-read and would throw on the unique constraint.
+    await _db.into(_db.bolusEvents).insert(
+          BolusEventsCompanion.insert(
+            time: bolus.time,
+            units: bolus.units,
+            carbsGrams: Value(bolus.carbsGrams),
+            isExtended: Value(bolus.isExtended),
+            durationMinutes: Value(bolus.durationMinutes),
+            isAutomatic: Value(bolus.isAutomatic),
+          ),
+          onConflict: DoUpdate(
+            (_) => BolusEventsCompanion(
+              carbsGrams: Value(bolus.carbsGrams),
+              isExtended: Value(bolus.isExtended),
+              durationMinutes: Value(bolus.durationMinutes),
+              isAutomatic: Value(bolus.isAutomatic),
+            ),
+            target: [_db.bolusEvents.time, _db.bolusEvents.units],
+          ),
+        );
   }
 
   @override
@@ -181,11 +195,19 @@ class DriftHistoryRepository implements HistoryRepository {
 
   @override
   Future<void> saveCarb(CarbEntry carb) async {
-    await _db.into(_db.carbEntries).insert(CarbEntriesCompanion.insert(
-          time: carb.time,
-          grams: carb.grams,
-          absorptionMinutes: Value(carb.absorptionMinutes),
-        ));
+    await _db.into(_db.carbEntries).insert(
+          CarbEntriesCompanion.insert(
+            time: carb.time,
+            grams: carb.grams,
+            absorptionMinutes: Value(carb.absorptionMinutes),
+          ),
+          onConflict: DoUpdate(
+            (_) => CarbEntriesCompanion(
+              absorptionMinutes: Value(carb.absorptionMinutes),
+            ),
+            target: [_db.carbEntries.time, _db.carbEntries.grams],
+          ),
+        );
   }
 
   @override
@@ -203,11 +225,21 @@ class DriftHistoryRepository implements HistoryRepository {
 
   @override
   Future<void> saveBasal(BasalSegment segment) async {
-    await _db.into(_db.basalSegments).insert(BasalSegmentsCompanion.insert(
-          start: segment.start,
-          end: segment.end,
-          unitsPerHour: segment.unitsPerHour,
-        ));
+    // Upsert on {start}: a re-observed segment updates its end/rate instead of duplicating.
+    await _db.into(_db.basalSegments).insert(
+          BasalSegmentsCompanion.insert(
+            start: segment.start,
+            end: segment.end,
+            unitsPerHour: segment.unitsPerHour,
+          ),
+          onConflict: DoUpdate(
+            (_) => BasalSegmentsCompanion(
+              end: Value(segment.end),
+              unitsPerHour: Value(segment.unitsPerHour),
+            ),
+            target: [_db.basalSegments.start],
+          ),
+        );
   }
 
   @override
@@ -415,19 +447,30 @@ class InMemoryHistoryRepository implements HistoryRepository {
       _between(_cgm, from, to, (s) => s.time);
 
   @override
-  Future<void> saveBolus(BolusEvent bolus) async => _boluses.add(bolus);
+  Future<void> saveBolus(BolusEvent bolus) async {
+    // Mirror the Drift {time, units} dedup so tests see the same idempotence (TASK-10).
+    _boluses.removeWhere((b) => b.time == bolus.time && b.units == bolus.units);
+    _boluses.add(bolus);
+  }
+
   @override
   Future<List<BolusEvent>> boluses(DateTime from, DateTime to) async =>
       _between(_boluses, from, to, (b) => b.time);
 
   @override
-  Future<void> saveCarb(CarbEntry carb) async => _carbs.add(carb);
+  Future<void> saveCarb(CarbEntry carb) async {
+    _carbs.removeWhere((c) => c.time == carb.time && c.grams == carb.grams);
+    _carbs.add(carb);
+  }
   @override
   Future<List<CarbEntry>> carbs(DateTime from, DateTime to) async =>
       _between(_carbs, from, to, (c) => c.time);
 
   @override
-  Future<void> saveBasal(BasalSegment segment) async => _basal.add(segment);
+  Future<void> saveBasal(BasalSegment segment) async {
+    _basal.removeWhere((s) => s.start == segment.start);
+    _basal.add(segment);
+  }
   @override
   Future<List<BasalSegment>> basal(DateTime from, DateTime to) async => [
         for (final s in _basal)

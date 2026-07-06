@@ -558,6 +558,10 @@ class $BolusEventsTable extends BolusEvents
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {time, units},
+      ];
+  @override
   BolusRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return BolusRow(
@@ -896,6 +900,10 @@ class $BasalSegmentsTable extends BasalSegments
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {start},
+      ];
+  @override
   BasalRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return BasalRow(
@@ -1167,6 +1175,10 @@ class $CarbEntriesTable extends CarbEntries
 
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {time, grams},
+      ];
   @override
   CarbRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
