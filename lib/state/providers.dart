@@ -70,6 +70,7 @@ import '../ml/basal_recommender.dart';
 import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
 import '../ml/forecaster_service.dart';
+import 'forecast_providers.dart';
 import '../ml/health_features.dart';
 import '../ml/sensitivity_model.dart';
 import '../ml/sensitivity_training.dart';

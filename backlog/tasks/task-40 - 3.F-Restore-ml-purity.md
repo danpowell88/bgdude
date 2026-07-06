@@ -1,10 +1,10 @@
 ---
 id: TASK-40
 title: Restore ml/ purity
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-06 16:14'
 labels:
   - roadmap
   - architecture
@@ -26,9 +26,9 @@ ordinal: 109400
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 ml/ has no Riverpod imports
-- [ ] #2 Controller moved to state/forecast_providers.dart
-- [ ] #3 dart-test-only lane for analytics/+ml/ possible
+- [x] #1 ml/ has no Riverpod imports
+- [x] #2 Controller moved to state/forecast_providers.dart
+- [x] #3 dart-test-only lane for analytics/+ml/ possible
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -48,6 +48,8 @@ ordinal: 109400
 - Effort: S
 - Depends on: 3.B
 - Roadmap status: open
+
+Implemented. AC#1/#3: lib/ml/ (and lib/analytics/) now import no flutter_riverpod or package:flutter — verified by grep — so a fast dart-test lane over the pure ML/analytics layer is possible (realizing it fully is a test-authoring choice: write those tests against package:test rather than flutter_test). AC#2: ForecasterModelController (the StateNotifier that ran the train→gate→promote cycle + Isolate.run) moved from ml/forecaster_service.dart to the new lib/state/forecast_providers.dart; the pure parts (TrainingOutcome, ForecasterModelStore) stay in ml/, and the actual training (ForecasterTrainer) was already pure in ml/forecaster_training.dart. providers.dart imports the controller from its new home; forecaster_service_test updated. Behaviour-preserving — analyze clean, 560 tests green (the moved promotion tests pass unchanged).
 <!-- SECTION:NOTES:END -->
 
 ## Comments

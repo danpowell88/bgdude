@@ -4,6 +4,7 @@ import 'package:bgdude/ml/forecaster.dart';
 import 'package:bgdude/ml/forecaster_service.dart';
 import 'package:bgdude/ml/forecaster_training.dart';
 import 'package:bgdude/ml/residual_gbm_model.dart';
+import 'package:bgdude/state/forecast_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
