@@ -13,6 +13,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 
+import 'channels.dart';
 import 'probe_event.dart';
 import 'pump_snapshot.dart';
 import 'pump_source.dart';
@@ -21,8 +22,8 @@ class PumpClient implements PumpSource {
   PumpClient({
     EventChannel? events,
     MethodChannel? commands,
-  })  : _events = events ?? const EventChannel('bgdude/pump_events'),
-        _commands = commands ?? const MethodChannel('bgdude/pump_commands');
+  })  : _events = events ?? const EventChannel(PumpChannels.events),
+        _commands = commands ?? const MethodChannel(PumpChannels.commands);
 
   final EventChannel _events;
   final MethodChannel _commands;

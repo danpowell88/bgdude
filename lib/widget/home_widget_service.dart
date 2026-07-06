@@ -17,6 +17,7 @@ import 'package:home_widget/home_widget.dart';
 import '../core/units.dart';
 import '../pump/pump_snapshot.dart';
 import 'bg_widget_format.dart';
+import 'widget_keys.dart';
 
 class HomeWidgetService {
   HomeWidgetService({DateTime Function()? now}) : _now = now ?? DateTime.now;
@@ -32,13 +33,14 @@ class HomeWidgetService {
   /// resolution would miss it).
   static const String _qualifiedProviderName = 'com.bgdude.app.widget.BgWidgetProvider';
 
-  // SharedPreferences keys — must match BgWidgetProvider.kt.
-  static const String _keyBgText = 'bg_text';
-  static const String _keyTrend = 'bg_trend';
-  static const String _keyUnit = 'bg_unit';
-  static const String _keyIob = 'iob_text';
-  static const String _keyRange = 'bg_range';
-  static const String _keyCgmEpochMs = 'cgm_epoch_ms';
+  // SharedPreferences keys — the single-source contract lives in WidgetKeys and is
+  // asserted equal to BgWidgetProvider.kt by a contract test (TASK-111).
+  static const String _keyBgText = WidgetKeys.bgText;
+  static const String _keyTrend = WidgetKeys.trend;
+  static const String _keyUnit = WidgetKeys.unit;
+  static const String _keyIob = WidgetKeys.iob;
+  static const String _keyRange = WidgetKeys.range;
+  static const String _keyCgmEpochMs = WidgetKeys.cgmEpochMs;
 
   /// Format [snapshot] for display in [unit] and re-render the widget.
   /// Call this whenever a new pump snapshot arrives.

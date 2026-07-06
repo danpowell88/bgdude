@@ -94,13 +94,14 @@ class BgWidgetProvider : HomeWidgetProvider() {
     }
 
     private companion object {
-        // SharedPreferences keys — must match lib/widget/home_widget_service.dart.
-        const val KEY_BG_TEXT = "bg_text"
-        const val KEY_TREND = "bg_trend"
-        const val KEY_UNIT = "bg_unit"
-        const val KEY_IOB = "iob_text"
-        const val KEY_RANGE = "bg_range"
-        const val KEY_CGM_EPOCH_MS = "cgm_epoch_ms"
+        // SharedPreferences keys — single source in WidgetKeys, matched to the Dart side
+        // (lib/widget/widget_keys.dart) by a contract test (TASK-111).
+        const val KEY_BG_TEXT = WidgetKeys.BG_TEXT
+        const val KEY_TREND = WidgetKeys.TREND
+        const val KEY_UNIT = WidgetKeys.UNIT
+        const val KEY_IOB = WidgetKeys.IOB
+        const val KEY_RANGE = WidgetKeys.RANGE
+        const val KEY_CGM_EPOCH_MS = WidgetKeys.CGM_EPOCH_MS
 
         // Range tokens — must match BgRange.token in lib/widget/bg_widget_format.dart.
         const val RANGE_LOW = "low"

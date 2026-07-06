@@ -15,11 +15,12 @@ import '../core/samples.dart';
 import '../data/history_repository.dart';
 import '../data/kv_store.dart';
 import '../logging/device_changes.dart';
+import 'channels.dart';
 import 'pump_events.dart';
 
 class HistoryBackfillService {
   HistoryBackfillService(this._repo, {MethodChannel? commands})
-      : _commands = commands ?? const MethodChannel('bgdude/pump_commands');
+      : _commands = commands ?? const MethodChannel(PumpChannels.commands);
 
   final HistoryRepository _repo;
   final MethodChannel _commands;

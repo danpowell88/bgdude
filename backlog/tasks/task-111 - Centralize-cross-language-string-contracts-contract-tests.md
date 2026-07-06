@@ -1,10 +1,10 @@
 ---
 id: TASK-111
 title: Centralize cross-language string contracts + contract tests
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:56'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 13:06'
 labels:
   - code-health
   - native
@@ -30,9 +30,9 @@ ordinal: 105200
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Dart channel/key constants defined once and imported by all Dart call sites; Kotlin side reads from a single PumpChannels/keys object
-- [ ] #2 Contract test: the Dart snapshot parser accepts a golden MutableSnapshot.toJson() fixture (checked-in JSON produced by the Kotlin test suite)
-- [ ] #3 Contract test: widget prefs key sets asserted equal between the Dart service and a checked-in list matching BgWidgetProvider.kt
+- [x] #1 Dart channel/key constants defined once and imported by all Dart call sites; Kotlin side reads from a single PumpChannels/keys object
+- [x] #2 Contract test: the Dart snapshot parser accepts a golden MutableSnapshot.toJson() fixture (checked-in JSON produced by the Kotlin test suite)
+- [x] #3 Contract test: widget prefs key sets asserted equal between the Dart service and a checked-in list matching BgWidgetProvider.kt
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -51,4 +51,6 @@ ordinal: 105200
 - Source: code-health survey 2026-07-06 (test finding 4)
 - Effort: M
 - Related: TASK-43 (native boundary tidy-up)
+
+Implemented all three ACs. AC#1: lib/pump/channels.dart (PumpChannels.events/commands) + lib/widget/widget_keys.dart (WidgetKeys) define the Dart constants once; pump_client, history_backfill and home_widget_service migrated. Kotlin: new PumpChannels object + WidgetKeys object as the single source; PumpBridge and BgWidgetProvider reference them. AC#2: checked-in golden test/contracts/mutable_snapshot_golden.json — Dart contracts_test parses it via PumpSnapshot.fromJson (field-by-field), and Kotlin SnapshotContractTest asserts MutableSnapshot.toJson() (timestamp normalized) equals the golden AND cross-checks the checked-in file. AC#3: Dart contracts_test + Kotlin ChannelContractTest both assert WidgetKeys == {bg_text,bg_trend,bg_unit,iob_text,bg_range,cgm_epoch_ms} and the channel names. flutter analyze/test (519) + gradlew :app:testDebugUnitTest green; APK builds. SCOPE: Garmin payload keys (BgData.mc/GarminSender.kt) were noted in Background but not covered by any AC — left as a possible follow-up.
 <!-- SECTION:NOTES:END -->

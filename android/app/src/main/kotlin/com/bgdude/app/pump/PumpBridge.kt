@@ -65,7 +65,7 @@ class PumpBridge(
 
         // Command surface: a plain MethodChannel matching Dart's PumpClient. All
         // commands are read-only requests; there is no control/bolus path.
-        MethodChannel(engine.dartExecutor.binaryMessenger, COMMAND_CHANNEL)
+        MethodChannel(engine.dartExecutor.binaryMessenger, PumpChannels.COMMAND_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "startScan" -> {
@@ -116,7 +116,7 @@ class PumpBridge(
                 }
             }
 
-        EventChannel(engine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
+        EventChannel(engine.dartExecutor.binaryMessenger, PumpChannels.EVENT_CHANNEL)
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                     eventSink = events
@@ -189,8 +189,4 @@ class PumpBridge(
         emit(event)
     }
 
-    companion object {
-        private const val EVENT_CHANNEL = "bgdude/pump_events"
-        private const val COMMAND_CHANNEL = "bgdude/pump_commands"
-    }
 }
