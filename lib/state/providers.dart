@@ -673,7 +673,7 @@ final glucoseReportProvider =
     FutureProvider<({GlucoseReport report, List<CgmSample> confirmed})>(
         (ref) async {
   final range = ref.watch(reportRangeProvider);
-  final repo = ref.read(historyRepositoryProvider);
+  final repo = ref.watch(historyRepositoryProvider);
   final cgm = await repo.cgm(range.from, range.to);
   final annotations = await repo.annotations(range.from, range.to);
   final report = const GlucoseReportBuilder()
@@ -686,7 +686,7 @@ final glucoseReportProvider =
 /// Insulin report (TDD trend, basal/bolus split, bolus behaviour) for the range.
 final insulinReportProvider = FutureProvider<InsulinReport>((ref) async {
   final range = ref.watch(reportRangeProvider);
-  final repo = ref.read(historyRepositoryProvider);
+  final repo = ref.watch(historyRepositoryProvider);
   return const InsulinReportBuilder().build(
     boluses: await repo.boluses(range.from, range.to),
     basal: await repo.basal(range.from, range.to),
@@ -717,7 +717,7 @@ final postMealMovementProvider =
           (eatenAt: o.eatenAt, excursionMgdl: o.peakMgdl - o.bgAtMealMgdl),
   ];
   final steps = await ref
-      .read(historyRepositoryProvider)
+      .watch(historyRepositoryProvider)
       .health(range.from, range.to);
   return const PostMealMovementAnalyzer().analyze(meals: meals, steps: steps);
 });
@@ -725,7 +725,7 @@ final postMealMovementProvider =
 /// Therapy report (learned daily sensitivity trend via Autotune) for the range.
 final therapyReportProvider = FutureProvider<TherapyReport>((ref) async {
   final range = ref.watch(reportRangeProvider);
-  final repo = ref.read(historyRepositoryProvider);
+  final repo = ref.watch(historyRepositoryProvider);
   final from = range.from.subtract(const Duration(hours: 6)); // IOB lookback
   return TherapyReportBuilder().build(
     cgm: await repo.cgm(from, range.to),
@@ -742,7 +742,7 @@ final therapyReportProvider = FutureProvider<TherapyReport>((ref) async {
 final correlationReportProvider =
     FutureProvider<CorrelationReport>((ref) async {
   final range = ref.watch(reportRangeProvider);
-  final repo = ref.read(historyRepositoryProvider);
+  final repo = ref.watch(historyRepositoryProvider);
   return const CorrelationReportBuilder().build(
     cgm: await repo.cgm(range.from, range.to),
     health: await repo.health(range.from, range.to),
@@ -761,7 +761,7 @@ final cycleReportProvider = FutureProvider<CycleReport>((ref) async {
     return const CycleReportBuilder().build(
         cgm: [], health: [], range: range, now: now);
   }
-  final repo = ref.read(historyRepositoryProvider);
+  final repo = ref.watch(historyRepositoryProvider);
   return const CycleReportBuilder().build(
     cgm: await repo.cgm(range.from, range.to),
     health: await repo.health(range.from, range.to),
@@ -773,7 +773,7 @@ final cycleReportProvider = FutureProvider<CycleReport>((ref) async {
 /// Model-performance report: forecast accuracy, Clarke zones, interval calibration.
 final modelReportProvider = FutureProvider<ModelReport>((ref) async {
   final range = ref.watch(reportRangeProvider);
-  final repo = ref.read(historyRepositoryProvider);
+  final repo = ref.watch(historyRepositoryProvider);
   final now = DateTime.now();
   try {
     await repo.reconcilePredictions(now); // back-fill actuals before scoring
@@ -789,7 +789,7 @@ final modelReportProvider = FutureProvider<ModelReport>((ref) async {
 /// Events journal: a merged, newest-first timeline of confirmed events for the range.
 final eventsJournalProvider = FutureProvider<List<JournalEntry>>((ref) async {
   final range = ref.watch(reportRangeProvider);
-  final repo = ref.read(historyRepositoryProvider);
+  final repo = ref.watch(historyRepositoryProvider);
   final glucose = await ref.watch(glucoseReportProvider.future);
   return const EventsJournalBuilder().build(
     range: range,
@@ -824,7 +824,10 @@ final illnessSuggestionProvider =
 /// annotated. Confirming/dismissing goes through [AppJobs.confirmPending]/[dismissPending].
 final pendingConfirmationsProvider =
     FutureProvider<List<PendingConfirmation>>((ref) async {
-  final repo = ref.read(historyRepositoryProvider);
+  final repo = ref.watch(historyRepositoryProvider);
+  // P2-9: re-scan when a new CGM reading lands (watch only the CGM timestamp so IOB/age
+  // ticks on the same snapshot don't force a rescan).
+  ref.watch(pumpSnapshotProvider.select((s) => s.valueOrNull?.cgmTime));
   final now = DateTime.now();
   final from = now.subtract(const Duration(days: 3));
   final decided = (await ConfirmationDecisionStore.load()).keys.toSet();
