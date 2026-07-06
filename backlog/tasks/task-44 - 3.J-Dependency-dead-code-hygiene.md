@@ -1,10 +1,10 @@
 ---
 id: TASK-44
 title: 3.J Dependency & dead-code hygiene
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 04:28'
 labels:
   - roadmap
   - §3
@@ -44,4 +44,6 @@ ordinal: 44000
 Source: ROADMAP §3.J
 Effort: S
 Roadmap status: open
+
+Done 2026-07-06: removed 6 unused codegen deps (riverpod_annotation/generator, freezed/_annotation, json_serializable/_annotation); capped _basalObs at 288 (ring). uploadTreatments KEPT (it's tested and TASK-61 will wire it) with an honest docstring instead of deleted.
 <!-- SECTION:NOTES:END -->

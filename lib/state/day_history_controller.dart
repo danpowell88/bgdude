@@ -42,7 +42,10 @@ class DayHistoryController extends StateNotifier<DayData> {
   DateTime? _lastBolusTime;
 
   // Live basal reconstruction: accumulate rate observations, rebuild segments, and
-  // persist a segment whenever the rate changes.
+  // persist a segment whenever the rate changes. Capped (§3.J) so a long session can't
+  // grow it without bound — the persisted segments hold the full history; this only
+  // feeds the in-session reconstruction (~24 h at 5-min CGM cadence).
+  static const int _maxBasalObs = 288;
   final List<({DateTime time, double unitsPerHour})> _basalObs = [];
   double? _openBasalRate;
   DateTime? _openBasalStart;
@@ -128,6 +131,9 @@ class DayHistoryController extends StateNotifier<DayData> {
     final rate = snapshot.basalUnitsPerHour;
     if (rate != null) {
       _basalObs.add((time: sample.time, unitsPerHour: rate));
+      if (_basalObs.length > _maxBasalObs) {
+        _basalObs.removeRange(0, _basalObs.length - _maxBasalObs);
+      }
       if (_openBasalRate == null) {
         _openBasalRate = rate;
         _openBasalStart = sample.time;

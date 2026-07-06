@@ -247,6 +247,10 @@ class NightscoutClient {
   ///
   /// Accepts a mixed list of [BolusEvent] and [CarbEntry]; each is mapped to the
   /// appropriate document. Unknown types are skipped (logged).
+  ///
+  /// Tested but not yet wired into a live sync — that lands with Nightscout
+  /// follower/upload mode (ROADMAP §4-3.1 / TASK-61), which adds the pull/push loop
+  /// that calls this behind a source-mode setting.
   Future<void> uploadTreatments(List<dynamic> treatments) async {
     final List<Map<String, dynamic>> docs = <Map<String, dynamic>>[];
     for (final dynamic t in treatments) {

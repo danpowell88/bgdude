@@ -16,7 +16,6 @@ dependencies:
 
   # State management
   flutter_riverpod: ^2.5.1
-  riverpod_annotation: ^2.3.5
 
   # Storage (encrypted time-series). SQLCipher REPLACES sqlite3_flutter_libs —
   # never depend on both (identical native namespace; the manifest merge fails).
@@ -62,8 +61,6 @@ dependencies:
   crypto: ^3.0.5
 
   # Utilities
-  freezed_annotation: ^2.4.4
-  json_annotation: ^4.9.0
   collection: ^1.18.0
   intl: ^0.19.0
   logging: ^1.2.0
@@ -100,9 +97,6 @@ dev_dependencies:
   # Codegen
   build_runner: ^2.4.11
   drift_dev: ^2.20.0
-  riverpod_generator: ^2.4.0
-  freezed: ^2.5.7
-  json_serializable: ^6.8.0
 
 flutter:
   uses-material-design: true
