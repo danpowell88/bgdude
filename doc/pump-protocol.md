@@ -71,6 +71,66 @@ Android native layer.
 | **MalfunctionStatus** | Pump malfunction state | Proactive safety alert |
 | **CGMHardwareInfo** | Transmitter hardware id | Diagnostics |
 
+### Live capture from a real pump (Protocol Explorer sweep)
+Captured on-device from the spare test pump (**t:slim X2, serial 868643, API 3.4/JPAKE**,
+active IDP "Gym only") by running the Protocol Explorer **Sweep all reads**. Opcodes are
+decimal; cargo is the raw response bytes; fields are pumpx2's decoded values.
+
+| Message | Op | Cargo (hex) | Key decoded fields |
+|---|---|---|---|
+| **HomeScreenMirrorResponse** | 57 | `00 ff c8 c8 c8 04 00 00 00` | `apControlStateIcon=STATE_GRAY`, `basalStatusIcon=SUSPEND`, `bolusStatusIcon=HIDE_ICON`, `cgmAlertIcon=NO_ERROR`, `cgmTrendIcon=NO_ARROW`, `cgmDisplayData=false`, `statusIcon0/1=HIDE_ICON` |
+| **PumpFeaturesV2Response** | 161 | `00 02 04 00 00 07` | `controlFeatures=[STANDARD_BOLUS_CONTROL, PREFLIGHT_CONTROL, USER_INTERACTION_CONTROL, BLOOD_GLUCOSE_ENTRY_CONTROL]`, `pumpFeaturesBitmask=117440516`, `supportedFeatureIndexId=2` |
+| **PumpFeaturesV1Response** | 79 | `9a dd 24 76 00 00 00 00` | feature bitmask (older layout) |
+| **PumpGlobalsResponse** | 87 | `01 f4 01 d0 07 00 01 03 01 01 01 01 01 01` | `quickBolusEnabledRaw=1`, `quickBolusIncrementUnits=500` (0.5 U), `quickBolusIncrementCarbs=2000`, `quickBolusEntryType=0`, annunciation flags (`alarm/alert/bolus/button=3/fillTubing/reminder`) |
+| **PumpSettingsResponse** | 83 | `14 1e 01 0c 00 00 0f 48 00` | `autoShutdownEnabled=1`, `autoShutdownDuration=12` h, `lowInsulinThreshold=20` U, `oledTimeout=15` s, `featureLock=0`, `status=72` (byte 2 `0x1e=30` ≈ cannula-prime size) |
+| **ControlIQSleepScheduleResponse** | 107 | `01 7f 28 05 a4 01 …` | schedule enabled, `days=0x7f` (all), start/end + per-slot repeats |
+| **MalfunctionBitmaskStatusResponse** | 119 | `00 00 00 00 00 00 00 00` | malfunction bitmask (0 = none). **Note:** the class is `MalfunctionBitmaskStatusResponse`, not `MalfunctionStatus` as listed above |
+| **CGMHardwareInfoResponse** | 97 | `38 42 54 31 41 58 00 … 02` | transmitter hardware id = ASCII **"8BT1AX"** |
+| **CurrentActiveIdpValuesResponse** | 151 | `10 27 00 00 6e 00 2c 01 24 00` | active-profile live values (carb ratio 10000→1:10, ISF, target, etc.) |
+| **GlobalMaxBolusSettingsResponse** | 141 | `98 3a 10 27` | max bolus `0x3a98=15000` mU (15 U) |
+| **BasalLimitSettingsResponse** | 139 | `d0 07 00 00 b8 0b 00 00` | basal limits `0x07d0=2000` / `0x0bb8=3000` mU/hr |
+| **RemindersResponse** | 89 | `0f 00 … 5a 00 … 46 00 c8 00 03 04` | reminder table (low-BG, high-BG, missed-bolus, site/cannula, etc.) |
+| **LocalizationResponse** | 167 | `01 00 01 ff 1f 00 00` | language / units / region config |
+| **CgmStatusV2Response** | 191 | `00 …` | extended sensor state (no sensor on this pump) |
+| **CGMGlucoseAlertSettingsResponse** | 91 | `c8 00 00 00 00 03 50 00 00 00 00 03` | high alert `0xc8=200`, low alert `0x50=80` mg/dL |
+| **CGMRateAlertSettingsResponse** | 93 | `03 00 05 03 00 05` | rise/fall rate-alert config |
+| **CGMOORAlertSettingsResponse** | 95 | `14 00 01` | out-of-range alert config |
+
+Also confirmed live: `ApiVersion` = 3.4 (`03 00 04 00`), `PumpVersion` armSwVer 635732141 / model 1002717,
+`ControlIQInfoV2` (op 179) closed-loop state, `ProfileStatus`→`IDPSettings("Gym only")`→7×`IDPSegment`
+matching the decode table above, and a full `HistoryLogStream` (op 129) backfill.
+
+Requests that returned **no response** on this pump/firmware (likely unsupported opcodes):
+`SecretMenu`, `UnknownMobiOpcode110`, `StreamDataReadiness`, `ActiveAamBits`, `HighestAam`,
+`BasalIQ*`, `CommonSoftwareInfo`, `BleSoftwareInfo`, `PumpVersionB`, `LoadStatus`,
+`GetG6TransmitterHardwareInfo`, `GetSavedG7PairingCode` — their absence is itself a finding.
+
+### Protocol Explorer (on-device discovery tool)
+bgdude ships a developer screen — **Settings → Protocol Explorer** — for probing the
+protocol on a live pump. It reflectively builds any `currentStatus` **request** by class
+name and shows the raw cargo bytes plus pumpx2's decoded fields (`jsonToString()` /
+`verboseToString()`), so undocumented fields can be discovered without writing a hand-mapper
+first. This is the fastest way to fill in the tables above from a real pump.
+
+- **Read-only by construction.** `ProtocolProbe.buildSafeRequest` (native) refuses anything
+  that is not an unsigned `CURRENT_STATUS` request with `modifiesInsulinDelivery == false`
+  and `signed == false`, and only ever resolves classes inside
+  `com.jwoglom.pumpx2.pump.messages.request.currentStatus`. A control/authorization/stream/
+  signed message can never be *built*, so it can never be *sent* — a defensive layer on top
+  of the never-enabled `enableActionsAffectingInsulinDelivery` gate. Covered by
+  `ProtocolProbeTest`.
+- **Catalog.** The pumpx2 1.9.0 message set exposes ~67 `currentStatus` request types. Beyond
+  the ones above, notable reads the Explorer surfaces for discovery: `PumpVersionB`,
+  `CommonSoftwareInfo` / `BleSoftwareInfo`, `Localization`, `Reminders` / `ReminderStatus`,
+  `GlobalMaxBolusSettings`, `BasalLimitSettings`, `CurrentActiveIdpValues`,
+  `BasalIQStatus/Settings/AlertInfo`, `CgmStatusV2`, the CGM alert-settings reads,
+  `GetG6TransmitterHardwareInfo` / `GetSavedG7PairingCode`, `LoadStatus`,
+  `StreamDataReadiness`, `ActiveAamBits` / `HighestAam`, `BolusCalcDataSnapshot`, and the
+  intriguingly-named **`SecretMenu`** and **`UnknownMobiOpcode110`** (reverse-engineered but
+  unnamed). Firing these and recording the decoded output is how new rows get added here.
+- **Parametric reads.** `IDPSegment(idpId, segment)` and `HistoryLog(startSeq, count)` take
+  two integer args (exposed as inline fields); everything else is a zero-cargo read.
+
 ### Field encodings (from `IDPSegment` and friends)
 - Basal rate: **milliU/hr** (850 → 0.85 U/hr).
 - Carb ratio: **×1000** (10000 → 1:10 g/U; 9000 → 1:9).

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +16,7 @@ import 'model_accuracy_screen.dart';
 import 'notification_settings_screen.dart';
 import 'profile_screen.dart';
 import 'glucose_meter_screen.dart';
+import 'developer_screen.dart';
 import 'pump_screen.dart';
 import 'reports/reports_hub_screen.dart';
 import 'weather_settings_screen.dart';
@@ -352,6 +354,20 @@ class SettingsScreen extends ConsumerWidget {
             enabled: !devMode,
             onTap: () => ref.read(pumpClientProvider).unpair(),
           ),
+          // Developer menu (Protocol Explorer + low-level diagnostics) is a debug-build
+          // tool only — hidden from release builds along with its native logcat dump.
+          if (kDebugMode) ...[
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.developer_mode),
+              title: const Text('Developer'),
+              subtitle: const Text(
+                  'Protocol Explorer & low-level pump diagnostics (read-only)'),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const DeveloperScreen()),
+              ),
+            ),
+          ],
           const Divider(),
           const _NightscoutSection(),
           const Divider(),

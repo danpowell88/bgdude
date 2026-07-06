@@ -40,6 +40,7 @@ class PumpService : Service(), PumpCommHandler.Listener {
         fun onPairingCodeRequired(type: PairingCodeType)
         fun onCriticalError(message: String)
         fun onTherapyProfile(json: String)
+        fun onProbeMessage(event: Map<String, Any?>)
     }
 
     inner class LocalBinder : Binder() {
@@ -77,6 +78,11 @@ class PumpService : Service(), PumpCommHandler.Listener {
     fun requestStatus() = commHandler?.requestFullStatus()
     fun requestProfile() = commHandler?.requestProfile()
     fun fetchHistory(): List<Map<String, Any?>> = commHandler?.drainHistory() ?: emptyList()
+    fun sendProbe(name: String, arg1: Int?, arg2: Int?): String? =
+        commHandler?.sendProbe(name, arg1, arg2) ?: "not connected"
+    fun setProbeCapture(enabled: Boolean) {
+        commHandler?.probeCapture = enabled
+    }
     fun submitPairingCode(code: String, type: PairingCodeType) =
         commHandler?.submitPairingCode(code, type)
     fun unpair() = commHandler?.unpair()
@@ -105,6 +111,10 @@ class PumpService : Service(), PumpCommHandler.Listener {
 
     override fun onTherapyProfile(json: String) {
         callbacks?.onTherapyProfile(json)
+    }
+
+    override fun onProbeMessage(event: Map<String, Any?>) {
+        callbacks?.onProbeMessage(event)
     }
 
     private fun startForegroundCompat() {

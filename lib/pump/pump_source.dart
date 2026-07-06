@@ -3,6 +3,7 @@
 /// mode) without any UI change. Both expose the same streams + read-only commands.
 library;
 
+import 'probe_event.dart';
 import 'pump_snapshot.dart';
 
 abstract interface class PumpSource {
@@ -13,6 +14,10 @@ abstract interface class PumpSource {
 
   /// Emits the pump's therapy profile (IDP) as JSON when read from the pump.
   Stream<String> get therapyProfiles;
+
+  /// Protocol Explorer: raw messages (sent requests / received responses) captured while
+  /// [setProbeCapture] is enabled.
+  Stream<ProbeEvent> get probeEvents;
 
   PumpConnection get lastConnection;
   PumpSnapshot? get lastSnapshot;
@@ -25,4 +30,11 @@ abstract interface class PumpSource {
   Future<void> requestStatus();
   Future<void> submitPairingCode(String code, {required bool long});
   Future<void> unpair();
+
+  /// Turn the probe firehose on/off (only while the explorer screen is open).
+  Future<void> setProbeCapture(bool enabled);
+
+  /// Fire one read-only `currentStatus` request by pumpx2 class name. Returns null on
+  /// success, or a human-readable refusal reason (the native layer safety-gates every send).
+  Future<String?> sendProbe(String className, {int? arg1, int? arg2});
 }

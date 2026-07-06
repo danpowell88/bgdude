@@ -103,6 +103,7 @@
   <div class="grp">Data &amp; analysis</div>
   <a href="#reports">Reports</a>
   <a href="#pump">Pump</a>
+  <a href="#explorer">Protocol Explorer</a>
   <a href="#meter">Glucose meter</a>
   <a href="#therapy">Therapy &amp; basal</a>
   <a href="#advanced">Advanced / models</a>
@@ -416,6 +417,16 @@
     <li><b>Device</b> — battery (with a <b>time-to-empty</b> estimate or "charging"), firmware, API version.</li>
     <li><b>Active alarms/alerts</b> and a <b>recent pump-events</b> timeline.</li>
   </ul>
+</section>
+
+<section id="explorer">
+  <h2>Protocol Explorer <span class="tag">developer</span></h2>
+  <p class="lead">Settings → <b>Developer</b> → <b>Protocol Explorer</b>. The Explorer lives in the <b>Developer</b> menu (a tucked-away home for low-level, read-only diagnostics) rather than the main Settings list. The whole Developer menu — and the raw protocol logcat dump behind it — appears in <b>debug builds only</b>; release builds don't show it. It's a console for probing the t:slim&nbsp;X2 Bluetooth protocol on a live pump — used to discover and verify pump reads the app doesn't otherwise surface. It has two tabs:</p>
+  <ul class="tight">
+    <li><b>Requests</b> — a grouped catalog of every read the pump supports (core status, documented opportunities like <b>Home-screen mirror</b>, <b>Pump features</b>, <b>Pump settings</b>, <b>Control-IQ sleep schedule</b>, and unknown/experimental reads like <b>Secret menu</b>). A coloured dot marks each request's status: <b>in app</b> (already surfaced), <b>opportunity</b> (documented, not yet surfaced), or <b>unknown</b> (undocumented — fire it to see what comes back). Tap <b>Send</b> to fire one. Two reads take parameters (IDP-segment and history-log range), which have inline number fields. The <b>▶ Sweep all reads</b> toolbar button fires every non-parametric read in sequence — one tap to capture the pump's whole read surface into the Log.</li>
+    <li><b>Log</b> — every message sent (↗) and received (↙), newest first. Each entry shows the message name, opcode, characteristic and cargo size; expand it to see the <b>raw cargo bytes (hex)</b> and pumpx2's <b>decoded fields</b>. Copy a single entry, or use the toolbar to copy the whole log or clear it.</li>
+  </ul>
+  <div class="note"><b>Read-only, enforced in the native layer.</b> The Explorer can only send unsigned <code>CURRENT_STATUS</code> requests that don't modify insulin delivery — the pump-comm layer refuses anything else <em>by construction</em> (it never builds a control/insulin-affecting message), so nothing here can change pump behaviour. Capture only runs while the screen is open. Pair your pump on the <b>Pump</b> screen first; the strip at the top shows the live connection state.</div>
 </section>
 
 <section id="meter">

@@ -82,6 +82,18 @@ class PumpBridge(
                         service?.requestProfile()
                         result.success(null)
                     }
+                    "setProbeCapture" -> {
+                        service?.setProbeCapture(call.argument<Boolean>("enabled") ?: false)
+                        result.success(null)
+                    }
+                    "sendProbe" -> {
+                        // Read-only by construction; the service/comm-handler safety-gate
+                        // refuses anything that isn't an unsigned currentStatus request.
+                        val name = call.argument<String>("name") ?: ""
+                        val a1 = call.argument<Int>("arg1")
+                        val a2 = call.argument<Int>("arg2")
+                        result.success(service?.sendProbe(name, a1, a2) ?: "not connected")
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -152,6 +164,11 @@ class PumpBridge(
 
     override fun onTherapyProfile(json: String) {
         eventSink?.success(mapOf("kind" to "profile", "json" to json))
+    }
+
+    override fun onProbeMessage(event: Map<String, Any?>) {
+        // Already shaped with "kind":"probe" by ProtocolProbe.describe.
+        eventSink?.success(event)
     }
 
     companion object {

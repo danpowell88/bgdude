@@ -39,6 +39,15 @@ Pump screen (Control-IQ mode), Therapy/Basal, Advanced/models, Profile, Home-scr
 widget, Garmin widget/watch-face/data-field, demo mode seeded with ~2 weeks of
 history.
 
+**Real-hardware milestone (Jul 2026):** verified end-to-end on a live t:slim X2
+(API 3.4) — JPAKE 6-digit pairing works after two pairing-flow fixes (see 2-5), and
+the new **Protocol Explorer** (Settings → **Developer** → Protocol Explorer) swept
+the pump's whole read-only surface, capturing decoded fields for every previously
+un-surfaced message (HomeScreenMirror, PumpFeatures, PumpSettings, PumpGlobals,
+ControlIQSleepSchedule, MalfunctionBitmaskStatus, CGMHardwareInfo, limits, …). Those
+findings seed **§4-5** (pump mirror & device features) and **§4-6** (dev/debug
+screens); raw capture is in `doc/pump-protocol.md`.
+
 Forecaster = deterministic baseline + learned GBM residual. **July 2026 ML
 overhaul (done):** promotion A/Bs candidate vs baseline *and* the live model on the
 same held-out tail; sigma from held-out error; no future-dose leakage in training;
@@ -151,7 +160,7 @@ build-failing check that `request.control` is never imported natively (§3.G).
 | 2-2 | **Bluetooth meter (Accu-Chek Guide Me)** | Decoder, RACP sync, transport, pair/manage UI, unit tests | Field-test pairing + sync; bonding/re-discovery edges; dedupe/merge fingersticks with CGM (needs P1-2); background sync | M | 🔌 |
 | 2-3 | **Garmin complication** | 3 products build/run in sim; mis-implemented complication removed | Implement the real publisher (resource-defined complication + `updateComplication`, gated on `has :Complications` per `garmin/COMPLICATIONS.md`); verify on-watch. The highest-leverage Garmin item — exposes BG to every face | M | 🔌 |
 | 2-4 | **Garmin on-watch verification + devices** | Sim-verified; screenshots | Install on paired watch; confirm phone→watch push + background service; add current-gen devices (fenix 8, FR 165/970, venu/vivoactive 6) to the 3 manifests; raise `minApiLevel` or prune products lacking `registerForPhoneAppMessageEvent` | S–M | 🔌 |
-| 2-5 | **Pump pairing robustness (pumpx2)** | Native read path, pairing dialog, reconnect | Real-hardware reliability pass: pairing retries, reconnect, error surfacing, t:connect mutual-exclusion, long-run stability. **P1-4/P1-5 first** — they crash on first real connection | M | 🔌 |
+| 2-5 | **Pump pairing robustness (pumpx2)** | Native read path, pairing dialog, reconnect; **JPAKE pairing verified end-to-end on a real t:slim X2 (Jul 2026)** — fixed two bugs that blocked all JPAKE pumps: (a) pairing scheme defaulted to 16-char challenge, never JPAKE 6-digit (`PumpCommHandler.start` now selects `SHORT_6CHAR` when no derived secret is cached); (b) `submitPairingCode` only called pumpx2 `pair()` when a CentralChallenge was present, but JPAKE supplies none — now always calls `pair()`. Protocol Explorer sweep captured the full read surface | Real-hardware reliability pass: pairing retries, reconnect, error surfacing, t:connect mutual-exclusion, long-run stability. **P1-4/P1-5 first** — they crash on first real connection. Tighten the reconnect/pairing-window loop (pump drops the link before service discovery when not actively on its Pair screen); consider gating the derived-secret reuse path | M | 🔌 |
 | 2-6 | **Mood logging** | Captured as annotation | Make it do something (→ §4-4.4) or declare journal-only in the guide | S | |
 
 Sequence within the track (decided earlier, still right): Gemma scanner → meter →
@@ -462,6 +471,90 @@ version mismatch). Tests: purge-gap leakage assert, pooled gate, restore round-t
   pipeline.
 - **4.5 Weekly digest** (S): second WorkManager task beside the morning summary;
   TIR/GMI/hypo deltas + one learned insight from the TOD profile.
+
+### §4-5 Pump mirror & device features (🔌 — from the Jul 2026 live-pump exploration)
+
+The Protocol Explorer sweep against a real t:slim X2 (API 3.4) confirmed the read
+messages below return real, decodable cargo. Each read is already safe (unsigned
+`currentStatus`, blocked-by-construction from control). Opcodes + decoded fields
+captured verbatim in `doc/pump-protocol.md` → "Live capture from a real pump".
+Sequence: **Pump Mirror screen first** (highest daily value, one read), then the
+settings/limits mirrors, then the safety monitor, then diagnostics.
+
+- **4-5.1 Pump Mirror screen** (M, 🔌) — the headline feature. `HomeScreenMirror`
+  (op 57) returns the exact icons the pump is showing right now:
+  `basalStatusIcon` (e.g. `SUSPEND`), `apControlStateIcon` (Control-IQ/AP state),
+  `cgmTrendIcon` (arrow), `bolusStatusIcon`, `cgmAlertIcon`, and two generic
+  `statusIcon` slots. Build a live "what my pump shows" panel on the Pump screen:
+  poll on the existing qualifying-event refresh, map each icon enum to a glyph +
+  plain-language line ("Basal suspended", "Control-IQ active"). Add an
+  `onReceiveMessage` branch in `PumpResponseMapper` + snapshot fields; new request
+  in `requestFullStatus`. Verifies the read-only mirror end-to-end. Reconciles
+  against the `Pump` screen's derived state (a mismatch is a decode bug).
+- **4-5.2 Pump settings mirror** (S–M, 🔌) — `PumpSettings` (op 83):
+  auto-shutdown on/off + duration (12 h), low-insulin threshold (20 U), OLED
+  timeout (15 s), cannula-prime size, feature-lock. `PumpGlobals` (op 87):
+  quick-bolus enabled + increment (0.5 U / 2000 mg carbs) + entry type, and the
+  annunciation flags (alarm/alert/bolus/button/reminder). Surface as a read-only
+  "Pump configuration" card under the Pump screen + drive device reminders
+  (e.g. "auto-shutdown fires in N h of no interaction").
+- **4-5.3 Limits & max-bolus display** (S, 🔌) — `GlobalMaxBolusSettings`
+  (op 141 → 15 U) and `BasalLimitSettings` (op 139 → 2.0 / 3.0 U/hr). Show in the
+  therapy/pump view and **use as sanity bounds on advisor output** (never suggest
+  above the pump's configured max bolus). Small safety win.
+- **4-5.4 Control-IQ sleep schedule on the timeline** (S–M, 🔌) —
+  `ControlIQSleepSchedule` (op 107): enabled, days bitmask (`0x7f`=all),
+  start/end + per-slot repeats. Shade the sleep window on Predict/timeline and
+  explain the tighter overnight target (feeds §4-1.4 overnight-low context).
+- **4-5.5 Malfunction / safety monitor** (S, 🔒🔌) —
+  `MalfunctionBitmaskStatus` (op 119, bitmask; 0 = none). Poll on connect + each
+  refresh; any non-zero bit → high-priority notification. (Note: the class is
+  `MalfunctionBitmaskStatusResponse`, not the `MalfunctionStatus` name previously
+  assumed.) Pairs with the §3.C alert backstop.
+- **4-5.6 Pump features → adaptive UI** (S–M, 🔌) — `PumpFeaturesV2` (op 161):
+  `controlFeatures` list + `pumpFeaturesBitmask`. Hide/show UI for features the
+  pump doesn't actually enable (Dexcom variant, Control-IQ, BLE control), instead
+  of assuming. Also `Localization` (op 167) for units/region.
+- **4-5.7 CGM diagnostics** (S, 🔌) — `CGMHardwareInfo` (op 97, transmitter id
+  decodes to ASCII e.g. "8BT1AX"), `CgmStatusV2` (op 191), and the CGM alert
+  settings reads (`CGMGlucoseAlertSettings` op 91 → high 200 / low 80 mg/dL,
+  `CGMRateAlertSettings` op 93, `CGMOORAlertSettings` op 95). A CGM diagnostics
+  card + mirror of the pump's alert thresholds (so app alerts can align with the
+  pump's).
+- **4-5.8 Reminders mirror** (S, 🔌) — `Reminders` (op 89) / `ReminderStatus`
+  (op 73): show/confirm the pump's configured reminders (low/high BG, missed
+  bolus, site/cannula change) alongside bgdude's own reminders.
+
+### §4-6 Developer / debugging screens (behind the Settings → Developer menu)
+
+The Protocol Explorer now lives behind **Settings → Developer** (a dedicated
+developer menu, `developer_screen.dart`) rather than a top-level Settings tile.
+The whole menu is **debug-build-gated** (`kDebugMode`), and the native `PumpProbe`
+logcat dump is gated to debuggable builds (`FLAG_DEBUGGABLE`) — release builds ship
+neither. That menu is the home for the low-level, read-only diagnostics below as
+they land:
+
+- **4-6.1 Raw message + qualifying-event monitor** (S) — a live tail of every
+  `onReceiveMessage` / `onReceiveQualifyingEvent` (name, opcode, hex, decoded),
+  independent of the Explorer's request-driven capture. Reuses the existing
+  `probeCapture` firehose; add a always-on ring-buffer mode.
+- **4-6.2 Connection / BLE state inspector** (S) — current `ConnectionStage`,
+  bond state, JPAKE progress, API/firmware, derived-secret presence, reconnect
+  counters, last error. Makes pairing/reconnect issues (see 2-5) legible on-device
+  instead of via `adb logcat`.
+- **4-6.3 History-log raw viewer** (S–M) — paged raw `HistoryLogStream` (op 129)
+  entries with the `HistoryLogRequest(start, count)` control already in the
+  Explorer; decode coverage report (which of the 130+ event types map vs fall
+  through `PumpHistoryMapper`).
+- **4-6.4 On-device log ring buffer** (S) — surface `lib/logging/app_log.dart`
+  (the §3.D error-logging infra) read-only here; no network. Single home for the
+  "developer console" so §3.D's buffer and the pump monitors share one screen.
+- **4-6.5 Feature-flag / dev toggles** (S) — move Dev/demo-mode entry and any
+  future experiment flags here so consumer Settings stays clean.
+
+Note (arch): `protocol_explorer_screen.dart` imports the `PumpSource` interface
+directly — the §3.G guard-test violation still stands after the move; fix when the
+guard test lands (route probe send/capture through a provider).
 
 ---
 

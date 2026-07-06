@@ -77,6 +77,7 @@ import '../ml/uncertainty_calibrator.dart';
 import '../pump/battery_drain.dart';
 import '../pump/battery_history.dart';
 import '../pump/history_backfill.dart';
+import '../pump/probe_event.dart';
 import '../pump/pump_client.dart';
 import '../pump/pump_events.dart';
 import '../pump/pump_snapshot.dart';
@@ -391,6 +392,12 @@ final pumpErrorProvider = StreamProvider<String>((ref) {
 /// Emits the pump's therapy profile JSON when auto-read from the pump (IDP import).
 final pumpTherapyProfileProvider = StreamProvider<String>((ref) {
   return ref.watch(pumpClientProvider).therapyProfiles;
+});
+
+/// Protocol Explorer: raw probe messages (sent requests / received responses), captured
+/// only while the explorer screen has enabled capture on the pump source.
+final pumpProbeEventProvider = StreamProvider<ProbeEvent>((ref) {
+  return ref.watch(pumpClientProvider).probeEvents;
 });
 
 /// The user's therapy settings (their pump IDP: basal schedule, ISF, CR, targets),

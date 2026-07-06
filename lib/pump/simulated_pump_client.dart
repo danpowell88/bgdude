@@ -9,6 +9,7 @@ library;
 import 'dart:async';
 
 import '../dev/sim_data.dart';
+import 'probe_event.dart';
 import 'pump_snapshot.dart';
 import 'pump_source.dart';
 
@@ -26,8 +27,10 @@ class SimulatedPumpClient implements PumpSource {
   final _snapshots = StreamController<PumpSnapshot>.broadcast();
   final _pairing = StreamController<String>.broadcast();
   final _errors = StreamController<String>.broadcast();
+  final _probes = StreamController<ProbeEvent>.broadcast();
 
   Timer? _ticker;
+  bool _probeCapture = false;
   int _cursor = 0;
   PumpConnection _lastConnection = PumpConnection.idle;
   PumpSnapshot? _lastSnapshot;
@@ -42,6 +45,8 @@ class SimulatedPumpClient implements PumpSource {
   Stream<String> get errors => _errors.stream;
   @override
   Stream<String> get therapyProfiles => const Stream<String>.empty();
+  @override
+  Stream<ProbeEvent> get probeEvents => _probes.stream;
   @override
   PumpConnection get lastConnection => _lastConnection;
   @override
@@ -126,11 +131,43 @@ class SimulatedPumpClient implements PumpSource {
       _emitConnection(const PumpConnection(stage: PumpConnectionStage.idle));
 
   @override
+  Future<void> setProbeCapture(bool enabled) async => _probeCapture = enabled;
+
+  /// Demo-mode probe: echoes the request and returns a plausible synthetic response so the
+  /// Protocol Explorer is fully navigable (and integration-testable) without hardware.
+  @override
+  Future<String?> sendProbe(String className, {int? arg1, int? arg2}) async {
+    if (!_probeCapture) return null;
+    final now = _clock().millisecondsSinceEpoch;
+    _probes.add(ProbeEvent(
+      direction: 'tx',
+      name: className,
+      timestampMs: now,
+      characteristic: 'CURRENT_STATUS',
+      cargoHex: '',
+    ));
+    final responseName =
+        className.endsWith('Request') ? className.replaceAll('Request', 'Response') : className;
+    _probes.add(ProbeEvent(
+      direction: 'rx',
+      name: responseName,
+      timestampMs: now + 40,
+      opcode: 0,
+      characteristic: 'CURRENT_STATUS',
+      cargoHex: '73 69 6d',
+      json: '{"simulated":true,"request":"$className"}',
+      verbose: '$responseName[simulated=true]',
+    ));
+    return null;
+  }
+
+  @override
   Future<void> dispose() async {
     _ticker?.cancel();
     await _connection.close();
     await _snapshots.close();
     await _pairing.close();
     await _errors.close();
+    await _probes.close();
   }
 }

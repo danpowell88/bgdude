@@ -60,7 +60,24 @@ class PumpCommHandler(
         fun onCriticalError(message: String)
         /** The decoded active therapy profile (IDP) as JSON, when read from the pump. */
         fun onTherapyProfile(json: String) {}
+        /** A raw probe event (sent request / received response) for the Protocol Explorer. */
+        fun onProbeMessage(event: Map<String, Any?>) {}
     }
+
+    /**
+     * When true, every message sent/received is mirrored to [Listener.onProbeMessage] for the
+     * Protocol Explorer. Off by default so the firehose only runs while the screen is open.
+     */
+    @Volatile
+    var probeCapture: Boolean = false
+
+    /**
+     * The Protocol Explorer's raw [PROBE_TAG] logcat dump is a developer diagnostic only — it
+     * echoes decoded pump payloads, so it's gated to debuggable (debug) builds. Release builds
+     * never write it (the in-app Log tab still works via [Listener.onProbeMessage]).
+     */
+    private val probeLogging: Boolean =
+        (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     /** Buffer of decoded history-log entries; drained by the Dart backfill service. */
     private val historyBuffer = ArrayDeque<Map<String, Any?>>()
@@ -78,6 +95,15 @@ class PumpCommHandler(
 
     fun start(macFilter: String?) {
         this.macFilter = macFilter
+        // Select the pairing scheme up front. On a fresh pair pumpx2 otherwise falls back
+        // to the 16-character challenge-response default (because ApiVersionResponse hasn't
+        // arrived yet), which newer JPAKE firmware never answers — so pairing silently
+        // stalls. Default to JPAKE (6-digit) unless we already hold a derived secret from a
+        // prior JPAKE pairing (re-auth uses that). This affects only the auth handshake,
+        // not the read-only guarantee.
+        if (PumpState.getJpakeDerivedSecretCached().isNullOrEmpty()) {
+            PumpState.pairingCodeType = X2PairingCodeType.SHORT_6CHAR
+        }
         val handler = TandemBluetoothHandler.getInstance(context, this)
         bluetoothHandler = handler
         emitState(ConnectionStage.SCANNING)
@@ -111,6 +137,28 @@ class PumpCommHandler(
         sendCommand(p, PumpVersionRequest())
     }
 
+    /**
+     * Fire a single read-only `currentStatus` request by class name (Protocol Explorer).
+     * Returns null on success, or a human-readable refusal/queue reason. The request is
+     * safety-gated by [ProtocolProbe.buildSafeRequest]; nothing insulin-affecting can be sent.
+     */
+    fun sendProbe(name: String, arg1: Int?, arg2: Int?): String? {
+        val p = peripheral ?: return "not connected"
+        return when (val r = ProtocolProbe.buildSafeRequest(name, arg1, arg2)) {
+            is ProtocolProbe.Result.Refused -> "refused: ${r.reason}"
+            is ProtocolProbe.Result.Ok -> {
+                if (probeCapture) {
+                    if (probeLogging) Log.i(PROBE_TAG, "tx ${r.message.javaClass.simpleName}")
+                    listener.onProbeMessage(
+                        ProtocolProbe.describe(r.message, "tx", System.currentTimeMillis()),
+                    )
+                }
+                sendCommand(p, r.message)
+                null
+            }
+        }
+    }
+
     /** Read the active Insulin Delivery Profile (basal/ISF/CR/targets). */
     fun requestProfile() {
         peripheral?.let { sendCommand(it, ProfileStatusRequest()) }
@@ -134,12 +182,15 @@ class PumpCommHandler(
     private var pendingHistoryCount = 0
 
     fun submitPairingCode(code: String, type: PairingCodeType) {
-        val p = peripheral
-        val challenge = pendingChallenge
+        val p = peripheral ?: return
         PumpState.setPairingCode(context, code)
-        if (p != null && challenge != null) {
-            pair(p, challenge, code)
-        }
+        // JPAKE (6-digit) pumps supply no CentralChallenge, so pendingChallenge is null —
+        // pair() must still be called to drive the JPAKE handshake. Only the legacy 16-char
+        // challenge-response path carries a non-null challenge. Gating on challenge != null
+        // (the old behaviour) meant JPAKE pumps could never finish pairing.
+        Log.i(TAG, "submitPairingCode: type=$type challenge=" +
+            if (pendingChallenge == null) "null(JPAKE)" else "present")
+        pair(p, pendingChallenge, code)
     }
 
     fun unpair() {
@@ -154,6 +205,14 @@ class PumpCommHandler(
 
     override fun onReceiveMessage(peripheral: BluetoothPeripheral, message: Message) {
         try {
+            if (probeCapture) {
+                val event = ProtocolProbe.describe(message, "rx", System.currentTimeMillis())
+                if (probeLogging) {
+                    Log.i(PROBE_TAG, "rx ${event["name"]} op=${event["opcode"]} " +
+                        "cargo=[${event["cargoHex"]}] json=${event["json"]}")
+                }
+                listener.onProbeMessage(event)
+            }
             PumpResponseMapper.apply(message, snapshot)
             listener.onSnapshotUpdated(snapshot)
             handleProfileMessage(peripheral, message)
@@ -212,9 +271,10 @@ class PumpCommHandler(
         this.peripheral = peripheral
         this.pendingChallenge = centralChallengeResponse
 
-        // If a code is already stored (re-pair after restart), use it directly.
+        // If a code is already stored (re-pair after restart), use it directly. Works for
+        // JPAKE too, where centralChallengeResponse is null.
         val saved = PumpState.getPairingCodeCached()
-        if (!saved.isNullOrEmpty() && centralChallengeResponse != null) {
+        if (!saved.isNullOrEmpty()) {
             pair(peripheral, centralChallengeResponse, saved)
             return
         }
@@ -312,5 +372,7 @@ class PumpCommHandler(
 
     companion object {
         private const val TAG = "PumpCommHandler"
+        /** Distinct tag so the Protocol Explorer firehose is easy to `adb logcat -s`. */
+        const val PROBE_TAG = "PumpProbe"
     }
 }

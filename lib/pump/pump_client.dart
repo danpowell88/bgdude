@@ -13,6 +13,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 
+import 'probe_event.dart';
 import 'pump_snapshot.dart';
 import 'pump_source.dart';
 
@@ -32,6 +33,7 @@ class PumpClient implements PumpSource {
   final _pairingRequests = StreamController<String>.broadcast();
   final _errors = StreamController<String>.broadcast();
   final _profiles = StreamController<String>.broadcast();
+  final _probes = StreamController<ProbeEvent>.broadcast();
 
   StreamSubscription<dynamic>? _sub;
   PumpConnection _lastConnection = PumpConnection.idle;
@@ -47,6 +49,8 @@ class PumpClient implements PumpSource {
   Stream<String> get errors => _errors.stream;
   @override
   Stream<String> get therapyProfiles => _profiles.stream;
+  @override
+  Stream<ProbeEvent> get probeEvents => _probes.stream;
 
   @override
   PumpConnection get lastConnection => _lastConnection;
@@ -69,6 +73,7 @@ class PumpClient implements PumpSource {
     await _pairingRequests.close();
     await _errors.close();
     await _profiles.close();
+    await _probes.close();
   }
 
   void _onEvent(dynamic event) {
@@ -92,6 +97,8 @@ class PumpClient implements PumpSource {
       case 'profile':
         final json = map['json'] as String?;
         if (json != null) _profiles.add(json);
+      case 'probe':
+        _probes.add(ProbeEvent.fromMap(map));
     }
   }
 
@@ -114,6 +121,23 @@ class PumpClient implements PumpSource {
 
   @override
   Future<void> unpair() => _invoke('unpair', const {});
+
+  @override
+  Future<void> setProbeCapture(bool enabled) =>
+      _invoke('setProbeCapture', {'enabled': enabled});
+
+  @override
+  Future<String?> sendProbe(String className, {int? arg1, int? arg2}) async {
+    try {
+      return await _commands.invokeMethod<String>(
+          'sendProbe', {'name': className, 'arg1': arg1, 'arg2': arg2});
+    } on MissingPluginException {
+      return 'native bridge not available';
+    } on PlatformException catch (e) {
+      _log.warning('sendProbe failed', e);
+      return 'error: ${e.message}';
+    }
+  }
 
   Future<void> _invoke(String method, Map<String, dynamic> args) async {
     try {
