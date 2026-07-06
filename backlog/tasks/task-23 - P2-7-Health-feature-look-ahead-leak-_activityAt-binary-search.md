@@ -4,7 +4,7 @@ title: Health-feature look-ahead leak + _activityAt binary search
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:06'
+updated_date: '2026-07-06 08:38'
 labels:
   - roadmap
   - ml
@@ -48,6 +48,16 @@ ordinal: 23000
 - Effort: S–M
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 08:38
+---
+Residual sibling found in deep-sweep 2026-07-06: `_hrRelAt` (`health_features.dart:98-114`) still does a bidirectional nearest-sample lookup (future leak) — ticketed as TASK-132.
+---
+<!-- COMMENTS:END -->
 
 ## Final Summary
 

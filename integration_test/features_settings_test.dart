@@ -33,6 +33,13 @@ void main() {
     expect(find.text('Notifications'), findsWidgets);
     expect(find.text('Alert thresholds'), findsOneWidget);
     expect(find.text('Quiet hours'), findsOneWidget);
+    // §4-2.3: per-time-of-day override rows exist and can be turned on.
+    expect(find.text('Overnight (23:00–07:00)'), findsOneWidget);
+    expect(find.textContaining('Post-meal'), findsOneWidget);
+    await tester.tap(find.byType(SwitchListTile).first);
+    await tester.pumpAndSettle();
+    // Turning a segment on reveals its own Low/High steppers (all-day + one segment).
+    expect(find.text('Low alert'), findsWidgets);
   });
 
   testWidgets('Exercise mode can be announced', (tester) async {

@@ -1416,6 +1416,12 @@ class AlertService {
     // low line: impaired-awareness risk (older age, long-standing diabetes), an active
     // alcohol watch (delayed lows), and an announced exercise session.
     final thresholds = _ref.read(alertThresholdsProvider);
+    // §4-2.3: pick the per-time-of-day row. A carb entry in the last 2h counts as
+    // "post-meal" so the higher post-meal ceiling (if set) applies while digesting.
+    final meals = _ref.read(dayDataProvider);
+    final postMeal = meals.carbs.any((c) =>
+        !c.time.isAfter(now) && now.difference(c.time) <= const Duration(hours: 2));
+    final band = thresholds.resolve(at: now, postMeal: postMeal);
     final profile = _ref.read(userProfileProvider);
     final hypoBump =
         const HypoAwarenessRisk().lowThresholdBump(profile, now);
@@ -1423,26 +1429,26 @@ class AlertService {
     final recentAnnotations = await _ref
         .read(historyRepositoryProvider)
         .annotations(now.subtract(alcohol.window), now);
-    var lowMgdl = thresholds.lowMgdl + hypoBump;
+    var lowMgdl = band.lowMgdl + hypoBump;
     if (alcohol.activeAt(recentAnnotations, now)) {
-      lowMgdl = math.max(lowMgdl, thresholds.lowMgdl + 10);
+      lowMgdl = math.max(lowMgdl, band.lowMgdl + 10);
     }
     final exercise = _ref.read(exercisePlanProvider);
     if (exercise != null && exercise.affectsAt(now)) {
       lowMgdl = math.max(
-          lowMgdl, thresholds.lowMgdl + const ExerciseModeCoach().lowBump(exercise.type));
+          lowMgdl, band.lowMgdl + const ExerciseModeCoach().lowBump(exercise.type));
     }
     // Hot/cold ambient weather raises the low line (faster/altered insulin absorption).
     final weatherBump = const WeatherRiskModifier()
         .lowThresholdBump(_ref.read(weatherProvider).valueOrNull?.tempC);
-    if (weatherBump > 0) lowMgdl = math.max(lowMgdl, thresholds.lowMgdl + weatherBump);
+    if (weatherBump > 0) lowMgdl = math.max(lowMgdl, band.lowMgdl + weatherBump);
 
     // Evaluate without an internal cooldown — repeat/opt-out is governed by prefs here.
     final alert = AlertMonitor(
       cooldown: Duration.zero,
       lowMgdl: lowMgdl,
-      highMgdl: thresholds.highMgdl,
-      urgentLowMgdl: thresholds.urgentLowMgdl,
+      highMgdl: band.highMgdl,
+      urgentLowMgdl: band.urgentLowMgdl,
     ).evaluate(
       forecasts: forecasts,
       currentMgdl: state.currentMgdl,

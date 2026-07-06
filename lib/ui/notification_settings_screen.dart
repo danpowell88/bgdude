@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/units.dart';
+import '../insights/alert_thresholds.dart';
 import '../insights/notification_prefs.dart';
 import '../state/providers.dart';
 
@@ -86,9 +87,76 @@ class _ThresholdsCard extends ConsumerWidget {
             Text('Predicted-low/high nudges use these. Safety modifiers (age, alcohol, '
                 'exercise) can only make the low alert lead earlier.',
                 style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 8),
+            _SegmentOverride(
+              title: 'Overnight (23:00–07:00)',
+              subtitle: 'Warn earlier while you sleep.',
+              segment: AlertSegment.overnight,
+              thresholds: t,
+              stepper: stepper,
+              onSave: notifier.save,
+            ),
+            _SegmentOverride(
+              title: 'Post-meal (first 2h after carbs)',
+              subtitle: 'Tolerate the expected bump so you\'re not nagged.',
+              segment: AlertSegment.postMeal,
+              thresholds: t,
+              stepper: stepper,
+              onSave: notifier.save,
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// One collapsible per-time-of-day override row (§4-2.3). Off ⇒ the all-day thresholds
+/// apply. On ⇒ its low/high replace them for that segment (urgent-low stays the all-day
+/// value — it's a single safety line). Toggling on seeds from the current all-day row.
+class _SegmentOverride extends StatelessWidget {
+  const _SegmentOverride({
+    required this.title,
+    required this.subtitle,
+    required this.segment,
+    required this.thresholds,
+    required this.stepper,
+    required this.onSave,
+  });
+
+  final String title;
+  final String subtitle;
+  final AlertSegment segment;
+  final AlertThresholds thresholds;
+  final Widget Function(
+      String label, double value, ValueChanged<double> onSet, double min, double max) stepper;
+  final void Function(AlertThresholds) onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final band = thresholds.segments[segment];
+    final on = band != null;
+    final effective = band ?? thresholds.allDay;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          title: Text(title),
+          subtitle: Text(subtitle),
+          value: on,
+          onChanged: (v) => onSave(v
+              ? thresholds.withSegment(segment, thresholds.allDay)
+              : thresholds.withoutSegment(segment)),
+        ),
+        if (on) ...[
+          stepper('Low alert', effective.lowMgdl,
+              (v) => onSave(thresholds.withSegment(segment, effective.copyWith(lowMgdl: v))), 60, 110),
+          stepper('High alert', effective.highMgdl,
+              (v) => onSave(thresholds.withSegment(segment, effective.copyWith(highMgdl: v))), 140, 300),
+        ],
+      ],
     );
   }
 }

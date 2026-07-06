@@ -1,8 +1,51 @@
 /// User-customisable glucose alert thresholds (mg/dL internally). These feed the
 /// real-time [AlertMonitor] so the low/high nudges match the user's own targets rather
 /// than fixed defaults. Safety modifiers (hypo-awareness, alcohol, exercise) are layered
-/// on top of [lowMgdl] at evaluation time.
+/// on top of the resolved low line at evaluation time.
+///
+/// Per-time-of-day (§4-2.3): the top-level [lowMgdl]/[highMgdl]/[urgentLowMgdl] are the
+/// "all-day" row. Optional [segments] override them for the overnight window, daytime, or
+/// the post-meal window; anything not overridden falls back to the all-day row. This lets
+/// you warn earlier overnight and tolerate the expected bump after a meal without nagging.
 library;
+
+import '../core/sleep_window.dart';
+
+/// The parts of the day a threshold row can apply to. `day` is everything that isn't the
+/// overnight window; `postMeal` takes precedence over both while a meal is digesting.
+enum AlertSegment { overnight, day, postMeal }
+
+/// One low/high/urgent-low triple, in mg/dL.
+class AlertBand {
+  const AlertBand({
+    required this.lowMgdl,
+    required this.highMgdl,
+    required this.urgentLowMgdl,
+  });
+
+  final double lowMgdl;
+  final double highMgdl;
+  final double urgentLowMgdl;
+
+  AlertBand copyWith({double? lowMgdl, double? highMgdl, double? urgentLowMgdl}) =>
+      AlertBand(
+        lowMgdl: lowMgdl ?? this.lowMgdl,
+        highMgdl: highMgdl ?? this.highMgdl,
+        urgentLowMgdl: urgentLowMgdl ?? this.urgentLowMgdl,
+      );
+
+  Map<String, dynamic> toJson() =>
+      {'low': lowMgdl, 'high': highMgdl, 'urgentLow': urgentLowMgdl};
+
+  /// Missing keys fall back to [fallback] (the all-day row), so a partial override only
+  /// changes the fields the user actually set.
+  factory AlertBand.fromJson(Map<String, dynamic> j, {required AlertBand fallback}) =>
+      AlertBand(
+        lowMgdl: (j['low'] as num?)?.toDouble() ?? fallback.lowMgdl,
+        highMgdl: (j['high'] as num?)?.toDouble() ?? fallback.highMgdl,
+        urgentLowMgdl: (j['urgentLow'] as num?)?.toDouble() ?? fallback.urgentLowMgdl,
+      );
+}
 
 class AlertThresholds {
   /// Shipped defaults (mg/dL). Referenced by BOTH the constructor and [fromJson] so the
@@ -15,29 +58,83 @@ class AlertThresholds {
     this.lowMgdl = defaultLowMgdl,
     this.highMgdl = defaultHighMgdl,
     this.urgentLowMgdl = defaultUrgentLowMgdl,
+    this.segments = const {},
   });
 
   final double lowMgdl;
   final double highMgdl;
   final double urgentLowMgdl;
 
+  /// Per-segment overrides. Empty ⇒ the all-day row applies all day (the migrated state).
+  final Map<AlertSegment, AlertBand> segments;
+
+  /// The all-day row as a band.
+  AlertBand get allDay => AlertBand(
+        lowMgdl: lowMgdl,
+        highMgdl: highMgdl,
+        urgentLowMgdl: urgentLowMgdl,
+      );
+
+  /// The effective band at [at]. A [postMeal] window wins over the time-of-day segment
+  /// (a post-meal high can happen overnight too); otherwise overnight vs day is decided by
+  /// [defaultAsleepAt]. Segments with no override inherit the all-day row.
+  AlertBand resolve({required DateTime at, bool postMeal = false}) {
+    if (postMeal) {
+      final b = segments[AlertSegment.postMeal];
+      if (b != null) return b;
+    }
+    final seg = defaultAsleepAt(at) ? AlertSegment.overnight : AlertSegment.day;
+    return segments[seg] ?? allDay;
+  }
+
+  /// Set (or replace) one segment override.
+  AlertThresholds withSegment(AlertSegment seg, AlertBand band) =>
+      copyWith(segments: {...segments, seg: band});
+
+  /// Remove one segment override (falls back to the all-day row).
+  AlertThresholds withoutSegment(AlertSegment seg) =>
+      copyWith(segments: {for (final e in segments.entries) if (e.key != seg) e.key: e.value});
+
   AlertThresholds copyWith({
     double? lowMgdl,
     double? highMgdl,
     double? urgentLowMgdl,
+    Map<AlertSegment, AlertBand>? segments,
   }) =>
       AlertThresholds(
         lowMgdl: lowMgdl ?? this.lowMgdl,
         highMgdl: highMgdl ?? this.highMgdl,
         urgentLowMgdl: urgentLowMgdl ?? this.urgentLowMgdl,
+        segments: segments ?? this.segments,
       );
 
-  Map<String, dynamic> toJson() =>
-      {'low': lowMgdl, 'high': highMgdl, 'urgentLow': urgentLowMgdl};
+  Map<String, dynamic> toJson() => {
+        'low': lowMgdl,
+        'high': highMgdl,
+        'urgentLow': urgentLowMgdl,
+        if (segments.isNotEmpty)
+          'segments': {
+            for (final e in segments.entries) e.key.name: e.value.toJson()
+          },
+      };
 
-  factory AlertThresholds.fromJson(Map<String, dynamic> j) => AlertThresholds(
-        lowMgdl: (j['low'] as num?)?.toDouble() ?? defaultLowMgdl,
-        highMgdl: (j['high'] as num?)?.toDouble() ?? defaultHighMgdl,
-        urgentLowMgdl: (j['urgentLow'] as num?)?.toDouble() ?? defaultUrgentLowMgdl,
-      );
+  /// Migration (§4-2.3 AC#2): old flat JSON (no `segments`) parses into the all-day row
+  /// with no overrides, so existing users keep their exact thresholds all day.
+  factory AlertThresholds.fromJson(Map<String, dynamic> j) {
+    final base = AlertThresholds(
+      lowMgdl: (j['low'] as num?)?.toDouble() ?? defaultLowMgdl,
+      highMgdl: (j['high'] as num?)?.toDouble() ?? defaultHighMgdl,
+      urgentLowMgdl: (j['urgentLow'] as num?)?.toDouble() ?? defaultUrgentLowMgdl,
+    );
+    final segJson = j['segments'] as Map<String, dynamic>?;
+    if (segJson == null || segJson.isEmpty) return base;
+    final segs = <AlertSegment, AlertBand>{};
+    for (final s in AlertSegment.values) {
+      final raw = segJson[s.name];
+      if (raw is Map<String, dynamic>) {
+        segs[s] = AlertBand.fromJson(raw, fallback: base.allDay);
+      }
+    }
+    return base.copyWith(segments: segs);
+  }
 }
