@@ -4,7 +4,7 @@ title: Alert quality pass
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 19:08'
 labels:
   - roadmap
   - alerts
@@ -28,8 +28,8 @@ ordinal: 102900
 <!-- AC:BEGIN -->
 - [ ] #1 Snooze + acknowledge semantics
 - [ ] #2 Smarter dedup prevents repeat spam
-- [ ] #3 Exercise-mode alert-suppression nuance
-- [ ] #4 Covered by alert decision-core tests (TASK-37 step 1)
+- [x] #3 Exercise-mode alert-suppression nuance
+- [x] #4 Covered by alert decision-core tests (TASK-37 step 1)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -59,5 +59,11 @@ author: Claude
 created: 2026-07-06 05:30
 ---
 detail-needed (2026-07-06, goal triage): Alert quality (snooze/ack/dedup) is best built on the §3.C pure decision-core (TASK-37, detail-needed); blocked on that.
+---
+
+author: Claude
+created: 2026-07-06 19:08
+---
+AC#3 (exercise-mode alert-suppression) + AC#4 (decision-core tests) delivered (commit above): AlertMonitor.evaluate gains suppressPredictedHigh, wired to the active exercise plan; lows/urgent-lows are never suppressed; matrix tests added. AC#2 (smarter dedup) is PARTLY in place — the alert loop already gates each kind on a cooldown and the 'currentMgdl > lowMgdl' guard avoids re-alerting the same dip; a fuller 'don't re-alert until the value recovers and dips again' needs a small state machine (per-excursion tracking) — bounded but wants a design nod on the recovery threshold. AC#1 (snooze + acknowledge) is a real stateful feature needing notification action buttons + persisted per-alert snooze state + UI — best done as a focused unit (and it's a UX decision how long snooze lasts per category). Flagged for that focused pass.
 ---
 <!-- COMMENTS:END -->

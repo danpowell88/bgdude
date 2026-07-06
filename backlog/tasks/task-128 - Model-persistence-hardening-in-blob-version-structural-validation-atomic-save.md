@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:37'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 21:13'
 labels:
   - code-health
   - ml
@@ -52,6 +52,16 @@ ordinal: 102300
 - Effort: M
 - Where: `lib/ml/forecaster_service.dart`, `lib/ml/gbm.dart`, `lib/ml/residual_gbm_model.dart`
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 21:13
+---
+Stability rerun 2026-07-07: ensure the structural validation covers the per-horizon map keys — residual_gbm_model.dart:66,72 does int.parse(e.key as String) on decoded keys and throws on schema drift; wrap or int.tryParse as part of this ticket.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
