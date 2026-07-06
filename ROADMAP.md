@@ -89,6 +89,9 @@ _Deprioritised for now: Part 3 new features, Part 4 release/store, multi-user UX
 
 ## Part 3 — New features (ideas to pick from)
 
+_Deeper, ranked treatment (forecasting-first, with dependencies and sequencing):
+[doc/plans/feature-ideas.md](doc/plans/feature-ideas.md)._
+
 ### 3A. Intelligence (mostly reuse the on-device LLM runtime) 🧠
 - **Free-text meal → carbs/fat/protein.** "chicken curry, rice, a naan" → estimated macros
   that prefill the bolus advisor. Natural meal entry alongside scan/search. **(M, high value)**
