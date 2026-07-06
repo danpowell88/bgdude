@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../feedback/annotations.dart';
 import '../insights/reading_explainer.dart';
 import '../state/providers.dart';
 import '../timeline/day_event.dart';
@@ -167,8 +168,8 @@ class TimelineEventCard extends ConsumerWidget {
           defaultAsleepAt(event.time),
     );
     if (!context.mounted) return;
-    final annotation = await Navigator.of(context).push<dynamic>(
-      MaterialPageRoute<dynamic>(
+    final annotation = await Navigator.of(context).push<Annotation>(
+      MaterialPageRoute<Annotation>(
         builder: (_) => ExplainReadingScreen(
           at: event.time,
           mgdl: event.mgdl ?? 0,
@@ -185,8 +186,8 @@ class TimelineEventCard extends ConsumerWidget {
     }
   }
 
-  static IgnoreReason? _reasonFor(dynamic annotationKind) {
-    final name = '$annotationKind';
+  static IgnoreReason? _reasonFor(AnnotationKind annotationKind) {
+    final name = annotationKind.name;
     if (name.contains('compressionLow')) return IgnoreReason.compressionLow;
     if (name.contains('siteFailure')) return IgnoreReason.siteFailure;
     if (name.contains('sensorWarmup')) return IgnoreReason.sensorWarmup;

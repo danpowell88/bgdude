@@ -40,7 +40,8 @@ Future<List<Map<String, dynamic>>> _sampleProducts(int want) async {
     if (data == null) return const [];
     final out = <Map<String, dynamic>>[];
     for (final p in (data['products'] as List).cast<Map<String, dynamic>>()) {
-      final carbs = (p['nutriments']?['carbohydrates_100g'] as num?)?.toDouble();
+      final nutriments = p['nutriments'] as Map<String, dynamic>?;
+      final carbs = (nutriments?['carbohydrates_100g'] as num?)?.toDouble();
       final code = p['code']?.toString();
       if (carbs != null && code != null && code.isNotEmpty) {
         out.add({'code': code, 'carbs100': carbs});
@@ -57,8 +58,10 @@ Future<String?> _nutritionImageUrl(String code) async {
   final uri = Uri.parse(
       'https://world.openfoodfacts.org/api/v2/product/$code?fields=selected_images');
   final data = _tryJson(await http.get(uri, headers: {'User-Agent': _ua}));
-  final disp = (data?['product']?['selected_images']?['nutrition']
-      ?['display']) as Map<String, dynamic>?;
+  final product = data?['product'] as Map<String, dynamic>?;
+  final images = product?['selected_images'] as Map<String, dynamic>?;
+  final nutrition = images?['nutrition'] as Map<String, dynamic>?;
+  final disp = nutrition?['display'] as Map<String, dynamic>?;
   if (disp == null || disp.isEmpty) return null;
   return (disp['en'] ?? disp.values.first)?.toString();
 }

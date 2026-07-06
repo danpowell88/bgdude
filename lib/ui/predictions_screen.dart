@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../analytics/predictor.dart';
+import '../analytics/therapy_settings.dart';
 import '../core/units.dart';
 import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
@@ -170,12 +171,12 @@ class _HorizonCard extends StatelessWidget {
 
 class _SensitivityCard extends StatelessWidget {
   const _SensitivityCard({required this.context0});
-  final dynamic context0;
+  final SensitivityContext context0;
 
   @override
   Widget build(BuildContext context) {
-    final mult = context0.effectiveMultiplier as double;
-    final reasons = (context0.reasons as List).cast<String>();
+    final mult = context0.effectiveMultiplier;
+    final reasons = context0.reasons;
     final pct = ((mult - 1) * 100).round();
     final label = pct.abs() < 3
         ? 'Typical sensitivity today'

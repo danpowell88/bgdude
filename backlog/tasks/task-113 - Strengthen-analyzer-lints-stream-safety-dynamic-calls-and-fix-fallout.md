@@ -1,10 +1,10 @@
 ---
 id: TASK-113
 title: 'Strengthen analyzer lints (stream safety, dynamic calls) and fix fallout'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:56'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 13:11'
 labels:
   - code-health
   - infra
@@ -24,8 +24,8 @@ ordinal: 105300
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 cancel_subscriptions, close_sinks and avoid_dynamic_calls enabled at minimum; the other candidates evaluated and either enabled or rejected with a comment in analysis_options.yaml
-- [ ] #2 flutter analyze clean after fixing all violations (fix, do not suppress; per-line ignores only with a justification comment)
+- [x] #1 cancel_subscriptions, close_sinks and avoid_dynamic_calls enabled at minimum; the other candidates evaluated and either enabled or rejected with a comment in analysis_options.yaml
+- [x] #2 flutter analyze clean after fixing all violations (fix, do not suppress; per-line ignores only with a justification comment)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -43,4 +43,6 @@ ordinal: 105300
 - Source: code-health survey 2026-07-06 (test finding 6)
 - Effort: S–M
 - Where: analysis_options.yaml:14-20
+
+Implemented. Enabled cancel_subscriptions, close_sinks, avoid_dynamic_calls, only_throw_errors, throw_in_finally (AC#1). The stream-safety lints found ZERO violations (subscriptions already cancelled / sinks closed). Rejected with comments in analysis_options.yaml: discarded_futures (overlaps unawaited_futures, far noisier incl. tests) and directives_ordering (pure-style churn, no correctness gain). Fixed all 7 avoid_dynamic_calls violations properly, no ignores (AC#2): predictions_screen _SensitivityCard.context0 typed as SensitivityContext (dropped as-casts); timeline_screen push<Annotation> + _reasonFor(AnnotationKind) using .name; nutrition_ocr_accuracy_test nested JSON typed via Map<String,dynamic>? casts. flutter analyze clean, 519 tests green, APK builds.
 <!-- SECTION:NOTES:END -->

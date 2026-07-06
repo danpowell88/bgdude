@@ -18,3 +18,17 @@ linter:
     - unawaited_futures
     - always_declare_return_types
     - prefer_const_constructors
+    # Stream safety — this app runs long-lived BLE/CGM streams, so a leaked
+    # subscription or unclosed controller is a real, on-device-only bug class (TASK-113).
+    - cancel_subscriptions
+    - close_sinks
+    # The native bridge hands us untyped payload maps; flag dynamic dispatch so a typo
+    # is a compile error, not a silently-dropped field.
+    - avoid_dynamic_calls
+    - only_throw_errors
+    - throw_in_finally
+    # Rejected after evaluation:
+    # - discarded_futures: overlaps unawaited_futures but far noisier (flags every
+    #   unawaited call in sync contexts incl. tests); not worth the blanket churn.
+    # - directives_ordering: pure-style import reordering across the whole tree; high
+    #   diff noise for no correctness gain.
