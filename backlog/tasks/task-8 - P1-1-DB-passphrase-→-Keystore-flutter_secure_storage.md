@@ -4,7 +4,7 @@ title: DB passphrase → Keystore (flutter_secure_storage)
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 15:26'
+updated_date: '2026-07-06 21:32'
 labels:
   - roadmap
   - security
@@ -60,5 +60,11 @@ author: Claude
 created: 2026-07-06 05:25
 ---
 detail-needed (2026-07-06, goal triage): Security-critical (the DB encryption key): wants your go-ahead to add the flutter_secure_storage dependency + the exact prefs->Keystore migration strategy, since a bad migration would lock you out of the existing encrypted DB.
+---
+
+author: Claude
+created: 2026-07-06 21:32
+---
+Docs/CI sweep 2026-07-06: the Keystore implementation appears already landed in code — lib/data/secure_key.dart uses flutter_secure_storage (encryptedSharedPreferences: true) with legacy-prefs migration, and database.dart matches. If the remaining ACs (await-the-write, comment fixes) are done, finalize this task; README wording was updated to reflect Keystore-backed storage.
 ---
 <!-- COMMENTS:END -->

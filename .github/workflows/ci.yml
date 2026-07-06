@@ -7,12 +7,24 @@ name: CI
 on:
   push:
     branches: [main]
+    # Docs and backlog files cannot break the build; skip the ~12-min pipeline
+    # for commits that touch nothing else.
+    paths-ignore:
+      - 'backlog/**'
+      - 'doc/**'
+      - '**/*.md'
   pull_request:
     branches: [main]
+
+# Newer pushes supersede in-flight runs of the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       # 1. Check out the repository.

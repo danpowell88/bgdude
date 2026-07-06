@@ -10,9 +10,9 @@ Follow these steps on a machine with Flutter to get to a running app.
 
 ## 1. Install prerequisites
 
-- Flutter 3.24+ (`flutter --version`)
-- Android SDK with **compileSdk 36 / build-tools** and an Android 14+ device or emulator
-- JDK 17+ (a JDK 21 is already on this machine)
+- Flutter 3.27+ (`flutter --version`; CI builds on pinned stable 3.44.4)
+- Android SDK with **compileSdk 36 / build-tools** and an Android 10+ (minSdk 29) device or emulator
+- JDK 17+
 
 ## 2. Fill in the generated platform scaffolding
 
