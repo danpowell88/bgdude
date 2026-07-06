@@ -50,7 +50,12 @@ class AlertMonitor {
     if (forecasts.isEmpty) return null;
     bool cool(GlucoseAlertKind k) {
       final last = lastFired[k];
-      return last == null || now.difference(last) >= cooldown;
+      if (last == null) return true;
+      final elapsed = now.difference(last);
+      // TASK-184: a DST fall-back / manual clock change makes elapsed negative —
+      // fail open so an urgent low is never suppressed for the repeated hour.
+      if (elapsed.isNegative) return true;
+      return elapsed >= cooldown;
     }
 
     final minF = forecasts.reduce((a, b) => a.mgdl < b.mgdl ? a : b);

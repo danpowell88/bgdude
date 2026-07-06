@@ -1452,7 +1452,7 @@ final alertServiceProvider = Provider<AlertService>((ref) => AlertService(ref));
 class AlertService {
   AlertService(this._ref);
   final Ref _ref;
-  final Map<NotificationCategory, DateTime> _lastFired = {};
+  final CooldownGate _cooldowns = CooldownGate();
   DateTime? _lastPredictionLog;
 
   /// Gate on the category's enabled state and repeat interval (repeatMinutes; a category
@@ -1460,16 +1460,17 @@ class AlertService {
   /// forever, but doesn't spam).
   /// Whether [c]'s repeat cooldown has elapsed. Pure — does NOT record a fire, so a send
   /// that then fails won't suppress the next attempt (critical for urgent lows, TASK-38).
+  /// The gate treats a negative elapsed (DST fall-back / manual clock change) as
+  /// eligible, so an urgent low is never suppressed for the repeated hour (TASK-184).
   bool _coolPassed(NotificationCategory c, DateTime now) {
     final pref = _ref.read(notificationPrefsProvider).of(c);
     if (!pref.enabled) return false;
-    final interval =
-        Duration(minutes: pref.repeatMinutes > 0 ? pref.repeatMinutes : 30);
-    final last = _lastFired[c];
-    return last == null || now.difference(last) >= interval;
+    return _cooldowns.passed(c, now,
+        Duration(minutes: pref.repeatMinutes > 0 ? pref.repeatMinutes : 30));
   }
 
-  void _markFired(NotificationCategory c, DateTime now) => _lastFired[c] = now;
+  void _markFired(NotificationCategory c, DateTime now) =>
+      _cooldowns.markFired(c, now);
 
   /// Cooldown check that also records the fire immediately. Kept for the non-critical
   /// alerts where an optimistic mark is fine; the urgent path uses [_coolPassed] +

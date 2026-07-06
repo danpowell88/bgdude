@@ -30,6 +30,27 @@ import '../pump/battery_history.dart';
 import '../pump/pump_snapshot.dart';
 import '../state/day_data.dart';
 
+/// Per-category repeat-cooldown tracker (TASK-184). Wall-clock elapsed time can go
+/// NEGATIVE across a DST fall-back or a manual clock change; a negative elapsed is
+/// treated as eligible (fail-open) — the cost is one possibly-early re-alert around
+/// a clock change, never a suppressed urgent low during the repeated hour.
+class CooldownGate {
+  final Map<NotificationCategory, DateTime> _lastFired = {};
+
+  /// Whether [c]'s cooldown of [interval] has elapsed at [now]. Pure check — does
+  /// not record a fire (see [markFired]).
+  bool passed(NotificationCategory c, DateTime now, Duration interval) {
+    final last = _lastFired[c];
+    if (last == null) return true;
+    final elapsed = now.difference(last);
+    // Clock jumped backwards — fail open rather than suppress a re-alert.
+    if (elapsed.isNegative) return true;
+    return elapsed >= interval;
+  }
+
+  void markFired(NotificationCategory c, DateTime now) => _lastFired[c] = now;
+}
+
 /// How the wrapper should treat the category cooldown around the send.
 enum AlertUrgency {
   /// Record the fire only AFTER a successful send, so a failed send (e.g. an
