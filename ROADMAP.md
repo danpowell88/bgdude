@@ -148,7 +148,10 @@ integration test in the same commit.
 Repository tests against in-memory `NativeDatabase` (upsert, reconciliation,
 dedupe); `ingestSnapshot` restart/dedupe test; ML honesty metrics (coverage + bias)
 as first-class; drift schema-export + migration tests **before** schema v3; a
-build-failing check that `request.control` is never imported natively (§3.G).
+build-failing check that `request.control` is never imported natively (§3.G). For
+end-to-end **device** coverage without hardware — pairing, decode, reconnect,
+alert-from-real-BLE — see the **software pump** (§4-7), a virtual t:slim X2 BLE
+peripheral.
 
 ---
 
@@ -555,6 +558,58 @@ they land:
 Note (arch): `protocol_explorer_screen.dart` imports the `PumpSource` interface
 directly — the §3.G guard-test violation still stands after the move; fix when the
 guard test lands (route probe send/capture through a provider).
+
+### §4-7 Software pump — virtual t:slim X2 BLE peripheral (L, 🔌 — test infrastructure)
+
+A second app (or build flavour / hidden mode) that **acts as the pump**: it stands
+up a BLE **GATT server**, advertises the pumpx2 service, runs the pairing handshake,
+and answers `currentStatus` reads with realistic cargo — so bgdude (or the Protocol
+Explorer) can pair and read over **real Bluetooth without any hardware**. The
+Explorer sweep (§4-5, `doc/pump-protocol.md`) captured the exact opcodes, framing,
+and decoded field layouts this needs, so the emulator can be built to match a real
+pump byte-for-byte. This is the highest-leverage testing unlock for the whole device
+track: pairing, reconnect, decode, and mutual-exclusion become reproducible on the
+desk instead of gated on the spare pump.
+
+**Why it's worth the L:** regression-guards the two JPAKE pairing fixes (2-5) that
+currently have no automated coverage; reproduces the finicky pairing-window /
+reconnect edges on demand; lets us drive scripted scenarios (low, rapid rise, bolus,
+occlusion alarm, site/cartridge change, empty reservoir, sensor warm-up) into the
+consumer to test alerts/insights end-to-end; and fuzzes `PumpResponseMapper` /
+`PumpHistoryMapper` against deliberately malformed cargo.
+
+**Shape (Android, Kotlin):**
+- **Transport** — `BluetoothGattServer` + `BluetoothLeAdvertiser` advertising
+  service `0000fdfb-…`; characteristics `fff6` CURRENT_STATUS (write+notify),
+  `fff7` QUALIFYING_EVENTS (notify), `fff8` HISTORY_LOG (notify), `fff9`
+  AUTHORIZATION (write+notify). **Never expose `fffc`/`fffd` CONTROL** — the
+  emulator is read-serving only, mirroring the read-only charter.
+- **Framing** — implement the pump side of `[opcode][txId][len][cargo][CRC16]`
+  chunked into ≤~18-byte packets with the `[packetsRemaining][txId][chunk]` wire
+  format; reassemble incoming requests, emit chunked responses + CRC16.
+- **Pairing** — implement the **JPAKE** server side (Jpake1a/1b/2/3/4) so a real
+  6-digit code pairs a consumer, plus the legacy 16-char challenge-response path;
+  form the LE Secure Connections bond. This is the hard part — port the maths from
+  the pumpx2 `JpakeAuthBuilder` (client) to a server counterpart, cross-checking
+  against the captured handshake bytes.
+- **Message encoding** — reuse pumpx2's response classes to *serialize* cargo
+  (they already parse/​`getCargo`), seeded from `dev/sim_data.dart`
+  (`SimulatedDay`) so battery/IOB/EGV/basal/last-bolus track a coherent simulated
+  day; hand-encode the reads pumpx2 only models as responses (HomeScreenMirror,
+  PumpFeatures, PumpSettings, PumpGlobals, …) from the §4-5 captures.
+- **Streams** — emit qualifying events on state change and a synthetic
+  `HistoryLogStream` backfill (reuse the demo history generator).
+- **Control panel UI** — pick a scenario, nudge glucose/IOB/battery live, fire an
+  alarm, toggle Control-IQ mode; a log of what the consumer requested.
+
+**Constraints / sequencing:** BLE can't loopback on one device, so this needs **two
+phones** (one runs the software pump, one runs bgdude) — fits the existing "🔌 build
++ exact procedure → run → report" cadence. Do it **after 2-5** (we now know the
+JPAKE + framing) and after §4-6.2 (the BLE state inspector makes failures legible on
+both ends). Ship it in a **separate module/app id** so it never rides in a consumer
+release. Stretch: a headless "replay" mode driven by a captured Explorer session for
+deterministic CI-on-device runs; a desktop variant once a BLE-peripheral stack that
+the pump accepts is found (bleak/WinRT couldn't bond — see `pump-recon-findings.md`).
 
 ---
 
