@@ -1,10 +1,10 @@
 ---
 id: TASK-24
 title: 'Garmin: real delta + plumb display unit'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 16:02'
 labels:
   - roadmap
   - garmin
@@ -26,8 +26,8 @@ ordinal: 103700
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Delta from consecutive distinct timestamps
-- [ ] #2 Display unit plumbed (not hardcoded mmol)
+- [x] #1 Delta from consecutive distinct timestamps
+- [x] #2 Display unit plumbed (not hardcoded mmol)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -47,6 +47,8 @@ ordinal: 103700
 - Effort: S
 - Flags: 🔌 hardware
 - Roadmap status: open
+
+Implemented. AC#1: GarminIntegration now recomputes the delta only across DISTINCT CGM timestamps (tracks lastCgmTs + lastDelta) — snapshots repeat the same reading between CGM updates, which previously zeroed the delta. AC#2: the display unit is plumbed from the phone: PumpSource.setGarminUnit(unit) → command-channel 'setGarminUnit' → PumpBridge → GarminIntegration.displayUnit, sent in the watch payload instead of a hardcoded 'mmol'. Wired via app.dart's glucoseUnit listener (on change) + a one-time runStartup push (initial). SimulatedPumpClient is a no-op (no native Garmin push in demo). The watch's BgData.mc already converts by the 'unit' field. analyze clean, 556 Dart tests + native tests green, APK builds.
 <!-- SECTION:NOTES:END -->
 
 ## Comments

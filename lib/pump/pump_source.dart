@@ -3,6 +3,7 @@
 /// mode) without any UI change. Both expose the same streams + read-only commands.
 library;
 
+import '../core/units.dart';
 import 'probe_event.dart';
 import 'pump_snapshot.dart';
 
@@ -43,4 +44,7 @@ abstract interface class PumpSource {
   /// it rather than callers reaching the native command channel directly (TASK-43).
   Future<List<dynamic>> fetchHistory(
       {required int fromEpochMs, required int toEpochMs});
+
+  /// Push the display unit to the native Garmin sender so the watch matches the app (TASK-24).
+  Future<void> setGarminUnit(GlucoseUnit unit);
 }

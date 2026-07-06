@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 
+import '../core/units.dart';
 import 'channels.dart';
 import 'probe_event.dart';
 import 'pump_snapshot.dart';
@@ -148,6 +149,12 @@ class PumpClient implements PumpSource {
     });
     return raw ?? const [];
   }
+
+  /// Tell the native Garmin push which display unit to send to the watch (TASK-24). The
+  /// unit is a phone-side setting, so it must be plumbed to the native sender.
+  @override
+  Future<void> setGarminUnit(GlucoseUnit unit) =>
+      _invoke('setGarminUnit', {'unit': unit.name});
 
   Future<void> _invoke(String method, Map<String, dynamic> args) async {
     try {

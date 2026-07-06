@@ -40,6 +40,8 @@ class BgDudeApp extends ConsumerWidget {
     });
     ref.listen(glucoseUnitProvider, (_, unit) {
       ref.read(homeWidgetServiceProvider).setUnit(unit);
+      // TASK-24: keep the Garmin watch on the user's chosen unit.
+      ref.read(pumpClientProvider).setGarminUnit(unit);
     });
     // Alert if the pump stays disconnected.
     ref.listen(pumpConnectionProvider, (_, next) async {

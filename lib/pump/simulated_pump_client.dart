@@ -8,6 +8,7 @@ library;
 
 import 'dart:async';
 
+import '../core/units.dart';
 import '../dev/sim_data.dart';
 import 'probe_event.dart';
 import 'pump_snapshot.dart';
@@ -178,4 +179,9 @@ class SimulatedPumpClient implements PumpSource {
       // The simulator seeds its history directly into the store, so there is no on-device
       // pump log to backfill from — an empty result (backfill imports nothing) is correct.
       const [];
+
+  @override
+  Future<void> setGarminUnit(GlucoseUnit unit) async {
+    // No native Garmin push in demo mode.
+  }
 }

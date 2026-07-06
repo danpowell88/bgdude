@@ -1773,6 +1773,10 @@ class AppJobs {
       }
     }
 
+    // TASK-24: push the current display unit to the Garmin watch once at launch (the live
+    // listener only fires on subsequent changes).
+    await job('garminUnit', () async =>
+        _ref.read(pumpClientProvider).setGarminUnit(_ref.read(glucoseUnitProvider)));
     if (!_ref.read(devModeProvider)) {
       await job('syncHealth', syncHealth);
     }

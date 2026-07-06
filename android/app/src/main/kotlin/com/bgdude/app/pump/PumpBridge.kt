@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import com.bgdude.app.garmin.GarminIntegration
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -111,6 +112,12 @@ class PumpBridge(
                         val a1 = call.argument<Int>("arg1")
                         val a2 = call.argument<Int>("arg2")
                         result.success(service?.sendProbe(name, a1, a2) ?: "not connected")
+                    }
+                    "setGarminUnit" -> {
+                        // TASK-24: the phone owns the display-unit setting; forward it to the
+                        // native Garmin push so the watch shows the user's chosen unit.
+                        GarminIntegration.setUnit(call.argument<String>("unit") ?: "mmol")
+                        result.success(null)
                     }
                     else -> result.notImplemented()
                 }
