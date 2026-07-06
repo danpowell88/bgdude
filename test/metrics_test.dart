@@ -3,7 +3,66 @@ import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/ml/error_grid.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+GlucoseMetrics _metrics({
+  required double timeInRange,
+  required double timeBelow70,
+  required double timeBelow54,
+  required double timeAbove180,
+  required double timeAbove250,
+}) =>
+    GlucoseMetrics(
+      readingCount: 288,
+      meanMgdl: 150,
+      sdMgdl: 40,
+      timeInRange: timeInRange,
+      timeInTightRange: timeInRange,
+      timeBelow70: timeBelow70,
+      timeBelow54: timeBelow54,
+      timeAbove180: timeAbove180,
+      timeAbove250: timeAbove250,
+      coveragePeriod: const Duration(days: 1),
+      expectedReadings: 288,
+      sufficient: false,
+    );
+
 void main() {
+  group('TirBands (TASK-105)', () {
+    test('decomposes cumulative fractions into exclusive bands that sum to ~1', () {
+      // Cumulative: <54 3%, <70 8%, in-range 70%, >180 22%, >250 7%.
+      final m = _metrics(
+        timeInRange: 0.70,
+        timeBelow70: 0.08,
+        timeBelow54: 0.03,
+        timeAbove180: 0.22,
+        timeAbove250: 0.07,
+      );
+      final b = m.bands;
+      expect(b.veryLow, closeTo(0.03, 1e-9));
+      expect(b.low, closeTo(0.05, 1e-9)); // 0.08 - 0.03
+      expect(b.inRange, closeTo(0.70, 1e-9));
+      expect(b.high, closeTo(0.15, 1e-9)); // 0.22 - 0.07
+      expect(b.veryHigh, closeTo(0.07, 1e-9));
+      expect(b.sum, closeTo(1.0, 1e-9));
+    });
+
+    test('gri is derived from the same bands', () {
+      final m = _metrics(
+        timeInRange: 0.70,
+        timeBelow70: 0.08,
+        timeBelow54: 0.03,
+        timeAbove180: 0.22,
+        timeAbove250: 0.07,
+      );
+      final b = m.bands;
+      final expected = (3.0 * b.veryLow * 100 +
+              2.4 * b.low * 100 +
+              1.6 * b.veryHigh * 100 +
+              0.8 * b.high * 100)
+          .clamp(0.0, 100.0);
+      expect(m.gri, closeTo(expected, 1e-9));
+    });
+  });
+
   group('GlucoseMetrics formulas', () {
     test('GMI and CV match reference formulas', () {
       // All readings at 154 mg/dL → GMI = 3.31 + 0.02392*154 = 6.99%.

@@ -225,17 +225,14 @@ class _TirBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final veryLow = m.timeBelow54;
-    final low = m.timeBelow70 - veryLow;
-    final inRange = m.timeInRange;
-    final high = m.timeAbove180 - m.timeAbove250;
-    final veryHigh = m.timeAbove250;
+    final b = m.bands;
+    final inRange = b.inRange;
     final segments = <(double, Color)>[
-      (veryLow, Colors.red.shade900),
-      (low, Colors.red.shade400),
-      (inRange, Colors.green.shade500),
-      (high, Colors.orange.shade400),
-      (veryHigh, Colors.orange.shade800),
+      (b.veryLow, Colors.red.shade900),
+      (b.low, Colors.red.shade400),
+      (b.inRange, Colors.green.shade500),
+      (b.high, Colors.orange.shade400),
+      (b.veryHigh, Colors.orange.shade800),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

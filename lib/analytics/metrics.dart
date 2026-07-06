@@ -12,6 +12,39 @@ import 'dart:math' as math;
 import '../core/samples.dart';
 import '../core/units.dart';
 
+/// The five **mutually-exclusive** time-in-range bands (fractions in 0..1), derived once
+/// from the cumulative fractions on [GlucoseMetrics]. This is the single source of truth
+/// for the exclusive decomposition — the GRI score and the TIR bar both consume it so they
+/// can't drift (TASK-105). The PDF report deliberately shows the *cumulative* fractions
+/// (e.g. "% above 180"), a separate clinical convention, so it does not use this.
+class TirBands {
+  const TirBands({
+    required this.veryLow,
+    required this.low,
+    required this.inRange,
+    required this.high,
+    required this.veryHigh,
+  });
+
+  /// < 54 mg/dL.
+  final double veryLow;
+
+  /// 54–70 mg/dL.
+  final double low;
+
+  /// 70–180 mg/dL.
+  final double inRange;
+
+  /// 180–250 mg/dL.
+  final double high;
+
+  /// > 250 mg/dL.
+  final double veryHigh;
+
+  /// Should be ~1.0 when CGM coverage is complete.
+  double get sum => veryLow + low + inRange + high + veryHigh;
+}
+
 class GlucoseMetrics {
   const GlucoseMetrics({
     required this.readingCount,
@@ -56,14 +89,24 @@ class GlucoseMetrics {
   final double lbgi;
   final double hbgi;
 
+  /// The five mutually-exclusive TIR bands (fractions in 0..1). Single source of truth for
+  /// the exclusive decomposition (TASK-105).
+  TirBands get bands => TirBands(
+        veryLow: timeBelow54,
+        low: timeBelow70 - timeBelow54,
+        inRange: timeInRange,
+        high: timeAbove180 - timeAbove250,
+        veryHigh: timeAbove250,
+      );
+
   /// Glycemia Risk Index (Klonoff 2022): a single 0–100 score (lower is better) weighting
   /// the AGP hypo/hyper components — closer to clinician risk judgement than TIR alone.
   double get gri {
-    final vLow = timeBelow54 * 100;
-    final low = (timeBelow70 - timeBelow54) * 100;
-    final vHigh = timeAbove250 * 100;
-    final high = (timeAbove180 - timeAbove250) * 100;
-    final score = 3.0 * vLow + 2.4 * low + 1.6 * vHigh + 0.8 * high;
+    final b = bands;
+    final score = 3.0 * b.veryLow * 100 +
+        2.4 * b.low * 100 +
+        1.6 * b.veryHigh * 100 +
+        0.8 * b.high * 100;
     return score.clamp(0.0, 100.0);
   }
 
