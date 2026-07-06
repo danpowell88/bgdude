@@ -13,10 +13,14 @@ When a change adds a new screen, also regenerate screenshots when an emulator is
 --target=integration_test/screenshots_test.dart -d <device>`) and reference the new PNG in
 both docs.
 
-## Backlog (task tracking)
-Actionable work is tracked with [Backlog.md](https://github.com/MrLesk/Backlog.md) under
-`backlog/tasks/` (CLI: `backlog`, e.g. `backlog task list --plain`, `backlog task 42 --plain`).
-`ROADMAP.md` stays the strategic narrative; tasks are the unit of execution.
+## Backlog (task tracking — the single planning source)
+All planning lives in [Backlog.md](https://github.com/MrLesk/Backlog.md) under `backlog/`
+(CLI: `backlog`, e.g. `backlog task list --plain`, `backlog task 42 --plain`): **tasks** are
+the unit of execution, **milestones** (m-0..m-8) carry the phasing, **decisions**
+(`backlog/decisions/`) hold standing product/architecture choices (read-only charter,
+personal audience, GBM-not-neural, what-not-to-change), and **docs** hold archived
+narrative (the old `ROADMAP.md` is archived verbatim as doc-1 — task notes citing
+`Source: ROADMAP section N` refer to it). There is no ROADMAP.md; do not recreate one.
 
 <!-- BACKLOG.MD GUIDELINES START -->
 <CRITICAL_INSTRUCTION>
