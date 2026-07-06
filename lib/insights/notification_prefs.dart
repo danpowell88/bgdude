@@ -155,14 +155,22 @@ class CategoryPref {
 
 extension NotificationCategoryQuietHours on NotificationCategory {
   /// Critical alerts still fire during quiet hours — you can always be woken for these.
+  /// TASK-144: the acute act-NOW alerts (rescue carbs during a real hypo, the
+  /// ketone/DKA prompt) bypass too — overnight is exactly when they matter most, and
+  /// they must never rank below a mere prediction. Acute categories deliberately NOT
+  /// here: missedBolus (a retrospective care nudge, fine to hold until morning) and
+  /// preBolusTimer (a user-initiated meal timer, not fired while asleep).
   bool get bypassesQuietHours =>
       this == NotificationCategory.urgentLow ||
       this == NotificationCategory.predictedLow ||
+      this == NotificationCategory.rescueCarb ||
+      this == NotificationCategory.ketoneCheck ||
       this == NotificationCategory.pumpAlarm;
 }
 
 /// A do-not-disturb window during which non-critical notifications are held back
-/// (critical ones — urgent/predicted low, pump alarms — always come through).
+/// (critical ones — urgent/predicted low, rescue carbs, ketone check, pump alarms —
+/// always come through).
 class QuietHours {
   const QuietHours({
     this.enabled = false,

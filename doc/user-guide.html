@@ -354,7 +354,7 @@
   <p>Set your own <b>low</b> and <b>high</b> alert lines with the −/+ steppers (shown in your unit). Safety modifiers (age, alcohol, exercise, hot/cold weather) can only make the <em>low</em> alert lead <em>earlier</em>, never later.</p>
   <p><b>By time of day.</b> These are your <em>all-day</em> lines by default. Turn on <b>Overnight (23:00–07:00)</b> to warn earlier while you sleep, and/or <b>Post-meal (first 2h after carbs)</b> to tolerate the expected bump so you're not nagged after eating — each with its own low/high steppers. A segment you leave off simply uses the all-day lines, and post-meal takes precedence over the overnight window if you've just eaten. Your urgent-low line is a single safety value that stays the same across all segments.</p>
   <h3>Quiet hours</h3>
-  <p>A do-not-disturb window that holds back non-critical notifications overnight. Urgent/predicted lows and pump alarms <b>always come through</b>. Toggle it on and set the From/To times.</p>
+  <p>A do-not-disturb window that holds back non-critical notifications overnight. Urgent/predicted lows, rescue carbs, the ketone check and pump alarms <b>always come through</b>. Toggle it on and set the From/To times.</p>
   <h3>Per-category controls</h3>
   <p>Every alert below is its own <b>category</b> you can tune: <b>on/off</b>, <b>intensity</b> (silent → urgent), <b>sound</b>, <b>vibration</b>, and a <b>repeat-until-clear</b> interval (Once / every 5 / 15 / 30 / 60 min). Categories marked <b>†</b> always come through even during quiet hours.</p>
   <h4>Glucose &amp; care (real-time, fired the moment a reading suggests it)</h4>
@@ -362,11 +362,11 @@
     <tr><th>Alert</th><th>Fires when</th><th>Default</th></tr>
     <tr><td><b>Urgent low predicted</b> †</td><td>A <em>severe</em> low is predicted soon.</td><td>Urgent · repeats every 15 min until it clears</td></tr>
     <tr><td><b>Low predicted</b> †</td><td>A low is predicted within the forecast horizon.</td><td>High</td></tr>
-    <tr><td><b>Rescue carbs</b></td><td>You're low/heading low and should take fast carbs now — with a gram estimate.</td><td>High</td></tr>
+    <tr><td><b>Rescue carbs</b> †</td><td>You're low/heading low and should take fast carbs now — with a gram estimate.</td><td>High</td></tr>
     <tr><td><b>High predicted</b></td><td>Glucose is trending above your high line.</td><td>Normal</td></tr>
     <tr><td><b>Missed bolus?</b></td><td>A meal-sized rise with no bolus logged.</td><td>High</td></tr>
     <tr><td><b>Stubborn high / site issue</b></td><td>High for hours with insulin doing little — possible infusion-set failure.</td><td>Normal</td></tr>
-    <tr><td><b>Check ketones (sick day)</b></td><td>A sustained high plus a ketone risk factor (illness, likely site failure, or very high with little insulin on board).</td><td>High · re-reminds hourly</td></tr>
+    <tr><td><b>Check ketones (sick day)</b> †</td><td>A sustained high plus a ketone risk factor (illness, likely site failure, or very high with little insulin on board).</td><td>High · re-reminds hourly</td></tr>
     <tr><td><b>Unusual pattern</b></td><td>The catch-all: glucose is moving faster than your carbs and insulin explain, and none of the named alerts above fit — an early heads-up that something out of the norm is happening (unannounced meal, sensor/site trouble, stress, illness onset).</td><td>Normal</td></tr>
     <tr><td><b>Move after meals</b></td><td>A post-meal spike is predicted and you're not already moving — a nudge to walk.</td><td>Low</td></tr>
     <tr><td><b>Overnight low risk</b></td><td>Tonight/tomorrow carries a higher low risk (after alcohol or aerobic exercise).</td><td>Normal</td></tr>

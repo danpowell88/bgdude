@@ -98,6 +98,53 @@ void main() {
       expect(next.sound, base.sound);
     });
 
+    test('the acute act-now alerts bypass quiet hours (TASK-144)', () {
+      for (final c in [
+        NotificationCategory.urgentLow,
+        NotificationCategory.predictedLow,
+        NotificationCategory.rescueCarb,
+        NotificationCategory.ketoneCheck,
+        NotificationCategory.pumpAlarm,
+      ]) {
+        expect(c.bypassesQuietHours, isTrue, reason: c.name);
+      }
+    });
+
+    test(
+        'every acute (high/urgent default) category bypasses quiet hours or is '
+        'explicitly excluded here', () {
+      // Reviewed exclusions (TASK-144) — safe to hold until quiet hours end:
+      //  * missedBolus — a retrospective care nudge, not an emergency; overnight the
+      //    stubborn-high / ketone paths cover the dangerous continuation.
+      //  * preBolusTimer — a user-initiated meal timer; it isn't fired while asleep.
+      const reviewedExclusions = {
+        NotificationCategory.missedBolus,
+        NotificationCategory.preBolusTimer,
+      };
+      final defaults = NotificationPrefs.defaults();
+      for (final c in NotificationCategory.values) {
+        final importance = defaults.of(c).importance;
+        final acute = importance == NotifImportance.high ||
+            importance == NotifImportance.urgent;
+        if (!acute) continue;
+        expect(c.bypassesQuietHours || reviewedExclusions.contains(c), isTrue,
+            reason: '${c.name} defaults to ${importance.name} importance but is '
+                'muted by quiet hours — bypass it or add a reviewed exclusion '
+                'with a justification');
+      }
+    });
+
+    test('routine categories stay muted during quiet hours', () {
+      for (final c in [
+        NotificationCategory.postMealMovement,
+        NotificationCategory.morningSummary,
+        NotificationCategory.reportDigest,
+        NotificationCategory.deviceReminder,
+      ]) {
+        expect(c.bypassesQuietHours, isFalse, reason: c.name);
+      }
+    });
+
     test('every category exposes a label and description', () {
       for (final c in NotificationCategory.values) {
         expect(c.label, isNotEmpty, reason: c.name);
