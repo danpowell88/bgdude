@@ -105,6 +105,7 @@ class PumpService : Service(), PumpCommHandler.Listener {
         val json = snapshot.toJson()
         callbacks?.onSnapshot(json)
         GarminIntegration.onSnapshot(json)
+        maybeFireUrgentLowBackstop(snapshot.cgmMgdl)
     }
 
     override fun onPairingCodeRequired(type: PairingCodeType) {
@@ -159,18 +160,67 @@ class PumpService : Service(), PumpCommHandler.Listener {
             .build()
 
     private fun createChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Pump connection",
-            NotificationManager.IMPORTANCE_LOW,
-        ).apply { description = "Keeps the t:slim X2 connection alive" }
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                "Pump connection",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply { description = "Keeps the t:slim X2 connection alive" },
+        )
+        // TASK-37: a separate high-importance channel for the native urgent-low backstop.
+        nm.createNotificationChannel(
+            NotificationChannel(
+                URGENT_CHANNEL_ID,
+                "Urgent low (safety net)",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Fires when glucose is critically low, even if the app is closed"
+            },
+        )
+    }
+
+    /**
+     * TASK-37 AC#2: a dumb, always-on urgent-low safety net running in the native service, so
+     * a critical low is still surfaced if the Flutter app (which owns the richer, forecast-
+     * based alerts) has been killed to reclaim memory. Fixed [URGENT_LOW_MGDL] threshold with
+     * a cooldown so it can't spam. This is additive to the pump/CGM's own alarms.
+     */
+    private var lastUrgentLowNotifiedMs = 0L
+
+    private fun maybeFireUrgentLowBackstop(cgmMgdl: Int?) {
+        val mgdl = cgmMgdl ?: return
+        if (mgdl <= 0 || mgdl >= URGENT_LOW_MGDL) return
+        val now = System.currentTimeMillis()
+        if (now - lastUrgentLowNotifiedMs < URGENT_LOW_COOLDOWN_MS) return
+        lastUrgentLowNotifiedMs = now
+        if (!hasBluetoothPermission(this)) return // proxy for notifications being usable
+        val notif = NotificationCompat.Builder(this, URGENT_CHANNEL_ID)
+            .setContentTitle("Urgent low")
+            .setContentText("Glucose is $mgdl mg/dL — treat now.")
+            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .build()
+        try {
+            getSystemService(NotificationManager::class.java)
+                .notify(URGENT_NOTIF_ID, notif)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Urgent-low notification blocked", e)
+        }
     }
 
     companion object {
         private const val TAG = "PumpService"
         private const val CHANNEL_ID = "pump_connection"
         private const val NOTIF_ID = 42
+
+        // TASK-37: native urgent-low safety net.
+        private const val URGENT_CHANNEL_ID = "urgent_low_backstop"
+        private const val URGENT_NOTIF_ID = 43
+        private const val URGENT_LOW_MGDL = 55
+        private const val URGENT_LOW_COOLDOWN_MS = 15 * 60 * 1000L
 
         /** Intent extra: start a scan/reconnect once foregrounded (set by [BootReceiver]). */
         const val EXTRA_AUTO_RECONNECT = "auto_reconnect"

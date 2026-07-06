@@ -388,6 +388,7 @@
     <tr><td><b>Pre-bolus timer</b></td><td>The pre-bolus countdown you started for a meal is up — time to eat. Survives the app being backgrounded.</td><td>High</td></tr>
   </table>
   <div class="note">These are all <b>additive</b> to your CGM/pump alarms, never a replacement — and the app is read-only, so a notification is a prompt to act, never an automatic dose.</div>
+  <div class="note"><b>Reliability limitation.</b> The forecast-based alerts above are decided inside the app. If Android kills bgdude to reclaim memory while the screen is off, those richer alerts can be delayed or missed until it next runs — <b>always keep your CGM/pump's own alarms on</b>. As a safety net, a <b>dumb urgent-low backstop</b> runs in the background pump service and will notify you if a live reading is critically low (≤ 55 mg/dL) even when the app itself has been killed. A full always-on background alerting engine is planned.</div>
 </section>
 
 <section id="reports">
