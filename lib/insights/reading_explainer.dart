@@ -577,8 +577,11 @@ class ReadingExplainer {
   String _bg(double mgdl) => '${Mgdl(mgdl).display(unit)} ${unit.label}';
 
   /// A glucose *delta* in the display unit.
-  String _delta(double mgdl) => switch (unit) {
-        GlucoseUnit.mgdl => '${mgdl.round()} mg/dL',
-        GlucoseUnit.mmol => '${(mgdl / kMgdlPerMmol).toStringAsFixed(1)} mmol/L',
-      };
+  String _delta(double mgdl) {
+    final v = Mgdl(mgdl).inUnit(unit);
+    return switch (unit) {
+      GlucoseUnit.mgdl => '${v.round()} mg/dL',
+      GlucoseUnit.mmol => '${v.toStringAsFixed(1)} mmol/L',
+    };
+  }
 }

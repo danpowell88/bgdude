@@ -247,7 +247,7 @@ class _AgpChart extends StatelessWidget {
   final GlucoseReport report;
   final GlucoseUnit unit;
 
-  double _d(double mgdl) => unit == GlucoseUnit.mmol ? Mgdl(mgdl).mmol : mgdl;
+  double _d(double mgdl) => Mgdl(mgdl).inUnit(unit);
 
   @override
   Widget build(BuildContext context) {

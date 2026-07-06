@@ -47,7 +47,7 @@ class PredictionChart extends ConsumerWidget {
     final scenarios =
         withScenarios ? predictor.scenarioLines(state) : <PredictionLine>[];
 
-    double toDisplay(double m) => unit == GlucoseUnit.mmol ? Mgdl(m).mmol : m;
+    double toDisplay(double m) => Mgdl(m).inUnit(unit);
     double xMin(DateTime t) => t.difference(now).inMinutes.toDouble();
 
     // Trailing CGM history (minutes are negative — before now).

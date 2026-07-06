@@ -32,6 +32,14 @@ extension type const Mgdl(double value) {
         GlucoseUnit.mmol => mmol.toStringAsFixed(1),
       };
 
+  /// Numeric value in [unit] with no formatting — for chart axes/positions and for
+  /// converting a *delta* (a difference converts by the same factor). Replaces the
+  /// `unit == mmol ? v / 18 : v` ternary duplicated across charts.
+  double inUnit(GlucoseUnit unit) => switch (unit) {
+        GlucoseUnit.mgdl => value,
+        GlucoseUnit.mmol => mmol,
+      };
+
   static Mgdl fromMmol(double mmol) => Mgdl(mmol * kMgdlPerMmol);
 }
 

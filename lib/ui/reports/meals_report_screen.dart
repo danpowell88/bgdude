@@ -151,7 +151,7 @@ class _MealCard extends StatelessWidget {
       );
 
   static String _signed(double mgdl, GlucoseUnit unit) {
-    final v = unit == GlucoseUnit.mmol ? Mgdl(mgdl).mmol : mgdl;
+    final v = Mgdl(mgdl).inUnit(unit);
     final s = unit == GlucoseUnit.mmol ? v.toStringAsFixed(1) : v.round().toString();
     return v >= 0 ? '+$s' : s;
   }

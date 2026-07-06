@@ -1,9 +1,10 @@
 ---
 id: TASK-104
 title: Add Mgdl.inUnit() and delta helpers; dedupe per-chart unit conversion
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:53'
+updated_date: '2026-07-06 05:01'
 labels:
   - code-health
   - cleanup
