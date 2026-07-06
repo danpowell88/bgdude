@@ -144,6 +144,10 @@ void main() {
     expect(find.text('+60m'), findsOneWidget);
     expect(find.text('+120m'), findsOneWidget);
     expect(find.text('Scenario lines'), findsOneWidget);
+    // The sensitivity card sits at the bottom of a long lazy ListView — scroll to it.
+    await tester.scrollUntilVisible(
+        find.textContaining('Sensitivity readiness'), 200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.textContaining('Sensitivity readiness'), findsOneWidget);
   });
 
@@ -258,6 +262,8 @@ void main() {
     await _pumpApp(tester);
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Therapy profile'), 200,
+        scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Therapy profile'));
     await tester.pumpAndSettle();
     expect(find.text('Add segment'), findsOneWidget);
