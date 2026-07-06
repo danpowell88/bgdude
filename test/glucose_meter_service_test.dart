@@ -74,6 +74,26 @@ void main() {
     expect(out.lastSeq, 2);
   });
 
+  test('TASK-94: a reading stamped in the future flags meter clock skew', () async {
+    final repo = InMemoryHistoryRepository();
+    // Newest reading is at 18:00 while the phone thinks it's 10:00 → meter clock ~8h fast.
+    final transport = _FakeTransport([_r(1, 8, 100), _r(2, 18, 140)]);
+    final svc = GlucoseMeterService(transport: transport, repository: repo);
+    final out = await svc.sync('meter-1', now: () => DateTime(2026, 7, 5, 10));
+    expect(out.clockSkew, isNotNull);
+    expect(out.clockSkew!.inHours, 8);
+    expect(out.imported, 2); // still imported
+  });
+
+  test('TASK-94: readings within tolerance report no clock skew', () async {
+    final repo = InMemoryHistoryRepository();
+    final transport = _FakeTransport([_r(1, 8, 100), _r(2, 18, 140)]);
+    final svc = GlucoseMeterService(transport: transport, repository: repo);
+    // Phone is at 20:00 — the newest reading (18:00) is in the past, no skew.
+    final out = await svc.sync('meter-1', now: () => DateTime(2026, 7, 5, 20));
+    expect(out.clockSkew, isNull);
+  });
+
   test('reset clears the high-water mark (re-import from scratch)', () async {
     final repo = InMemoryHistoryRepository();
     final transport = _FakeTransport([_r(5, 8, 100)]);

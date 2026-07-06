@@ -121,6 +121,12 @@ class GlucoseMeterController extends StateNotifier<GlucoseMeterStatus> {
         lastSyncAt: now,
         lastImported: outcome.imported,
         totalImported: total,
+        // TASK-94: surface a drifted meter clock so the user knows imported times are off.
+        error: outcome.clockSkew == null
+            ? null
+            : 'Your meter\'s clock looks ~${outcome.clockSkew!.inMinutes} min '
+                'fast — imported reading times may be off. Set the meter\'s time.',
+        clearError: outcome.clockSkew == null,
       );
     } catch (e) {
       state = state.copyWith(syncing: false, error: _friendly(e));

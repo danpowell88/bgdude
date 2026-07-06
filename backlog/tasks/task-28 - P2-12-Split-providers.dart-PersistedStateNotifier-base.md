@@ -4,7 +4,7 @@ title: Split providers.dart + PersistedStateNotifier base
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 19:01'
 labels:
   - roadmap
   - architecture
@@ -26,7 +26,7 @@ ordinal: 103800
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 PersistedStateNotifier<T> base with restore-then-save ordering
+- [x] #1 PersistedStateNotifier<T> base with restore-then-save ordering
 - [ ] #2 providers.dart split into the TASK-35 (3.A) target modules
 - [ ] #3 Detailed plan + migration steps in TASK-35 (3.A)
 <!-- AC:END -->
@@ -56,5 +56,11 @@ author: Claude
 created: 2026-07-06 05:26
 ---
 detail-needed (2026-07-06, goal triage): The 2,239-line providers.dart split (= §3.A / TASK-35): an invasive, risk-laden refactor of app-wide state. Want scope/sequencing sign-off before starting.
+---
+
+author: Claude
+created: 2026-07-06 19:01
+---
+AC#1 (PersistedStateNotifier<T> base with restore-then-save ordering) delivered via the shared TASK-35 work — commit 4054ebb (lib/state/persisted_state_notifier.dart + race test + 9 migrated notifiers). AC#2/#3 (the full providers.dart split + plan) track with TASK-35's remaining AC#2/#3.
 ---
 <!-- COMMENTS:END -->

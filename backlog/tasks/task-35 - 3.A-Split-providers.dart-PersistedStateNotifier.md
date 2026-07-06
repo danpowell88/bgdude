@@ -4,7 +4,7 @@ title: Split providers.dart + PersistedStateNotifier
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 19:00'
 labels:
   - roadmap
   - architecture
@@ -25,10 +25,10 @@ ordinal: 103900
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 PersistedStateNotifier<T> base with restore-then-save ordering + race test
+- [x] #1 PersistedStateNotifier<T> base with restore-then-save ordering + race test
 - [ ] #2 AlertService/AppJobs take explicit deps (unit-testable)
 - [ ] #3 providers.dart split into the target modules
-- [ ] #4 One documented pattern per state kind
+- [x] #4 One documented pattern per state kind
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -59,5 +59,11 @@ author: Claude
 created: 2026-07-06 05:28
 ---
 detail-needed (2026-07-06, goal triage): Anchor refactor: splitting providers.dart (85 providers) + PersistedStateNotifier base. High blast-radius; want the module boundaries + migration order confirmed before touching it.
+---
+
+author: Claude
+created: 2026-07-06 19:00
+---
+AC#1 + AC#4 delivered (commit 4054ebb): PersistedStateNotifier<T> base with restore-then-save ordering (a local write latches so an in-flight async restore can't clobber it) + race test (persisted_state_notifier_test: save-before-restore, normal restore, default, corrupt). Migrated 9 value-replace notifiers (AlertThresholds, GlucoseUnit, NotificationPrefs, BarcodeLookup, UserProfile, Therapy, A1cTarget, WeatherSettings, NightscoutConfig) to it — that's the documented pattern for persisted value-replace state (AC#4). Also began the module split (persisted_state_notifier.dart + the earlier forecast_providers.dart from TASK-40). REMAINING: AC#2 (AlertService/AppJobs take explicit deps — still Ref-coupled; this is the unblocker for TASK-37/14/39 headless testing) and AC#3 (finish splitting the ~2200-line providers.dart into the target modules + migrate the controller-wrapped IllnessMode/MedicationMode + list-based LabA1c/MealLog/MealLibrary notifiers). These are the larger mechanical bulk; the foundational base+race-fix is done.
 ---
 <!-- COMMENTS:END -->
