@@ -4,6 +4,7 @@ title: 3.K Test architecture (fill gaps in order)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:27'
 labels:
   - roadmap
   - §3
@@ -26,3 +27,12 @@ Source: ROADMAP §3.K
 Effort: ongoing
 Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Data-layer tests landed (§3.H)
+- [ ] #2 Alert decision-core tests landed (§3.C step 1)
+- [ ] #3 Provider-module tests added after §3.A
+- [ ] #4 architecture_test.dart landed (§3.G)
+- [ ] #5 Widget tests only for bolus sheet + quick-log; pumpDemoApp covers the rest
+<!-- AC:END -->

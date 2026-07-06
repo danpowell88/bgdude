@@ -4,7 +4,7 @@ title: '5-8 Longer-term: LoRA fine-tune of Gemma'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:11'
+updated_date: '2026-07-06 03:27'
 labels:
   - roadmap
   - §5
@@ -30,3 +30,11 @@ Effort: L
 Flags: 🧠 llm
 ⚠ NEEDS MORE EXPLORATION: Research spike: synthetic-panel generation + LoRA training pipeline + on-device eval of a 270M vs 1B model. Unproven; scope before committing.
 <!-- SECTION:NOTES:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Spike: synthetic-panel generation from test/data/nutrition_panels.json
+- [ ] #2 LoRA training pipeline evaluated (flutter_gemma installModel LoRA)
+- [ ] #3 On-device eval: fine-tuned 270M vs 1B baseline (accuracy + latency)
+- [ ] #4 Documented go/no-go before productionising
+<!-- AC:END -->

@@ -4,6 +4,7 @@ title: 6.1 Prediction validation on real data
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:27'
 labels:
   - roadmap
   - §6
@@ -17,7 +18,7 @@ ordinal: 92000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Run the accuracy screen against real history once the pump link is live; tune momentum/IOB/COB params. (Phase 4/5.)
+Once the pump link is live, run the accuracy screen against real history and tune momentum/IOB/COB params. Depends on P0-2 landing first (learned labels are poisoned until then).
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Implementation Notes
@@ -28,3 +29,10 @@ Effort: M
 Flags: 🔌 hardware
 Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Accuracy screen run on >=2 weeks of real history
+- [ ] #2 Momentum/IOB/COB params tuned to the real data
+- [ ] #3 Before/after RMSE + Clarke recorded
+<!-- AC:END -->

@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:27'
 labels:
   - roadmap
   - §1-P2
@@ -28,3 +29,10 @@ Source: ROADMAP §1 P2-9
 Effort: S
 Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Report providers ref.watch the repository so a demo-mode toggle rebuilds them
+- [ ] #2 Pending confirmations re-scanned when a new CGM value arrives
+- [ ] #3 Switching demo<->real shows correct data without an app restart
+<!-- AC:END -->

@@ -4,6 +4,7 @@ title: 6.3 Data integrity edges
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:27'
 labels:
   - roadmap
   - §6
@@ -16,7 +17,7 @@ ordinal: 94000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-CGM gap handling, warm-up/compression robustness, timezone/DST across history, meter clock drift (PumpSnapshot.fromJson falls back to DateTime.now() with no skew detection).
+Edge-case hardening: CGM gap handling, sensor warm-up/compression robustness, timezone/DST across history, and meter clock drift (PumpSnapshot.fromJson currently falls back to DateTime.now() with no skew detection).
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Implementation Notes
@@ -26,3 +27,11 @@ Source: ROADMAP §6
 Effort: M
 Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 CGM gaps handled without corrupting metrics
+- [ ] #2 Warm-up/compression readings robustly excluded
+- [ ] #3 Timezone/DST correct across historical data
+- [ ] #4 Meter clock-skew detected and surfaced
+<!-- AC:END -->

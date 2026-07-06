@@ -4,6 +4,7 @@ title: 6.2 Alert quality pass
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
+updated_date: '2026-07-06 03:27'
 labels:
   - roadmap
   - §6
@@ -17,7 +18,7 @@ ordinal: 93000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Snooze/ack semantics, smarter dedup, do-not-alert-during-exercise nuances — around §4-2's threshold work.
+Alert UX quality: snooze/acknowledge semantics, smarter dedup (no repeat spam), and do-not-alert-during-exercise nuances. Coordinate with §4-2.3 per-TOD thresholds and the §3.C decision-core.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Implementation Notes
@@ -28,3 +29,11 @@ Effort: M
 Flags: 🔒 safety
 Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Snooze + acknowledge semantics
+- [ ] #2 Smarter dedup prevents repeat spam
+- [ ] #3 Exercise-mode alert-suppression nuance
+- [ ] #4 Covered by alert decision-core tests (§3.C step 1)
+<!-- AC:END -->
