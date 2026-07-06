@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-06 09:13'
-updated_date: '2026-07-06 22:07'
+updated_date: '2026-07-06 22:15'
 labels:
   - code-health
   - infra
@@ -56,6 +56,12 @@ author: Claude
 created: 2026-07-06 22:07
 ---
 Started: make the Kotlin test step blocking with deterministic local.properties, add flutter test --coverage + lcov threshold gate, and document the integration_test story (manual-only, given no emulator in CI).
+---
+
+author: Claude
+created: 2026-07-06 22:15
+---
+Device-testing sweep 2026-07-07: the integration-test policy decision this ticket left open is resolved by the new CI emulator-job ticket TASK-219 (nightly schedule + workflow_dispatch, not per-push blocking) — reference it in AC#3 when implementing.
 ---
 <!-- COMMENTS:END -->
 

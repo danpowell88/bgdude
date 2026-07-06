@@ -1,10 +1,11 @@
 ---
 id: TASK-161
 title: 'Round the bolus suggestion down, not to nearest'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-06 09:13'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 22:12'
 labels:
   - code-health
   - dosing-math
@@ -47,6 +48,16 @@ ordinal: 100900
 - Where: `lib/analytics/bolus_advisor.dart`
 - Related: TASK-101 (compute/presenter split) — coordinate if concurrent
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 22:12
+---
+Started: switch final-suggestion and FPU-unit rounding to floor at 0.01 U (conservative deliverable increment) and pin the direction with tests.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
