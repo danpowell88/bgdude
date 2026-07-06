@@ -247,8 +247,18 @@ class BolusAdvisor {
   /// Corrections/doses below this many units are treated as "nothing to do".
   static const double _minActionableUnits = 0.05;
 
-  /// The pump's dose increment: round displayed units to 0.01 U (1/100).
+  /// The pump's dose increment: suggestions land on 0.01 U (1/100) steps.
   static const double _pumpIncrementsPerUnit = 100;
+
+  /// Absorbs binary-float error before flooring so an exact increment is kept
+  /// (1.23 must floor to 1.23, not 1.22), while a genuine excess still drops.
+  static const double _floorEpsilon = 1e-9;
+
+  /// TASK-161: advisory doses round DOWN to the deliverable 0.01 U increment —
+  /// never upward; rounding a dose up is the unsafe direction.
+  static double _floorToIncrement(double units) =>
+      (units * _pumpIncrementsPerUnit + _floorEpsilon).floorToDouble() /
+      _pumpIncrementsPerUnit;
 
   /// [carbsGrams] is the meal being dosed for (0 for a pure correction).
   ///
@@ -328,8 +338,7 @@ class BolusAdvisor {
         ? (fatGrams * _fatKcalPerG + proteinGrams * _proteinKcalPerG) / _kcalPerFpu
         : fatProteinLevel.fpu;
     var fpuUnits = fpu > 0 ? (fpu * _carbEquivPerFpu) / effectiveCr : 0.0;
-    fpuUnits =
-        (fpuUnits * _pumpIncrementsPerUnit).roundToDouble() / _pumpIncrementsPerUnit;
+    fpuUnits = _floorToIncrement(fpuUnits);
     final fpuExtendHours = fpu > 0
         ? (fpu.ceil() + _fpuExtendBaseHours)
             .clamp(_fpuExtendMinHours, _fpuExtendMaxHours)
@@ -395,7 +404,7 @@ class BolusAdvisor {
       confidence = _downgrade(confidence);
     }
     if (total < 0) total = 0;
-    total = (total * _pumpIncrementsPerUnit).roundToDouble() / _pumpIncrementsPerUnit;
+    total = _floorToIncrement(total);
 
     final shownMeal = mealUnits > total ? total : mealUnits;
     final shownCorrection = (total - shownMeal).clamp(0.0, total).toDouble();
@@ -454,8 +463,10 @@ class BolusAdvisor {
         ..add(AdviceStep('Carbs', '${c.carbsGrams.toStringAsFixed(0)} g'))
         ..add(AdviceStep(
             'Carb ratio', '1U : ${c.effectiveCr.toStringAsFixed(1)} g'))
+        // TASK-161: show the floored value so the working line can never read
+        // higher than the suggestion assembled from it.
         ..add(AdviceStep('Meal insulin',
-            '${c.carbsGrams.toStringAsFixed(0)} ÷ ${c.effectiveCr.toStringAsFixed(1)} = ${c.mealUnits.toStringAsFixed(2)} U'));
+            '${c.carbsGrams.toStringAsFixed(0)} ÷ ${c.effectiveCr.toStringAsFixed(1)} = ${_floorToIncrement(c.mealUnits).toStringAsFixed(2)} U'));
     }
 
     // --- Fat/protein ---

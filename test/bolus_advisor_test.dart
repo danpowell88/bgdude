@@ -243,4 +243,38 @@ void main() {
       expect(c.fpuExtendHours, inInclusiveRange(3, 8));
     });
   });
+
+  group('rounding direction (TASK-161)', () {
+    test('the final suggestion rounds DOWN to 0.01 U: computed 1.238 -> 1.23', () {
+      // 12.38 g / CR 10 = 1.238 U, no correction (at target). Nearest-rounding
+      // would show 1.24 — the advisory dose must never round upward.
+      final advice = BolusAdvisor().advise(state(bg: 100), carbsGrams: 12.38);
+      expect(advice.recommendedUnits, 1.23);
+    });
+
+    test('an exact 0.01 U increment is preserved, not dropped', () {
+      // 12.3 g / CR 10 = 1.23 exactly; float error must not floor it to 1.22.
+      final advice = BolusAdvisor().advise(state(bg: 100), carbsGrams: 12.3);
+      expect(advice.recommendedUnits, 1.23);
+    });
+
+    test('FPU units round DOWN too: computed 1.247 -> 1.24', () {
+      // (10.3 g fat x 9 + 8 g protein x 4) / 100 kcal = 1.247 FPU
+      // x 10 g-equiv / CR 10 = 1.247 U extended.
+      final c = BolusAdvisor()
+          .computeBolus(state(bg: 100), fatGrams: 10.3, proteinGrams: 8);
+      expect(c.fpuUnits, 1.24);
+    });
+
+    test('the working strings match the floored suggestion', () {
+      final advice = BolusAdvisor().advise(state(bg: 100), carbsGrams: 12.38);
+      final meal =
+          advice.working.firstWhere((s) => s.label == 'Meal insulin').value;
+      final suggested =
+          advice.working.firstWhere((s) => s.label == 'Suggested').value;
+      expect(meal, contains('1.23 U'));
+      expect(suggested, contains('1.23 U'));
+      expect(suggested, isNot(contains('1.24')));
+    });
+  });
 }
