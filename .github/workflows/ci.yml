@@ -1,7 +1,9 @@
 # CI workflow for bgdude (Flutter / Android-only)
 #
-# Runs code generation, static analysis, unit tests, a debug APK build, and
-# best-effort native Kotlin unit tests on every push / PR to main.
+# Runs code generation, static analysis, unit tests with a coverage gate, a
+# debug APK build, and BLOCKING native Kotlin unit tests on every push / PR to
+# main. The integration_test/ suite is manual-only (needs an emulator; see
+# CLAUDE.md) — everything here must stay green for main to be green.
 name: CI
 
 on:
@@ -65,27 +67,44 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
-      # 8. Unit tests only. The integration_test/ suite needs an emulator and
-      #    is intentionally excluded by scoping to test/.
-      - name: Unit tests
-        run: flutter test test/
+      # 8. Unit tests with line-coverage measurement (TASK-159). The
+      #    integration_test/ suite needs an emulator and is DELIBERATELY
+      #    manual-only: run it locally per CLAUDE.md ("Emulator (integration)
+      #    tests for every feature") — an emulator job on hosted runners is
+      #    slow/flaky and this is a personal, single-device project.
+      - name: Unit tests (with coverage)
+        run: flutter test --coverage test/
 
-      # 9. Debug APK build. Pulls pumpx2/blessed from JitPack (network available).
+      # 9. Coverage gate (TASK-159): fail on a coverage collapse. Threshold is
+      #    a floor, not a target — raise it as coverage grows (63% on 2026-07-07).
+      - name: Coverage gate
+        run: |
+          read -r hit total <<< "$(awk -F: '/^LH:/{h+=$2} /^LF:/{t+=$2} END{print h, t}' coverage/lcov.info)"
+          pct=$(awk "BEGIN {printf \"%.1f\", 100*$hit/$total}")
+          echo "Line coverage: $pct% ($hit/$total lines)"
+          awk "BEGIN {exit !($pct >= 60.0)}" || { echo "::error::Line coverage $pct% is below the 60% minimum"; exit 1; }
+
+      # 10. Debug APK build. Pulls pumpx2/blessed from JitPack (network available).
       - name: Build debug APK
         run: flutter build apk --debug
 
-      # 10. Native Kotlin unit tests (android/app/src/test). Best-effort: these
-      #     need local.properties pointing at the Flutter + Android SDKs, which
-      #     we write here from the paths exported by flutter-action / setup step.
-      #     Marked continue-on-error so flakiness here never fails the build.
-      - name: Native unit tests (best-effort)
-        continue-on-error: true
+      # 11. Native Kotlin unit tests (android/app/src/test) — BLOCKING (TASK-159):
+      #     ProtocolProbeTest guards the read-only-pump guarantee and
+      #     PumpResponseMapperTest guards the mU→U conversions; a red native
+      #     suite must fail the build. local.properties is written
+      #     deterministically first (flutter-action exports FLUTTER_ROOT;
+      #     ANDROID_HOME / ANDROID_SDK_ROOT is set on the hosted runner).
+      - name: Native unit tests
         run: |
-          # flutter-action exports FLUTTER_ROOT; ANDROID_HOME is set on the runner.
-          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_ROOT" "$ANDROID_HOME" > android/local.properties
+          FLUTTER_SDK="${FLUTTER_ROOT:-$(dirname "$(dirname "$(command -v flutter)")")}"
+          ANDROID_SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$FLUTTER_SDK" ] || [ -z "$ANDROID_SDK" ]; then
+            echo "::error::Could not resolve FLUTTER_SDK ('$FLUTTER_SDK') or ANDROID_SDK ('$ANDROID_SDK')"; exit 1
+          fi
+          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_SDK" "$ANDROID_SDK" > android/local.properties
           cd android && ./gradlew :app:testDebugUnitTest --no-daemon
 
-      # 11. Publish the debug APK as a build artifact.
+      # 12. Publish the debug APK as a build artifact.
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:

@@ -40,3 +40,6 @@ Thumbs.db
 assets/models/*.bin
 assets/models/*.ckpt
 *.tflite.large
+
+# Test coverage output (flutter test --coverage)
+coverage/

@@ -1,10 +1,11 @@
 ---
 id: TASK-159
 title: CI must fail on native-test and coverage regressions
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-06 09:13'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 22:07'
 labels:
   - code-health
   - infra
@@ -47,6 +48,16 @@ ordinal: 100800
 - Effort: S
 - Where: `.github/workflows/ci.yml`
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 22:07
+---
+Started: make the Kotlin test step blocking with deterministic local.properties, add flutter test --coverage + lcov threshold gate, and document the integration_test story (manual-only, given no emulator in CI).
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
