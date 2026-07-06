@@ -1,17 +1,17 @@
 ---
 id: TASK-20
-title: P2-4 Regularize/early-stop the GBM
+title: Regularize/early-stop the GBM
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:23'
+updated_date: '2026-07-06 08:05'
 labels:
   - roadmap
-  - §1-P2
-  - phase-5
   - ml
   - detail-needed
-dependencies: []
+milestone: m-5
+dependencies:
+  - TASK-55
 priority: medium
 ordinal: 20000
 ---
@@ -29,7 +29,7 @@ ordinal: 20000
 - [ ] #1 nEstimators chosen by early stopping on validation folds
 - [ ] #2 Row/feature subsampling added to gbm.dart
 - [ ] #3 No regression in held-out RMSE vs current model
-- [ ] #4 Coordinated with TASK-55 (§4-1.10)
+- [ ] #4 Coordinated with TASK-55
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -37,7 +37,7 @@ ordinal: 20000
 <!-- SECTION:PLAN:BEGIN -->
 - In `gbm.dart`, add validation-chosen `nEstimators` using early stopping on the held-out fold.
 - Add row/feature subsampling to `gbm.dart`.
-- Pick `nEstimators` on the §4-1.10 (TASK-55) folds.
+- Pick `nEstimators` on the TASK-55 folds.
 - Run ML-honesty tests first (coverage + bias, synthetic-data recovery).
 - Test: held-out RMSE no worse than current; early stopping picks a sensible `nEstimators` on synthetic data.
 - Verify: `flutter analyze` clean, `flutter test` green.
@@ -46,7 +46,7 @@ ordinal: 20000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P2-4 (in §4-1.10)
+- Source: ROADMAP section 1 P2-4 (in TASK-55)
 - Effort: M
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

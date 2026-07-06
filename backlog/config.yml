@@ -2,6 +2,7 @@ project_name: "bgdude"
 default_status: "To Do"
 statuses: ["To Do", "In Progress", "Done"]
 labels: []
+definition_of_done: ["dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)", "flutter analyze clean", "flutter test test/ green", "flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)", "gradlew :app:testDebugUnitTest green when native Kotlin changed", "doc/user-guide.html updated when the change is user-visible", "Integration test added or extended when a screen/flow changed"]
 date_format: yyyy-mm-dd
 max_column_width: 20
 auto_open_browser: true

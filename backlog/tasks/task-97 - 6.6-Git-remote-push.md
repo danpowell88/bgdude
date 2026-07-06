@@ -1,14 +1,14 @@
 ---
 id: TASK-97
-title: 6.6 Git remote + push
+title: Git remote + push
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:24'
+updated_date: '2026-07-06 08:05'
 labels:
   - roadmap
-  - §6
   - infra
+milestone: m-7
 dependencies: []
 priority: medium
 ordinal: 97000

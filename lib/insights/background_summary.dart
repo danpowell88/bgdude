@@ -43,6 +43,13 @@ void backgroundCallbackDispatcher() {
       if (cgm.length >= 12) {
         final overnight = const MetricsCalculator()
             .compute([for (final s in cgm) if (s.time.hour < 7) s]);
+        // 14-day baseline LBGI for the daily hypo-risk score (§4-2.2). Needs at least a
+        // day of data; 0 disables the vs-baseline comparison.
+        final baselineCgm =
+            await repo.cgm(now.subtract(const Duration(days: 14)), now);
+        final baselineLbgi = baselineCgm.length >= 288
+            ? const MetricsCalculator().compute(baselineCgm).lbgi
+            : 0.0;
         final features = ContextBuilder.build(
           today: await repo.health(from, now),
           baseline: await repo.health(now.subtract(const Duration(days: 14)), now),
@@ -53,6 +60,7 @@ void backgroundCallbackDispatcher() {
             overnightMetrics: overnight,
             context: features,
             sensitivity: heuristicSensitivity(features),
+            baselineLbgi: baselineLbgi,
           );
           final body = [for (final i in summary.insights.take(3)) '• ${i.detail}']
               .join('\n');

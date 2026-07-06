@@ -1,15 +1,14 @@
 ---
 id: TASK-4
-title: P0-4 Advisor/predictor honour configured DIA & insulin peak
+title: Advisor/predictor honour configured DIA & insulin peak
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:24'
+updated_date: '2026-07-06 08:06'
 labels:
   - roadmap
-  - §1-P0
-  - phase-0
   - dosing-math
+milestone: m-0
 dependencies: []
 priority: high
 ordinal: 4000
@@ -41,9 +40,9 @@ ordinal: 4000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P0-4
+- Source: ROADMAP section 1, P0-4
 - Effort: S
-- Where: bolus_advisor.dart:102-103, predictor.dart:177-178
+- Where: `bolus_advisor.dart:102-103`, `predictor.dart:177-178`
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
 

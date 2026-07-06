@@ -1,14 +1,15 @@
 ---
 id: TASK-26
-title: 'P2-10 Clarke grid: optional Parkes/consensus grid'
+title: 'Clarke grid: optional Parkes/consensus grid'
 status: In Progress
-assignee: []
+assignee:
+  - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:26'
+updated_date: '2026-07-06 08:07'
 labels:
   - roadmap
-  - §1-P2
   - ml
+milestone: m-5
 dependencies: []
 priority: low
 ordinal: 26000
@@ -42,7 +43,7 @@ ordinal: 26000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P2-10
+- Source: ROADMAP section 1 P2-10
 - Effort: M
 - Roadmap status: partial
 <!-- SECTION:NOTES:END -->

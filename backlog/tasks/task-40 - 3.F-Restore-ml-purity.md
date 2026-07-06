@@ -1,16 +1,16 @@
 ---
 id: TASK-40
-title: 3.F Restore ml/ purity
+title: Restore ml/ purity
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:23'
+updated_date: '2026-07-06 08:05'
 labels:
   - roadmap
-  - §3
   - architecture
   - ml
   - detail-needed
+milestone: m-6
 dependencies: []
 priority: low
 ordinal: 40000
@@ -34,7 +34,7 @@ ordinal: 40000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-- Split the offending file: store + train/gate/promote logic stay in `ml/` (pure; takes `KeyValueStore` after §3.B).
+- Split the offending file: store + train/gate/promote logic stay in `ml/` (pure; takes `KeyValueStore` after TASK-36).
 - Move the thin `StateNotifier` controller to `state/forecast_providers.dart`.
 - Set up a `dart test` (no Flutter) lane that runs `analytics/` + `ml/`; controller test lives with the providers.
 - Refactor must be behaviour-preserving: full `flutter test` + `flutter analyze` green before and after; add the new unit tests the refactor unlocks.
@@ -44,7 +44,7 @@ ordinal: 40000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §3.F
+- Source: ROADMAP section 3.F
 - Effort: S
 - Depends on: 3.B
 - Roadmap status: open

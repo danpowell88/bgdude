@@ -4,10 +4,11 @@ title: Dedupe the default asleep-window rule into one shared policy
 status: Done
 assignee: []
 created_date: '2026-07-06 04:53'
-updated_date: '2026-07-06 05:26'
+updated_date: '2026-07-06 08:06'
 labels:
   - code-health
   - cleanup
+milestone: m-8
 dependencies: []
 priority: medium
 ordinal: 102000

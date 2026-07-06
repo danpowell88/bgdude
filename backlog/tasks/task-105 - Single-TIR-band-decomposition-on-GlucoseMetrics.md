@@ -4,9 +4,11 @@ title: Single TIR band decomposition on GlucoseMetrics
 status: To Do
 assignee: []
 created_date: '2026-07-06 04:54'
+updated_date: '2026-07-06 08:07'
 labels:
   - code-health
   - cleanup
+milestone: m-8
 dependencies: []
 priority: medium
 ordinal: 105000

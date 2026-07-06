@@ -1,15 +1,15 @@
 ---
 id: TASK-23
-title: P2-7 Health-feature look-ahead leak + _activityAt binary search
+title: Health-feature look-ahead leak + _activityAt binary search
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:24'
+updated_date: '2026-07-06 08:06'
 labels:
   - roadmap
-  - §1-P2
   - ml
   - data-integrity
+milestone: m-5
 dependencies: []
 priority: medium
 ordinal: 23000
@@ -44,7 +44,7 @@ ordinal: 23000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P2-7
+- Source: ROADMAP section 1 P2-7
 - Effort: S–M
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

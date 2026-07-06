@@ -1,15 +1,14 @@
 ---
 id: TASK-5
-title: P0-5 Rescue-carb calc uses bolus-only IOB
+title: Rescue-carb calc uses bolus-only IOB
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:24'
+updated_date: '2026-07-06 08:06'
 labels:
   - roadmap
-  - §1-P0
-  - phase-0
   - dosing-math
+milestone: m-0
 dependencies: []
 priority: high
 ordinal: 5000
@@ -40,9 +39,9 @@ ordinal: 5000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P0-5
+- Source: ROADMAP section 1, P0-5
 - Effort: S
-- Where: rescue_carbs.dart:56
+- Where: `rescue_carbs.dart:56`
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
 

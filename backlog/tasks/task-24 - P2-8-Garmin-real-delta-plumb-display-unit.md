@@ -1,16 +1,16 @@
 ---
 id: TASK-24
-title: 'P2-8 Garmin: real delta + plumb display unit'
+title: 'Garmin: real delta + plumb display unit'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:25'
+updated_date: '2026-07-06 08:06'
 labels:
   - roadmap
-  - §1-P2
   - garmin
   - "\U0001F50C hardware"
   - detail-needed
+milestone: m-4
 dependencies: []
 priority: medium
 ordinal: 24000
@@ -43,7 +43,7 @@ ordinal: 24000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P2-8
+- Source: ROADMAP section 1 P2-8
 - Effort: S
 - Flags: 🔌 hardware
 - Roadmap status: open

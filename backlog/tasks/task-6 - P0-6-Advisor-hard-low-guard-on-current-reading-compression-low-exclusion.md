@@ -1,16 +1,15 @@
 ---
 id: TASK-6
-title: P0-6 Advisor hard low-guard on current reading + compression-low exclusion
+title: Advisor hard low-guard on current reading + compression-low exclusion
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:24'
+updated_date: '2026-07-06 08:06'
 labels:
   - roadmap
-  - §1-P0
-  - phase-0
   - dosing-math
   - "\U0001F512 safety"
+milestone: m-0
 dependencies: []
 priority: high
 ordinal: 6000
@@ -42,9 +41,9 @@ ordinal: 6000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P0-6
+- Source: ROADMAP section 1, P0-6
 - Effort: S
-- Where: bolus_advisor.dart:183
+- Where: `bolus_advisor.dart:183`
 - Flags: 🔒 safety
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

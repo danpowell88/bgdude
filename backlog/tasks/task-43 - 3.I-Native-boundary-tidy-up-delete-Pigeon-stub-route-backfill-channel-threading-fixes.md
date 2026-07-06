@@ -1,19 +1,19 @@
 ---
 id: TASK-43
 title: >-
-  3.I Native boundary tidy-up (delete Pigeon stub, route backfill channel,
-  threading fixes)
+  Native boundary tidy-up (delete Pigeon stub, route backfill channel, threading
+  fixes)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:24'
+updated_date: '2026-07-06 08:06'
 labels:
   - roadmap
-  - §3
   - native
   - architecture
   - "\U0001F50C hardware"
   - detail-needed
+milestone: m-6
 dependencies: []
 priority: medium
 ordinal: 43000
@@ -48,7 +48,7 @@ ordinal: 43000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §3.I
+- Source: ROADMAP section 3.I
 - Effort: S–M
 - Depends on: P1-4
 - Flags: 🔌 hardware

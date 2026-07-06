@@ -1,14 +1,14 @@
 ---
 id: TASK-22
-title: P2-6 Dead constant sensitivity feature removed
+title: Dead constant sensitivity feature removed
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:24'
+updated_date: '2026-07-06 08:05'
 labels:
   - roadmap
-  - §1-P2
   - ml
+milestone: m-5
 dependencies: []
 priority: low
 ordinal: 22000
@@ -34,7 +34,7 @@ ordinal: 22000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P2-6
+- Source: ROADMAP section 1 P2-6
 - Effort: S
 - Roadmap status: done ✅
 <!-- SECTION:NOTES:END -->

@@ -1,16 +1,17 @@
 ---
 id: TASK-21
 title: >-
-  P2-5 Sensitivity model validation: sign-constrained coefficients; only adopt
-  if beats heuristic
+  Sensitivity model validation: sign-constrained coefficients; only adopt if
+  beats heuristic
 status: In Progress
-assignee: []
+assignee:
+  - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:23'
+updated_date: '2026-07-06 08:05'
 labels:
   - roadmap
-  - §1-P2
   - ml
+milestone: m-5
 dependencies: []
 priority: medium
 ordinal: 21000
@@ -43,7 +44,7 @@ ordinal: 21000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P2-5
+- Source: ROADMAP section 1 P2-5
 - Effort: M
 - Roadmap status: partial
 <!-- SECTION:NOTES:END -->

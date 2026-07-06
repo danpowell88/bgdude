@@ -1,15 +1,14 @@
 ---
 id: TASK-7
-title: P0-7 Ketone/DKA prompt earlier
+title: Ketone/DKA prompt earlier
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:25'
+updated_date: '2026-07-06 08:07'
 labels:
   - roadmap
-  - §1-P0
-  - phase-0
   - "\U0001F512 safety"
+milestone: m-0
 dependencies: []
 priority: high
 ordinal: 7000
@@ -41,9 +40,9 @@ ordinal: 7000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P0-7
+- Source: ROADMAP section 1, P0-7
 - Effort: S
-- Where: ketone_risk.dart:21
+- Where: `ketone_risk.dart:21`
 - Flags: 🔒 safety
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

@@ -1,16 +1,15 @@
 ---
 id: TASK-8
-title: P1-1 DB passphrase → Keystore (flutter_secure_storage)
+title: DB passphrase → Keystore (flutter_secure_storage)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:25'
+updated_date: '2026-07-06 08:07'
 labels:
   - roadmap
-  - §1-P1
-  - phase-0
   - security
   - detail-needed
+milestone: m-0
 dependencies: []
 priority: high
 ordinal: 8000
@@ -46,9 +45,9 @@ ordinal: 8000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P1-1 (headline issue #2)
+- Source: ROADMAP section 1, P1-1 (headline issue #2)
 - Effort: S
-- Where: secure_key.dart, database.dart:187, main.dart
+- Where: `secure_key.dart`, `database.dart:187`, `main.dart`
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
 

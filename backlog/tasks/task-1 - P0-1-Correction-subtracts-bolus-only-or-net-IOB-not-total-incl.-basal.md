@@ -1,15 +1,14 @@
 ---
 id: TASK-1
-title: 'P0-1 Correction subtracts bolus-only (or net) IOB, not total incl. basal'
+title: 'Correction subtracts bolus-only (or net) IOB, not total incl. basal'
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:23'
+updated_date: '2026-07-06 08:05'
 labels:
   - roadmap
-  - §1-P0
-  - phase-0
   - dosing-math
+milestone: m-0
 dependencies: []
 priority: high
 ordinal: 1000
@@ -43,9 +42,9 @@ ordinal: 1000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P0-1
+- Source: ROADMAP section 1, P0-1
 - Effort: S
-- Where: bolus_advisor.dart:191,293-294
+- Where: `bolus_advisor.dart:191,293-294`
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
 

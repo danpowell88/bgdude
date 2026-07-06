@@ -1,15 +1,15 @@
 ---
 id: TASK-39
-title: 3.E Inject the clock
+title: Inject the clock
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:23'
+updated_date: '2026-07-06 08:05'
 labels:
   - roadmap
-  - §3
   - architecture
   - detail-needed
+milestone: m-6
 dependencies: []
 priority: medium
 ordinal: 39000
@@ -34,7 +34,7 @@ ordinal: 39000
 
 <!-- SECTION:PLAN:BEGIN -->
 - Add `clockProvider` (`DateTime Function()`).
-- Constructor-inject it into `AppJobs`/`AlertService`/persisted notifiers during the §3.A moves.
+- Constructor-inject it into `AppJobs`/`AlertService`/persisted notifiers during the TASK-35 moves.
 - Keep `analytics`/`ml` explicit-`DateTime` style; do not sweep display-only UI usages.
 - Refactor must be behaviour-preserving: full `flutter test` + `flutter analyze` green before and after.
 - Add the new unit tests the refactor unlocks: inject a fixed clock and assert time-relative behaviour (quiet hours, dedup windows, job cadence).
@@ -44,7 +44,7 @@ ordinal: 39000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §3.E
+- Source: ROADMAP section 3.E
 - Effort: S–M
 - Depends on: moves with 3.A
 - Roadmap status: open

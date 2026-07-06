@@ -1,15 +1,14 @@
 ---
 id: TASK-44
-title: 3.J Dependency & dead-code hygiene
+title: Dependency & dead-code hygiene
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:25'
+updated_date: '2026-07-06 08:07'
 labels:
   - roadmap
-  - §3
-  - phase-0
   - cleanup
+milestone: m-0
 dependencies: []
 priority: low
 ordinal: 44000
@@ -34,7 +33,7 @@ ordinal: 44000
 
 <!-- SECTION:PLAN:BEGIN -->
 - Remove the unused deps.
-- Delete or wire `uploadTreatments` (wire only when §4-3 follower work lands, else delete).
+- Delete or wire `uploadTreatments` (wire only when TASK-62 follower work lands, else delete).
 - Cap `_basalObs` with the `PumpEventLog.maxEvents` ring pattern.
 - Test: `flutter pub get` + build succeed after dep removal; unit test the `_basalObs` cap; grep confirms no dangling references.
 - Verify: `flutter analyze` clean, `flutter test` green.
@@ -43,7 +42,7 @@ ordinal: 44000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §3.J
+- Source: ROADMAP section 3.J
 - Effort: S
 - Roadmap status: open
 - Done 2026-07-06: removed 6 unused codegen deps (riverpod_annotation/generator, freezed/_annotation, json_serializable/_annotation); capped `_basalObs` at 288 (ring). `uploadTreatments` KEPT (it is tested and TASK-61 will wire it) with an honest docstring instead of deleted.

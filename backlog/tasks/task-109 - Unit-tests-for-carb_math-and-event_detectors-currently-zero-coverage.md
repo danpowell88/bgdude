@@ -1,9 +1,10 @@
 ---
 id: TASK-109
 title: Unit tests for carb_math and event_detectors (currently zero coverage)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:54'
+updated_date: '2026-07-06 08:01'
 labels:
   - code-health
   - testing

@@ -1,16 +1,15 @@
 ---
 id: TASK-2
-title: P0-2 Predictor models insulin effect from net insulin (EGP baseline)
+title: Predictor models insulin effect from net insulin (EGP baseline)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:23'
+updated_date: '2026-07-06 08:05'
 labels:
   - roadmap
-  - §1-P0
-  - phase-1
   - dosing-math
   - detail-needed
+milestone: m-1
 dependencies: []
 priority: high
 ordinal: 2000
@@ -45,9 +44,9 @@ ordinal: 2000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P0-2 (headline issue #1)
+- Source: ROADMAP section 1, P0-2 (headline issue #1)
 - Effort: M
-- Where: predictor.dart:290-291, insulin_math.dart:107-145
+- Where: `predictor.dart:290-291`, `insulin_math.dart:107-145`
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
 

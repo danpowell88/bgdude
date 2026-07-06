@@ -1,18 +1,17 @@
 ---
 id: TASK-41
-title: 3.G Architecture guard test (+ read-only-pump check)
+title: Architecture guard test (+ read-only-pump check)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:24'
+updated_date: '2026-07-06 08:05'
 labels:
   - roadmap
-  - §3
-  - phase-0
   - architecture
   - testing
   - "\U0001F512 safety"
   - detail-needed
+milestone: m-0
 dependencies: []
 priority: high
 ordinal: 41000
@@ -47,7 +46,7 @@ ordinal: 41000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §3.G
+- Source: ROADMAP section 3.G
 - Effort: S
 - Flags: 🔒 safety
 - Roadmap status: open

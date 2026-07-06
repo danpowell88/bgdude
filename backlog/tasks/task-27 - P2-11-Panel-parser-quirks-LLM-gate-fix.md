@@ -1,15 +1,15 @@
 ---
 id: TASK-27
-title: P2-11 Panel parser quirks + LLM-gate fix
+title: Panel parser quirks + LLM-gate fix
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:26'
+updated_date: '2026-07-06 08:07'
 labels:
   - roadmap
-  - §1-P2
   - panel-scanner
   - "\U0001F9E0 llm"
+milestone: m-4
 dependencies: []
 priority: medium
 ordinal: 27000
@@ -46,7 +46,7 @@ ordinal: 27000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P2-11 → §5
+- Source: ROADMAP section 1 P2-11 → section 5
 - Effort: M
 - Flags: 🧠 llm
 - Roadmap status: open

@@ -1,17 +1,17 @@
 ---
 id: TASK-3
-title: P0-3 Autotune & TOD sensitivity compare like-for-like (after P0-2)
+title: Autotune & TOD sensitivity compare like-for-like (after P0-2)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:24'
+updated_date: '2026-07-06 08:06'
 labels:
   - roadmap
-  - §1-P0
-  - phase-1
   - dosing-math
   - detail-needed
-dependencies: []
+milestone: m-1
+dependencies:
+  - TASK-2
 priority: high
 ordinal: 3000
 ---
@@ -42,10 +42,10 @@ ordinal: 3000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P0-3
+- Source: ROADMAP section 1, P0-3
 - Effort: M (falls out of P0-2)
-- Where: autotune.dart, time_of_day_sensitivity.dart
-- Depends on: P0-2
+- Where: `autotune.dart`, `time_of_day_sensitivity.dart`
+- Depends on: TASK-2 (P0-2)
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
 

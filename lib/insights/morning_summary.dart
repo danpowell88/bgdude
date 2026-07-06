@@ -52,8 +52,36 @@ class MorningSummaryGenerator {
     required SensitivityContext sensitivity,
     bool alcoholYesterday = false,
     bool intenseExerciseYesterday = false,
+    double baselineLbgi = 0,
   }) {
     final insights = <Insight>[];
+
+    // Daily hypo-risk score (§4-2.2): the Low Blood Glucose Index (Kovatchev) from the
+    // overnight window, banded and compared to the user's 14-day baseline. Only emitted
+    // when risk is at least moderate, or clearly elevated versus the norm.
+    final lbgi = overnightMetrics.lbgi;
+    final ratio = baselineLbgi > 0.5 ? lbgi / baselineLbgi : 1.0;
+    if (lbgi >= 2.5 || (baselineLbgi > 0.5 && ratio >= 1.5 && lbgi >= 1.5)) {
+      final band = lbgi > 5
+          ? 'High'
+          : lbgi >= 2.5
+              ? 'Moderate'
+              : 'Elevated';
+      final vsBaseline = baselineLbgi > 0.5
+          ? ratio >= 1.3
+              ? ' — up on your 14-day norm'
+              : ratio <= 0.7
+                  ? ' — below your 14-day norm'
+                  : ' — about your usual'
+          : '';
+      insights.add(Insight(
+        title: '$band hypo risk today',
+        detail:
+            'Your low-glucose risk index (LBGI ${lbgi.toStringAsFixed(1)})$vsBaseline. '
+            '${lbgi > 5 ? 'Keep fast carbs handy and lean cautious on corrections.' : 'Watch for lows, especially around activity or alcohol.'}',
+        severity: lbgi > 5 ? InsightSeverity.caution : InsightSeverity.notable,
+      ));
+    }
 
     // Overnight glycaemia.
     if (overnightMetrics.timeBelow70 > 0.04) {

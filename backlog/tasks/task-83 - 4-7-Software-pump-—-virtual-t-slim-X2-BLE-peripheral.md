@@ -1,20 +1,22 @@
 ---
 id: TASK-83
-title: '4-7 Software pump — virtual t:slim X2 BLE peripheral'
+title: 'Software pump — virtual t:slim X2 BLE peripheral'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:26'
+updated_date: '2026-07-06 08:07'
 labels:
   - roadmap
-  - §4-7
   - pump
   - testing
   - native
   - "\U0001F50C hardware"
   - needs-exploration
   - detail-needed
-dependencies: []
+milestone: m-4
+dependencies:
+  - TASK-33
+  - TASK-79
 priority: medium
 ordinal: 83000
 ---
@@ -32,9 +34,9 @@ ordinal: 83000
 - [ ] #1 GATT server advertises pumpx2 service + fff6–fff9 (never CONTROL)
 - [ ] #2 Framing + chunking + CRC16 match a real pump byte-for-byte
 - [ ] #3 JPAKE server pairs a real consumer with a 6-digit code
-- [ ] #4 Reads answered from SimulatedDay + §4-5 captures
-- [ ] #5 Scenario control-panel UI
-- [ ] #6 Shipped as a separate module/app id
+- [ ] #4 Scenario control-panel UI
+- [ ] #5 Shipped as a separate module/app id
+- [ ] #6 Reads answered from SimulatedDay + pump-mirror (TASK-70..77) captures
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -44,7 +46,7 @@ ordinal: 83000
 - Transport: `BluetoothGattServer` + advertiser for service `0000fdfb-…` exposing `fff6` CURRENT_STATUS (write+notify), `fff7` QUALIFYING_EVENTS, `fff8` HISTORY_LOG, `fff9` AUTHORIZATION; NEVER expose `fffc`/`fffd` CONTROL.
 - Framing: pump side of `[opcode][txId][len][cargo][CRC16]` chunked into ≤18-byte packets with `[packetsRemaining][txId][chunk]`; reassemble requests, emit chunked responses+CRC16.
 - Pairing: JPAKE server side (Jpake1a/1b/2/3/4) — port the maths from pumpx2 `JpakeAuthBuilder` (client) to a server counterpart and cross-check against the captured handshake bytes; plus legacy 16-char; form the LE Secure Connections bond.
-- Encoding: reuse pumpx2 response classes to serialize cargo seeded from `dev/sim_data.dart` `SimulatedDay`; hand-encode reads pumpx2 only models as responses (`HomeScreenMirror`, `PumpFeatures`, `PumpSettings`, `PumpGlobals`…) from the §4-5 captures.
+- Encoding: reuse pumpx2 response classes to serialize cargo seeded from `dev/sim_data.dart` `SimulatedDay`; hand-encode reads pumpx2 only models as responses (`HomeScreenMirror`, `PumpFeatures`, `PumpSettings`, `PumpGlobals`…) from the pump-mirror (TASK-70..77) captures.
 - Streams: qualifying events on state change + synthetic `HistoryLogStream` backfill.
 - UI: scenario picker, live nudges, fire alarm, toggle Control-IQ, request log.
 - Prototype and unit-test the JPAKE server handshake FIRST against the captured client bytes.
@@ -55,9 +57,9 @@ ordinal: 83000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §4-7
+- Source: ROADMAP section 4-7
 - Effort: L
-- Depends on: 2-5 (JPAKE+framing known), §4-6.2 (BLE inspector); needs TWO phones (BLE cannot loopback)
+- Depends on: TASK-33 (2-5, JPAKE+framing known), TASK-79 (4-6.2 BLE inspector); needs TWO phones (BLE cannot loopback)
 - Flags: 🔌 hardware
 <!-- SECTION:NOTES:END -->
 

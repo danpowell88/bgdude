@@ -4,11 +4,12 @@ title: Add Mgdl.inUnit() and delta helpers; dedupe per-chart unit conversion
 status: Done
 assignee: []
 created_date: '2026-07-06 04:53'
-updated_date: '2026-07-06 05:28'
+updated_date: '2026-07-06 08:06'
 labels:
   - code-health
   - cleanup
   - ui
+milestone: m-8
 dependencies: []
 priority: medium
 ordinal: 104000
