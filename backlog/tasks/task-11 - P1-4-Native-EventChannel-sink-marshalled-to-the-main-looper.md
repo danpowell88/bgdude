@@ -1,10 +1,10 @@
 ---
 id: TASK-11
 title: P1-4 Native EventChannel sink marshalled to the main looper
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:38'
 labels:
   - roadmap
   - §1-P1
@@ -46,4 +46,6 @@ Effort: S
 Where: PumpBridge.kt:128-155
 Flags: 🔌 hardware
 Roadmap status: open
+
+Done 2026-07-06: all EventChannel emissions marshalled onto the main looper via emit(); compiles (:app:compileDebugKotlin). Correct-by-construction; on-device stream-survival across a real connection is the confirming check (the live-pump Explorer session already streamed snapshots cleanly).
 <!-- SECTION:NOTES:END -->

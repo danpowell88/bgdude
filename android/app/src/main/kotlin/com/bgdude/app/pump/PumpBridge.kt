@@ -4,7 +4,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
@@ -27,6 +29,22 @@ class PumpBridge(
     private var service: PumpService? = null
     private var eventSink: EventChannel.EventSink? = null
     private lateinit var hostApiImpl: PumpHostApiImpl
+
+    /**
+     * P1-4: pump/BLE callbacks (via blessed) arrive on a background thread, but an
+     * [EventChannel.EventSink] must only be touched on the main (platform) thread — using
+     * it off-thread silently kills the stream on the first real pump connection. Marshal
+     * every emission onto the main looper.
+     */
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    private fun emit(event: Any?) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            eventSink?.success(event)
+        } else {
+            mainHandler.post { eventSink?.success(event) }
+        }
+    }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
@@ -138,7 +156,7 @@ class PumpBridge(
     // --- PumpService.Callbacks: push to Dart ---
 
     override fun onState(state: NativeConnectionState) {
-        eventSink?.success(
+        emit(
             mapOf(
                 "kind" to "state",
                 "stage" to state.stage.name,
@@ -151,24 +169,24 @@ class PumpBridge(
     }
 
     override fun onSnapshot(json: String) {
-        eventSink?.success(mapOf("kind" to "snapshot", "json" to json))
+        emit(mapOf("kind" to "snapshot", "json" to json))
     }
 
     override fun onPairingCodeRequired(type: PairingCodeType) {
-        eventSink?.success(mapOf("kind" to "pairingCode", "type" to type.name))
+        emit(mapOf("kind" to "pairingCode", "type" to type.name))
     }
 
     override fun onCriticalError(message: String) {
-        eventSink?.success(mapOf("kind" to "criticalError", "message" to message))
+        emit(mapOf("kind" to "criticalError", "message" to message))
     }
 
     override fun onTherapyProfile(json: String) {
-        eventSink?.success(mapOf("kind" to "profile", "json" to json))
+        emit(mapOf("kind" to "profile", "json" to json))
     }
 
     override fun onProbeMessage(event: Map<String, Any?>) {
         // Already shaped with "kind":"probe" by ProtocolProbe.describe.
-        eventSink?.success(event)
+        emit(event)
     }
 
     companion object {
