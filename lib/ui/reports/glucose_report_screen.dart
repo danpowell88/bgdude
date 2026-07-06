@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../analytics/metrics.dart';
 import '../../core/units.dart';
+import '../../reports/clinic_prep.dart';
 import '../../reports/glucose_report.dart';
 import '../../reports/report_exporter.dart';
 import '../../state/providers.dart';
@@ -23,6 +24,29 @@ class GlucoseReportScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Glucose report'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.medical_information_outlined),
+            tooltip: 'Clinic-visit prep',
+            onPressed: async.valueOrNull == null
+                ? null
+                : () {
+                    final bundle = async.value!;
+                    if (!bundle.report.hasData) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('No data to prepare for this range.')));
+                      return;
+                    }
+                    final prep = const ClinicPrepBuilder()
+                        .build(report: bundle.report, unit: unit);
+                    showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      showDragHandle: true,
+                      builder: (_) => _ClinicPrepSheet(
+                          prep: prep, generatedAt: bundle.report.generatedAt),
+                    );
+                  },
+          ),
           IconButton(
             icon: const Icon(Icons.ios_share),
             tooltip: 'Export PDF + CSV',
@@ -374,6 +398,71 @@ class _Banner extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+    );
+  }
+}
+
+/// Clinic-visit prep (§4-4.4): a plain-language summary plus suggested questions, with a
+/// one-tap "Share PDF" that reuses the report PDF pipeline. Template-generated — no model
+/// needed.
+class _ClinicPrepSheet extends StatelessWidget {
+  const _ClinicPrepSheet({required this.prep, required this.generatedAt});
+  final ClinicPrep prep;
+  final DateTime generatedAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.7,
+      maxChildSize: 0.95,
+      builder: (context, controller) => ListView(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        children: [
+          Text('Clinic-visit prep', style: text.titleLarge),
+          Text(prep.rangeLabel, style: text.labelMedium),
+          const SizedBox(height: 12),
+          Text('Summary', style: text.titleSmall),
+          const SizedBox(height: 4),
+          Text(prep.summary),
+          const SizedBox(height: 16),
+          Text('Questions to ask', style: text.titleSmall),
+          const SizedBox(height: 4),
+          for (final q in prep.questions)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('•  '),
+                  Expanded(child: Text(q)),
+                ],
+              ),
+            ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            icon: const Icon(Icons.ios_share),
+            label: const Text('Share PDF'),
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                await const ReportExporter().shareClinicPrep(prep, generatedAt);
+              } catch (e) {
+                messenger.showSnackBar(
+                    SnackBar(content: Text('Share failed: $e')));
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Template-generated from your data — a conversation starter, not clinical '
+            'advice. Targets referenced are the ADA/ATTD consensus.',
+            style: text.bodySmall,
+          ),
+        ],
+      ),
     );
   }
 }

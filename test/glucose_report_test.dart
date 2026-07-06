@@ -1,6 +1,7 @@
 import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/core/units.dart';
 import 'package:bgdude/feedback/annotations.dart';
+import 'package:bgdude/reports/clinic_prep.dart';
 import 'package:bgdude/reports/glucose_report.dart';
 import 'package:bgdude/reports/report_exporter.dart';
 import 'package:bgdude/reports/report_range.dart';
@@ -132,6 +133,13 @@ void main() {
 
     test('PDF builds to non-empty bytes', () async {
       final bytes = await exporter.buildPdf(report, GlucoseUnit.mmol);
+      expect(bytes.length, greaterThan(500));
+    });
+
+    test('clinic-prep PDF builds to non-empty bytes (§4-4.4 AC#3)', () async {
+      final prep =
+          const ClinicPrepBuilder().build(report: report, unit: GlucoseUnit.mmol);
+      final bytes = await exporter.buildClinicPrepPdf(prep, report.generatedAt);
       expect(bytes.length, greaterThan(500));
     });
   });

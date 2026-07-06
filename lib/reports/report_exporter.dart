@@ -13,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../core/samples.dart';
 import '../core/units.dart';
+import 'clinic_prep.dart';
 import 'glucose_report.dart';
 
 class ReportExporter {
@@ -243,7 +244,49 @@ class ReportExporter {
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')} '
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
+  // ---- Clinic-visit prep (§4-4.4) ------------------------------------------
+
+  /// A short, print-ready one-pager: the plain-language summary plus the suggested
+  /// questions. Reuses this same PDF pipeline (AC#3).
+  Future<Uint8List> buildClinicPrepPdf(ClinicPrep prep, DateTime generatedAt) async {
+    final doc = pw.Document();
+    doc.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      build: (context) => [
+        pw.Header(level: 0, child: pw.Text('bgdude clinic-visit prep')),
+        pw.Text('${prep.rangeLabel}  -  generated ${_fmtDate(generatedAt)}',
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+        pw.SizedBox(height: 12),
+        pw.Header(level: 1, child: pw.Text('Summary')),
+        pw.Text(prep.summary),
+        pw.SizedBox(height: 12),
+        pw.Header(level: 1, child: pw.Text('Questions to ask')),
+        for (final q in prep.questions) pw.Bullet(text: q),
+        pw.SizedBox(height: 16),
+        pw.Text(
+          'Informational only - read-only companion data, not a substitute for your '
+          'CGM/pump or clinical advice. Targets referenced are the ADA/ATTD consensus.',
+          style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+        ),
+      ],
+    ));
+    return doc.save();
+  }
+
   // ---- Share (IO) ----------------------------------------------------------
+
+  /// Build the clinic-prep PDF, write it to a temp dir, and open the system share sheet.
+  Future<void> shareClinicPrep(ClinicPrep prep, DateTime generatedAt) async {
+    final dir = await getTemporaryDirectory();
+    final stamp = generatedAt.millisecondsSinceEpoch;
+    final bytes = await buildClinicPrepPdf(prep, generatedAt);
+    final file = File('${dir.path}/clinic_prep_$stamp.pdf');
+    await file.writeAsBytes(bytes);
+    await Share.shareXFiles(
+      [XFile(file.path, mimeType: 'application/pdf')],
+      subject: 'bgdude clinic-visit prep — ${prep.rangeLabel}',
+    );
+  }
 
   /// Build the PDF + CSVs, write them to a temp dir, and open the system share sheet.
   Future<void> shareGlucoseReport({

@@ -60,4 +60,26 @@ void main() {
     expect(find.text('GMI'), findsWidgets);
     expect(find.text('Not enough data for an AGP curve.'), findsNothing);
   });
+
+  testWidgets('glucose report → clinic-visit prep sheet renders (§4-4.4)',
+      (tester) async {
+    await pumpDemoApp(tester);
+    await openSettingsScreen(tester, 'Reports');
+    final card = find.text('Glucose report');
+    await tester.scrollUntilVisible(card, 150,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(card);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Clinic-visit prep'));
+    await tester.pumpAndSettle();
+    // The sheet shows the summary, the questions section, and a Share PDF button.
+    expect(find.text('Clinic-visit prep'), findsWidgets);
+    expect(find.text('Questions to ask'), findsOneWidget);
+    // The button sits at the bottom of the sheet's lazy ListView — scroll it into view.
+    final shareBtn = find.text('Share PDF');
+    await tester.scrollUntilVisible(shareBtn, 200,
+        scrollable: find.byType(Scrollable).last);
+    await tester.pumpAndSettle();
+    expect(shareBtn, findsOneWidget);
+  });
 }
