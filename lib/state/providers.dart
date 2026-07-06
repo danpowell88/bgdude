@@ -72,6 +72,7 @@ import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
 import '../ml/forecaster_service.dart';
 import 'forecast_providers.dart';
+import 'persisted_state_notifier.dart';
 import '../ml/health_features.dart';
 import '../ml/sensitivity_model.dart';
 import '../ml/sensitivity_training.dart';
@@ -116,28 +117,25 @@ final notificationPrefsProvider =
     StateNotifierProvider<NotificationPrefsNotifier, NotificationPrefs>(
         (ref) => NotificationPrefsNotifier());
 
-class NotificationPrefsNotifier extends StateNotifier<NotificationPrefs> {
-  NotificationPrefsNotifier() : super(NotificationPrefs.defaults()) {
-    _restore();
-  }
+class NotificationPrefsNotifier extends PersistedStateNotifier<NotificationPrefs> {
+  NotificationPrefsNotifier() : super(NotificationPrefs.defaults());
   static const _key = 'notification_prefs_v1';
-
-  Future<void> _restore() async {
+  @override
+  Future<NotificationPrefs?> load() async {
     final raw = await KvStore.getString(_key);
-    if (raw != null) {
-      state = NotificationPrefs.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    }
+    return raw == null
+        ? null
+        : NotificationPrefs.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 
-  Future<void> setCategory(NotificationCategory c, CategoryPref pref) async {
-    state = state.withCategory(c, pref);
-    await KvStore.setString(_key, jsonEncode(state.toJson()));
-  }
+  @override
+  Future<void> store(NotificationPrefs v) =>
+      KvStore.setString(_key, jsonEncode(v.toJson()));
 
-  Future<void> setQuietHours(QuietHours q) async {
-    state = state.withQuietHours(q);
-    await KvStore.setString(_key, jsonEncode(state.toJson()));
-  }
+  Future<void> setCategory(NotificationCategory c, CategoryPref pref) =>
+      persist(state.withCategory(c, pref));
+
+  Future<void> setQuietHours(QuietHours q) => persist(state.withQuietHours(q));
 }
 
 /// Whether barcode/food lookup may query Open Food Facts (an outbound request). On by
@@ -146,20 +144,15 @@ final barcodeLookupEnabledProvider =
     StateNotifierProvider<BarcodeLookupNotifier, bool>(
         (ref) => BarcodeLookupNotifier());
 
-class BarcodeLookupNotifier extends StateNotifier<bool> {
-  BarcodeLookupNotifier() : super(true) {
-    _restore();
-  }
+class BarcodeLookupNotifier extends PersistedStateNotifier<bool> {
+  BarcodeLookupNotifier() : super(true);
   static const _key = 'barcode_lookup_enabled';
-  Future<void> _restore() async {
-    final v = await KvStore.getBool(_key);
-    if (v != null) state = v;
-  }
+  @override
+  Future<bool?> load() => KvStore.getBool(_key);
+  @override
+  Future<void> store(bool v) => KvStore.setBool(_key, v);
 
-  Future<void> set(bool v) async {
-    state = v;
-    await KvStore.setBool(_key, v);
-  }
+  Future<void> set(bool v) => persist(v);
 }
 
 /// The active food database: Open Food Facts (when lookup is enabled) for barcodes +
@@ -269,23 +262,22 @@ final userProfileProvider =
     StateNotifierProvider<UserProfileNotifier, UserProfile>(
         (ref) => UserProfileNotifier());
 
-class UserProfileNotifier extends StateNotifier<UserProfile> {
-  UserProfileNotifier() : super(const UserProfile()) {
-    _restore();
-  }
+class UserProfileNotifier extends PersistedStateNotifier<UserProfile> {
+  UserProfileNotifier() : super(const UserProfile());
   static const _key = 'user_profile_v1';
-
-  Future<void> _restore() async {
+  @override
+  Future<UserProfile?> load() async {
     final raw = await KvStore.getString(_key);
-    if (raw != null) {
-      state = UserProfile.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    }
+    return raw == null
+        ? null
+        : UserProfile.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 
-  Future<void> save(UserProfile profile) async {
-    state = profile;
-    await KvStore.setString(_key, jsonEncode(profile.toJson()));
-  }
+  @override
+  Future<void> store(UserProfile v) =>
+      KvStore.setString(_key, jsonEncode(v.toJson()));
+
+  Future<void> save(UserProfile profile) => persist(profile);
 }
 
 /// An announced exercise session (null when none). In-memory/transient — exercise is a
@@ -297,23 +289,22 @@ final alertThresholdsProvider =
     StateNotifierProvider<AlertThresholdsNotifier, AlertThresholds>(
         (ref) => AlertThresholdsNotifier());
 
-class AlertThresholdsNotifier extends StateNotifier<AlertThresholds> {
-  AlertThresholdsNotifier() : super(const AlertThresholds()) {
-    _restore();
-  }
+class AlertThresholdsNotifier extends PersistedStateNotifier<AlertThresholds> {
+  AlertThresholdsNotifier() : super(const AlertThresholds());
   static const _key = 'alert_thresholds_v1';
-
-  Future<void> _restore() async {
+  @override
+  Future<AlertThresholds?> load() async {
     final raw = await KvStore.getString(_key);
-    if (raw != null) {
-      state = AlertThresholds.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    }
+    return raw == null
+        ? null
+        : AlertThresholds.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 
-  Future<void> save(AlertThresholds t) async {
-    state = t;
-    await KvStore.setString(_key, jsonEncode(t.toJson()));
-  }
+  @override
+  Future<void> store(AlertThresholds t) =>
+      KvStore.setString(_key, jsonEncode(t.toJson()));
+
+  Future<void> save(AlertThresholds t) => persist(t);
 }
 
 /// Display unit (mmol/L default for the AU user), persisted encrypted so the choice
@@ -322,22 +313,20 @@ final glucoseUnitProvider =
     StateNotifierProvider<GlucoseUnitNotifier, GlucoseUnit>(
         (ref) => GlucoseUnitNotifier());
 
-class GlucoseUnitNotifier extends StateNotifier<GlucoseUnit> {
-  GlucoseUnitNotifier() : super(GlucoseUnit.mmol) {
-    _restore();
-  }
+class GlucoseUnitNotifier extends PersistedStateNotifier<GlucoseUnit> {
+  GlucoseUnitNotifier() : super(GlucoseUnit.mmol);
   static const _key = 'glucose_unit_v1';
+  @override
+  Future<GlucoseUnit?> load() async => switch (await KvStore.getString(_key)) {
+        'mgdl' => GlucoseUnit.mgdl,
+        'mmol' => GlucoseUnit.mmol,
+        _ => null,
+      };
+  @override
+  Future<void> store(GlucoseUnit v) =>
+      KvStore.setString(_key, v == GlucoseUnit.mgdl ? 'mgdl' : 'mmol');
 
-  Future<void> _restore() async {
-    final raw = await KvStore.getString(_key);
-    if (raw == 'mgdl') state = GlucoseUnit.mgdl;
-    if (raw == 'mmol') state = GlucoseUnit.mmol;
-  }
-
-  Future<void> set(GlucoseUnit unit) async {
-    state = unit;
-    await KvStore.setString(_key, unit == GlucoseUnit.mgdl ? 'mgdl' : 'mmol');
-  }
+  Future<void> set(GlucoseUnit unit) => persist(unit);
 }
 
 /// Whether first-run onboarding (pairing warning + permission grants) is complete.
@@ -414,23 +403,22 @@ final therapySettingsProvider =
     StateNotifierProvider<TherapyNotifier, TherapySettings>(
         (ref) => TherapyNotifier());
 
-class TherapyNotifier extends StateNotifier<TherapySettings> {
-  TherapyNotifier() : super(TherapySettings.placeholder()) {
-    _restore();
-  }
+class TherapyNotifier extends PersistedStateNotifier<TherapySettings> {
+  TherapyNotifier() : super(TherapySettings.placeholder());
   static const _key = 'therapy_settings_v1';
-
-  Future<void> _restore() async {
+  @override
+  Future<TherapySettings?> load() async {
     final raw = await KvStore.getString(_key);
-    if (raw != null) {
-      state = TherapySettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    }
+    return raw == null
+        ? null
+        : TherapySettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 
-  Future<void> save(TherapySettings settings) async {
-    state = settings;
-    await KvStore.setString(_key, jsonEncode(settings.toJson()));
-  }
+  @override
+  Future<void> store(TherapySettings v) =>
+      KvStore.setString(_key, jsonEncode(v.toJson()));
+
+  Future<void> save(TherapySettings settings) => persist(settings);
 }
 
 /// Today's sensitivity context (from the sensitivity model; neutral until trained).
@@ -447,20 +435,15 @@ final todayMetricsProvider = Provider<GlucoseMetrics>((ref) {
 final a1cTargetProvider =
     StateNotifierProvider<A1cTargetNotifier, double>((ref) => A1cTargetNotifier());
 
-class A1cTargetNotifier extends StateNotifier<double> {
-  A1cTargetNotifier() : super(6.5) {
-    _restore();
-  }
+class A1cTargetNotifier extends PersistedStateNotifier<double> {
+  A1cTargetNotifier() : super(6.5);
   static const _key = 'a1c_target_gmi';
-  Future<void> _restore() async {
-    final v = await KvStore.getDouble(_key);
-    if (v != null) state = v;
-  }
+  @override
+  Future<double?> load() => KvStore.getDouble(_key);
+  @override
+  Future<void> store(double v) => KvStore.setDouble(_key, v);
 
-  Future<void> save(double gmiPercent) async {
-    state = gmiPercent;
-    await KvStore.setDouble(_key, gmiPercent);
-  }
+  Future<void> save(double gmiPercent) => persist(gmiPercent);
 }
 
 /// GMI status + 2-week projection against the goal, over the last 14 days of CGM.
@@ -1029,22 +1012,22 @@ final weatherSettingsProvider =
     StateNotifierProvider<WeatherSettingsNotifier, WeatherSettings>(
         (ref) => WeatherSettingsNotifier());
 
-class WeatherSettingsNotifier extends StateNotifier<WeatherSettings> {
-  WeatherSettingsNotifier() : super(const WeatherSettings()) {
-    _restore();
-  }
+class WeatherSettingsNotifier extends PersistedStateNotifier<WeatherSettings> {
+  WeatherSettingsNotifier() : super(const WeatherSettings());
   static const _key = 'weather_settings_v1';
-  Future<void> _restore() async {
+  @override
+  Future<WeatherSettings?> load() async {
     final raw = await KvStore.getString(_key);
-    if (raw != null) {
-      state = WeatherSettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    }
+    return raw == null
+        ? null
+        : WeatherSettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 
-  Future<void> save(WeatherSettings s) async {
-    state = s;
-    await KvStore.setString(_key, jsonEncode(s.toJson()));
-  }
+  @override
+  Future<void> store(WeatherSettings v) =>
+      KvStore.setString(_key, jsonEncode(v.toJson()));
+
+  Future<void> save(WeatherSettings s) => persist(s);
 }
 
 /// Current ambient weather (null unless enabled + a location is set). Records the reading
@@ -1290,24 +1273,22 @@ final nightscoutConfigProvider =
     StateNotifierProvider<NightscoutConfigNotifier, NightscoutConfig>(
         (ref) => NightscoutConfigNotifier());
 
-class NightscoutConfigNotifier extends StateNotifier<NightscoutConfig> {
-  NightscoutConfigNotifier() : super(const NightscoutConfig()) {
-    _restore();
-  }
+class NightscoutConfigNotifier extends PersistedStateNotifier<NightscoutConfig> {
+  NightscoutConfigNotifier() : super(const NightscoutConfig());
   static const _key = 'nightscout_config_v1';
-
-  Future<void> _restore() async {
+  @override
+  Future<NightscoutConfig?> load() async {
     final raw = await KvStore.getString(_key);
-    if (raw != null) {
-      state = NightscoutConfig.fromJson(
-          jsonDecode(raw) as Map<String, dynamic>);
-    }
+    return raw == null
+        ? null
+        : NightscoutConfig.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 
-  Future<void> save(NightscoutConfig config) async {
-    state = config;
-    await KvStore.setString(_key, jsonEncode(config.toJson()));
-  }
+  @override
+  Future<void> store(NightscoutConfig v) =>
+      KvStore.setString(_key, jsonEncode(v.toJson()));
+
+  Future<void> save(NightscoutConfig config) => persist(config);
 }
 
 final nightscoutClientProvider = Provider<NightscoutClient>(
