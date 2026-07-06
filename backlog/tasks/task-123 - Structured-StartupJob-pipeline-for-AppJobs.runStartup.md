@@ -4,6 +4,7 @@ title: Structured StartupJob pipeline for AppJobs.runStartup
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:36'
+updated_date: '2026-07-06 09:20'
 labels:
   - code-health
   - architecture
@@ -48,6 +49,16 @@ ordinal: 123000
 - Where: `lib/state/providers.dart`
 - Related: TASK-38 (ring buffer), TASK-39 (clock)
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 09:20
+---
+Accuracy-reliability sweep 2026-07-06: concrete instance for this ticket — training isolate failures are currently swallowed (Isolate.run in providers.dart:1876-1879 inside catch(_)); the structured pipeline must record per-job outcomes and surface a training-failed diagnostic, with a bounded retry considered.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
