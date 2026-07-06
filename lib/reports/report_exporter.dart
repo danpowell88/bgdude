@@ -164,6 +164,7 @@ class ReportExporter {
               pw.Padding(
                   padding: const pw.EdgeInsets.symmetric(vertical: 2),
                   child: pw.Text(row[1],
+                      // ignore: prefer_const_constructors
                       style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
             ]),
         ],
@@ -181,6 +182,7 @@ class ReportExporter {
               pw.Padding(
                   padding: const pw.EdgeInsets.all(3),
                   child: pw.Text(h,
+                      // ignore: prefer_const_constructors
                       style: pw.TextStyle(
                           fontSize: 8, fontWeight: pw.FontWeight.bold))),
           ],
@@ -216,6 +218,7 @@ class ReportExporter {
               pw.Padding(
                   padding: const pw.EdgeInsets.all(3),
                   child: pw.Text(h,
+                      // ignore: prefer_const_constructors
                       style: pw.TextStyle(
                           fontSize: 8, fontWeight: pw.FontWeight.bold))),
           ],
