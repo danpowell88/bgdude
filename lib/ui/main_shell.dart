@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../state/app_flags.dart';
 import '../state/providers.dart';
 import 'bolus_advisor_screen.dart';
 import 'home_screen.dart';
@@ -42,8 +42,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   Future<void> _exitDemo() async {
     final messenger = ScaffoldMessenger.of(context);
     ref.read(devModeProvider.notifier).state = false;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('dev_mode', false);
+    await (await AppFlags.load()).setDevMode(false);
     try {
       await ref.read(pumpClientProvider).startScan();
     } catch (_) {}

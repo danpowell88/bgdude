@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/units.dart';
 import '../integrations/nightscout.dart';
+import '../state/app_flags.dart';
 import '../state/providers.dart';
 import 'advanced_screen.dart';
 import 'ai_model_screen.dart';
@@ -126,8 +126,7 @@ class SettingsScreen extends ConsumerWidget {
                 label: const Text('Exit'),
                 onPressed: () async {
                   ref.read(devModeProvider.notifier).state = false;
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('dev_mode', false);
+                  await (await AppFlags.load()).setDevMode(false);
                   try {
                     await ref.read(pumpClientProvider).startScan();
                   } catch (_) {}

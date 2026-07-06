@@ -1,10 +1,10 @@
 ---
 id: TASK-106
 title: Extract onboarding gate logic; typed accessors for app flags
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:54'
-updated_date: '2026-07-06 08:07'
+updated_date: '2026-07-06 09:09'
 labels:
   - code-health
   - architecture
@@ -29,9 +29,9 @@ ordinal: 106000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Pure onboarding-gate function extracted and unit-tested (each step satisfied/unsatisfied, pump-ready matrix)
-- [ ] #2 The three flags are read/written via typed accessors with const key names defined once
-- [ ] #3 No raw flag-key string literals remain in lib/ui/, lib/app.dart or lib/main.dart
+- [x] #1 Pure onboarding-gate function extracted and unit-tested (each step satisfied/unsatisfied, pump-ready matrix)
+- [x] #2 The three flags are read/written via typed accessors with const key names defined once
+- [x] #3 No raw flag-key string literals remain in lib/ui/, lib/app.dart or lib/main.dart
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -50,4 +50,6 @@ ordinal: 106000
 - Source: code-health survey 2026-07-06 (lib finding 5)
 - Effort: S–M
 - Related: TASK-36 (KvStore behind the DI seam)
+
+Implemented: (1) lib/onboarding/onboarding_gate.dart — pure OnboardingGate (pumpReady/lastStepSatisfied/canAdvance) extracted from OnboardingScreen.build(); unit-tested in test/onboarding_gate_logic_test.dart (pump-ready matrix, per-page advance, last-step). Kept the existing widget regression test (test/onboarding_gate_test.dart) untouched. (2) lib/state/app_flags.dart — AppFlags wraps SharedPreferences with const keys (kDevMode/kPumpPaired/kOnboardingDone) + typed getters/setters; documented as the swap point for the TASK-36 KvStore seam. (3) Migrated all six sites (onboarding_screen, main_shell, settings_screen, main, app x2); grep confirms zero raw 'dev_mode'/'pump_paired'/'onboarding_done' literals remain in lib/ui, lib/app.dart, lib/main.dart. analyze clean, 516 tests green, debug APK builds.
 <!-- SECTION:NOTES:END -->

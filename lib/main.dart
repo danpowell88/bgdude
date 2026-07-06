@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 
 import 'app.dart';
@@ -10,15 +9,16 @@ import 'data/kv_store.dart';
 import 'data/secure_key.dart';
 import 'insights/background_summary.dart';
 import 'insights/notifications.dart';
+import 'state/app_flags.dart';
 import 'state/providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tzdata.initializeTimeZones();
 
-  final prefs = await SharedPreferences.getInstance();
-  final onboarded = prefs.getBool('onboarding_done') ?? false;
-  final devMode = prefs.getBool('dev_mode') ?? false;
+  final flags = await AppFlags.load();
+  final onboarded = flags.onboardingDone;
+  final devMode = flags.devMode;
 
   // Open the encrypted store and build the history repository. If SQLCipher can't
   // initialise (e.g. an unsupported host), fall back to in-memory so the app still

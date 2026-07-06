@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'analytics/therapy_settings.dart';
+import 'state/app_flags.dart';
 import 'state/providers.dart';
 import 'ui/main_shell.dart';
 import 'ui/onboarding_screen.dart';
@@ -48,8 +48,7 @@ class BgDudeApp extends ConsumerWidget {
       // Remember that a pump has been paired at least once, so onboarding's pair path is
       // pre-satisfied for a returning user.
       if (c != null && c.isConnected) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('pump_paired', true);
+        await (await AppFlags.load()).setPumpPaired(true);
       }
     });
     // Apply notification-preference changes to the live channels.
@@ -94,8 +93,7 @@ class BgDudeApp extends ConsumerWidget {
           : OnboardingScreen(
               onDone: () async {
                 ref.read(onboardingDoneProvider.notifier).state = true;
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setBool('onboarding_done', true);
+                await (await AppFlags.load()).setOnboardingDone(true);
               },
             ),
     );

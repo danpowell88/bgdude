@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/units.dart';
+import '../onboarding/onboarding_gate.dart';
 import '../profile/user_profile.dart';
+import '../state/app_flags.dart';
 import '../state/providers.dart';
 import 'pairing_dialog.dart';
 import 'profile_form.dart';
@@ -38,13 +39,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   bool _pumpEverPaired = false;
 
   static const _pageCount = 4;
+  static const _gate = OnboardingGate(pageCount: _pageCount);
 
   @override
   void initState() {
     super.initState();
-    SharedPreferences.getInstance().then((prefs) {
+    AppFlags.load().then((flags) {
       if (!mounted) return;
-      setState(() => _pumpEverPaired = prefs.getBool('pump_paired') ?? false);
+      setState(() => _pumpEverPaired = flags.pumpPaired);
     });
   }
 
@@ -63,22 +65,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       if (ref.read(devModeProvider)) return;
       if (next.valueOrNull?.isConnected ?? false) {
         if (!_pumpEverPaired && mounted) setState(() => _pumpEverPaired = true);
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('pump_paired', true);
+        await (await AppFlags.load()).setPumpPaired(true);
       }
     });
 
     // A real pump connection only counts outside demo mode (see above).
     final realConnected = !devMode &&
         (ref.watch(pumpConnectionProvider).valueOrNull?.isConnected ?? false);
-    final pumpReady = realConnected || _pumpEverPaired;
+    final pumpReady = _gate.pumpReady(
+        realConnected: realConnected, pumpEverPaired: _pumpEverPaired);
     // The final step needs an explicit demo choice or a pump (paired now or already).
-    final lastStepSatisfied = _demoChosen || pumpReady;
-    final canAdvance = _page == 1
-        ? _acceptedPairing
-        : _page == _pageCount - 1
-            ? lastStepSatisfied
-            : true;
+    final lastStepSatisfied =
+        _gate.lastStepSatisfied(demoChosen: _demoChosen, pumpReady: pumpReady);
+    final canAdvance = _gate.canAdvance(
+      page: _page,
+      acceptedPairing: _acceptedPairing,
+      lastStepSatisfied: lastStepSatisfied,
+    );
     // Demo is whatever the user explicitly chose — then we skip pump/health permissions.
     final demoOnly = _demoChosen;
 
@@ -147,8 +150,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     // Leaving demo (if it was picked) makes pumpClientProvider the real bridge.
     if (ref.read(devModeProvider)) {
       ref.read(devModeProvider.notifier).state = false;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('dev_mode', false);
+      await (await AppFlags.load()).setDevMode(false);
     }
     if (mounted) setState(() => _demoChosen = false);
     await [
@@ -164,8 +166,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   /// Choose demo mode — the only path into it, and undoable later from the header.
   Future<void> _chooseDemo() async {
     ref.read(devModeProvider.notifier).state = true;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('dev_mode', true);
+    await (await AppFlags.load()).setDevMode(true);
     if (mounted) setState(() => _demoChosen = true);
   }
 
