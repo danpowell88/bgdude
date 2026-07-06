@@ -4,13 +4,14 @@ title: P1-7 Alerts survive engine death (staged; see §3.C)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §1-P1
   - phase-3
   - architecture
   - "\U0001F512 safety"
+  - detail-needed
 dependencies: []
 priority: high
 ordinal: 14000
@@ -48,4 +49,6 @@ ordinal: 14000
 - Depends on: §3.H (single DB connection) for step 3
 - Flags: 🔒 safety
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): L, safety-critical, native + Dart, staged; depends on §3.H single-DB-connection (TASK-42). Want the staging/approach confirmed before building the alert backstop. (= §3.C / TASK-37.)
 <!-- SECTION:NOTES:END -->

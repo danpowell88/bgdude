@@ -4,7 +4,7 @@ title: 5-5 Model integrity & resource gating
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §5
@@ -12,6 +12,7 @@ labels:
   - "\U0001F9E0 llm"
   - security
   - "\U0001F50C hardware"
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 88000
@@ -48,4 +49,6 @@ ordinal: 88000
 - Depends on: P1-9
 - Flags: 🧠 llm 🔌 hardware
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Model integrity/resource gating needs the concrete model URL + published SHA-256 and on-device RAM/space measurement to reconcile the 0.5 vs 1.5 GB claim.
 <!-- SECTION:NOTES:END -->

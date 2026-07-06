@@ -6,12 +6,13 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:53'
 labels:
   - roadmap
   - §1-P1
   - architecture
   - logging
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 15000
@@ -47,4 +48,6 @@ ordinal: 15000
 - Effort: S
 - Where: providers.dart throughout
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): The catch-sweep AC depends on the app_log ring buffer from 3.D (TASK-38) existing first; do the two behavioural fixes as part of that sweep.
 <!-- SECTION:NOTES:END -->

@@ -4,12 +4,13 @@ title: P1-1 DB passphrase → Keystore (flutter_secure_storage)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:53'
 labels:
   - roadmap
   - §1-P1
   - phase-0
   - security
+  - detail-needed
 dependencies: []
 priority: high
 ordinal: 8000
@@ -46,4 +47,6 @@ ordinal: 8000
 - Effort: S
 - Where: secure_key.dart, database.dart:187, main.dart
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Security-critical (the DB encryption key): wants your go-ahead to add the flutter_secure_storage dependency + the exact prefs->Keystore migration strategy, since a bad migration would lock you out of the existing encrypted DB.
 <!-- SECTION:NOTES:END -->

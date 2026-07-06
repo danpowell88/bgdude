@@ -4,12 +4,13 @@ title: 6.5 First-run polish for real hardware
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §6
   - onboarding
   - "\U0001F50C hardware"
+  - detail-needed
 dependencies: []
 priority: low
 ordinal: 96000
@@ -46,4 +47,6 @@ ordinal: 96000
 - Effort: S–M
 - Flags: 🔌 hardware
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): First-run polish needs an on-device clean-install walkthrough (pairing UX, permission flows, Health Connect) to evaluate and tune.
 <!-- SECTION:NOTES:END -->

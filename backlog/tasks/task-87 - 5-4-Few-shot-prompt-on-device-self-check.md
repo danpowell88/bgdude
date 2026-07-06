@@ -4,13 +4,14 @@ title: 5-4 Few-shot prompt + on-device self-check
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §5
   - panel-scanner
   - "\U0001F9E0 llm"
   - "\U0001F50C hardware"
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 87000
@@ -46,4 +47,6 @@ ordinal: 87000
 - Effort: M
 - Flags: 🧠 llm 🔌 hardware
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Few-shot prompt + on-device self-check needs a real Gemma model on a device to run and record accuracy.
 <!-- SECTION:NOTES:END -->

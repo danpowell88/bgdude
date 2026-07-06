@@ -4,13 +4,14 @@ title: 6.8 Release path
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:52'
 labels:
   - roadmap
   - §6
   - infra
   - "\U0001F50C hardware"
   - needs-exploration
+  - detail-needed
 dependencies: []
 priority: low
 ordinal: 99000
@@ -47,4 +48,6 @@ ordinal: 99000
 - Effort: M
 - Flags: 🔌 hardware
 - ⚠ NEEDS MORE EXPLORATION: Decide distribution (Play internal track vs sideload-only) and set up real signing — a product/release decision.
+
+detail-needed (2026-07-06, goal triage): Decision: distribution (Play internal track vs sideload) + a real signing keystore to set up.
 <!-- SECTION:NOTES:END -->

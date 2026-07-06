@@ -4,12 +4,13 @@ title: 6.1 Prediction validation on real data
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §6
   - ml
   - "\U0001F50C hardware"
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 92000
@@ -45,4 +46,6 @@ ordinal: 92000
 - Effort: M
 - Flags: 🔌 hardware
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Prediction validation on real data needs a live pump history AND the P0-2 model fix landed first (labels are poisoned until then).
 <!-- SECTION:NOTES:END -->

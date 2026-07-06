@@ -4,11 +4,12 @@ title: 2-6 Mood logging — make it do something or declare journal-only
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 04:52'
 labels:
   - roadmap
   - §2
   - needs-exploration
+  - detail-needed
 dependencies: []
 priority: low
 ordinal: 34000
@@ -45,4 +46,6 @@ ordinal: 34000
 - Effort: S
 - Depends on: §4-4.3 (if wired)
 - ⚠ NEEDS MORE EXPLORATION: Decide the direction — wire to correlation analysis vs journal-only. Small but a product decision, not just code.
+
+detail-needed (2026-07-06, goal triage): Decision: wire mood into the correlation (TASK-67) or declare it journal-only. Product call.
 <!-- SECTION:NOTES:END -->

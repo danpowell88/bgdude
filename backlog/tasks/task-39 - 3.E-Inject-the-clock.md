@@ -4,11 +4,12 @@ title: 3.E Inject the clock
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §3
   - architecture
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 39000
@@ -44,4 +45,6 @@ ordinal: 39000
 - Effort: S–M
 - Depends on: moves with 3.A
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Clock injection moves with §3.A (constructor-injecting AppJobs/AlertService/notifiers); do it as part of that refactor, not standalone.
 <!-- SECTION:NOTES:END -->

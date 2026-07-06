@@ -6,12 +6,13 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:52'
 labels:
   - roadmap
   - §1-P1
   - phase-2
   - data-integrity
+  - detail-needed
 dependencies: []
 priority: high
 ordinal: 9000
@@ -48,4 +49,6 @@ ordinal: 9000
 - Effort: M
 - Where: database.dart, history_repository.dart, glucose_meter.dart
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Schema v3 (isCalibration/source). Per the ROADMAP, the drift schema-export + step-migration tests (§3.H / TASK-42) must exist BEFORE this; also a migration design decision. Sequence after §3.H.
 <!-- SECTION:NOTES:END -->

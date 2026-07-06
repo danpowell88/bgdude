@@ -4,13 +4,14 @@ title: 'P1-5 BootReceiver: gate on BT permission + auto-reconnect'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §1-P1
   - phase-4
   - native
   - "\U0001F50C hardware"
+  - detail-needed
 dependencies: []
 priority: high
 ordinal: 12000
@@ -46,4 +47,6 @@ ordinal: 12000
 - Where: BootReceiver.kt, PumpService.kt
 - Flags: 🔌 hardware
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Needs a real device: the auto-reconnect-after-reboot AC can only be confirmed by rebooting a phone with the pump paired; also a reconnect-policy decision (retry cadence/backoff).
 <!-- SECTION:NOTES:END -->

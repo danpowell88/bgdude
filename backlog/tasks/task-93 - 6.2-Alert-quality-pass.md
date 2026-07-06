@@ -4,12 +4,13 @@ title: 6.2 Alert quality pass
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:53'
 labels:
   - roadmap
   - §6
   - alerts
   - "\U0001F512 safety"
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 93000
@@ -46,4 +47,6 @@ ordinal: 93000
 - Effort: M
 - Flags: 🔒 safety
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Alert quality (snooze/ack/dedup) is best built on the §3.C pure decision-core (TASK-37, detail-needed); blocked on that.
 <!-- SECTION:NOTES:END -->

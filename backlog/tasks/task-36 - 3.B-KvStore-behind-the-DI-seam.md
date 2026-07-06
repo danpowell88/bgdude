@@ -4,11 +4,12 @@ title: 3.B KvStore behind the DI seam
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §3
   - architecture
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 36000
@@ -44,4 +45,6 @@ ordinal: 36000
 - Effort: M
 - Depends on: 3.A (PersistedStateNotifier)
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Depends on §3.A (PersistedStateNotifier) landing first; then a ~40-call-site KvStore seam migration — sequence after the anchor refactor.
 <!-- SECTION:NOTES:END -->

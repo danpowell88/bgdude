@@ -4,11 +4,12 @@ title: 3.K Test architecture (fill gaps in order)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §3
   - testing
+  - detail-needed
 dependencies: []
 priority: low
 ordinal: 45000
@@ -45,4 +46,6 @@ ordinal: 45000
 - Source: ROADMAP §3.K
 - Effort: ongoing
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Tracking task: it completes as its constituent test suites (§3.H/§3.C/§3.A/§3.G) land — depends on those.
 <!-- SECTION:NOTES:END -->

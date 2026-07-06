@@ -4,13 +4,14 @@ title: '5-8 Longer-term: LoRA fine-tune of Gemma'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:52'
 labels:
   - roadmap
   - §5
   - panel-scanner
   - "\U0001F9E0 llm"
   - needs-exploration
+  - detail-needed
 dependencies: []
 priority: low
 ordinal: 91000
@@ -47,4 +48,6 @@ ordinal: 91000
 - Effort: L
 - Flags: 🧠 llm
 - ⚠ NEEDS MORE EXPLORATION: Research spike: synthetic-panel generation + LoRA training pipeline + on-device eval of a 270M vs 1B model. Unproven; scope before committing.
+
+detail-needed (2026-07-06, goal triage): Research spike: synthetic-panel generation + LoRA training + on-device eval; go/no-go decision needed.
 <!-- SECTION:NOTES:END -->

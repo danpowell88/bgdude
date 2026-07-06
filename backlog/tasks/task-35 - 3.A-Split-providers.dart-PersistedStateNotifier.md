@@ -4,12 +4,13 @@ title: 3.A Split providers.dart + PersistedStateNotifier
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §3
   - phase-6
   - architecture
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 35000
@@ -45,4 +46,6 @@ ordinal: 35000
 - Source: ROADMAP §3.A (P2-12)
 - Effort: L
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Anchor refactor: splitting providers.dart (85 providers) + PersistedStateNotifier base. High blast-radius; want the module boundaries + migration order confirmed before touching it.
 <!-- SECTION:NOTES:END -->

@@ -4,12 +4,13 @@ title: 3.D Error-handling & logging discipline + on-device log ring buffer
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §3
   - architecture
   - logging
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 38000
@@ -46,4 +47,6 @@ ordinal: 38000
 - Effort: S–M
 - Depends on: pairs with §4-6.4
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Defines the app_log ring-buffer design + a 43-site catch sweep across the codebase; foundational and wide. Want the logging API/approach confirmed before the sweep.
 <!-- SECTION:NOTES:END -->

@@ -4,11 +4,12 @@ title: 6.3 Data integrity edges
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:53'
 labels:
   - roadmap
   - §6
   - data-integrity
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 94000
@@ -44,4 +45,6 @@ ordinal: 94000
 - Source: ROADMAP §6
 - Effort: M
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Data-integrity edges span several sub-fixes, some needing real-history verification (DST across history, meter clock drift); wants scoping into concrete sub-tickets.
 <!-- SECTION:NOTES:END -->

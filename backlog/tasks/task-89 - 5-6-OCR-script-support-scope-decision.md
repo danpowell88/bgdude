@@ -4,12 +4,13 @@ title: 5-6 OCR script support (scope decision)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:52'
 labels:
   - roadmap
   - §5
   - panel-scanner
   - needs-exploration
+  - detail-needed
 dependencies: []
 priority: low
 ordinal: 89000
@@ -46,4 +47,6 @@ ordinal: 89000
 - Effort: M
 - Depends on: 2-1
 - ⚠ NEEDS MORE EXPLORATION: Scope decision, not just code: add CJK recognizers vs limit to Latin labels. Decide from real usage during 2-1.
+
+detail-needed (2026-07-06, goal triage): Scope decision: add CJK/script recognizers vs limit to Latin-script labels — decide from real usage.
 <!-- SECTION:NOTES:END -->

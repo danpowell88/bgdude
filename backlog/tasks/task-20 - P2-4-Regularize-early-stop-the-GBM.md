@@ -4,12 +4,13 @@ title: P2-4 Regularize/early-stop the GBM
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:52'
 labels:
   - roadmap
   - §1-P2
   - phase-5
   - ml
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 20000
@@ -45,4 +46,6 @@ ordinal: 20000
 - Source: ROADMAP §1 P2-4 (in §4-1.10)
 - Effort: M
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Delivered by TASK-55 (§4-1.10); blocked on P0-2.
 <!-- SECTION:NOTES:END -->

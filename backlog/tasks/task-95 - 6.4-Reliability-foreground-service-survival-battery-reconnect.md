@@ -4,13 +4,14 @@ title: '6.4 Reliability (foreground service survival, battery, reconnect)'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §6
   - pump
   - reliability
   - "\U0001F50C hardware"
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 95000
@@ -47,4 +48,6 @@ ordinal: 95000
 - Effort: M
 - Flags: 🔌 hardware
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Long-run reliability (Doze survival, sleep-reconnect, battery, multi-day crash-free) can only be verified on a real device over days.
 <!-- SECTION:NOTES:END -->

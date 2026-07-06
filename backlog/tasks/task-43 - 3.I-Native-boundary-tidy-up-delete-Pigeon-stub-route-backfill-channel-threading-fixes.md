@@ -6,13 +6,14 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §3
   - native
   - architecture
   - "\U0001F50C hardware"
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 43000
@@ -49,4 +50,6 @@ ordinal: 43000
 - Depends on: P1-4
 - Flags: 🔌 hardware
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): The threading fixes (snapshot copy-under-lock, requestStatusJson) must be verified under a real pump connection; Pigeon-stub removal is safe but should ride the same real-pump PR.
 <!-- SECTION:NOTES:END -->

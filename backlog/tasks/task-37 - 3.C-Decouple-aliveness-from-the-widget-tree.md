@@ -4,13 +4,14 @@ title: 3.C Decouple aliveness from the widget tree
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §3
   - phase-3
   - architecture
   - "\U0001F512 safety"
+  - detail-needed
 dependencies: []
 priority: high
 ordinal: 37000
@@ -48,4 +49,6 @@ ordinal: 37000
 - Depends on: §3.H for step 3
 - Flags: 🔒 safety
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): L, safety-critical alert re-architecture across widget/native/isolate; depends on §3.H. Want the staged approach signed off before an invasive change to the alert path.
 <!-- SECTION:NOTES:END -->

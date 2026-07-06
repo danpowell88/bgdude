@@ -4,11 +4,12 @@ title: 6.7 Golden/screenshot tests
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §6
   - testing
+  - detail-needed
 dependencies: []
 priority: low
 ordinal: 98000
@@ -43,4 +44,6 @@ ordinal: 98000
 - Source: ROADMAP §6
 - Effort: M
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Golden/screenshot tests need a decision on which screens + baseline images captured on a chosen device/CI, then wired in.
 <!-- SECTION:NOTES:END -->

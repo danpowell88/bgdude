@@ -4,12 +4,13 @@ title: P2-12 Split providers.dart + PersistedStateNotifier base
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §1-P2
   - phase-6
   - architecture
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 28000
@@ -44,4 +45,6 @@ ordinal: 28000
 - Source: ROADMAP §1 P2-12 → §3.A
 - Effort: L
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): The 2,239-line providers.dart split (= §3.A / TASK-35): an invasive, risk-laden refactor of app-wide state. Want scope/sequencing sign-off before starting.
 <!-- SECTION:NOTES:END -->

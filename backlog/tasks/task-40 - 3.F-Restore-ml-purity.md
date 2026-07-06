@@ -4,12 +4,13 @@ title: 3.F Restore ml/ purity
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §3
   - architecture
   - ml
+  - detail-needed
 dependencies: []
 priority: low
 ordinal: 40000
@@ -45,4 +46,6 @@ ordinal: 40000
 - Effort: S
 - Depends on: 3.B
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Restoring ml/ purity depends on the §3.B KeyValueStore seam existing first.
 <!-- SECTION:NOTES:END -->

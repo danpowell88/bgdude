@@ -6,12 +6,13 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §1-P1
   - security
   - "\U0001F9E0 llm"
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 16000
@@ -49,4 +50,6 @@ ordinal: 16000
 - Where: panel_model_manager.dart, ai_model_screen.dart
 - Flags: 🧠 llm
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Needs the concrete model-host allowlist decision (HF/Kaggle exact hosts) + a known-good model URL and its published SHA-256 to verify the integrity flow end-to-end.
 <!-- SECTION:NOTES:END -->

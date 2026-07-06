@@ -4,7 +4,7 @@ title: '4-7 Software pump — virtual t:slim X2 BLE peripheral'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §4-7
@@ -13,6 +13,7 @@ labels:
   - native
   - "\U0001F50C hardware"
   - needs-exploration
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 83000
@@ -52,4 +53,6 @@ ordinal: 83000
 - Depends on: 2-5 (JPAKE+framing known), §4-6.2 (BLE inspector); needs TWO phones (BLE cannot loopback)
 - Flags: 🔌 hardware
 - ⚠ NEEDS MORE EXPLORATION: The JPAKE SERVER side is the hard, unproven part — port the maths from pumpx2 JpakeAuthBuilder (client) to a server counterpart and cross-check against the captured handshake bytes. Prototype the pairing handshake before committing to the full peripheral. Desktop variant blocked until a BLE-peripheral stack the pump/consumer accepts is found (bleak/WinRT could not bond — see doc/pump-recon-findings.md).
+
+detail-needed (2026-07-06, goal triage): L, needs TWO phones (BLE can't loopback) and a JPAKE-server prototype (already needs-exploration) — the server-side handshake maths is unproven.
 <!-- SECTION:NOTES:END -->

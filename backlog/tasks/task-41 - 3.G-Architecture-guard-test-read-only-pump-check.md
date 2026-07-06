@@ -4,7 +4,7 @@ title: 3.G Architecture guard test (+ read-only-pump check)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 04:51'
 labels:
   - roadmap
   - §3
@@ -12,6 +12,7 @@ labels:
   - architecture
   - testing
   - "\U0001F512 safety"
+  - detail-needed
 dependencies: []
 priority: high
 ordinal: 41000
@@ -47,4 +48,6 @@ ordinal: 41000
 - Effort: S
 - Flags: 🔒 safety
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): The guard test itself is easy, but fixing the existing violation protocol_explorer_screen→PumpSource (an interface import) needs a provider-routing redesign of the probe API — want the approach confirmed so the read-only Explorer keeps working.
 <!-- SECTION:NOTES:END -->

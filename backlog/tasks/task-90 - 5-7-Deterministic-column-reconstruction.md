@@ -4,11 +4,12 @@ title: 5-7 Deterministic column reconstruction
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:53'
 labels:
   - roadmap
   - §5
   - panel-scanner
+  - detail-needed
 dependencies: []
 priority: medium
 ordinal: 90000
@@ -42,4 +43,6 @@ ordinal: 90000
 - Source: ROADMAP §5 item 7
 - Effort: M
 - Roadmap status: open
+
+detail-needed (2026-07-06, goal triage): Column reconstruction needs ML Kit block/line geometry plumbed through the OCR pipeline (currently discarded) — a medium OCR-pipeline change; confirm scope.
 <!-- SECTION:NOTES:END -->
