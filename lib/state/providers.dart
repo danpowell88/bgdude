@@ -1152,6 +1152,13 @@ final livePredictionStateProvider = Provider<PredictionState?>((ref) {
 
   final healthSampler = ref.watch(forecastHealthSamplerProvider);
 
+  // TASK-72: never let the advisor suggest more than the pump's own configured max bolus.
+  var settings = day.settings;
+  final pumpMaxBolus = snapshot?.maxBolusUnits;
+  if (pumpMaxBolus != null && pumpMaxBolus < settings.maxBolusUnits) {
+    settings = settings.copyWith(maxBolusUnits: pumpMaxBolus);
+  }
+
   return PredictionState(
     now: latest.time,
     currentMgdl: latest.mgdl,
@@ -1159,7 +1166,7 @@ final livePredictionStateProvider = Provider<PredictionState?>((ref) {
     boluses: day.boluses,
     basal: day.basal,
     carbs: day.carbs,
-    settings: day.settings,
+    settings: settings,
     context: ref.watch(effectiveSensitivityProvider),
     healthFeatures:
         healthSampler?.featuresAt(latest.time) ?? HealthFeatureSampler.zeros,

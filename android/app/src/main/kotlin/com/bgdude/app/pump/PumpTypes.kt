@@ -45,6 +45,8 @@ class MutableSnapshot {
     var reservoirUnits: Double? = null
     var iobUnits: Double? = null
     var basalUnitsPerHour: Double? = null
+    var maxBolusUnits: Double? = null
+    var maxBasalUnitsPerHour: Double? = null
     var controlIqActive: Boolean? = null
 
     /** Whether the Control-IQ closed loop is switched on (from ControlIQInfo). */
@@ -85,6 +87,8 @@ class MutableSnapshot {
         field("reservoirUnits", reservoirUnits)
         field("iobUnits", iobUnits)
         field("basalUnitsPerHour", basalUnitsPerHour)
+        field("maxBolusUnits", maxBolusUnits)
+        field("maxBasalUnitsPerHour", maxBasalUnitsPerHour)
         field("controlIqActive", controlIqActive)
         field("closedLoopEnabled", closedLoopEnabled)
         field("controlIqMode", controlIqMode)

@@ -134,6 +134,10 @@ class _StatusCard extends StatelessWidget {
           if (snap.lastBolusUnits != null)
             _Row('Last bolus',
                 '${snap.lastBolusUnits!.toStringAsFixed(2)} U · ${_ago(snap.lastBolusTime)}'),
+          if (snap.maxBolusUnits != null)
+            _Row('Max bolus', '${snap.maxBolusUnits!.toStringAsFixed(1)} U'),
+          if (snap.maxBasalUnitsPerHour != null)
+            _Row('Max basal', '${snap.maxBasalUnitsPerHour!.toStringAsFixed(2)} U/hr'),
         ],
       ),
     );

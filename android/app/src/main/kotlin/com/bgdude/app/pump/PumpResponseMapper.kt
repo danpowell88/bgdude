@@ -8,7 +8,9 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQIOBRespo
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoAbstractResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV1Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV2Response
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.BasalLimitSettingsResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBasalStatusResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.GlobalMaxBolusSettingsResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV1Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV2Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentEGVGuiDataResponse
@@ -42,6 +44,14 @@ object PumpResponseMapper {
 
             is InsulinStatusResponse ->
                 snapshot.reservoirUnits = message.currentInsulinAmount.toDouble()
+
+            // TASK-72: the pump's own safety limits (milli-units), shown and used to cap the
+            // advisor so it never suggests more than the pump would allow.
+            is GlobalMaxBolusSettingsResponse ->
+                snapshot.maxBolusUnits = message.maxBolus / 1000.0
+
+            is BasalLimitSettingsResponse ->
+                snapshot.maxBasalUnitsPerHour = message.basalLimit / 1000.0
 
             is ControlIQIOBResponse -> {
                 snapshot.iobUnits = message.pumpDisplayedIOB / 1000.0 // milliunits

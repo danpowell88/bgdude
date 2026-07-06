@@ -79,10 +79,11 @@ class TherapySettings {
     return active;
   }
 
-  TherapySettings copyWith({List<TherapySegment>? segments}) => TherapySettings(
+  TherapySettings copyWith({List<TherapySegment>? segments, double? maxBolusUnits}) =>
+      TherapySettings(
         segments: segments ?? this.segments,
         durationOfInsulinActionMinutes: durationOfInsulinActionMinutes,
-        maxBolusUnits: maxBolusUnits,
+        maxBolusUnits: maxBolusUnits ?? this.maxBolusUnits,
         insulinPeakMinutes: insulinPeakMinutes,
       );
 

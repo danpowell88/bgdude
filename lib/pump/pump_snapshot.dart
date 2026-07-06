@@ -100,6 +100,8 @@ class PumpSnapshot {
     this.reservoirUnits,
     this.iobUnits,
     this.basalUnitsPerHour,
+    this.maxBolusUnits,
+    this.maxBasalUnitsPerHour,
     this.controlIqActive,
     this.closedLoopEnabled,
     this.controlIqMode = ControlIqMode.unknown,
@@ -122,6 +124,12 @@ class PumpSnapshot {
   final double? reservoirUnits;
   final double? iobUnits;
   final double? basalUnitsPerHour;
+
+  /// The pump's own configured maximum single bolus (units), read-only (TASK-72).
+  final double? maxBolusUnits;
+
+  /// The pump's configured maximum basal rate (units/hour), read-only (TASK-72).
+  final double? maxBasalUnitsPerHour;
   final bool? controlIqActive;
 
   /// Whether the Control-IQ closed loop is switched on (null on older firmware /
@@ -164,6 +172,8 @@ class PumpSnapshot {
         reservoirUnits: (j['reservoirUnits'] as num?)?.toDouble(),
         iobUnits: (j['iobUnits'] as num?)?.toDouble(),
         basalUnitsPerHour: (j['basalUnitsPerHour'] as num?)?.toDouble(),
+        maxBolusUnits: (j['maxBolusUnits'] as num?)?.toDouble(),
+        maxBasalUnitsPerHour: (j['maxBasalUnitsPerHour'] as num?)?.toDouble(),
         controlIqActive: j['controlIqActive'] as bool?,
         closedLoopEnabled: j['closedLoopEnabled'] as bool?,
         controlIqMode: ControlIqMode.fromName(j['controlIqMode'] as String?),

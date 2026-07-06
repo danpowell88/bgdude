@@ -120,6 +120,31 @@ class PumpResponseMapperTest {
     }
 
     @Test
+    fun max_bolus_setting_converts_milliunits_to_units() {
+        val snapshot = MutableSnapshot()
+        // GlobalMaxBolusSettingsResponse(maxBolus, maxBolusDefault) in milli-units.
+        PumpResponseMapper.apply(
+            com.jwoglom.pumpx2.pump.messages.response.currentStatus
+                .GlobalMaxBolusSettingsResponse(15000, 25000),
+            snapshot,
+        )
+        assertNotNull(snapshot.maxBolusUnits)
+        assertEquals(15.0, snapshot.maxBolusUnits!!, 1e-9)
+    }
+
+    @Test
+    fun basal_limit_setting_converts_milliunits_per_hour() {
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(
+            com.jwoglom.pumpx2.pump.messages.response.currentStatus
+                .BasalLimitSettingsResponse(3000L, 15000L),
+            snapshot,
+        )
+        assertNotNull(snapshot.maxBasalUnitsPerHour)
+        assertEquals(3.0, snapshot.maxBasalUnitsPerHour!!, 1e-9)
+    }
+
+    @Test
     fun unhandled_message_leaves_snapshot_untouched() {
         val snapshot = MutableSnapshot()
         // ApiVersionResponse is handled, but battery is left null by an EGV-only run;
