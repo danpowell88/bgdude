@@ -5,6 +5,7 @@ import '../insights/reading_explainer.dart';
 import '../state/providers.dart';
 import '../timeline/day_event.dart';
 import 'explain_reading_screen.dart';
+import '../core/sleep_window.dart';
 
 /// The day "stream": every event from today on one page. The user reviews each and
 /// tags whether the models should use it or ignore it (compression low, new sensor,
@@ -163,8 +164,7 @@ class TimelineEventCard extends ConsumerWidget {
       carbs: day.carbs,
       settings: day.settings,
       wasAsleep: event.type == DayEventType.compressionLow ||
-          event.time.hour >= 23 ||
-          event.time.hour < 7,
+          defaultAsleepAt(event.time),
     );
     if (!context.mounted) return;
     final annotation = await Navigator.of(context).push<dynamic>(

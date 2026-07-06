@@ -99,6 +99,7 @@ import '../timeline/event_builder.dart';
 import '../widget/home_widget_service.dart';
 import 'day_data.dart';
 import 'day_history_controller.dart';
+import '../core/sleep_window.dart';
 
 export 'day_data.dart';
 
@@ -1705,7 +1706,7 @@ class AlertService {
   /// True when the predicted empty time lands during typical sleep hours (23:00–07:00).
   static bool _overnight(DateTime now, Duration tte) {
     final at = now.add(tte);
-    return at.hour >= 23 || at.hour < 7;
+    return defaultAsleepAt(at);
   }
 
   /// Turn a pumpx2 enum-ish alarm name (e.g. "LOW_INSULIN_ALARM") into readable text.

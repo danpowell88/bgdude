@@ -14,6 +14,7 @@ import 'widgets/glucose_hero.dart';
 import 'widgets/on_board_forecast_chart.dart';
 import 'widgets/prediction_chart.dart';
 import 'your_day_panel.dart';
+import '../core/sleep_window.dart';
 
 export 'timeline_screen.dart' show TimelineEventCard;
 
@@ -236,7 +237,7 @@ class _Dashboard extends ConsumerWidget {
       basal: day.basal,
       carbs: day.carbs,
       settings: day.settings,
-      wasAsleep: latest.time.hour >= 23 || latest.time.hour < 7,
+      wasAsleep: defaultAsleepAt(latest.time),
     );
     if (!context.mounted) return;
     final annotation = await Navigator.of(context).push<Annotation>(

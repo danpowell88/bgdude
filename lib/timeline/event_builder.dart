@@ -9,6 +9,7 @@ import '../core/units.dart';
 import '../ml/event_detectors.dart';
 import '../state/day_data.dart';
 import 'day_event.dart';
+import '../core/sleep_window.dart';
 
 class EventBuilder {
   EventBuilder({
@@ -80,7 +81,7 @@ class EventBuilder {
     // fall back to a live detector pass when nothing is pre-flagged.
     var comps = _flaggedCompressionRuns(day, g);
     if (comps.isEmpty) {
-      final asleep = isAsleep ?? _defaultAsleep;
+      final asleep = isAsleep ?? defaultAsleepAt;
       final detected = _compression.detect(
         cgm: day.cgm,
         boluses: day.boluses,
@@ -223,7 +224,6 @@ class EventBuilder {
     }
   }
 
-  static bool _defaultAsleep(DateTime t) => t.hour >= 23 || t.hour < 7;
 
   static String _hm(DateTime t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';

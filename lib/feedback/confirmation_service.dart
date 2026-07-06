@@ -10,6 +10,7 @@ import '../insights/illness_mode.dart';
 import '../ml/event_detectors.dart';
 import 'annotations.dart';
 import 'pending_confirmation.dart';
+import '../core/sleep_window.dart';
 
 class ConfirmationService {
   const ConfirmationService({
@@ -36,7 +37,7 @@ class ConfirmationService {
     bool Function(DateTime)? isAsleep,
     IllnessSuggestion? illness,
   }) {
-    final asleep = isAsleep ?? _defaultAsleep;
+    final asleep = isAsleep ?? defaultAsleepAt;
     final out = <PendingConfirmation>[];
 
     // 1. Unannounced meals: unexplained rises with no carbs logged near them.
@@ -119,5 +120,4 @@ class ConfirmationService {
           List<Annotation> annotations, DateTime t, Set<AnnotationKind> kinds) =>
       annotations.any((a) => kinds.contains(a.kind) && a.covers(t));
 
-  static bool _defaultAsleep(DateTime t) => t.hour >= 23 || t.hour < 7;
 }

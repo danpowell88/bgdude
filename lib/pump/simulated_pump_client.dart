@@ -12,6 +12,7 @@ import '../dev/sim_data.dart';
 import 'probe_event.dart';
 import 'pump_snapshot.dart';
 import 'pump_source.dart';
+import '../core/sleep_window.dart';
 
 class SimulatedPumpClient implements PumpSource {
   SimulatedPumpClient({SimulatedDay? day, DateTime Function()? clock})
@@ -103,7 +104,7 @@ class SimulatedPumpClient implements PumpSource {
   /// Simulated Control-IQ mode: Sleep overnight (23:00–07:00), Standard otherwise, so
   /// dev mode exercises the mode-aware analytics without hardware.
   ControlIqMode _simMode(DateTime t) =>
-      (t.hour >= 23 || t.hour < 7) ? ControlIqMode.sleep : ControlIqMode.standard;
+      defaultAsleepAt(t) ? ControlIqMode.sleep : ControlIqMode.standard;
 
   void _emitConnection(PumpConnection c) {
     _lastConnection = c;

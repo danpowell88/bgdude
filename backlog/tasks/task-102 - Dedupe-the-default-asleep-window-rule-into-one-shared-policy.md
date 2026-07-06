@@ -1,9 +1,10 @@
 ---
 id: TASK-102
 title: Dedupe the default asleep-window rule into one shared policy
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:53'
+updated_date: '2026-07-06 05:04'
 labels:
   - code-health
   - cleanup
