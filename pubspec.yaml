@@ -65,6 +65,8 @@ dependencies:
   intl: ^0.19.0
   logging: ^1.2.0
   shared_preferences: ^2.3.2
+  # Keystore-backed storage for the SQLCipher DB passphrase (TASK-8).
+  flutter_secure_storage: ^9.2.2
 
   # Reporting export (clinician-ready PDF + raw CSV, shared via the system sheet)
   pdf: ^3.11.0

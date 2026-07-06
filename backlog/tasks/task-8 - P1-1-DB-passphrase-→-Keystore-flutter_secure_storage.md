@@ -1,10 +1,10 @@
 ---
 id: TASK-8
 title: DB passphrase → Keystore (flutter_secure_storage)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 15:26'
 labels:
   - roadmap
   - security
@@ -25,10 +25,10 @@ ordinal: 101900
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Passphrase stored via flutter_secure_storage/Keystore
-- [ ] #2 Migrated off SharedPreferences
-- [ ] #3 Write awaited before DB open
-- [ ] #4 False security comments corrected
+- [x] #1 Passphrase stored via flutter_secure_storage/Keystore
+- [x] #2 Migrated off SharedPreferences
+- [x] #3 Write awaited before DB open
+- [x] #4 False security comments corrected
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -49,6 +49,8 @@ ordinal: 101900
 - Effort: S
 - Where: `secure_key.dart`, `database.dart:187`, `main.dart`
 - Roadmap status: open
+
+Implemented. AC#1: SecureKeyStore now stores the SQLCipher passphrase in flutter_secure_storage (AndroidOptions(encryptedSharedPreferences: true) — Keystore-backed); added the dependency. AC#2: open() migrates a passphrase written by the old SharedPreferences impl into secure storage and removes it from prefs, so an existing encrypted DB stays readable (generating a new key would have bricked it). AC#3: open() is async and awaits the secure write before returning; both callers (main.dart, background_summary.dart) already await open() before opening the DB, and getOrCreatePassphrase() now just returns the resolved value. AC#4: the false 'swap SharedPreferences for flutter_secure_storage' scaffold comment is gone and the code now matches database.dart's 'stored in the platform keystore via flutter_secure_storage' claim. Test: test/secure_key_test.dart (stable key across opens; legacy migration preserves the key + clears prefs). pub get + build_runner, analyze clean, 543 tests green, APK builds with the native plugin.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
