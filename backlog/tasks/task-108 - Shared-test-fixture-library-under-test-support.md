@@ -1,10 +1,10 @@
 ---
 id: TASK-108
 title: Shared test fixture library under test/support/
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:54'
-updated_date: '2026-07-06 08:07'
+updated_date: '2026-07-06 09:17'
 labels:
   - code-health
   - testing
@@ -28,9 +28,9 @@ ordinal: 108000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 test/support/samples.dart exposes shared builders: ramp, linear, flatTrace, sustained, sampleEvery5min
-- [ ] #2 A canonical testTherapySettings() fixture exists with documented defaults
-- [ ] #3 Existing tests migrated to the shared builders; private duplicates deleted; suite still green with unchanged assertions
+- [x] #1 test/support/samples.dart exposes shared builders: ramp, linear, flatTrace, sustained, sampleEvery5min
+- [x] #2 A canonical testTherapySettings() fixture exists with documented defaults
+- [x] #3 Existing tests migrated to the shared builders; private duplicates deleted; suite still green with unchanged assertions
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -48,4 +48,6 @@ ordinal: 108000
 - Source: code-health survey 2026-07-06 (test finding 1)
 - Effort: M
 - Where: test/ (21 files)
+
+Implemented: test/support/samples.dart exposes the shared builders ramp, linear, flatTrace, sustained, sampleEvery5min (AC#1) and a canonical testTherapySettings({maxBolusUnits=25}) fixture with documented defaults ISF50/CR10/target100/basal0.8 (AC#2). Builders replicate the exact cadence/endpoint semantics of the historical private helpers so migrated tests keep identical sample sets. Migrated (AC#3): care_detectors (ramp/linear/settings duplicates deleted), ketone_risk (_sustainedHigh now a 2-line adapter over sustained()), and the canonical TherapySettings across bolus_advisor/prebolus_coach/reading_explainer/event_detectors/control_iq — the three that pinned maxBolusUnits:15 call testTherapySettings(maxBolusUnits:15) to stay behaviour-identical. Full suite green (516) with unchanged assertions. SCOPE NOTE: remaining inline one-off traces in other files are bespoke per-scenario data, not copies of a shared builder, so they were intentionally left; flatTrace/sampleEvery5min are available for them and new tests.
 <!-- SECTION:NOTES:END -->

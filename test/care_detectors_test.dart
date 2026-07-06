@@ -1,68 +1,8 @@
-import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/insights/care_detectors.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Single-segment therapy profile: ISF 50 mg/dL/U, CR 10 g/U (CSF = 5), target 100.
-TherapySettings _settings() => const TherapySettings(
-      segments: [
-        TherapySegment(
-          startMinuteOfDay: 0,
-          isf: 50,
-          carbRatio: 10,
-          targetMgdl: 100,
-          basalUnitsPerHour: 0.8,
-        ),
-      ],
-    );
-
-/// Builds a CGM trace: a linear rise from [startMgdl] to [peakMgdl] over
-/// [riseMinutes], then a flat plateau at [peakMgdl] for [plateauMinutes],
-/// sampled every 5 minutes starting at [start].
-List<CgmSample> _rampThenFlat({
-  required DateTime start,
-  required double startMgdl,
-  required double peakMgdl,
-  required int riseMinutes,
-  required int plateauMinutes,
-}) {
-  final out = <CgmSample>[];
-  final steps = riseMinutes ~/ 5;
-  final perStep = (peakMgdl - startMgdl) / steps;
-  for (var i = 0; i <= steps; i++) {
-    out.add(CgmSample(
-      time: start.add(Duration(minutes: 5 * i)),
-      mgdl: startMgdl + perStep * i,
-    ));
-  }
-  final plateauSteps = plateauMinutes ~/ 5;
-  for (var j = 1; j <= plateauSteps; j++) {
-    out.add(CgmSample(
-      time: start.add(Duration(minutes: riseMinutes + 5 * j)),
-      mgdl: peakMgdl,
-    ));
-  }
-  return out;
-}
-
-/// Builds a linear trace from [fromMgdl] to [toMgdl] over [minutes], every 5 min.
-List<CgmSample> _linear({
-  required DateTime start,
-  required double fromMgdl,
-  required double toMgdl,
-  required int minutes,
-}) {
-  final out = <CgmSample>[];
-  final steps = minutes ~/ 5;
-  final perStep = (toMgdl - fromMgdl) / steps;
-  for (var i = 0; i <= steps; i++) {
-    out.add(CgmSample(
-      time: start.add(Duration(minutes: 5 * i)),
-      mgdl: fromMgdl + perStep * i,
-    ));
-  }
-  return out;
-}
+import 'support/samples.dart';
 
 void main() {
   final t0 = DateTime(2026, 7, 4, 12);
@@ -70,7 +10,7 @@ void main() {
   group('MissedBolusDetector', () {
     // 110 -> 220 over 55 min (2.0 mg/dL/min), then flat. CSF = 5, sustain 45 min
     // captures ~90 mg/dL of rise => ~18 g estimated carbs.
-    final cgm = _rampThenFlat(
+    final cgm = ramp(
       start: t0,
       startMgdl: 110,
       peakMgdl: 220,
@@ -85,7 +25,7 @@ void main() {
         boluses: const [],
         carbs: const [],
         basal: const [],
-        settings: _settings(),
+        settings: testTherapySettings(),
         now: now,
       );
 
@@ -100,7 +40,7 @@ void main() {
     test('does not flag the same rise when a bolus covered the meal', () {
       // Same 110->220 rise, but with a covering bolus the glucose then falls
       // (insulin working), as a real covered meal does.
-      final rise = _linear(start: t0, fromMgdl: 110, toMgdl: 220, minutes: 55);
+      final rise = linear(start: t0, fromMgdl: 110, toMgdl: 220, minutes: 55);
       final fall = <CgmSample>[
         for (var i = 1; i <= 8; i++)
           CgmSample(
@@ -115,7 +55,7 @@ void main() {
         boluses: [BolusEvent(time: t0, units: 5.5, carbsGrams: 55)],
         carbs: const [],
         basal: const [],
-        settings: _settings(),
+        settings: testTherapySettings(),
         now: covered.last.time,
       );
 
@@ -128,7 +68,7 @@ void main() {
         boluses: const [],
         carbs: [CarbEntry(time: t0.add(const Duration(minutes: 5)), grams: 55)],
         basal: const [],
-        settings: _settings(),
+        settings: testTherapySettings(),
         now: now,
       );
 
@@ -153,7 +93,7 @@ void main() {
         cgm: flatHigh,
         boluses: boluses,
         basal: const [],
-        settings: _settings(),
+        settings: testTherapySettings(),
         siteAgeHours: 72,
         now: now,
       );
@@ -170,7 +110,7 @@ void main() {
         cgm: flatHigh,
         boluses: boluses,
         basal: const [],
-        settings: _settings(),
+        settings: testTherapySettings(),
         siteAgeHours: null,
         now: now,
       );
@@ -182,7 +122,7 @@ void main() {
 
     test('does not fire when the high is clearly falling', () {
       // 300 -> 190 over 150 min (~-0.73 mg/dL/min): still above high, but falling.
-      final falling = _linear(
+      final falling = linear(
         start: t0,
         fromMgdl: 300,
         toMgdl: 190,
@@ -192,7 +132,7 @@ void main() {
         cgm: falling,
         boluses: boluses,
         basal: const [],
-        settings: _settings(),
+        settings: testTherapySettings(),
         siteAgeHours: 72,
         now: falling.last.time,
       );
@@ -209,7 +149,7 @@ void main() {
         cgm: inRange,
         boluses: boluses,
         basal: const [],
-        settings: _settings(),
+        settings: testTherapySettings(),
         siteAgeHours: 72,
         now: inRange.last.time,
       );

@@ -1,22 +1,11 @@
-import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/core/sleep_window.dart';
 import 'package:bgdude/ml/event_detectors.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/samples.dart';
 
 void main() {
-  const settings = TherapySettings(
-    segments: [
-      TherapySegment(
-        startMinuteOfDay: 0,
-        isf: 50,
-        carbRatio: 10,
-        targetMgdl: 100,
-        basalUnitsPerHour: 0.8,
-      ),
-    ],
-    maxBolusUnits: 15,
-  );
+  final settings = testTherapySettings(maxBolusUnits: 15);
 
   List<CgmSample> trace(DateTime start, List<double> mgdls) => [
         for (var i = 0; i < mgdls.length; i++)

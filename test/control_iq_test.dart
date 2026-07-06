@@ -1,24 +1,13 @@
 import 'package:bgdude/analytics/bolus_advisor.dart';
 import 'package:bgdude/analytics/predictor.dart';
-import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/pump/pump_snapshot.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/samples.dart';
 
 void main() {
   final now = DateTime(2026, 7, 4, 12);
-  const settings = TherapySettings(
-    segments: [
-      TherapySegment(
-        startMinuteOfDay: 0,
-        isf: 50,
-        carbRatio: 10,
-        targetMgdl: 100,
-        basalUnitsPerHour: 0.8,
-      ),
-    ],
-    maxBolusUnits: 15,
-  );
+  final settings = testTherapySettings(maxBolusUnits: 15);
 
   PredictionState state({
     required double bg,

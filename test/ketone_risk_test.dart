@@ -2,10 +2,10 @@ import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/insights/ketone_risk.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-List<CgmSample> _sustainedHigh(DateTime now, double mgdl) => [
-      for (var i = 0; i < 25; i++)
-        CgmSample(time: now.subtract(Duration(minutes: 5 * i)), mgdl: mgdl),
-    ];
+import 'support/samples.dart';
+
+List<CgmSample> _sustainedHigh(DateTime now, double mgdl) =>
+    sustained(end: now, mgdl: mgdl);
 
 void main() {
   const det = KetoneRiskDetector();

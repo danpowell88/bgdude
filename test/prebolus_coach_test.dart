@@ -4,20 +4,11 @@ import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/meals/meal_library.dart';
 import 'package:bgdude/meals/prebolus_coach.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/samples.dart';
 
 void main() {
   final now = DateTime(2026, 7, 4, 18);
-  const settings = TherapySettings(
-    segments: [
-      TherapySegment(
-        startMinuteOfDay: 0,
-        isf: 50,
-        carbRatio: 10,
-        targetMgdl: 100,
-        basalUnitsPerHour: 0.8,
-      ),
-    ],
-  );
+  final settings = testTherapySettings();
 
   const meal = SavedMeal(
     id: 'm',
