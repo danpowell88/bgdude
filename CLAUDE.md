@@ -89,10 +89,29 @@ run-on paragraph, and long prose paragraphs are unreadable there. Rules:
 Commit directly to `main` (no feature branches) and push to `main` when a remote exists.
 See the memory `git-workflow`.
 
-## Verify before committing
-`flutter analyze` clean, `flutter test` green, and — when native Kotlin changed —
-`cd android && ./gradlew :app:testDebugUnitTest`. Native code is buildable/testable here
-(JDK + Android SDK present); verify pumpx2 APIs via `javap` on the cached jar before writing.
+## Verify the build after EVERY task (must match CI — CI is the source of truth)
+The GitHub Actions workflow (`.github/workflows/ci.yml`) is what decides if `main` is
+green, and **it must never be left red**. `flutter analyze` + `flutter test` passing is
+**not sufficient** — CI also generates code and builds the APK, so a change can be
+"green locally" yet break CI. After finishing any task (and before committing), run the
+**same pipeline CI runs, in this order**, and only commit when it all passes:
+
+1. `flutter pub get`
+2. `dart run build_runner build --delete-conflicting-outputs` — **required**: generated
+   files (`*.g.dart`, drift) are **not committed**, so analyze/test/build all depend on
+   this succeeding. If you changed dependencies (esp. removing/adding codegen packages
+   like drift/build_runner), this is the step most likely to break CI — run it.
+3. `flutter analyze` — clean.
+4. `flutter test test/` — green (this is the scope CI uses; the `integration_test/` suite
+   needs an emulator and is separate).
+5. `flutter build apk --debug` — **required**: this catches Android/Gradle/manifest
+   breakage that analyze and unit tests miss. Do not skip it.
+6. When native Kotlin changed: `cd android && ./gradlew :app:testDebugUnitTest`.
+
+If any step fails, fix it before committing — do not push a change that would turn CI
+red. If CI is already red on `main`, treat getting it green as part of the current task.
+Native code is buildable/testable here (JDK + Android SDK present); verify pumpx2 APIs via
+`javap` on the cached jar before writing.
 
 ## Emulator (integration) tests for every feature
 Every user-facing screen/flow should have on-device coverage under `integration_test/`
