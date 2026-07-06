@@ -1,10 +1,10 @@
 ---
 id: TASK-86
 title: 5-3 Fix the confidence comparison
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:57'
 labels:
   - roadmap
   - §5

@@ -43,6 +43,21 @@ void main() {
     expect(llm.calls, 0, reason: 'high-confidence parse should skip the LLM');
   });
 
+  test('5-3: a carbs-only parse is not "good enough" — the LLM still runs', () async {
+    // Parser finds only carbs (confidence 0.6); a fuller, grounded LLM result should win.
+    const carbsOnly = 'Carbohydrate 64.0g';
+    const aiPanel = PanelNutrition(
+      carbs: PanelValue(per100g: 64),
+      protein: PanelValue(per100g: 11),
+    );
+    final llm = _FakeLlm(aiPanel);
+    final svc = PanelScanService(ocr: _FakeOcr(carbsOnly), llm: llm);
+    final r = await svc.scan('x.jpg');
+    expect(llm.calls, 1, reason: 'a thin carbs-only parse must not block the LLM');
+    expect(r.usedLlm, isTrue);
+    expect(r.panel!.protein.per100g, 11);
+  });
+
   test('falls back to the LLM when the parser finds nothing', () async {
     // Japanese label — outside the parser's Latin-script keyword set.
     const foreign = '栄養成分表示\n炭水化物 64g\nタンパク質 11g';

@@ -41,7 +41,12 @@ class PanelScanService {
   final NutritionPanelParser _parser;
 
   /// Confidence below which we try the LLM (if a deterministic result even exists).
-  static const double _llmThreshold = 0.6;
+  // 5-3: a carbs-only parse scores exactly 0.6 (the old threshold), so ANY carb value —
+  // however garbled — used to block the LLM. Require more than a bare carb value (0.7 =
+  // carbs + one macro) before the parse is "good enough" to skip the LLM. The LLM result
+  // it competes against is already OCR-grounded (5-2), so its confidence counts only
+  // grounded fields — a hallucinated-complete panel can no longer beat an honest one.
+  static const double _llmThreshold = 0.7;
 
   Future<PanelScanResult> scan(String imagePath) async {
     final text = await ocr.readText(imagePath);
