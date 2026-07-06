@@ -56,8 +56,11 @@ void main() {
           isFalse);
     });
 
-    test('raised threshold is higher than the usual low line', () {
-      expect(watch.raisedLowMgdl, greaterThan(70));
+    test('the watch raises the low line above the usual 70 while active', () {
+      // TASK-147: the margin is additive (base 70 -> 80, the raised threshold the
+      // delayed-hypo evidence points at) so a custom base line keeps its lead.
+      expect(watch.lowBumpMgdl, greaterThan(0));
+      expect(70 + watch.lowBumpMgdl, 80);
     });
   });
 }

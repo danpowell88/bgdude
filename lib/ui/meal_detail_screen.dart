@@ -36,6 +36,10 @@ class MealDetailScreen extends ConsumerWidget {
       advice = ref.watch(preBolusCoachProvider).advise(
             meal: meal,
             state: state,
+            // TASK-147: the safety guard honours the composed low line (alcohol,
+            // exercise, weather, awareness), never advising a wait the app would
+            // alert on.
+            effectiveLowMgdl: ref.watch(effectiveLowThresholdProvider).mgdl,
             displayUnit: unit,
           );
     }

@@ -34,6 +34,7 @@ import '../food/panel_ocr_mlkit.dart';
 import '../food/panel_scan_service.dart';
 import '../insights/a1c_goal.dart';
 import '../insights/alcohol_watch.dart';
+import '../insights/effective_low_threshold.dart';
 import '../insights/alert_thresholds.dart';
 import '../insights/daily_narrative.dart';
 import '../insights/exercise_mode.dart';
@@ -584,6 +585,37 @@ final bolusAdvisorProvider = Provider<BolusAdvisor>(
 final forecastHealthSamplerProvider =
     StateProvider<HealthFeatureSampler?>((ref) => null);
 
+/// Annotations within the alcohol-watch window ending now, feeding the low-line
+/// policy. Watches the day history so a freshly logged annotation is picked up on
+/// the next data change.
+final recentAnnotationsProvider = FutureProvider<List<Annotation>>((ref) async {
+  ref.watch(dayHistoryControllerProvider);
+  final now = DateTime.now();
+  return ref
+      .watch(historyRepositoryProvider)
+      .annotations(now.subtract(const AlcoholWatch().window), now);
+});
+
+/// The composed effective low line (+ active reasons) for right now — the single
+/// low-line policy (TASK-147) consumed by the alert thresholds, rescue-carb advice
+/// and the pre-bolus guard, so coaching never advises into an alert.
+final effectiveLowThresholdProvider = Provider<EffectiveLowThreshold>((ref) {
+  final now = DateTime.now();
+  final day = ref.watch(dayDataProvider);
+  final postMeal = day.carbs.any((c) =>
+      !c.time.isAfter(now) && now.difference(c.time) <= const Duration(hours: 2));
+  final band =
+      ref.watch(alertThresholdsProvider).resolve(at: now, postMeal: postMeal);
+  return EffectiveLowThreshold.compute(
+    base: band.lowMgdl,
+    profile: ref.watch(userProfileProvider),
+    annotations: ref.watch(recentAnnotationsProvider).valueOrNull ?? const [],
+    exercisePlan: ref.watch(exercisePlanProvider),
+    tempC: ref.watch(weatherProvider).valueOrNull?.tempC,
+    now: now,
+  );
+});
+
 /// Rescue-carb advice when low or predicted-low (null when not needed).
 final rescueCarbAdviceProvider = Provider<RescueCarbAdvice?>((ref) {
   final state = ref.watch(livePredictionStateProvider);
@@ -606,6 +638,7 @@ final rescueCarbAdviceProvider = Provider<RescueCarbAdvice?>((ref) {
     carbRatio: seg.carbRatio / mult,
     iobUnits: iob,
     predictedNadirMgdl: nadir,
+    lowLineMgdl: ref.watch(effectiveLowThresholdProvider).mgdl,
     unit: ref.watch(glucoseUnitProvider),
   );
   return advice.needed ? advice : null;

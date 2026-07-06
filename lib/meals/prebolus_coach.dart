@@ -11,6 +11,8 @@
 /// AdviceStep pattern.
 library;
 
+import 'dart:math' as math;
+
 import '../analytics/bolus_advisor.dart';
 import '../analytics/insulin_math.dart';
 import '../analytics/predictor.dart';
@@ -60,11 +62,17 @@ class PreBolusCoach {
 
   final List<int> candidateLeads;
 
+  /// [effectiveLowMgdl] is the composed low line from `EffectiveLowThreshold.compute`
+  /// (TASK-147). The guard used is the HIGHER of it and [lowGuardMgdl], so the coach
+  /// never advises waiting into a situation the app would alert on, while keeping its
+  /// own conservative floor when no modifier is active.
   PreBolusAdvice advise({
     required SavedMeal meal,
     required PredictionState state,
+    double? effectiveLowMgdl,
     GlucoseUnit displayUnit = GlucoseUnit.mmol,
   }) {
+    final lowGuard = math.max(lowGuardMgdl, effectiveLowMgdl ?? 0);
     final seg = state.settings.segmentAt(state.now);
     final mult = state.context.effectiveMultiplier;
     final bolusUnits = meal.carbsGrams / (seg.carbRatio / mult);
@@ -80,9 +88,9 @@ class PreBolusCoach {
 
     // Low / falling now → dose with or after food, don't wait.
     final fallingFast = state.recentRocMgdlPerMin <= -2.0;
-    if (state.currentMgdl < lowGuardMgdl || fallingFast) {
-      final reason = state.currentMgdl < lowGuardMgdl
-          ? 'Glucose is below ${Mgdl(lowGuardMgdl).display(displayUnit)} ${displayUnit.label}'
+    if (state.currentMgdl < lowGuard || fallingFast) {
+      final reason = state.currentMgdl < lowGuard
+          ? 'Glucose is below ${Mgdl(lowGuard).display(displayUnit)} ${displayUnit.label}'
           : 'Glucose is falling quickly';
       notes.add('$reason — eat first, bolus with or just after the meal.');
       final peak = _peakForLead(state, meal, bolusUnits, 0);
@@ -106,7 +114,7 @@ class PreBolusCoach {
       if (lead == 0) continue;
       final line = _lineForLead(state, meal, bolusUnits, lead);
       final preMealMin = _minBefore(line, state.now.add(Duration(minutes: lead)));
-      if (preMealMin < lowGuardMgdl) break; // longer leads only dip further
+      if (preMealMin < lowGuard) break; // longer leads only dip further
       final peak = _peakAfter(line, state.now.add(Duration(minutes: lead)));
       if (peak <= bestPeak) {
         best = lead;
@@ -117,7 +125,7 @@ class PreBolusCoach {
     // High and rising → lean toward the longest safe lead even if the marginal peak
     // gain flattens out.
     if (state.currentMgdl > 180 && state.recentRocMgdlPerMin > 0.5 && best < 20) {
-      final longestSafe = _longestSafeLead(state, meal, bolusUnits);
+      final longestSafe = _longestSafeLead(state, meal, bolusUnits, lowGuard);
       if (longestSafe > best) {
         best = longestSafe;
         bestPeak = _peakForLead(state, meal, bolusUnits, best);
@@ -202,12 +210,13 @@ class PreBolusCoach {
     PredictionState state,
     SavedMeal meal,
     double bolusUnits,
+    double lowGuard,
   ) {
     var longest = 0;
     for (final lead in candidateLeads) {
       final line = _lineForLead(state, meal, bolusUnits, lead);
       final preMealMin = _minBefore(line, state.now.add(Duration(minutes: lead)));
-      if (preMealMin >= lowGuardMgdl) longest = lead;
+      if (preMealMin >= lowGuard) longest = lead;
     }
     return longest;
   }

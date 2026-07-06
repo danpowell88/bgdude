@@ -44,6 +44,10 @@ class RescueCarbCalculator {
   /// and optionally
   /// [predictedNadirMgdl] (the min of the forecast). Returns advice, or a "no rescue
   /// needed" result when you're safely above target.
+  /// [lowLineMgdl] is the composed effective low line (TASK-147:
+  /// `EffectiveLowThreshold.compute` — base line + awareness/alcohol/exercise/weather
+  /// modifiers) so rescue advice leads exactly when alerts would. Defaults to the
+  /// clinical low; urgency always keys off the clinical very-low regardless.
   RescueCarbAdvice advise({
     required double currentMgdl,
     required double targetMgdl,
@@ -51,6 +55,7 @@ class RescueCarbCalculator {
     required double carbRatio,
     required double iobUnits,
     double? predictedNadirMgdl,
+    double lowLineMgdl = GlucoseThresholds.low,
     GlucoseUnit unit = GlucoseUnit.mmol,
   }) {
     final csf = carbRatio <= 0 ? 0.0 : isf / carbRatio; // mg/dL rise per gram
@@ -72,7 +77,7 @@ class RescueCarbCalculator {
             '${Mgdl(predictedNadirMgdl).display(unit)} ${unit.label}'),
     ];
 
-    if (effectiveLow >= targetMgdl && currentMgdl >= GlucoseThresholds.low) {
+    if (effectiveLow >= targetMgdl && currentMgdl >= lowLineMgdl) {
       return RescueCarbAdvice(
         grams: 0,
         urgent: false,
@@ -87,8 +92,8 @@ class RescueCarbCalculator {
     final urgent = effectiveLow < GlucoseThresholds.veryLow ||
         currentMgdl < GlucoseThresholds.veryLow;
     if (grams < minRescueGrams &&
-        (currentMgdl < GlucoseThresholds.low ||
-            (predictedNadirMgdl ?? currentMgdl) < GlucoseThresholds.low)) {
+        (currentMgdl < lowLineMgdl ||
+            (predictedNadirMgdl ?? currentMgdl) < lowLineMgdl)) {
       grams = minRescueGrams; // 15-15 floor when actually low/heading low
     }
     grams = grams.clamp(0, maxRescueGrams).toDouble();

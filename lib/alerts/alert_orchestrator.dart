@@ -7,8 +7,6 @@
 /// code in the app no longer needs a live `Ref` to exercise.
 library;
 
-import 'dart:math' as math;
-
 import '../analytics/insulin_math.dart';
 import '../analytics/predictor.dart';
 import '../analytics/rescue_carbs.dart';
@@ -16,11 +14,11 @@ import '../core/samples.dart';
 import '../core/sleep_window.dart';
 import '../core/units.dart';
 import '../feedback/annotations.dart';
-import '../insights/alcohol_watch.dart';
 import '../insights/alert_monitor.dart';
 import '../insights/alert_thresholds.dart';
 import '../insights/anomaly_detector.dart';
 import '../insights/care_detectors.dart';
+import '../insights/effective_low_threshold.dart';
 import '../insights/exercise_mode.dart';
 import '../insights/ketone_risk.dart';
 import '../insights/notification_prefs.dart';
@@ -31,7 +29,6 @@ import '../pump/battery_drain.dart';
 import '../pump/battery_history.dart';
 import '../pump/pump_snapshot.dart';
 import '../state/day_data.dart';
-import '../weather/weather.dart';
 
 /// How the wrapper should treat the category cooldown around the send.
 enum AlertUrgency {
@@ -74,18 +71,21 @@ class EffectiveThresholds {
     required this.lowMgdl,
     required this.highMgdl,
     required this.urgentLowMgdl,
+    this.lowReasons = const [],
   });
 
   final double lowMgdl;
   final double highMgdl;
   final double urgentLowMgdl;
+
+  /// Which low-line modifiers were active (from [EffectiveLowThreshold]).
+  final List<String> lowReasons;
 }
 
 /// Start from the user's own alert thresholds (per-time-of-day band, with a carb entry
-/// in the last 2h selecting the post-meal row), then let safety modifiers raise the low
-/// line: impaired-awareness risk (older age, long-standing diabetes), an active alcohol
-/// watch (delayed lows), an announced exercise session, and hot/cold ambient weather
-/// (faster/altered insulin absorption).
+/// in the last 2h selecting the post-meal row), then compose the low line through
+/// [EffectiveLowThreshold.compute] — the single policy shared with the pre-bolus guard
+/// and rescue-carb advice (TASK-147).
 EffectiveThresholds resolveEffectiveThresholds({
   required AlertThresholds thresholds,
   required DateTime now,
@@ -98,22 +98,19 @@ EffectiveThresholds resolveEffectiveThresholds({
   final postMeal = carbs.any((c) =>
       !c.time.isAfter(now) && now.difference(c.time) <= const Duration(hours: 2));
   final band = thresholds.resolve(at: now, postMeal: postMeal);
-  final hypoBump = const HypoAwarenessRisk().lowThresholdBump(profile, now);
-  var lowMgdl = band.lowMgdl + hypoBump;
-  if (const AlcoholWatch().activeAt(recentAnnotations, now)) {
-    lowMgdl = math.max(lowMgdl, band.lowMgdl + 10);
-  }
-  if (exercise != null && exercise.affectsAt(now)) {
-    lowMgdl = math.max(
-        lowMgdl, band.lowMgdl + const ExerciseModeCoach().lowBump(exercise.type));
-  }
-  final weatherBump =
-      const WeatherRiskModifier().lowThresholdBump(ambientTempC);
-  if (weatherBump > 0) lowMgdl = math.max(lowMgdl, band.lowMgdl + weatherBump);
+  final low = EffectiveLowThreshold.compute(
+    base: band.lowMgdl,
+    profile: profile,
+    annotations: recentAnnotations,
+    exercisePlan: exercise,
+    tempC: ambientTempC,
+    now: now,
+  );
   return EffectiveThresholds(
-    lowMgdl: lowMgdl,
+    lowMgdl: low.mgdl,
     highMgdl: band.highMgdl,
     urgentLowMgdl: band.urgentLowMgdl,
+    lowReasons: low.reasons,
   );
 }
 

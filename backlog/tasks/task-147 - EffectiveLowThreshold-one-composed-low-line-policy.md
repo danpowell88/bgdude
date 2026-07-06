@@ -1,10 +1,11 @@
 ---
 id: TASK-147
 title: 'EffectiveLowThreshold: one composed low-line policy'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-06 08:42'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 21:58'
 labels:
   - code-health
   - alerts
@@ -50,6 +51,16 @@ ordinal: 100700
 - Where: new policy file, `lib/state/providers.dart`, `lib/meals/prebolus_coach.dart`, `lib/insights/alcohol_watch.dart`
 - Related: TASK-103; distinct from TASK-58/TASK-60
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 21:58
+---
+Started: new EffectiveLowThreshold.compute policy (line + active reasons); resolveEffectiveThresholds (TASK-116) delegates to it; wire PreBolusCoach and the rescue-carb path to the composed line; resolve AlcoholWatch.raisedLowMgdl.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->

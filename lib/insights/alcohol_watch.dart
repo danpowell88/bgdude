@@ -9,15 +9,18 @@ import '../feedback/annotations.dart';
 class AlcoholWatch {
   const AlcoholWatch({
     this.window = const Duration(hours: 14),
-    this.raisedLowMgdl = 80,
+    this.lowBumpMgdl = 10,
   });
 
   /// How long after an alcohol annotation the heightened watch stays active — long
   /// enough to cover an evening drink through the next morning.
   final Duration window;
 
-  /// The low-alert threshold to use while active (vs the usual 70), so alerts lead.
-  final double raisedLowMgdl;
+  /// Additive margin on the user's base low line while the watch is active, so
+  /// alerts lead earlier (the default 70 line becomes 80 — the raised threshold the
+  /// delayed-hypo evidence points at). Additive rather than absolute so a custom
+  /// base line keeps its lead; consumed by `EffectiveLowThreshold.compute` (TASK-147).
+  final double lowBumpMgdl;
 
   bool activeAt(Iterable<Annotation> annotations, DateTime now) => annotations.any(
         (a) =>
