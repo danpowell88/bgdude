@@ -1,16 +1,16 @@
 ---
 id: TASK-89
-title: 5-6 OCR script support (scope decision)
+title: OCR script support (scope decision)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:28'
+updated_date: '2026-07-06 08:09'
 labels:
   - roadmap
-  - §5
   - panel-scanner
   - needs-exploration
   - detail-needed
+milestone: m-4
 dependencies: []
 priority: low
 ordinal: 89000
@@ -46,9 +46,9 @@ ordinal: 89000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §5 item 6
+- Source: ROADMAP section 5 item 6
 - Effort: M
-- Depends on: 2-1
+- Depends on: TASK-29 (2-1)
 <!-- SECTION:NOTES:END -->
 
 ## Comments

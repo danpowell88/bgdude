@@ -4,12 +4,13 @@ title: Unit tests for carb_math and event_detectors (currently zero coverage)
 status: Done
 assignee: []
 created_date: '2026-07-06 04:54'
-updated_date: '2026-07-06 08:01'
+updated_date: '2026-07-06 08:07'
 labels:
   - code-health
   - testing
   - ml
   - "\U0001F512 safety"
+milestone: m-8
 dependencies:
   - TASK-108
 priority: high

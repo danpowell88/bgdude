@@ -1,16 +1,16 @@
 ---
 id: TASK-93
-title: 6.2 Alert quality pass
+title: Alert quality pass
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:30'
+updated_date: '2026-07-06 08:10'
 labels:
   - roadmap
-  - §6
   - alerts
   - "\U0001F512 safety"
   - detail-needed
+milestone: m-7
 dependencies: []
 priority: medium
 ordinal: 93000
@@ -29,7 +29,7 @@ ordinal: 93000
 - [ ] #1 Snooze + acknowledge semantics
 - [ ] #2 Smarter dedup prevents repeat spam
 - [ ] #3 Exercise-mode alert-suppression nuance
-- [ ] #4 Covered by alert decision-core tests (§3.C step 1)
+- [ ] #4 Covered by alert decision-core tests (TASK-37 step 1)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -38,7 +38,7 @@ ordinal: 93000
 - Add snooze/acknowledge semantics.
 - Smarter dedup (no repeat spam).
 - Do-not-alert-during-exercise nuances.
-- Build on the §3.C decision-core and §4-2.3 per-TOD thresholds.
+- Build on the TASK-37 decision-core and the per-TOD thresholds (4-2.3, TASK-56..60 area).
 - Decision-core matrix tests cover snooze/ack/dedup/exercise-suppression; add/extend unit tests under `test/`.
 - Verify: `flutter analyze` clean, `flutter test` green before commit.
 <!-- SECTION:PLAN:END -->
@@ -46,7 +46,7 @@ ordinal: 93000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §6
+- Source: ROADMAP section 6
 - Effort: M
 - Flags: 🔒 safety
 - Roadmap status: open

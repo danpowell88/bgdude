@@ -1,17 +1,18 @@
 ---
 id: TASK-33
-title: 2-5 Pump pairing robustness (pumpx2) — reliability pass
+title: Pump pairing robustness (pumpx2) — reliability pass
 status: In Progress
-assignee: []
+assignee:
+  - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:28'
+updated_date: '2026-07-06 08:10'
 labels:
   - roadmap
-  - §2
-  - phase-4
   - pump
   - "\U0001F50C hardware"
-dependencies: []
+milestone: m-4
+dependencies:
+  - TASK-12
 priority: high
 ordinal: 33000
 ---
@@ -50,9 +51,9 @@ ordinal: 33000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §2 item 2-5
+- Source: ROADMAP section 2 item 2-5
 - Effort: M
-- Depends on: P1-4, P1-5
+- Depends on: TASK-12 (P1-5), P1-4
 - Flags: 🔌 hardware
 - Roadmap status: partial (JPAKE pairing verified)
 <!-- SECTION:NOTES:END -->

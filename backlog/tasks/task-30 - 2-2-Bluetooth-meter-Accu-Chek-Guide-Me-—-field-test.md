@@ -1,17 +1,18 @@
 ---
 id: TASK-30
-title: 2-2 Bluetooth meter (Accu-Chek Guide Me) — field test
+title: Bluetooth meter (Accu-Chek Guide Me) — field test
 status: In Progress
-assignee: []
+assignee:
+  - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:27'
+updated_date: '2026-07-06 08:09'
 labels:
   - roadmap
-  - §2
-  - phase-4
   - meter
   - "\U0001F50C hardware"
-dependencies: []
+milestone: m-4
+dependencies:
+  - TASK-9
 priority: medium
 ordinal: 30000
 ---
@@ -47,9 +48,9 @@ ordinal: 30000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §2 item 2-2
+- Source: ROADMAP section 2 item 2-2
 - Effort: M
-- Depends on: P1-2
+- Depends on: TASK-9 (P1-2)
 - Flags: 🔌 hardware
 - Roadmap status: partial
 <!-- SECTION:NOTES:END -->

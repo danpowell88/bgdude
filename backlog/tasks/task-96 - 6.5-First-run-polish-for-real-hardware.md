@@ -1,16 +1,16 @@
 ---
 id: TASK-96
-title: 6.5 First-run polish for real hardware
+title: First-run polish for real hardware
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:31'
+updated_date: '2026-07-06 08:11'
 labels:
   - roadmap
-  - §6
   - onboarding
   - "\U0001F50C hardware"
   - detail-needed
+milestone: m-7
 dependencies: []
 priority: low
 ordinal: 96000
@@ -47,7 +47,7 @@ ordinal: 96000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §6
+- Source: ROADMAP section 6
 - Effort: S–M
 - Flags: 🔌 hardware
 - Roadmap status: open

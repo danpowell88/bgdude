@@ -1,18 +1,18 @@
 ---
 id: TASK-14
-title: P1-7 Alerts survive engine death (staged; see §3.C)
+title: Alerts survive engine death (staged; see TASK-37)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:27'
+updated_date: '2026-07-06 08:08'
 labels:
   - roadmap
-  - §1-P1
-  - phase-3
   - architecture
   - "\U0001F512 safety"
   - detail-needed
-dependencies: []
+milestone: m-3
+dependencies:
+  - TASK-37
 priority: high
 ordinal: 14000
 ---
@@ -29,15 +29,17 @@ ordinal: 14000
 <!-- AC:BEGIN -->
 - [ ] #1 Pure alert decision core (no Riverpod/clock/notifications)
 - [ ] #2 Native urgent-low backstop
-- [ ] #3 Headless Dart evaluation (after §3.H single-connection fix)
+- [ ] #3 Headless Dart evaluation (after TASK-42 single-connection fix)
 <!-- AC:END -->
+
+
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
 - Stage 1: extract a pure `evaluate(AlertInputs)` → `List<AlertDecision>` core (no Riverpod/clock/notifications).
 - Stage 2: native urgent-low backstop in `PumpService` (dumb threshold, hysteresis, Flutter-alive heartbeat suppression).
-- Stage 3 (after §3.H single-connection): headless Dart evaluation. Detailed in TASK-37.
+- Stage 3 (after TASK-42 single-connection): headless Dart evaluation. Detailed in TASK-37.
 - Matrix unit tests of the pure core (threshold × trend × quiet-hours × dedup); add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able).
 - Native backstop verified on-device by killing the Flutter engine and confirming an urgent-low still alerts.
 - Verify: `flutter analyze` clean, `flutter test` green.
@@ -46,10 +48,10 @@ ordinal: 14000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P1-7 / §3.C
+- Source: ROADMAP section 1, P1-7 / TASK-37 (section 3.C)
 - Effort: L
-- Where: app.dart, native
-- Depends on: §3.H (single DB connection) for step 3
+- Where: `app.dart`, native
+- Depends on: TASK-37 (staged alert plan); TASK-42 (single DB connection) for stage 3
 - Flags: 🔒 safety
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

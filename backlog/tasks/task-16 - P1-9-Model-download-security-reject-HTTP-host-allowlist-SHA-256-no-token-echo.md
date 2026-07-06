@@ -1,18 +1,16 @@
 ---
 id: TASK-16
-title: >-
-  P1-9 Model-download security (reject HTTP, host allowlist, SHA-256, no token
-  echo)
+title: 'Model-download security (reject HTTP, host allowlist, SHA-256, no token echo)'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:28'
+updated_date: '2026-07-06 08:09'
 labels:
   - roadmap
-  - §1-P1
   - security
   - "\U0001F9E0 llm"
   - detail-needed
+milestone: m-4
 dependencies: []
 priority: medium
 ordinal: 16000
@@ -48,9 +46,9 @@ ordinal: 16000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P1-9 (overlaps §5-5)
+- Source: ROADMAP section 1, P1-9 (overlaps TASK-88, section 5-5)
 - Effort: S–M
-- Where: panel_model_manager.dart, ai_model_screen.dart
+- Where: `panel_model_manager.dart`, `ai_model_screen.dart`
 - Flags: 🧠 llm
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

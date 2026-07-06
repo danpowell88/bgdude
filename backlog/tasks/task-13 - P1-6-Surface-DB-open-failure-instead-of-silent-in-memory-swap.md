@@ -1,15 +1,14 @@
 ---
 id: TASK-13
-title: P1-6 Surface DB-open failure instead of silent in-memory swap
+title: Surface DB-open failure instead of silent in-memory swap
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:27'
+updated_date: '2026-07-06 08:08'
 labels:
   - roadmap
-  - §1-P1
-  - phase-0
   - data-integrity
+milestone: m-2
 dependencies: []
 priority: high
 ordinal: 13000
@@ -33,17 +32,17 @@ ordinal: 13000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-- In `main.dart:26-34` surface a banner + log on DB-open failure instead of the silent in-memory fallback (ties to the §3.D logging infra).
+- In `main.dart:26-34` surface a banner + log on DB-open failure instead of the silent in-memory fallback (ties to the TASK-38 logging infra).
 - Test: force a DB-open failure (bad key) and assert the banner shows + failure is logged; app does not silently continue on memory DB.
-- Repository tests on `NativeDatabase.memory()`; add drift schema-export + step-migration tests BEFORE any schema change (§3.H).
+- Repository tests on `NativeDatabase.memory()`; add drift schema-export + step-migration tests BEFORE any schema change (TASK-42).
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P1-6
+- Source: ROADMAP section 1, P1-6
 - Effort: S
-- Where: main.dart:26-34
+- Where: `main.dart:26-34`
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
 

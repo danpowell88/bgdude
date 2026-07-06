@@ -1,16 +1,16 @@
 ---
 id: TASK-84
-title: 5-1 Validate the LLM's numbers (dosing safety)
+title: Validate the LLM's numbers (dosing safety)
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:27'
+updated_date: '2026-07-06 08:07'
 labels:
   - roadmap
-  - §5
   - panel-scanner
   - "\U0001F9E0 llm"
   - "\U0001F512 safety"
+milestone: m-4
 dependencies: []
 priority: high
 ordinal: 84000
@@ -45,7 +45,7 @@ ordinal: 84000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §5 item 1
+- Source: ROADMAP section 5 item 1
 - Effort: S
 - Flags: 🧠 llm 🔒 safety
 - Roadmap status: open

@@ -1,15 +1,15 @@
 ---
 id: TASK-94
-title: 6.3 Data integrity edges
+title: Data integrity edges
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:30'
+updated_date: '2026-07-06 08:10'
 labels:
   - roadmap
-  - §6
   - data-integrity
   - detail-needed
+milestone: m-7
 dependencies: []
 priority: medium
 ordinal: 94000
@@ -45,7 +45,7 @@ ordinal: 94000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §6
+- Source: ROADMAP section 6
 - Effort: M
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

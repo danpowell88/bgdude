@@ -1,17 +1,16 @@
 ---
 id: TASK-12
-title: 'P1-5 BootReceiver: gate on BT permission + auto-reconnect'
+title: 'BootReceiver: gate on BT permission + auto-reconnect'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:26'
+updated_date: '2026-07-06 08:07'
 labels:
   - roadmap
-  - §1-P1
-  - phase-4
   - native
   - "\U0001F50C hardware"
   - detail-needed
+milestone: m-4
 dependencies: []
 priority: high
 ordinal: 12000
@@ -43,9 +42,9 @@ ordinal: 12000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P1-5
+- Source: ROADMAP section 1, P1-5
 - Effort: S–M
-- Where: BootReceiver.kt, PumpService.kt
+- Where: `BootReceiver.kt`, `PumpService.kt`
 - Flags: 🔌 hardware
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

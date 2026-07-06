@@ -1,17 +1,17 @@
 ---
 id: TASK-18
-title: P2-2 Purged/blocked walk-forward validation
+title: Purged/blocked walk-forward validation
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:28'
+updated_date: '2026-07-06 08:10'
 labels:
   - roadmap
-  - §1-P2
-  - phase-5
   - ml
   - detail-needed
-dependencies: []
+milestone: m-5
+dependencies:
+  - TASK-55
 priority: medium
 ordinal: 18000
 ---
@@ -29,8 +29,10 @@ ordinal: 18000
 - [ ] #1 Single time-split replaced by blocked walk-forward folds
 - [ ] #2 Purge gap >= maxHorizon between train and test
 - [ ] #3 Promotion decided on pooled fold metrics
-- [ ] #4 Detailed implementation tracked in TASK-55 (§4-1.10)
+- [ ] #4 Detailed implementation tracked in TASK-55 (section 4-1.10)
 <!-- AC:END -->
+
+
 
 ## Implementation Plan
 
@@ -46,7 +48,7 @@ ordinal: 18000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P2-2 → §4-1.10
+- Source: ROADMAP section 1, P2-2 → TASK-55 (section 4-1.10)
 - Effort: M
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

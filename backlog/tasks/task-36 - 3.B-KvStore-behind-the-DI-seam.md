@@ -1,15 +1,15 @@
 ---
 id: TASK-36
-title: 3.B KvStore behind the DI seam
+title: KvStore behind the DI seam
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:29'
+updated_date: '2026-07-06 08:11'
 labels:
   - roadmap
-  - §3
   - architecture
   - detail-needed
+milestone: m-6
 dependencies: []
 priority: medium
 ordinal: 36000
@@ -44,9 +44,9 @@ ordinal: 36000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §3.B
+- Source: ROADMAP section 3.B
 - Effort: M
-- Depends on: 3.A (PersistedStateNotifier)
+- Depends on: TASK-35 (3.A) (PersistedStateNotifier)
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
 

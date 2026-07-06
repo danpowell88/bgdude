@@ -1,15 +1,15 @@
 ---
 id: TASK-90
-title: 5-7 Deterministic column reconstruction
+title: Deterministic column reconstruction
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:29'
+updated_date: '2026-07-06 08:09'
 labels:
   - roadmap
-  - §5
   - panel-scanner
   - detail-needed
+milestone: m-4
 dependencies: []
 priority: medium
 ordinal: 90000
@@ -42,7 +42,7 @@ ordinal: 90000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §5 item 7
+- Source: ROADMAP section 5 item 7
 - Effort: M
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

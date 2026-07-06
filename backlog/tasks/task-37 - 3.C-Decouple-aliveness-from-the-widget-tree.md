@@ -1,18 +1,18 @@
 ---
 id: TASK-37
-title: 3.C Decouple aliveness from the widget tree
+title: Decouple aliveness from the widget tree
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:29'
+updated_date: '2026-07-06 08:12'
 labels:
   - roadmap
-  - §3
-  - phase-3
   - architecture
   - "\U0001F512 safety"
   - detail-needed
-dependencies: []
+milestone: m-3
+dependencies:
+  - TASK-42
 priority: high
 ordinal: 37000
 ---
@@ -29,8 +29,8 @@ ordinal: 37000
 <!-- AC:BEGIN -->
 - [ ] #1 Pure decision core with matrix tests
 - [ ] #2 Native urgent-low backstop
-- [ ] #3 Headless Dart evaluation (post-§3.H)
-- [ ] #4 Guide documents the limitation until done
+- [ ] #3 Guide documents the limitation until done
+- [ ] #4 Headless Dart evaluation (post-TASK-42 / 3.H)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -38,7 +38,7 @@ ordinal: 37000
 <!-- SECTION:PLAN:BEGIN -->
 - Stage 1: pure `evaluate(AlertInputs)` → `List<AlertDecision>` (no Riverpod/clock/notifications).
 - Stage 2: native urgent-low backstop in `PumpService` (dumb threshold, hysteresis, Flutter-alive heartbeat suppression).
-- Stage 3 (after §3.H single connection): headless Dart evaluation via WorkManager/isolate.
+- Stage 3 (after TASK-42 (3.H) single connection): headless Dart evaluation via WorkManager/isolate.
 - Stage 4: document the limitation in the guide until done.
 - Test: matrix tests of the pure core (thresholds × trend × quiet hours × dedup); on-device test that killing the Flutter engine still fires an urgent-low via the native backstop; add/extend unit tests under `test/`.
 - Verify: `flutter analyze` clean, `flutter test` green.
@@ -47,9 +47,9 @@ ordinal: 37000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §3.C (P1-7)
+- Source: ROADMAP section 3.C (P1-7)
 - Effort: L
-- Depends on: §3.H for step 3
+- Depends on: TASK-42 (3.H) for step 3
 - Flags: 🔒 safety
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

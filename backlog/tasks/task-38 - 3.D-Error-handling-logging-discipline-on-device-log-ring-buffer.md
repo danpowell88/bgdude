@@ -1,16 +1,16 @@
 ---
 id: TASK-38
-title: 3.D Error-handling & logging discipline + on-device log ring buffer
+title: Error-handling & logging discipline + on-device log ring buffer
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:29'
+updated_date: '2026-07-06 08:12'
 labels:
   - roadmap
-  - §3
   - architecture
   - logging
   - detail-needed
+milestone: m-6
 dependencies: []
 priority: medium
 ordinal: 38000
@@ -36,7 +36,7 @@ ordinal: 38000
 
 <!-- SECTION:PLAN:BEGIN -->
 - Add `lib/logging/app_log.dart`: a ~500-entry ring buffer, no network.
-- Surface it read-only on the Developer/Advanced screen (see §4-6.4).
+- Surface it read-only on the Developer/Advanced screen (see section 4-6.4).
 - Sweep the swallowed catches; rule: a swallow is legal only if the op is optional AND logs.
 - Behavioural fixes during the sweep: failed urgent-low must not advance `_lastFired`; `runStartup` records per-job failures.
 - Test: ring-buffer unit test (cap, eviction); assert swept catches log; behavioural tests for `_lastFired` and `runStartup` failure recording; add/extend unit tests under `test/`.
@@ -46,9 +46,9 @@ ordinal: 38000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §3.D (P1-8)
+- Source: ROADMAP section 3.D (P1-8)
 - Effort: S–M
-- Depends on: pairs with §4-6.4
+- Depends on: pairs with section 4-6.4
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
 

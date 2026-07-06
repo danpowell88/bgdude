@@ -1,16 +1,16 @@
 ---
 id: TASK-85
-title: 5-2 OCR-grounding check (anti-hallucination + injection guard)
+title: OCR-grounding check (anti-hallucination + injection guard)
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:27'
+updated_date: '2026-07-06 08:08'
 labels:
   - roadmap
-  - §5
   - panel-scanner
   - "\U0001F9E0 llm"
   - "\U0001F512 safety"
+milestone: m-4
 dependencies: []
 priority: high
 ordinal: 85000
@@ -43,7 +43,7 @@ ordinal: 85000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §5 item 2
+- Source: ROADMAP section 5 item 2
 - Effort: S
 - Flags: 🧠 llm 🔒 safety
 - Roadmap status: open

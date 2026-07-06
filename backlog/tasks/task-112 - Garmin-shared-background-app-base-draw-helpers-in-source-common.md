@@ -4,10 +4,12 @@ title: 'Garmin: shared background-app base + draw helpers in source-common'
 status: To Do
 assignee: []
 created_date: '2026-07-06 04:56'
+updated_date: '2026-07-06 08:08'
 labels:
   - code-health
   - garmin
   - cleanup
+milestone: m-8
 dependencies: []
 priority: low
 ordinal: 112000

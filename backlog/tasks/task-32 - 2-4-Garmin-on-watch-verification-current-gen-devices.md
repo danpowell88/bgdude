@@ -1,16 +1,16 @@
 ---
 id: TASK-32
-title: 2-4 Garmin on-watch verification + current-gen devices
+title: Garmin on-watch verification + current-gen devices
 status: In Progress
-assignee: []
+assignee:
+  - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:27'
+updated_date: '2026-07-06 08:10'
 labels:
   - roadmap
-  - §2
-  - phase-4
   - garmin
   - "\U0001F50C hardware"
+milestone: m-4
 dependencies: []
 priority: medium
 ordinal: 32000
@@ -46,7 +46,7 @@ ordinal: 32000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §2 item 2-4
+- Source: ROADMAP section 2 item 2-4
 - Effort: S–M
 - Flags: 🔌 hardware
 - Roadmap status: partial

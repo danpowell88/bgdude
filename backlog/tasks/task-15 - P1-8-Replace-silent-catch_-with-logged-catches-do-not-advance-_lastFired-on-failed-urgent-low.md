@@ -1,18 +1,18 @@
 ---
 id: TASK-15
 title: >-
-  P1-8 Replace silent catch(_) with logged catches; do not advance _lastFired on
+  Replace silent catch(_) with logged catches; do not advance _lastFired on
   failed urgent-low
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:27'
+updated_date: '2026-07-06 08:09'
 labels:
   - roadmap
-  - §1-P1
   - architecture
   - logging
   - detail-needed
+milestone: m-6
 dependencies: []
 priority: medium
 ordinal: 15000
@@ -36,7 +36,7 @@ ordinal: 15000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-- Sweep `providers.dart`: a swallow is legal only if the op is optional AND it logs (via the §3.D `app_log`).
+- Sweep `providers.dart`: a swallow is legal only if the op is optional AND it logs (via the TASK-38 `app_log`).
 - Do not advance `_lastFired` on a failed urgent-low.
 - Make `runStartup` record per-job failures.
 - Unit test that a failed urgent-low leaves `_lastFired` unchanged (so it retries); assert startup records a failing job. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able).
@@ -46,9 +46,9 @@ ordinal: 15000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P1-8 / §3.D
+- Source: ROADMAP section 1, P1-8 / TASK-38 (section 3.D)
 - Effort: S
-- Where: providers.dart throughout
+- Where: `providers.dart` throughout
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
 

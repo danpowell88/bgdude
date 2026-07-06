@@ -1,14 +1,14 @@
 ---
 id: TASK-19
-title: P2-3 Promotion gate skips hypo criterion on hypo-free tails
+title: Promotion gate skips hypo criterion on hypo-free tails
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:29'
+updated_date: '2026-07-06 08:10'
 labels:
   - roadmap
-  - §1-P2
   - ml
+milestone: m-5
 dependencies: []
 priority: low
 ordinal: 19000
@@ -33,7 +33,7 @@ ordinal: 19000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P2-3
+- Source: ROADMAP section 1, P2-3
 - Effort: S
 - Roadmap status: done ✅
 <!-- SECTION:NOTES:END -->

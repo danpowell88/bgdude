@@ -1,17 +1,18 @@
 ---
 id: TASK-92
-title: 6.1 Prediction validation on real data
+title: Prediction validation on real data
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:29'
+updated_date: '2026-07-06 08:10'
 labels:
   - roadmap
-  - §6
   - ml
   - "\U0001F50C hardware"
   - detail-needed
-dependencies: []
+milestone: m-7
+dependencies:
+  - TASK-33
 priority: medium
 ordinal: 92000
 ---
@@ -45,7 +46,7 @@ ordinal: 92000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §6
+- Source: ROADMAP section 6
 - Effort: M
 - Flags: 🔌 hardware
 - Roadmap status: open

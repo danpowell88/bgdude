@@ -1,17 +1,17 @@
 ---
 id: TASK-87
-title: 5-4 Few-shot prompt + on-device self-check
+title: Few-shot prompt + on-device self-check
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:28'
+updated_date: '2026-07-06 08:08'
 labels:
   - roadmap
-  - §5
   - panel-scanner
   - "\U0001F9E0 llm"
   - "\U0001F50C hardware"
   - detail-needed
+milestone: m-4
 dependencies: []
 priority: medium
 ordinal: 87000
@@ -46,7 +46,7 @@ ordinal: 87000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §5 item 4
+- Source: ROADMAP section 5 item 4
 - Effort: M
 - Flags: 🧠 llm 🔌 hardware
 - Roadmap status: open

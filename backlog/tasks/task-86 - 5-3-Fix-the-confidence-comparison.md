@@ -1,15 +1,15 @@
 ---
 id: TASK-86
-title: 5-3 Fix the confidence comparison
+title: Fix the confidence comparison
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:28'
+updated_date: '2026-07-06 08:08'
 labels:
   - roadmap
-  - §5
   - panel-scanner
   - "\U0001F9E0 llm"
+milestone: m-4
 dependencies: []
 priority: medium
 ordinal: 86000
@@ -42,9 +42,9 @@ ordinal: 86000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §5 item 3 (P2-11)
+- Source: ROADMAP section 5 item 3 (P2-11)
 - Effort: S
-- Depends on: 5-2
+- Depends on: TASK-85 (5-2)
 - Flags: 🧠 llm
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

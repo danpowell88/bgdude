@@ -1,16 +1,15 @@
 ---
 id: TASK-35
-title: 3.A Split providers.dart + PersistedStateNotifier
+title: Split providers.dart + PersistedStateNotifier
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:28'
+updated_date: '2026-07-06 08:11'
 labels:
   - roadmap
-  - §3
-  - phase-6
   - architecture
   - detail-needed
+milestone: m-6
 dependencies: []
 priority: medium
 ordinal: 35000
@@ -48,7 +47,7 @@ ordinal: 35000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §3.A (P2-12)
+- Source: ROADMAP section 3.A (P2-12)
 - Effort: L
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

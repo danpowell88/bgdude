@@ -1,16 +1,16 @@
 ---
 id: TASK-31
-title: 2-3 Garmin complication — implement the real publisher
+title: Garmin complication — implement the real publisher
 status: In Progress
-assignee: []
+assignee:
+  - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:27'
+updated_date: '2026-07-06 08:09'
 labels:
   - roadmap
-  - §2
-  - phase-4
   - garmin
   - "\U0001F50C hardware"
+milestone: m-4
 dependencies: []
 priority: medium
 ordinal: 31000
@@ -44,7 +44,7 @@ ordinal: 31000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §2 item 2-3
+- Source: ROADMAP section 2 item 2-3
 - Effort: M
 - Where: garmin/COMPLICATIONS.md
 - Flags: 🔌 hardware

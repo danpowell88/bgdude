@@ -43,6 +43,20 @@ Do not edit Backlog task, draft, document, decision, or milestone markdown files
 
 The formatting rules below apply to the *text you pass* via CLI flags.
 
+### Structure conventions
+- **Titles are plain descriptions** — no roadmap-id prefixes (`P0-1`, `3.A`, `4-1.2`) and no
+  `§` symbol anywhere in task content; provenance lives in the Notes `- Source:` bullet.
+- **Blockers go in the real `dependencies` field** (`--dep task-2,task-46`), not prose.
+  `backlog sequence list --plain` then shows the execution order. A partial dependency
+  (only one stage blocked) still gets the dep, with the nuance spelled out in the plan.
+- **Every task gets a milestone** (`-m m-5`); milestones mirror the ROADMAP execution
+  phases (`backlog milestone list --plain`). New code-health work → `Code health` (m-8).
+- **Definition of Done defaults** are set project-wide (the CI-equivalent pipeline from
+  "Verify the build" below) — check them off with `--check-dod <n>` when finishing.
+- **Decisions** (product/architecture choices that outlive a task) are recorded with
+  `backlog decision create` — check `backlog/decisions/` before re-litigating one.
+- When starting a task also **assign yourself**: `-a Claude`.
+
 ### Comment as you work
 Use the **comment field** to leave a trail on the task you're working on:
 

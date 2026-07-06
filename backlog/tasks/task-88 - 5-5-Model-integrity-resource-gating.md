@@ -1,18 +1,18 @@
 ---
 id: TASK-88
-title: 5-5 Model integrity & resource gating
+title: Model integrity & resource gating
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:28'
+updated_date: '2026-07-06 08:08'
 labels:
   - roadmap
-  - §5
   - panel-scanner
   - "\U0001F9E0 llm"
   - security
   - "\U0001F50C hardware"
   - detail-needed
+milestone: m-4
 dependencies: []
 priority: medium
 ordinal: 88000
@@ -47,9 +47,9 @@ ordinal: 88000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §5 item 5 (overlaps P1-9)
+- Source: ROADMAP section 5 item 5 (overlaps P1-9)
 - Effort: M
-- Depends on: P1-9
+- Depends on: TASK-16 (P1-9)
 - Flags: 🧠 llm 🔌 hardware
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->

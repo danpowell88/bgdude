@@ -1,17 +1,17 @@
 ---
 id: TASK-10
-title: P1-3 Dedupe bolus/carb/basal inserts; fix _lastBolusTime restart race
+title: Dedupe bolus/carb/basal inserts; fix _lastBolusTime restart race
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:26'
+updated_date: '2026-07-06 08:07'
 labels:
   - roadmap
-  - §1-P1
-  - phase-2
   - data-integrity
   - detail-needed
-dependencies: []
+milestone: m-2
+dependencies:
+  - TASK-42
 priority: high
 ordinal: 10000
 ---
@@ -37,15 +37,15 @@ ordinal: 10000
 - Add a unique key or event-id + upsert for bolus/carb/basal (`database.dart`, `history_backfill.dart`).
 - Fix the `_lastBolusTime` restart race in `day_history_controller.dart`.
 - `ingestSnapshot` restart/dedupe test (re-ingest yields no duplicates); repo upsert test on `NativeDatabase.memory()`.
-- Repository tests on `NativeDatabase.memory()`; add drift schema-export + step-migration tests BEFORE any schema change (§3.H).
+- Repository tests on `NativeDatabase.memory()`; add drift schema-export + step-migration tests BEFORE any schema change (TASK-42).
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P1-3 (headline issue #3)
+- Source: ROADMAP section 1, P1-3 (headline issue #3)
 - Effort: M
-- Where: database.dart, day_history_controller.dart, history_backfill.dart
+- Where: `database.dart`, `day_history_controller.dart`, `history_backfill.dart`
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
 

@@ -1,17 +1,17 @@
 ---
 id: TASK-29
-title: 2-1 Nutrition-label AI (Gemma) — verify on-device inference
+title: Nutrition-label AI (Gemma) — verify on-device inference
 status: In Progress
-assignee: []
+assignee:
+  - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:27'
+updated_date: '2026-07-06 08:08'
 labels:
   - roadmap
-  - §2
-  - phase-4
   - panel-scanner
   - "\U0001F50C hardware"
   - "\U0001F9E0 llm"
+milestone: m-4
 dependencies: []
 priority: medium
 ordinal: 29000
@@ -22,7 +22,7 @@ ordinal: 29000
 <!-- SECTION:DESCRIPTION:BEGIN -->
 **Background.** bgdude can read a nutrition label with the phone camera. For hard labels it can fall back to a small AI language model that runs entirely on the phone (Google's "Gemma", via the flutter_gemma library). The plumbing is built and the app launches, but the AI has never actually been run against a real model on a real phone.
 
-**Reason for change.** Until it is proven on-device, the AI label-reading is capability that exists on paper only. It must wait behind the safety checks (§5 items 1–3) that stop the AI inventing numbers, since its output influences carb dosing.
+**Reason for change.** Until it is proven on-device, the AI label-reading is capability that exists on paper only. It must wait behind the safety checks (section 5 items 1–3) that stop the AI inventing numbers, since its output influences carb dosing.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -39,8 +39,8 @@ ordinal: 29000
 - Curate a known-good Gemma 3 1B `.task` URL + licence flow.
 - Verify inference on the Pixel.
 - Auto-suggest download on scan failure.
-- Add RAM/space gating (→ §5-5).
-- Evaluate a fine-tuned Gemma 3 270M (→ §5-8).
+- Add RAM/space gating (→ TASK-88).
+- Evaluate a fine-tuned Gemma 3 270M (→ TASK-91).
 - Test: on-device accuracy integration test with the LLM enabled; record numbers. Verify graceful degradation when no model/insufficient RAM.
 - On-device (hardware): prepare a build + an exact manual test procedure → run on the real device → report → fix.
 - Verify: desk tests still green — `flutter analyze` clean, `flutter test` green.
@@ -49,9 +49,9 @@ ordinal: 29000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §2 item 2-1
+- Source: ROADMAP section 2 item 2-1
 - Effort: M
-- Depends on: §5 items 1–3 land first
+- Depends on: section 5 items 1–3 land first
 - Flags: 🔌 hardware 🧠 llm
 - Roadmap status: partial
 <!-- SECTION:NOTES:END -->

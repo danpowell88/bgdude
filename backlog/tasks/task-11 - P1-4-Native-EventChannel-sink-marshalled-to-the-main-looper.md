@@ -1,16 +1,15 @@
 ---
 id: TASK-11
-title: P1-4 Native EventChannel sink marshalled to the main looper
+title: Native EventChannel sink marshalled to the main looper
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 05:26'
+updated_date: '2026-07-06 08:07'
 labels:
   - roadmap
-  - §1-P1
-  - phase-4
   - native
   - "\U0001F50C hardware"
+milestone: m-4
 dependencies: []
 priority: high
 ordinal: 11000
@@ -34,7 +33,7 @@ ordinal: 11000
 
 <!-- SECTION:PLAN:BEGIN -->
 - In `PumpBridge.kt:128-155` marshal every `eventSink.success(...)` onto the main looper (`Handler(Looper.getMainLooper())`).
-- Do this in the first PR touching `PumpBridge.kt` (with the §3.I threading fixes).
+- Do this in the first PR touching `PumpBridge.kt` (with the TASK-43 threading fixes).
 - On-device: connect to the real pump and confirm snapshots stream continuously (they currently die). Unit-check the marshalling helper if extracted.
 - Verify: `cd android && ./gradlew :app:testDebugUnitTest` green; verify pumpx2 APIs via `javap` on the cached jar before writing native code.
 <!-- SECTION:PLAN:END -->
@@ -42,9 +41,9 @@ ordinal: 11000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-- Source: ROADMAP §1 P1-4
+- Source: ROADMAP section 1, P1-4
 - Effort: S
-- Where: PumpBridge.kt:128-155
+- Where: `PumpBridge.kt:128-155`
 - Flags: 🔌 hardware
 - Roadmap status: open
 
