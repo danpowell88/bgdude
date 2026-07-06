@@ -29,8 +29,8 @@ class HealthFeatureSampler {
           ..sort((a, b) => a.time.compareTo(b.time))),
         _hr = (samples.where((s) => s.type == 'heartRate').toList()
           ..sort((a, b) => a.time.compareTo(b.time))),
-        _restingBaseline = _median(
-            samples.where((s) => s.type == 'restingHr').map((s) => s.value));
+        _restingHr = (samples.where((s) => s.type == 'restingHr').toList()
+          ..sort((a, b) => a.time.compareTo(b.time)));
 
   /// Steps are summed over this trailing window to estimate current movement.
   final Duration stepsWindow;
@@ -51,8 +51,34 @@ class HealthFeatureSampler {
   final List<HealthSample> _exercise;
   final List<HealthSample> _hr;
 
-  /// Median resting heart rate over the window (0 when unknown → no HR signal).
-  final double _restingBaseline;
+  /// Resting-HR readings (time-sorted). The baseline is computed *trailing* at query
+  /// time (readings at or before t) so a historical feature never sees a future reading
+  /// (P2-7 look-ahead-leak fix).
+  final List<HealthSample> _restingHr;
+
+  /// Median resting HR over readings at or before [t] (0 when none yet → no HR signal).
+  double _restingBaselineAt(DateTime t) {
+    final upto = _upperBound(_restingHr, t); // first index strictly after t
+    if (upto == 0) return 0;
+    return _median(_restingHr.take(upto).map((s) => s.value));
+  }
+
+  /// Index of the first sample whose time is strictly after [t] (binary search; the
+  /// lists are time-sorted). `[_lowerBoundExclusive(from), _upperBound(t))` is the
+  /// half-open trailing window `(from, t]`.
+  static int _upperBound(List<HealthSample> list, DateTime t) {
+    var lo = 0;
+    var hi = list.length;
+    while (lo < hi) {
+      final mid = (lo + hi) >> 1;
+      if (list[mid].time.isAfter(t)) {
+        hi = mid;
+      } else {
+        lo = mid + 1;
+      }
+    }
+    return lo;
+  }
 
   /// Number of features this sampler contributes to the forecast vector.
   static const int featureCount = 3;
@@ -70,7 +96,8 @@ class HealthFeatureSampler {
   /// Heart rate relative to the resting baseline at [t]: (hr − resting)/resting, clamped.
   /// 0 when there's no baseline or no recent reading.
   double _hrRelAt(DateTime t) {
-    if (_restingBaseline <= 0 || _hr.isEmpty) return 0;
+    final baseline = _restingBaselineAt(t);
+    if (baseline <= 0 || _hr.isEmpty) return 0;
     HealthSample? nearest;
     var bestGap = hrWindow;
     for (final s in _hr) {
@@ -81,7 +108,7 @@ class HealthFeatureSampler {
       }
     }
     if (nearest == null) return 0;
-    return ((nearest.value - _restingBaseline) / _restingBaseline)
+    return ((nearest.value - baseline) / baseline)
         .clamp(-0.5, 1.0)
         .toDouble();
   }
@@ -96,10 +123,12 @@ class HealthFeatureSampler {
   /// Trailing-window step rate, normalised to [0, 1.5] against a brisk-walk cadence.
   double _activityAt(DateTime t) {
     final from = t.subtract(stepsWindow);
+    // Binary-search the trailing window (from, t] instead of scanning the whole list.
+    final lo = _upperBound(_steps, from); // first strictly after `from`
+    final hi = _upperBound(_steps, t); // first strictly after `t`
     var steps = 0.0;
-    for (final s in _steps) {
-      if (s.time.isAfter(t)) break; // sorted; nothing later can count
-      if (s.time.isAfter(from)) steps += s.value;
+    for (var i = lo; i < hi; i++) {
+      steps += _steps[i].value;
     }
     final perMin = steps / stepsWindow.inMinutes;
     return (perMin / briskStepsPerMin).clamp(0.0, 1.5).toDouble();

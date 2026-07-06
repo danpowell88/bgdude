@@ -1,10 +1,10 @@
 ---
 id: TASK-23
 title: P2-7 Health-feature look-ahead leak + _activityAt binary search
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:16'
 labels:
   - roadmap
   - §1-P2

@@ -29,6 +29,53 @@ void main() {
       expect(s.featuresAt(t0.add(const Duration(hours: 2)))[0], 0);
     });
 
+    test('P2-7: a future resting-HR reading does not change a past feature', () {
+      final base = [
+        HealthSample(
+            time: t0.subtract(const Duration(days: 1)),
+            type: 'restingHr',
+            value: 60),
+        HealthSample(
+            time: t0.subtract(const Duration(minutes: 2)),
+            type: 'heartRate',
+            value: 90),
+      ];
+      final before = HealthFeatureSampler(base).featuresAt(t0)[2]; // hr_rel
+      expect(before, greaterThan(0)); // hr 90 vs resting 60 → elevated
+      // Adding a resting-HR reading AFTER t0 (very different) must not change it.
+      final withFuture = HealthFeatureSampler([
+        ...base,
+        HealthSample(
+            time: t0.add(const Duration(hours: 6)),
+            type: 'restingHr',
+            value: 120),
+      ]).featuresAt(t0)[2];
+      expect(withFuture, closeTo(before, 1e-9));
+    });
+
+    test('P2-7: activity sums exactly the trailing (from, t] window', () {
+      final s = HealthFeatureSampler([
+        HealthSample( // 40 min ago — outside the 30-min window
+            time: t0.subtract(const Duration(minutes: 40)),
+            type: 'steps',
+            value: 500),
+        HealthSample(
+            time: t0.subtract(const Duration(minutes: 20)),
+            type: 'steps',
+            value: 1500),
+        HealthSample(
+            time: t0.subtract(const Duration(minutes: 5)),
+            type: 'steps',
+            value: 1500),
+        HealthSample( // future — excluded
+            time: t0.add(const Duration(minutes: 5)),
+            type: 'steps',
+            value: 9999),
+      ]);
+      // In-window steps = 3000 over 30 min = 100/min = brisk → 1.0.
+      expect(s.featuresAt(t0)[0], closeTo(1.0, 1e-9));
+    });
+
     test('activity feature is clamped at 1.5 for very intense movement', () {
       final samples = [
         HealthSample(

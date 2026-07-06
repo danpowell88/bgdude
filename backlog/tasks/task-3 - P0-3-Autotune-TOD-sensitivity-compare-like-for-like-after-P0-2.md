@@ -4,12 +4,13 @@ title: P0-3 Autotune & TOD sensitivity compare like-for-like (after P0-2)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:13'
 labels:
   - roadmap
   - §1-P0
   - phase-1
   - dosing-math
+  - detail-needed
 dependencies: []
 priority: high
 ordinal: 3000
@@ -45,4 +46,6 @@ Effort: M (falls out of P0-2)
 Where: autotune.dart, time_of_day_sensitivity.dart
 Depends on: P0-2
 Roadmap status: open
+
+detail-needed (2026-07-06): blocked on TASK-2 (P0-2). This 'falls out of' the net-insulin model change; can't be done or validated until P0-2's approach + validation data are settled.
 <!-- SECTION:NOTES:END -->
