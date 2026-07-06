@@ -4,6 +4,7 @@ title: Shared resistance-overlay helper on SensitivityContext
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:42'
+updated_date: '2026-07-06 12:58'
 labels:
   - code-health
   - insights
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: low
-ordinal: 146000
+ordinal: 110400
 ---
 
 ## Description

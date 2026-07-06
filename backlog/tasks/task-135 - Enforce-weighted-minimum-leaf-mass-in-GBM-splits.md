@@ -4,13 +4,14 @@ title: Enforce weighted minimum leaf mass in GBM splits
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:39'
+updated_date: '2026-07-06 12:58'
 labels:
   - code-health
   - ml
 milestone: m-8
 dependencies: []
 priority: low
-ordinal: 135000
+ordinal: 110200
 ---
 
 ## Description

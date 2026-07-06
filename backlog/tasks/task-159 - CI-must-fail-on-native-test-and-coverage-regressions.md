@@ -4,6 +4,7 @@ title: CI must fail on native-test and coverage regressions
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:13'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - infra
@@ -12,7 +13,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 159000
+ordinal: 100800
 ---
 
 ## Description

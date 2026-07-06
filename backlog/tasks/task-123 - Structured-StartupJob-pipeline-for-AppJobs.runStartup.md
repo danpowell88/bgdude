@@ -4,7 +4,7 @@ title: Structured StartupJob pipeline for AppJobs.runStartup
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:36'
-updated_date: '2026-07-06 09:20'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - architecture
@@ -12,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 123000
+ordinal: 106100
 ---
 
 ## Description

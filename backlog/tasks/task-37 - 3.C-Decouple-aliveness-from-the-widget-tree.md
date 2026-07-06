@@ -4,7 +4,7 @@ title: Decouple aliveness from the widget tree
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:12'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - architecture
@@ -14,7 +14,7 @@ milestone: m-3
 dependencies:
   - TASK-42
 priority: high
-ordinal: 37000
+ordinal: 100100
 ---
 
 ## Description

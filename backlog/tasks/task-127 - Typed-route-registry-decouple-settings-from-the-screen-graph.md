@@ -4,6 +4,7 @@ title: Typed route registry (decouple settings from the screen graph)
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:37'
+updated_date: '2026-07-06 12:58'
 labels:
   - code-health
   - ui
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: low
-ordinal: 127000
+ordinal: 110100
 ---
 
 ## Description

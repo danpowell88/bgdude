@@ -4,7 +4,7 @@ title: Predictor models insulin effect from net insulin (EGP baseline)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:05'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - dosing-math
@@ -12,7 +12,7 @@ labels:
 milestone: m-1
 dependencies: []
 priority: high
-ordinal: 2000
+ordinal: 101700
 ---
 
 ## Description

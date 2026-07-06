@@ -4,7 +4,7 @@ title: Split providers.dart + PersistedStateNotifier base
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:08'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - architecture
@@ -13,7 +13,7 @@ milestone: m-6
 dependencies:
   - TASK-35
 priority: medium
-ordinal: 28000
+ordinal: 103800
 ---
 
 ## Description

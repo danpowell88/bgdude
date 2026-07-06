@@ -4,7 +4,7 @@ title: 'BootReceiver: gate on BT permission + auto-reconnect'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:07'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - native
@@ -13,7 +13,7 @@ labels:
 milestone: m-4
 dependencies: []
 priority: high
-ordinal: 12000
+ordinal: 102200
 ---
 
 ## Description

@@ -4,6 +4,7 @@ title: 'Infusion-site insights: learned set lifetime from siteFailure + site age
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:43'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - insights
@@ -11,7 +12,7 @@ milestone: m-7
 dependencies:
   - TASK-149
 priority: medium
-ordinal: 152000
+ordinal: 702200
 ---
 
 ## Description

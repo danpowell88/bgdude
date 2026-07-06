@@ -4,7 +4,7 @@ title: Deterministic column reconstruction
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:09'
+updated_date: '2026-07-06 12:58'
 labels:
   - roadmap
   - panel-scanner
@@ -12,7 +12,7 @@ labels:
 milestone: m-4
 dependencies: []
 priority: medium
-ordinal: 90000
+ordinal: 500700
 ---
 
 ## Description

@@ -4,13 +4,14 @@ title: Adopt the Mgdl type across domain models
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:35'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - architecture
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 119000
+ordinal: 105700
 ---
 
 ## Description

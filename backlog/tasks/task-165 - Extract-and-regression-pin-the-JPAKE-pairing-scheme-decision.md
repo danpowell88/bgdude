@@ -4,6 +4,7 @@ title: Extract and regression-pin the JPAKE pairing-scheme decision
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:14'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - native
@@ -12,7 +13,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 165000
+ordinal: 102700
 ---
 
 ## Description

@@ -4,6 +4,7 @@ title: Autotune case with model-independent ground truth
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:17'
+updated_date: '2026-07-06 12:58'
 labels:
   - code-health
   - testing
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: low
-ordinal: 174000
+ordinal: 110600
 ---
 
 ## Description

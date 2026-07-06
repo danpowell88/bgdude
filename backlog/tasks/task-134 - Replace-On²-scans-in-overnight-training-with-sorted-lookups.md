@@ -4,13 +4,14 @@ title: Replace O(n²) scans in overnight training with sorted lookups
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:39'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - ml
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 134000
+ordinal: 106600
 ---
 
 ## Description

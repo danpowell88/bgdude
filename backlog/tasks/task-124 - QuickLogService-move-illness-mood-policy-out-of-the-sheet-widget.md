@@ -4,6 +4,7 @@ title: 'QuickLogService: move illness/mood policy out of the sheet widget'
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:36'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - ui
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 124000
+ordinal: 106200
 ---
 
 ## Description

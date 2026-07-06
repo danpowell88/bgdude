@@ -4,7 +4,7 @@ title: 'Reliability (foreground service survival, battery, reconnect)'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:11'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - pump
@@ -14,7 +14,7 @@ labels:
 milestone: m-7
 dependencies: []
 priority: medium
-ordinal: 95000
+ordinal: 105000
 ---
 
 ## Description

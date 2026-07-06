@@ -4,13 +4,14 @@ title: Battery-optimization exemption prompt in onboarding
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:19'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - onboarding
 milestone: m-7
 dependencies: []
 priority: medium
-ordinal: 183000
+ordinal: 108400
 ---
 
 ## Description

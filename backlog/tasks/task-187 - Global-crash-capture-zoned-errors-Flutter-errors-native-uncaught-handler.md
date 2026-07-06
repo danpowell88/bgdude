@@ -4,6 +4,7 @@ title: 'Global crash capture: zoned errors, Flutter errors, native uncaught hand
 status: To Do
 assignee: []
 created_date: '2026-07-06 12:55'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - logging
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 187000
+ordinal: 101400
 ---
 
 ## Description

@@ -4,6 +4,7 @@ title: Overlay detected events onto report and prediction charts
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:44'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - ui
@@ -11,7 +12,7 @@ labels:
 milestone: m-7
 dependencies: []
 priority: medium
-ordinal: 155000
+ordinal: 702500
 ---
 
 ## Description

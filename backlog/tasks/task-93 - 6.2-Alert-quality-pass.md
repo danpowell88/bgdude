@@ -4,7 +4,7 @@ title: Alert quality pass
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:10'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - alerts
@@ -13,7 +13,7 @@ labels:
 milestone: m-7
 dependencies: []
 priority: medium
-ordinal: 93000
+ordinal: 102900
 ---
 
 ## Description

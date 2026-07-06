@@ -4,6 +4,7 @@ title: Reconciliation must skip warm-up and compression-low artifacts
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:39'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - ml
@@ -11,7 +12,7 @@ labels:
 milestone: m-5
 dependencies: []
 priority: medium
-ordinal: 133000
+ordinal: 106500
 ---
 
 ## Description

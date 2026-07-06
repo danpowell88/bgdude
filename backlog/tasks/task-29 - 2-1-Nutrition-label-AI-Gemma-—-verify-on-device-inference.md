@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:08'
+updated_date: '2026-07-06 12:58'
 labels:
   - roadmap
   - panel-scanner
@@ -14,7 +14,7 @@ labels:
 milestone: m-4
 dependencies: []
 priority: medium
-ordinal: 29000
+ordinal: 500100
 ---
 
 ## Description

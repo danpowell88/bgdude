@@ -4,6 +4,7 @@ title: 'EffectiveLowThreshold: one composed low-line policy'
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:42'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - alerts
@@ -12,7 +13,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 147000
+ordinal: 100700
 ---
 
 ## Description

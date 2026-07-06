@@ -4,6 +4,7 @@ title: Rescue-carb and ketone alerts must bypass quiet hours
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:41'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - alerts
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 144000
+ordinal: 100600
 ---
 
 ## Description

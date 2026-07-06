@@ -4,6 +4,7 @@ title: Predicted-low glance on the home widget and Garmin
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:45'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - ui
@@ -13,7 +14,7 @@ dependencies:
   - TASK-24
   - TASK-31
 priority: medium
-ordinal: 158000
+ordinal: 702800
 ---
 
 ## Description

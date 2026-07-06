@@ -4,13 +4,14 @@ title: Guard notification init so a plugin failure cannot brick startup
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:18'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - alerts
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 180000
+ordinal: 108100
 ---
 
 ## Description

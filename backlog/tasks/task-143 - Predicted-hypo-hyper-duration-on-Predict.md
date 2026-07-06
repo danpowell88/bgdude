@@ -4,6 +4,7 @@ title: Predicted hypo/hyper duration on Predict
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:41'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - ml
@@ -11,7 +12,7 @@ labels:
 milestone: m-7
 dependencies: []
 priority: medium
-ordinal: 143000
+ordinal: 702000
 ---
 
 ## Description

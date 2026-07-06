@@ -4,7 +4,7 @@ title: Architecture guard test (+ read-only-pump check)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:05'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - architecture
@@ -14,7 +14,7 @@ labels:
 milestone: m-0
 dependencies: []
 priority: high
-ordinal: 41000
+ordinal: 100200
 ---
 
 ## Description

@@ -4,7 +4,7 @@ title: Release path
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:05'
+updated_date: '2026-07-06 12:58'
 labels:
   - roadmap
   - infra
@@ -14,7 +14,7 @@ labels:
 milestone: m-7
 dependencies: []
 priority: low
-ordinal: 99000
+ordinal: 501200
 ---
 
 ## Description

@@ -4,13 +4,14 @@ title: Guard snapshot decode in PumpClient so one bad event cannot stall the str
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:18'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - pump
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 181000
+ordinal: 108200
 ---
 
 ## Description

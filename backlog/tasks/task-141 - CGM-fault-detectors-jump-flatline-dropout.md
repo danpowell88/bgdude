@@ -4,6 +4,7 @@ title: 'CGM fault detectors: jump, flatline, dropout'
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:40'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - ml
@@ -11,7 +12,7 @@ labels:
 milestone: m-5
 dependencies: []
 priority: medium
-ordinal: 141000
+ordinal: 701800
 ---
 
 ## Description

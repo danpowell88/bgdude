@@ -4,6 +4,7 @@ title: Version the PumpSnapshot JSON + golden contract test
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:36'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - native
@@ -12,7 +13,7 @@ milestone: m-8
 dependencies:
   - TASK-111
 priority: medium
-ordinal: 120000
+ordinal: 105800
 ---
 
 ## Description

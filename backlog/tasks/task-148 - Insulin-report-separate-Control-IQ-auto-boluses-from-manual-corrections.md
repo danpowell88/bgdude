@@ -4,13 +4,14 @@ title: 'Insulin report: separate Control-IQ auto-boluses from manual corrections
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:42'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - reports
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 148000
+ordinal: 106900
 ---
 
 ## Description

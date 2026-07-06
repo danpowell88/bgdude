@@ -4,6 +4,7 @@ title: 'Control-IQ behaviour insights (auto-correction load, loop-delivered frac
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:43'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - reports
@@ -12,7 +13,7 @@ milestone: m-7
 dependencies:
   - TASK-148
 priority: medium
-ordinal: 151000
+ordinal: 702100
 ---
 
 ## Description

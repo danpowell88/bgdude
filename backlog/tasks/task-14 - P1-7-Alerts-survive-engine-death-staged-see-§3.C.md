@@ -4,7 +4,7 @@ title: Alerts survive engine death (staged; see TASK-37)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:08'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - architecture
@@ -14,7 +14,7 @@ milestone: m-3
 dependencies:
   - TASK-37
 priority: high
-ordinal: 14000
+ordinal: 100000
 ---
 
 ## Description

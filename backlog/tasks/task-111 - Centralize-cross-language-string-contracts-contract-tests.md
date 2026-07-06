@@ -4,7 +4,7 @@ title: Centralize cross-language string contracts + contract tests
 status: To Do
 assignee: []
 created_date: '2026-07-06 04:56'
-updated_date: '2026-07-06 08:07'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - native
@@ -12,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 111000
+ordinal: 105200
 ---
 
 ## Description

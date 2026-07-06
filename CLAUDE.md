@@ -60,6 +60,12 @@ The formatting rules below apply to the *text you pass* via CLI flags.
 - **Decisions** (product/architecture choices that outlive a task) are recorded with
   `backlog decision create` — check `backlog/decisions/` before re-litigating one.
 - When starting a task also **assign yourself**: `-a Claude`.
+- **Execution order is encoded in ordinals** (2026-07-06 triage), in three bands:
+  stabilise existing functionality (fixes, cleanup, tests — ordinals 100000+), then
+  **finish existing features** (500000+), then new features (700000+). Pick work from
+  the lowest ordinal whose dependencies are met; give a new task an ordinal in the
+  band it belongs to (fixes/tests → band 1, completing something started → band 2,
+  net-new → band 3).
 
 ### Comment as you work
 Use the **comment field** to leave a trail on the task you're working on:

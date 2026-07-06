@@ -4,6 +4,7 @@ title: NaN and Infinity guards at the metrics and chart boundary
 status: To Do
 assignee: []
 created_date: '2026-07-06 12:56'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - ui
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 190000
+ordinal: 108700
 ---
 
 ## Description

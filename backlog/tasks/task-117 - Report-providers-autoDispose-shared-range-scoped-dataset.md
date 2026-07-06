@@ -4,6 +4,7 @@ title: 'Report providers: autoDispose + shared range-scoped dataset'
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:35'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - architecture
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 117000
+ordinal: 105500
 ---
 
 ## Description

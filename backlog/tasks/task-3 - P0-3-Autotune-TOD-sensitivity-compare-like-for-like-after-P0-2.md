@@ -4,7 +4,7 @@ title: Autotune & TOD sensitivity compare like-for-like (after P0-2)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:06'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - dosing-math
@@ -13,7 +13,7 @@ milestone: m-1
 dependencies:
   - TASK-2
 priority: high
-ordinal: 3000
+ordinal: 101800
 ---
 
 ## Description

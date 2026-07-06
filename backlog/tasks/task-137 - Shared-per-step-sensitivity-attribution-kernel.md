@@ -4,13 +4,14 @@ title: Shared per-step sensitivity-attribution kernel
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:40'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - ml
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 137000
+ordinal: 106700
 ---
 
 ## Description

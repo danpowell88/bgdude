@@ -4,6 +4,7 @@ title: Monotonic alert cooldowns (DST/clock-change safe)
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:19'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - alerts
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 184000
+ordinal: 101300
 ---
 
 ## Description

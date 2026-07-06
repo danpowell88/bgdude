@@ -4,6 +4,7 @@ title: Widget must re-render (and grey out) when the Flutter engine dies
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:17'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - ui
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 177000
+ordinal: 107900
 ---
 
 ## Description

@@ -4,6 +4,7 @@ title: Handle failures in the app-root snapshot chain
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:37'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - alerts
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 125000
+ordinal: 100500
 ---
 
 ## Description

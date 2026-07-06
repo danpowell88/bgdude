@@ -4,6 +4,7 @@ title: Sticky service restart must resume the pump connection
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:18'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - native
@@ -11,7 +12,7 @@ labels:
 milestone: m-4
 dependencies: []
 priority: medium
-ordinal: 178000
+ordinal: 108000
 ---
 
 ## Description

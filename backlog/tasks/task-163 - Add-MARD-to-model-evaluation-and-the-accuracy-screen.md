@@ -4,13 +4,14 @@ title: Add MARD to model evaluation and the accuracy screen
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:14'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - ml
 milestone: m-5
 dependencies: []
 priority: medium
-ordinal: 163000
+ordinal: 702900
 ---
 
 ## Description

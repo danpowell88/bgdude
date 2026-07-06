@@ -4,6 +4,7 @@ title: Alert log + alarm-fatigue analytics
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:45'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - alerts
@@ -12,7 +13,7 @@ milestone: m-7
 dependencies:
   - TASK-42
 priority: medium
-ordinal: 157000
+ordinal: 702700
 ---
 
 ## Description

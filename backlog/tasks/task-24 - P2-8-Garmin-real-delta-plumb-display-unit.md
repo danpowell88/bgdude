@@ -4,7 +4,7 @@ title: 'Garmin: real delta + plumb display unit'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:06'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - garmin
@@ -13,7 +13,7 @@ labels:
 milestone: m-4
 dependencies: []
 priority: medium
-ordinal: 24000
+ordinal: 103700
 ---
 
 ## Description

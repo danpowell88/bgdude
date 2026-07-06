@@ -4,6 +4,7 @@ title: Single source for the widening-band fallback sigma
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:39'
+updated_date: '2026-07-06 12:58'
 labels:
   - code-health
   - ml
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: low
-ordinal: 136000
+ordinal: 110300
 ---
 
 ## Description

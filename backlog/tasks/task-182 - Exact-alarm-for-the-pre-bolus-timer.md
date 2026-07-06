@@ -4,13 +4,14 @@ title: Exact alarm for the pre-bolus timer
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:19'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - alerts
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 182000
+ordinal: 108300
 ---
 
 ## Description

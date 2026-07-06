@@ -4,6 +4,7 @@ title: Set tz.local — scheduled notifications currently fire in UTC
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:17'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - alerts
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 175000
+ordinal: 101100
 ---
 
 ## Description

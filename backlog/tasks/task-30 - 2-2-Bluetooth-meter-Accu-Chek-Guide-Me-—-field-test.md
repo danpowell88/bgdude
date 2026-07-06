@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:09'
+updated_date: '2026-07-06 12:58'
 labels:
   - roadmap
   - meter
@@ -14,7 +14,7 @@ milestone: m-4
 dependencies:
   - TASK-9
 priority: medium
-ordinal: 30000
+ordinal: 500200
 ---
 
 ## Description

@@ -4,6 +4,7 @@ title: 'Stale-data watchdog: alert when readings stop while connected'
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:17'
+updated_date: '2026-07-06 12:57'
 labels:
   - feature
   - alerts
@@ -11,7 +12,7 @@ labels:
 milestone: m-3
 dependencies: []
 priority: high
-ordinal: 176000
+ordinal: 101200
 ---
 
 ## Description

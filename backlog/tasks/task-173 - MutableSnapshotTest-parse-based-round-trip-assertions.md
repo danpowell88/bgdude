@@ -4,6 +4,7 @@ title: 'MutableSnapshotTest: parse-based round-trip assertions'
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:16'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - native
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 173000
+ordinal: 107800
 ---
 
 ## Description

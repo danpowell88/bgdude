@@ -4,6 +4,7 @@ title: Fix weekly-digest notification collision and category routing
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:41'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - alerts
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 145000
+ordinal: 106800
 ---
 
 ## Description

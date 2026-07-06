@@ -4,13 +4,14 @@ title: Fix unsafe empty-iterable operations (meter transport firstWhere)
 status: To Do
 assignee: []
 created_date: '2026-07-06 12:56'
+updated_date: '2026-07-06 12:58'
 labels:
   - code-health
   - cleanup
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 191000
+ordinal: 108800
 ---
 
 ## Description

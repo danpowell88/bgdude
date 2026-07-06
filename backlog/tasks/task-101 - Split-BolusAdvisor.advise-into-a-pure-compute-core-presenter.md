@@ -4,7 +4,7 @@ title: Split BolusAdvisor.advise() into a pure compute core + presenter
 status: To Do
 assignee: []
 created_date: '2026-07-06 04:53'
-updated_date: '2026-07-06 08:06'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - dosing-math
@@ -14,7 +14,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 101000
+ordinal: 100300
 ---
 
 ## Description

@@ -4,6 +4,7 @@ title: Guard the pumpx2 BLE callback bodies so one throw cannot kill the service
 status: To Do
 assignee: []
 created_date: '2026-07-06 12:55'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - native
@@ -12,7 +13,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 189000
+ordinal: 101600
 ---
 
 ## Description

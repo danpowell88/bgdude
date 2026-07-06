@@ -4,6 +4,7 @@ title: Robolectric lifecycle tests for PumpService
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:20'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - native
@@ -12,7 +13,7 @@ milestone: m-8
 dependencies:
   - TASK-178
 priority: medium
-ordinal: 186000
+ordinal: 108600
 ---
 
 ## Description

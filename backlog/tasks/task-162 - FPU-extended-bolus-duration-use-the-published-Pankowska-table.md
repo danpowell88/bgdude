@@ -4,6 +4,7 @@ title: 'FPU extended-bolus duration: use the published Pankowska table'
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:14'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - dosing-math
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 162000
+ordinal: 101000
 ---
 
 ## Description

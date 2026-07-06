@@ -4,13 +4,14 @@ title: Automatic KvStore test isolation
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:16'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - testing
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 172000
+ordinal: 107700
 ---
 
 ## Description

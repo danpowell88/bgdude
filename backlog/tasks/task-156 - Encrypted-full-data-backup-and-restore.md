@@ -4,6 +4,7 @@ title: Encrypted full-data backup and restore
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:44'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - data-integrity
@@ -13,7 +14,7 @@ dependencies:
   - TASK-8
   - TASK-42
 priority: medium
-ordinal: 156000
+ordinal: 702600
 ---
 
 ## Description

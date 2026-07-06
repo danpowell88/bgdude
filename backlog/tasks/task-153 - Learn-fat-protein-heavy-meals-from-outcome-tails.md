@@ -4,6 +4,7 @@ title: Learn fat/protein-heavy meals from outcome tails
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:44'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - meals
@@ -11,7 +12,7 @@ labels:
 milestone: m-7
 dependencies: []
 priority: medium
-ordinal: 153000
+ordinal: 702300
 ---
 
 ## Description

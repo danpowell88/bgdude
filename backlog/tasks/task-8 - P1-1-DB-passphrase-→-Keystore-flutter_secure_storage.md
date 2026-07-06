@@ -4,7 +4,7 @@ title: DB passphrase → Keystore (flutter_secure_storage)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:07'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - security
@@ -12,7 +12,7 @@ labels:
 milestone: m-0
 dependencies: []
 priority: high
-ordinal: 8000
+ordinal: 101900
 ---
 
 ## Description

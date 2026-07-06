@@ -4,13 +4,14 @@ title: Set busy_timeout on the encrypted DB connections
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:19'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - data-integrity
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 185000
+ordinal: 108500
 ---
 
 ## Description

@@ -4,13 +4,14 @@ title: Await model restore before training (incumbent race)
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:38'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - ml
 milestone: m-5
 dependencies: []
 priority: high
-ordinal: 129000
+ordinal: 102400
 ---
 
 ## Description

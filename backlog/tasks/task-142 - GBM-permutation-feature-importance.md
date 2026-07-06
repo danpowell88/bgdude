@@ -4,6 +4,7 @@ title: GBM permutation feature importance
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:41'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - ml
@@ -11,7 +12,7 @@ labels:
 milestone: m-5
 dependencies: []
 priority: medium
-ordinal: 142000
+ordinal: 701900
 ---
 
 ## Description

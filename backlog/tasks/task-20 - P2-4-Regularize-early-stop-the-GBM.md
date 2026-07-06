@@ -4,7 +4,7 @@ title: Regularize/early-stop the GBM
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:05'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - ml
@@ -13,7 +13,7 @@ milestone: m-5
 dependencies:
   - TASK-55
 priority: medium
-ordinal: 20000
+ordinal: 103500
 ---
 
 ## Description

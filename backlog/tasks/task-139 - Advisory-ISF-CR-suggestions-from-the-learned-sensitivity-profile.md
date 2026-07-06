@@ -4,6 +4,7 @@ title: Advisory ISF/CR suggestions from the learned sensitivity profile
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:40'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - ml
@@ -15,7 +16,7 @@ dependencies:
   - TASK-3
   - TASK-21
 priority: medium
-ordinal: 139000
+ordinal: 700300
 ---
 
 ## Description

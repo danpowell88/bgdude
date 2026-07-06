@@ -4,6 +4,7 @@ title: DB corruption and wrong-key recovery flow
 status: To Do
 assignee: []
 created_date: '2026-07-06 12:56'
+updated_date: '2026-07-06 12:58'
 labels:
   - code-health
   - data-integrity
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 192000
+ordinal: 108900
 ---
 
 ## Description

@@ -4,7 +4,7 @@ title: 'Software pump — virtual t:slim X2 BLE peripheral'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:07'
+updated_date: '2026-07-06 12:58'
 labels:
   - roadmap
   - pump
@@ -18,7 +18,7 @@ dependencies:
   - TASK-33
   - TASK-79
 priority: medium
-ordinal: 83000
+ordinal: 701500
 ---
 
 ## Description

@@ -4,13 +4,14 @@ title: Cap DayHistoryController CGM list; roll the day at local midnight
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:18'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - data-integrity
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 179000
+ordinal: 102800
 ---
 
 ## Description

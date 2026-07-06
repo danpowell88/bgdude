@@ -4,13 +4,14 @@ title: Provider-graph regression tests for the demo-toggle rebuild fix
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:15'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - testing
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 166000
+ordinal: 107200
 ---
 
 ## Description

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:10'
+updated_date: '2026-07-06 12:58'
 labels:
   - roadmap
   - garmin
@@ -13,7 +13,7 @@ labels:
 milestone: m-4
 dependencies: []
 priority: medium
-ordinal: 32000
+ordinal: 500400
 ---
 
 ## Description

@@ -4,6 +4,7 @@ title: 'Day-type clustering: weekday vs weekend glucose patterns'
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:44'
+updated_date: '2026-07-06 12:58'
 labels:
   - feature
   - insights
@@ -11,7 +12,7 @@ labels:
 milestone: m-7
 dependencies: []
 priority: medium
-ordinal: 154000
+ordinal: 702400
 ---
 
 ## Description

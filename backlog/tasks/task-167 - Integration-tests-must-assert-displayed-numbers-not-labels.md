@@ -4,6 +4,7 @@ title: 'Integration tests must assert displayed numbers, not labels'
 status: To Do
 assignee: []
 created_date: '2026-07-06 09:15'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - testing
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 167000
+ordinal: 107300
 ---
 
 ## Description

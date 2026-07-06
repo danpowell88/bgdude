@@ -4,7 +4,7 @@ title: First-run polish for real hardware
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:11'
+updated_date: '2026-07-06 12:58'
 labels:
   - roadmap
   - onboarding
@@ -13,7 +13,7 @@ labels:
 milestone: m-7
 dependencies: []
 priority: low
-ordinal: 96000
+ordinal: 501100
 ---
 
 ## Description

@@ -4,6 +4,7 @@ title: Local-time contract for time-of-day features (UTC/DST skew)
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:38'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - ml
@@ -11,7 +12,7 @@ labels:
 milestone: m-5
 dependencies: []
 priority: medium
-ordinal: 131000
+ordinal: 106300
 ---
 
 ## Description

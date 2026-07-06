@@ -4,6 +4,7 @@ title: Harden every KV restore path against corrupt JSON
 status: To Do
 assignee: []
 created_date: '2026-07-06 12:55'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - data-integrity
@@ -11,7 +12,7 @@ labels:
 milestone: m-8
 dependencies: []
 priority: high
-ordinal: 188000
+ordinal: 101500
 ---
 
 ## Description

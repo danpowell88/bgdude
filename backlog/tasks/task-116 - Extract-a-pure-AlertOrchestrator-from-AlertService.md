@@ -4,6 +4,7 @@ title: Extract a pure AlertOrchestrator from AlertService
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:34'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - architecture
@@ -12,7 +13,7 @@ labels:
 milestone: m-6
 dependencies: []
 priority: high
-ordinal: 116000
+ordinal: 100400
 ---
 
 ## Description

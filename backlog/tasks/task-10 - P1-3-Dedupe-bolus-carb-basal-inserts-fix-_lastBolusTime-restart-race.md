@@ -4,7 +4,7 @@ title: Dedupe bolus/carb/basal inserts; fix _lastBolusTime restart race
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:07'
+updated_date: '2026-07-06 12:57'
 labels:
   - roadmap
   - data-integrity
@@ -13,7 +13,7 @@ milestone: m-2
 dependencies:
   - TASK-42
 priority: high
-ordinal: 10000
+ordinal: 102100
 ---
 
 ## Description

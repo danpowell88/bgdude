@@ -4,7 +4,7 @@ title: Prediction validation on real data
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:10'
+updated_date: '2026-07-06 12:58'
 labels:
   - roadmap
   - ml
@@ -14,7 +14,7 @@ milestone: m-7
 dependencies:
   - TASK-33
 priority: medium
-ordinal: 92000
+ordinal: 500800
 ---
 
 ## Description

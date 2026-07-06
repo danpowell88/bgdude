@@ -4,14 +4,14 @@ title: 'Strengthen analyzer lints (stream safety, dynamic calls) and fix fallout
 status: To Do
 assignee: []
 created_date: '2026-07-06 04:56'
-updated_date: '2026-07-06 08:08'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - infra
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 113000
+ordinal: 105300
 ---
 
 ## Description

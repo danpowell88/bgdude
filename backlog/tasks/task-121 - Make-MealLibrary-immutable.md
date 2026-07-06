@@ -4,13 +4,14 @@ title: Make MealLibrary immutable
 status: To Do
 assignee: []
 created_date: '2026-07-06 08:36'
+updated_date: '2026-07-06 12:57'
 labels:
   - code-health
   - meals
 milestone: m-8
 dependencies: []
 priority: medium
-ordinal: 121000
+ordinal: 105900
 ---
 
 ## Description
