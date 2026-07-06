@@ -4,7 +4,7 @@ title: Alerts survive engine death (staged; see TASK-37)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 15:51'
 labels:
   - roadmap
   - architecture
@@ -12,7 +12,7 @@ labels:
   - detail-needed
 milestone: m-3
 dependencies:
-  - TASK-37
+  - TASK-42
 priority: high
 ordinal: 100000
 ---
@@ -27,12 +27,10 @@ ordinal: 100000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Pure alert decision core (no Riverpod/clock/notifications)
-- [ ] #2 Native urgent-low backstop
+- [x] #1 Pure alert decision core (no Riverpod/clock/notifications)
+- [x] #2 Native urgent-low backstop
 - [ ] #3 Headless Dart evaluation (after TASK-42 single-connection fix)
 <!-- AC:END -->
-
-
 
 ## Implementation Plan
 
@@ -63,5 +61,11 @@ author: Claude
 created: 2026-07-06 05:27
 ---
 detail-needed (2026-07-06, goal triage): L, safety-critical, native + Dart, staged; depends on §3.H single-DB-connection (TASK-42). Want the staging/approach confirmed before building the alert backstop. (= §3.C / TASK-37.)
+---
+
+author: Claude
+created: 2026-07-06 15:51
+---
+AC#1 (pure AlertMonitor decision core, no Riverpod/clock/notifications) and AC#2 (native urgent-low backstop in PumpService) are delivered by the shared TASK-37 work — commit cf87219 (test/alert_monitor_test.dart matrix tests + PumpService ≤55 mg/dL backstop). AC#3 (headless Dart evaluation) is the same final stage as TASK-37 AC#4 and is explicitly gated on TASK-42's single-connection/DI fix — blocked until that lands.
 ---
 <!-- COMMENTS:END -->

@@ -4,7 +4,7 @@ title: Decouple aliveness from the widget tree
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 15:50'
 labels:
   - roadmap
   - architecture
@@ -27,9 +27,9 @@ ordinal: 100100
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Pure decision core with matrix tests
-- [ ] #2 Native urgent-low backstop
-- [ ] #3 Guide documents the limitation until done
+- [x] #1 Pure decision core with matrix tests
+- [x] #2 Native urgent-low backstop
+- [x] #3 Guide documents the limitation until done
 - [ ] #4 Headless Dart evaluation (post-TASK-42 / 3.H)
 <!-- AC:END -->
 
@@ -61,5 +61,11 @@ author: Claude
 created: 2026-07-06 05:29
 ---
 detail-needed (2026-07-06, goal triage): L, safety-critical alert re-architecture across widget/native/isolate; depends on §3.H. Want the staged approach signed off before an invasive change to the alert path.
+---
+
+author: Claude
+created: 2026-07-06 15:50
+---
+Stages AC#1-3 landed (commit cf87219): AC#1 pure AlertMonitor decision core + matrix tests (test/alert_monitor_test.dart); AC#2 native urgent-low backstop in PumpService (≤55 mg/dL, own high-importance channel, 15-min cooldown, fires even if the Flutter app is killed); AC#3 user guide documents the limitation + backstop. AC#4 (headless Dart evaluation) is explicitly 'post-TASK-42/3.H' in the ticket — blocked until the data-layer hardening / DI seam from TASK-42 lands, which is what makes a headless isolate able to run the evaluation. Left In Progress with the AC#4 dependency; not Done until TASK-42 unblocks the final stage.
 ---
 <!-- COMMENTS:END -->

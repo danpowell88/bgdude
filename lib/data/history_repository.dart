@@ -357,28 +357,51 @@ class DriftHistoryRepository implements HistoryRepository {
 
   @override
   Future<int> reconcilePredictions(DateTime now) async {
+    const window = Duration(minutes: 5);
     final pending = await (_db.select(_db.predictions)
           ..where((t) => t.actualMgdl.isNull()))
         .get();
-    var updated = 0;
-    for (final r in pending) {
-      final target = r.madeAt.add(Duration(minutes: r.horizonMinutes));
-      if (target.isAfter(now)) continue;
-      final near = await _db.cgmBetween(
-        target.subtract(const Duration(minutes: 5)),
-        target.add(const Duration(minutes: 5)),
-      );
-      if (near.isEmpty) continue;
-      final actual = near
-          .reduce((a, b) => (a.time.difference(target).abs() <
-                  b.time.difference(target).abs())
-              ? a
-              : b)
-          .mgdl;
-      await (_db.update(_db.predictions)..where((t) => t.id.equals(r.id)))
-          .write(PredictionsCompanion(actualMgdl: Value(actual)));
-      updated++;
+    // Only predictions whose target time has passed can be scored.
+    final due = [
+      for (final r in pending)
+        if (!r.madeAt.add(Duration(minutes: r.horizonMinutes)).isAfter(now)) r,
+    ];
+    if (due.isEmpty) return 0;
+
+    // TASK-42: one CGM query spanning every due target (± the match window), instead of a
+    // per-row query, then match each prediction to the nearest reading in memory.
+    var lo = due.first.madeAt.add(Duration(minutes: due.first.horizonMinutes));
+    var hi = lo;
+    for (final r in due) {
+      final t = r.madeAt.add(Duration(minutes: r.horizonMinutes));
+      if (t.isBefore(lo)) lo = t;
+      if (t.isAfter(hi)) hi = t;
     }
+    final cgm = await _db.cgmBetween(lo.subtract(window), hi.add(window));
+    if (cgm.isEmpty) return 0;
+
+    var updated = 0;
+    await _db.batch((b) {
+      for (final r in due) {
+        final target = r.madeAt.add(Duration(minutes: r.horizonMinutes));
+        CgmRow? best;
+        var bestDiff = window + const Duration(seconds: 1);
+        for (final s in cgm) {
+          final d = s.time.difference(target).abs();
+          if (d <= window && d < bestDiff) {
+            best = s;
+            bestDiff = d;
+          }
+        }
+        if (best == null) continue;
+        b.update(
+          _db.predictions,
+          PredictionsCompanion(actualMgdl: Value(best.mgdl)),
+          where: (t) => t.id.equals(r.id),
+        );
+        updated++;
+      }
+    });
     return updated;
   }
 
