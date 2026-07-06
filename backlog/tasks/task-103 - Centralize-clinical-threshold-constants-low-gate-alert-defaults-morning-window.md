@@ -3,9 +3,10 @@ id: TASK-103
 title: >-
   Centralize clinical threshold constants (low gate, alert defaults, morning
   window)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:53'
+updated_date: '2026-07-06 05:06'
 labels:
   - code-health
   - cleanup

@@ -107,8 +107,9 @@ class ReadingExplainer {
   /// The fallback "unexplained" score when nothing else fits.
   static const double fallbackScore = 0.2;
 
-  /// Reading counts as "low" below this for the low-specific hypotheses.
-  static const double _lowGateMgdl = 80;
+  /// Reading counts as "low" below this for the low-specific hypotheses. Sourced from
+  /// the central [GlucoseThresholds.lowExplainGate] (TASK-103).
+  static const double _lowGateMgdl = GlucoseThresholds.lowExplainGate;
 
   List<Explanation> explain({
     required DateTime at,

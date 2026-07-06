@@ -59,6 +59,11 @@ class GlucoseThresholds {
   /// metric — people without diabetes sit ~87% of the day in 70–140.
   static const double tightHigh = 140;
 
+  /// The gate the reading-explainer uses for its low-specific hypotheses — deliberately
+  /// a little *above* [low] (70) so it can start explaining an approaching low before the
+  /// clinical threshold is crossed (TASK-103; previously a private literal 80).
+  static const double lowExplainGate = 80;
+
   /// Level 2 hyper (very high).
   static const double veryHigh = 250;
 

@@ -5,10 +5,16 @@
 library;
 
 class AlertThresholds {
+  /// Shipped defaults (mg/dL). Referenced by BOTH the constructor and [fromJson] so the
+  /// two can't silently drift apart (TASK-103).
+  static const double defaultLowMgdl = 70;
+  static const double defaultHighMgdl = 200;
+  static const double defaultUrgentLowMgdl = 55;
+
   const AlertThresholds({
-    this.lowMgdl = 70,
-    this.highMgdl = 200,
-    this.urgentLowMgdl = 55,
+    this.lowMgdl = defaultLowMgdl,
+    this.highMgdl = defaultHighMgdl,
+    this.urgentLowMgdl = defaultUrgentLowMgdl,
   });
 
   final double lowMgdl;
@@ -30,8 +36,8 @@ class AlertThresholds {
       {'low': lowMgdl, 'high': highMgdl, 'urgentLow': urgentLowMgdl};
 
   factory AlertThresholds.fromJson(Map<String, dynamic> j) => AlertThresholds(
-        lowMgdl: (j['low'] as num?)?.toDouble() ?? 70,
-        highMgdl: (j['high'] as num?)?.toDouble() ?? 200,
-        urgentLowMgdl: (j['urgentLow'] as num?)?.toDouble() ?? 55,
+        lowMgdl: (j['low'] as num?)?.toDouble() ?? defaultLowMgdl,
+        highMgdl: (j['high'] as num?)?.toDouble() ?? defaultHighMgdl,
+        urgentLowMgdl: (j['urgentLow'] as num?)?.toDouble() ?? defaultUrgentLowMgdl,
       );
 }
