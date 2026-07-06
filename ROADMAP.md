@@ -7,6 +7,16 @@ evidence preserved verbatim in git history at commit `7385bda`),
 `doc/plans/architecture.md`, `doc/plans/feature-ideas.md` and
 `doc/plans/panel-llm.md`, which this file replaces._
 
+> **Actionable tracking now lives in [Backlog.md](https://github.com/MrLesk/Backlog.md).**
+> Every item below has been migrated to a task under `backlog/tasks/` (100 tasks:
+> `backlog board`, `backlog task list --plain`, or the web UI via `backlog browser`).
+> Each task carries a description, acceptance criteria, labels (section, area,
+> priority, `🔌`/`🧠`/`🔒` flags), status, and — where a task isn't fully scoped — a
+> `needs-exploration` label plus a "⚠ NEEDS MORE EXPLORATION" note. Tasks reference
+> `Source: ROADMAP §X`, so **this document stays as the strategic narrative**
+> (charter, phasing, sequencing, evidence) that the tasks point back to. Update task
+> status in Backlog.md; update the phasing/snapshot here when a phase moves.
+
 **Charter (don't drift from this):** a personal, **read-only** Tandem t:slim X2
 companion. On-device first, privacy-preserving, never delivers insulin or control
 commands. Every number the app suggests is shown with its working and confirmed by
