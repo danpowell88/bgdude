@@ -46,6 +46,34 @@ void main() {
     }
   });
 
+  group('§4-x TASK-93: exercise suppresses highs, never lows', () {
+    GlucoseAlert? decideEx({
+      required double current,
+      required double forecastExtreme,
+      required bool exercising,
+    }) =>
+        monitor.evaluate(
+          forecasts: [fc(forecastExtreme)],
+          currentMgdl: current,
+          now: now,
+          lastFired: const {},
+          suppressPredictedHigh: exercising,
+        );
+
+    test('a predicted high is muted during a workout', () {
+      expect(decideEx(current: 150, forecastExtreme: 220, exercising: false)?.kind,
+          GlucoseAlertKind.predictedHigh);
+      expect(decideEx(current: 150, forecastExtreme: 220, exercising: true), isNull);
+    });
+
+    test('a predicted/urgent low still fires during a workout', () {
+      expect(decideEx(current: 90, forecastExtreme: 65, exercising: true)?.kind,
+          GlucoseAlertKind.predictedLow);
+      expect(decideEx(current: 90, forecastExtreme: 50, exercising: true)?.kind,
+          GlucoseAlertKind.urgentLow);
+    });
+  });
+
   test('cooldown suppresses a repeat within the window', () {
     const cooled = AlertMonitor(
       urgentLowMgdl: 55,

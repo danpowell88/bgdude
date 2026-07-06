@@ -1470,6 +1470,8 @@ class AlertService {
       now: now,
       lastFired: const {},
       unit: _ref.read(glucoseUnitProvider),
+      // TASK-93: mute predicted-high nudges during an active workout (lows still fire).
+      suppressPredictedHigh: exercise != null && exercise.affectsAt(now),
     );
     if (alert != null) {
       firedSpecific = true;

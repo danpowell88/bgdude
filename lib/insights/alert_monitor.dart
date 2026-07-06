@@ -43,6 +43,9 @@ class AlertMonitor {
     required DateTime now,
     required Map<GlucoseAlertKind, DateTime> lastFired,
     GlucoseUnit unit = GlucoseUnit.mmol,
+    // TASK-93: during an announced workout, glucose commonly drifts down, so a
+    // predicted-HIGH nudge is noise — suppress it. Lows/urgent-lows are NEVER suppressed.
+    bool suppressPredictedHigh = false,
   }) {
     if (forecasts.isEmpty) return null;
     bool cool(GlucoseAlertKind k) {
@@ -72,7 +75,8 @@ class AlertMonitor {
       );
     }
 
-    if (maxF.mgdl > highMgdl &&
+    if (!suppressPredictedHigh &&
+        maxF.mgdl > highMgdl &&
         currentMgdl < maxF.mgdl &&
         cool(GlucoseAlertKind.predictedHigh)) {
       return GlucoseAlert(
