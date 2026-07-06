@@ -114,13 +114,13 @@ integration test in the same commit.
 
 | # | Fix | Where | Effort | Status |
 |---|-----|-------|--------|--------|
-| P0-1 | Correction subtracts **bolus-only (or net) IOB**, not total incl. basal (`_iob.fromBoluses(...)` for the subtraction; full IOB only for forward prediction) | `bolus_advisor.dart:191,293-294` | S | open |
+| P0-1 | Correction subtracts **bolus-only (or net) IOB**, not total incl. basal (`_iob.fromBoluses(...)` for the subtraction; full IOB only for forward prediction) | `bolus_advisor.dart:191,293-294` | S | **done ✅** |
 | P0-2 | Predictor models insulin effect from **net insulin** (boluses + delivered−scheduled basal) or adds an EGP term; re-tune constants + tests after | `predictor.dart:290-291`, `insulin_math.dart:107-145` | M | open |
 | P0-3 | Autotune & TOD sensitivity compare like-for-like after P0-2 — a well-tuned fasting user must score ≈1.0 | `autotune.dart`, `time_of_day_sensitivity.dart` | M (falls out of P0-2) | open |
-| P0-4 | Advisor/predictor honour configured **DIA & insulin peak** (care detectors already do; advisor/predictor hardcode 360/75) | `bolus_advisor.dart:102-103`, `predictor.dart:177-178` | S | open |
-| P0-5 | Rescue-carb calc uses **bolus-only IOB** so phantom basal doesn't over-treat lows | `rescue_carbs.dart:56` | S | open |
-| P0-6 | Advisor: hard low-guard on the *current* reading + compression-low exclusion ("treat the low first") | `bolus_advisor.dart:183` | S | open |
-| P0-7 | Ketone/DKA prompt earlier: base threshold 250 mg/dL + unconditional prompt >~300 rising / very-low IOB | `ketone_risk.dart:21` | S | open |
+| P0-4 | Advisor/predictor honour configured **DIA & insulin peak** (care detectors already do; advisor/predictor hardcode 360/75) | `bolus_advisor.dart:102-103`, `predictor.dart:177-178` | S | **done ✅** |
+| P0-5 | Rescue-carb calc uses **bolus-only IOB** so phantom basal doesn't over-treat lows | `rescue_carbs.dart:56` | S | **done ✅** |
+| P0-6 | Advisor: hard low-guard on the *current* reading + compression-low exclusion ("treat the low first") | `bolus_advisor.dart:183` | S | **done ✅** |
+| P0-7 | Ketone/DKA prompt earlier: base threshold 250 mg/dL + unconditional prompt >~300 rising / very-low IOB | `ketone_risk.dart:21` | S | **done ✅** |
 
 ### P1 — data integrity, security, reliability
 
@@ -129,7 +129,7 @@ integration test in the same commit.
 | P1-1 | DB passphrase → `flutter_secure_storage` (Keystore); migrate off prefs; await the write; fix false comments | `secure_key.dart`, `database.dart:187`, `main.dart` | S | open |
 | P1-2 | `isCalibration`/`source` on CGM rows (schema v3); stop fingersticks overwriting sensor rows; exclude calibrations from metrics/training | `database.dart`, `history_repository.dart`, `glucose_meter.dart` | M | open |
 | P1-3 | Dedupe bolus/carb/basal (unique key or event-id + upsert); fix `_lastBolusTime` restart race | `database.dart`, `day_history_controller.dart`, `history_backfill.dart` | M | open |
-| P1-4 | Native EventChannel sink marshalled to the main looper (BLE callbacks arrive off-thread; first real connection kills the stream) | `PumpBridge.kt:128-155` | S | open |
+| P1-4 | Native EventChannel sink marshalled to the main looper (BLE callbacks arrive off-thread; first real connection kills the stream) | `PumpBridge.kt:128-155` | S | **done ✅** |
 | P1-5 | BootReceiver: gate on BT permission; add auto-reconnect so a boot restart actually resumes | `BootReceiver.kt`, `PumpService.kt` | S–M | open |
 | P1-6 | Surface DB-open failure (banner + log) instead of silently swapping to in-memory | `main.dart:26-34` | S | open |
 | P1-7 | Alerts survive engine death — see §3.C (staged: pure core → native backstop → headless evaluation) | `app.dart`, native | L | open |
@@ -146,9 +146,9 @@ integration test in the same commit.
 | P2-4 | Regularize/early-stop the GBM (validation-chosen `nEstimators`, subsampling) — fold into §4-1.10's fold work | M | open |
 | P2-5 | Sensitivity model validation: LOO-CV lambda + skill-based confidence ✅ · remaining: sign-constrained coefficients; only adopt learned model if it beats the heuristic | M | **partial** |
 | P2-6 | Dead constant sensitivity feature removed (feature v4) | S | **done ✅** |
-| P2-7 | Health-feature look-ahead leak (trailing resting-HR baseline) + `_activityAt` binary search | S–M | open |
+| P2-7 | Health-feature look-ahead leak (trailing resting-HR baseline) + `_activityAt` binary search | S–M | **done ✅** |
 | P2-8 | Garmin: real delta (consecutive distinct timestamps) + plumb display unit instead of hardcoded mmol | S | open |
-| P2-9 | Report providers `ref.watch` the repository (demo-mode toggle rebuilds); re-scan pending confirmations on new CGM | S | open |
+| P2-9 | Report providers `ref.watch` the repository (demo-mode toggle rebuilds); re-scan pending confirmations on new CGM | S | **done ✅** |
 | P2-10 | Clarke grid: zone B/C/D/E reference tests ✅ · optional: switch to Parkes/consensus grid | M | **partial** |
 | P2-11 | Panel parser quirks (%DV, kJ/kcal split, EU Salt, ml servings) + LLM-gate fix → §5-1/2 and §5-7 | M | open |
 | P2-12 | Split `providers.dart` + `PersistedStateNotifier` base → §3.A | L | open |
@@ -297,7 +297,7 @@ and in the same file, **fail the build if any Kotlin file imports
   `requestStatusJson` returning the *previous* snapshot) slot into the first PR
   touching `PumpBridge.kt` — before real-pump testing.
 
-### 3.J Dependency & dead-code hygiene (S — Phase 0)
+### 3.J Dependency & dead-code hygiene (S — Phase 0) — **done ✅**
 
 Remove unused deps (`riverpod_annotation`, `freezed`/`freezed_annotation`,
 `json_serializable`); delete or wire `NightscoutClient.uploadTreatments` (declared,
@@ -312,6 +312,25 @@ alert decision-core tests (§3.C-1) → provider-module tests (post-§3.A) →
 `architecture_test.dart` (§3.G) → widget tests only for the 3–4 screens with real
 widget-layer logic (bolus sheet, quick-log); the `pumpDemoApp` integration harness
 covers the rest well.
+
+### 3.L Code-health pass (2026-07-06 survey — tasks 101–115)
+
+A second structural survey (after the §3 review) found the debt below; it is tracked
+as backlog tasks labelled `code-health` rather than roadmap sections. Themes:
+
+- **Safety-critical testability:** split `BolusAdvisor.advise()` into a pure compute
+  core + presenter (TASK-101); unit tests for the untested pure modules
+  `carb_math`/`event_detectors` (TASK-109) and the Kotlin
+  `PumpHistoryMapper`/`PumpProfileMapper` (TASK-110); extract `PumpCommHandler`'s
+  history-range/profile-read state machines (TASK-114).
+- **Single source of truth:** shared asleep-window policy (TASK-102), centralized
+  clinical threshold constants (TASK-103), `Mgdl.inUnit()`/delta helpers (TASK-104),
+  one TIR band decomposition (TASK-105), typed app-flag keys + onboarding gate
+  (TASK-106), cross-language string contracts with contract tests (TASK-111).
+- **Dedupe & infrastructure:** UI helper sweep — stat tiles, trend arrows, glucose
+  colours, HH:MM, chart axes (TASK-107); shared test fixtures under `test/support/`
+  (TASK-108); Garmin shared background-app base (TASK-112); stronger analyzer lints
+  (TASK-113); small native/Garmin hygiene (TASK-115).
 
 ### What NOT to change
 
@@ -629,13 +648,13 @@ Ordered by safety value; items 1–3 are pure Dart and land before any hardware
 session; 4 lands before on-device accuracy measurement; 5–6 fold into the 2-1
 hardware session.
 
-1. **Validate the LLM's numbers** (highest priority — dosing safety). In the
+1. **Validate the LLM's numbers** (highest priority — dosing safety) — **done ✅**. In the
    parser, not the prompt: hard bounds (macros 0–100 g/100 g, sodium ≤5000 mg,
    energy ≤4000 kJ/100 g, serving 1–1000 g, servings/pack 1–100 — out-of-range →
    null); cross-field checks (sugars ≤ carbs; per-serve ≈ per-100g×serving/100
    within ~25%, else keep per-100g + serving and null per-serve); keep the
    all-macros-empty rejection.
-2. **OCR-grounding check** (anti-hallucination + injection guard): accept an LLM
+2. **OCR-grounding check** (anti-hallucination + injection guard) — **done ✅**: accept an LLM
    value only if the number literally appears in the OCR text (± comma/rounding).
    Post-parse filter in `PanelScanService` so it applies to any model.
 3. **Fix the confidence comparison**: completeness-scored confidence lets a
@@ -678,12 +697,12 @@ hardware session.
 - **First-run polish for real hardware** (S–M, 🔌): pairing UX, permission flows,
   Health Connect setup, "no data yet" states.
 - **Git remote + push** (S): CI + GitHub Pages workflows exist but nothing is
-  pushed.
+  pushed. — **done ✅**
 - **Golden/screenshot tests** (M): catch UI regressions; the screenshot harness
   exists.
 - **Release path** (M, 🔌): signing, Play internal track vs sideload-only.
 - **User-guide privacy note** (S): BG/IOB transit the Garmin Connect app (may sync
-  to Garmin's cloud per its policy).
+  to Garmin's cloud per its policy). — **done ✅**
 
 ---
 
