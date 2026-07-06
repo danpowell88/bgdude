@@ -9,6 +9,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../analytics/band_coverage.dart';
 import '../analytics/bolus_advisor.dart';
 import '../analytics/context_builder.dart';
 import '../analytics/insulin_math.dart';
@@ -730,6 +731,19 @@ final postMealMovementProvider =
 });
 
 /// Therapy report (learned daily sensitivity trend via Autotune) for the range.
+/// TASK-56: rolling 7-day forecast-band coverage (how often the actual reading landed inside
+/// the predicted band). Keyed off the live state so it refreshes as new readings reconcile.
+final bandCoverageProvider = FutureProvider<BandCoverage>((ref) async {
+  ref.watch(livePredictionStateProvider); // refresh trigger as new readings flow in
+  final repo = ref.watch(historyRepositoryProvider);
+  final now = DateTime.now();
+  final preds = await repo.predictions(now.subtract(const Duration(days: 7)), now);
+  return computeBandCoverage([
+    for (final p in preds)
+      (actual: p.actualMgdl, lower: p.lowerMgdl, upper: p.upperMgdl),
+  ]);
+});
+
 final therapyReportProvider = FutureProvider<TherapyReport>((ref) async {
   final range = ref.watch(reportRangeProvider);
   final repo = ref.watch(historyRepositoryProvider);

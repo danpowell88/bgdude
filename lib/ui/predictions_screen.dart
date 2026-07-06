@@ -54,7 +54,13 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Forecast', style: Theme.of(context).textTheme.titleMedium),
+        Row(
+          children: [
+            Text('Forecast', style: Theme.of(context).textTheme.titleMedium),
+            const Spacer(),
+            const _BandCoverageChip(),
+          ],
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -164,6 +170,31 @@ class _HorizonCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// TASK-56: a small trust chip — how often the actual reading landed inside the forecast
+/// band over the last 7 days. Hidden until enough predictions have reconciled.
+class _BandCoverageChip extends ConsumerWidget {
+  const _BandCoverageChip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final coverage = ref.watch(bandCoverageProvider).valueOrNull;
+    if (coverage == null || !coverage.hasData || coverage.total < 5) {
+      return const SizedBox.shrink();
+    }
+    final cs = Theme.of(context).colorScheme;
+    return Tooltip(
+      message:
+          'The forecast band caught ${coverage.covered} of your last ${coverage.total} '
+          'reconciled readings (past 7 days).',
+      child: Chip(
+        visualDensity: VisualDensity.compact,
+        avatar: Icon(Icons.verified_outlined, size: 16, color: cs.primary),
+        label: Text('Band ${(coverage.fraction * 100).round()}%'),
       ),
     );
   }
