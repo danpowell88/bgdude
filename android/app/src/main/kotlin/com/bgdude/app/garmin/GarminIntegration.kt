@@ -1,6 +1,7 @@
 package com.bgdude.app.garmin
 
 import android.content.Context
+import android.util.Log
 import org.json.JSONObject
 
 /**
@@ -10,6 +11,8 @@ import org.json.JSONObject
  * the pump code stays watch-agnostic.
  */
 object GarminIntegration {
+
+    private const val TAG = "GarminIntegration"
 
     private var sender: GarminSender? = null
     private var lastBg: Int = -1
@@ -50,8 +53,10 @@ object GarminIntegration {
                 payload["reservoir"] = json.optDouble("reservoirUnits")
             }
             s.send(payload)
-        } catch (_: Throwable) {
-            // Malformed snapshot — skip; never destabilise the pump path.
+        } catch (t: Throwable) {
+            // Malformed snapshot — skip; never destabilise the pump path, but leave a
+            // trace so a stopped watch feed is diagnosable.
+            Log.i(TAG, "Skipped malformed snapshot for the watch", t)
         }
     }
 

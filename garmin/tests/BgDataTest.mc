@@ -12,7 +12,7 @@ import Toybox.Time;
 //! Build + run (from garmin/):
 //!   monkeyc -f test.jungle -d fenix7 --unit-test -o bin/test.prg -y developer_key.der
 //!   monkeydo bin/test.prg fenix7 -t
-//! or use tools/run_garmin_tests.ps1 / .sh. See README "Functional tests".
+//! or use garmin/tools/run_tests.ps1 / .sh. See README "Functional tests".
 
 //! Persist a full snapshot the way the phone would, then let BgData read it back.
 function seed(bg as Number or Null, unit as String, trend as String,

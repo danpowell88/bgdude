@@ -3,10 +3,10 @@ id: TASK-115
 title: >-
   Native/Garmin hygiene: log the swallowed snapshot catch; fix stale test-runner
   reference
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:57'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-06 13:14'
 labels:
   - code-health
   - cleanup
@@ -31,8 +31,8 @@ ordinal: 109900
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The catch logs at info level with the throwable (does not destabilise the pump path)
-- [ ] #2 BgDataTest.mc comment points at garmin/tools/run_tests.ps1 / .sh
+- [x] #1 The catch logs at info level with the throwable (does not destabilise the pump path)
+- [x] #2 BgDataTest.mc comment points at garmin/tools/run_tests.ps1 / .sh
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -49,4 +49,6 @@ ordinal: 109900
 - Source: code-health survey 2026-07-06 (test findings 8, 9)
 - Effort: S
 - Where: android/.../garmin/GarminIntegration.kt:53, garmin/tests/BgDataTest.mc:15
+
+Implemented. GarminIntegration.kt: the bare snapshot catch now logs Log.i(TAG, ..., t) with the throwable (added a TAG const + android.util.Log import) so a stopped watch feed is diagnosable; still swallows to never destabilise the pump path (AC#1). BgDataTest.mc:15 comment now points at garmin/tools/run_tests.ps1 / .sh (verified both exist) (AC#2). gradlew :app:testDebugUnitTest green; APK builds.
 <!-- SECTION:NOTES:END -->
