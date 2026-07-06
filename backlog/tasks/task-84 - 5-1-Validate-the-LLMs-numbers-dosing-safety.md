@@ -1,10 +1,10 @@
 ---
 id: TASK-84
 title: 5-1 Validate the LLM's numbers (dosing safety)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 04:34'
 labels:
   - roadmap
   - §5

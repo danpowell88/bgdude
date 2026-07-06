@@ -48,4 +48,44 @@ void main() {
     expect(llm.available, isFalse);
     expect(await llm.extract('anything'), isNull);
   });
+
+  test('5-1: out-of-range macro is nulled (per-100g > 100)', () {
+    // 900 g carbs / 100 g is impossible; grounded (900 is in the text) but out of bounds.
+    final p = parsePanelLlmJson(
+        '{"carbs":{"per_100g":900},"fat":{"per_100g":5}}',
+        rawText: 'carbs 900 fat 5')!;
+    expect(p.carbs.per100g, isNull);
+    expect(p.fat.per100g, 5);
+  });
+
+  test('5-1: sugars cannot exceed carbs', () {
+    final p = parsePanelLlmJson(
+        '{"carbs":{"per_100g":40},"sugars":{"per_100g":90}}',
+        rawText: 'carbs 40 sugars 90')!;
+    expect(p.carbs.per100g, 40);
+    expect(p.sugars.per100g, isNull); // 90 > 40 → dropped
+  });
+
+  test('5-1: inconsistent per-serve vs per-100g×serving is dropped', () {
+    // serving 30 g, per-100g 50 → expected per-serve ≈ 15; the LLM said 40 (>25% off).
+    final p = parsePanelLlmJson(
+        '{"serving_size_g":30,"carbs":{"per_serve":40,"per_100g":50}}',
+        rawText: 'serving 30 g carbs 40 per serve 50 per 100')!;
+    expect(p.carbs.per100g, 50);
+    expect(p.carbs.perServe, isNull);
+  });
+
+  test('5-2: an ungrounded number (not on the label) is rejected', () {
+    // The label text mentions fat 5 but no 64 — the carbs value is a hallucination.
+    final p = parsePanelLlmJson(
+        '{"carbs":{"per_100g":64},"fat":{"per_100g":5}}',
+        rawText: 'total fat 5 g per 100 g')!;
+    expect(p.carbs.per100g, isNull);
+    expect(p.fat.per100g, 5);
+  });
+
+  test('5-2: grounding is skipped when there is no OCR text to check', () {
+    final p = parsePanelLlmJson('{"carbs":{"per_100g":64}}', rawText: '')!;
+    expect(p.carbs.per100g, 64);
+  });
 }

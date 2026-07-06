@@ -11,6 +11,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'nutrition_panel.dart';
 
@@ -82,7 +83,7 @@ PanelNutrition? parsePanelLlmJson(String response, {String rawText = ''}) {
     return const PanelValue();
   }
 
-  final panel = PanelNutrition(
+  final raw = PanelNutrition(
     servingSizeG: _num(m['serving_size_g']),
     servingsPerPackage: _num(m['servings_per_package']),
     carbs: pv('carbs'),
@@ -95,10 +96,85 @@ PanelNutrition? parsePanelLlmJson(String response, {String rawText = ''}) {
     rawText: rawText,
     source: 'Label scan (AI)',
   );
+  // 5-1 (hard bounds + cross-field) and 5-2 (OCR grounding): an on-device LLM can
+  // return numbers that aren't on the label; these drive carb dosing, so scrub before use.
+  final panel = validatePanel(raw, rawText);
   if (panel.carbs.isEmpty && panel.fat.isEmpty && panel.protein.isEmpty) {
     return null;
   }
   return panel;
+}
+
+/// Extract every numeric token from OCR/label text (comma or dot decimals).
+List<double> _numbersIn(String text) => RegExp(r'\d+(?:[.,]\d+)?')
+    .allMatches(text)
+    .map((mm) => double.tryParse(mm.group(0)!.replaceAll(',', '.')))
+    .whereType<double>()
+    .toList();
+
+/// Validate a parsed panel (5-1) and ground it against the label text (5-2). Returns a
+/// copy with implausible or ungrounded values nulled. Pure and model-agnostic (given the
+/// raw text), so it applies to any source, not just the LLM.
+PanelNutrition validatePanel(PanelNutrition p, String rawText) {
+  final nums = _numbersIn(rawText);
+
+  // 5-2 grounding: keep a value only if a matching number appears in the label text
+  // (± comma / rounding). Skipped when there's no text to check against.
+  bool grounded(double v) =>
+      nums.isEmpty ||
+      nums.any((n) => (n - v).abs() <= 0.1 || n.round() == v.round());
+
+  double? ok(double? v, {required double lo, required double hi}) {
+    if (v == null || v.isNaN || v < lo || v > hi) return null; // 5-1 hard bounds
+    if (!grounded(v)) return null; // 5-2 grounding
+    return v;
+  }
+
+  final servingSizeG = ok(p.servingSizeG, lo: 1, hi: 1000);
+
+  // 5-1 per-serve consistency: if both scales + a serving size are present but disagree
+  // by >25%, the per-serve figure is untrustworthy — drop it, keep per-100g + serving.
+  PanelValue val(PanelValue x, {required double per100Max, required double serveMax}) {
+    final per100 = ok(x.per100g, lo: 0, hi: per100Max);
+    var serve = ok(x.perServe, lo: 0, hi: serveMax);
+    if (per100 != null && serve != null && servingSizeG != null) {
+      final expected = per100 * servingSizeG / 100.0;
+      final denom = math.max(serve.abs(), expected.abs());
+      if (denom > 0 && (serve - expected).abs() / denom > 0.25) serve = null;
+    }
+    return PanelValue(perServe: serve, per100g: per100);
+  }
+
+  final carbs = val(p.carbs, per100Max: 100, serveMax: 1000);
+  var sugars = val(p.sugars, per100Max: 100, serveMax: 1000);
+  final fat = val(p.fat, per100Max: 100, serveMax: 1000);
+  final protein = val(p.protein, per100Max: 100, serveMax: 1000);
+  final fibre = val(p.fibre, per100Max: 100, serveMax: 1000);
+  final energy = val(p.energyKj, per100Max: 4000, serveMax: 20000);
+  final sodium = val(p.sodiumMg, per100Max: 5000, serveMax: 5000);
+
+  // 5-1 cross-field: sugars can never exceed carbs (per matching scale). Drop the
+  // implausible sugar value rather than trust it.
+  double? capSugar(double? s, double? c) =>
+      (s != null && c != null && s > c + 1e-6) ? null : s;
+  sugars = PanelValue(
+    perServe: capSugar(sugars.perServe, carbs.perServe),
+    per100g: capSugar(sugars.per100g, carbs.per100g),
+  );
+
+  return PanelNutrition(
+    servingSizeG: servingSizeG,
+    servingsPerPackage: ok(p.servingsPerPackage, lo: 1, hi: 100),
+    carbs: carbs,
+    sugars: sugars,
+    fat: fat,
+    protein: protein,
+    energyKj: energy,
+    sodiumMg: sodium,
+    fibre: fibre,
+    rawText: p.rawText,
+    source: p.source,
+  );
 }
 
 double? _num(Object? v) {
