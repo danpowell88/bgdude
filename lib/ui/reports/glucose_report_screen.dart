@@ -4,10 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../analytics/metrics.dart';
 import '../../core/units.dart';
+import '../../core/time_format.dart';
 import '../../reports/clinic_prep.dart';
 import '../../reports/glucose_report.dart';
 import '../../reports/report_exporter.dart';
 import '../../state/providers.dart';
+import '../widgets/common.dart';
+import '../widgets/glucose_colors.dart';
+import '../widgets/chart_axis.dart';
 import 'report_range_picker.dart';
 
 /// The Glucose report: AGP, time-in-range, key metrics, and episodes over the selected
@@ -159,28 +163,11 @@ class _MetricsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _Metric(label: 'Mean', value: '${Mgdl(m.meanMgdl).display(unit)} ${unit.label}'),
-        _Metric(label: 'GMI', value: '${m.gmi.toStringAsFixed(1)}%'),
-        _Metric(label: 'CV', value: '${m.cvPercent.toStringAsFixed(0)}%'),
-        _Metric(label: 'TIR', value: '${(m.timeInRange * 100).round()}%'),
+        StatTile(variant: StatVariant.metric, label: 'Mean', value: '${Mgdl(m.meanMgdl).display(unit)} ${unit.label}'),
+        StatTile(variant: StatVariant.metric, label: 'GMI', value: '${m.gmi.toStringAsFixed(1)}%'),
+        StatTile(variant: StatVariant.metric, label: 'CV', value: '${m.cvPercent.toStringAsFixed(0)}%'),
+        StatTile(variant: StatVariant.metric, label: 'TIR', value: '${(m.timeInRange * 100).round()}%'),
       ],
-    );
-  }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
-  final String label;
-  final String value;
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(value, style: Theme.of(context).textTheme.titleLarge),
-          Text(label, style: Theme.of(context).textTheme.labelSmall),
-        ],
-      ),
     );
   }
 }
@@ -201,9 +188,9 @@ class _RiskCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                _Metric(label: 'GRI', value: m.gri.round().toString()),
-                _Metric(label: 'LBGI', value: m.lbgi.toStringAsFixed(1)),
-                _Metric(label: 'HBGI', value: m.hbgi.toStringAsFixed(1)),
+                StatTile(variant: StatVariant.metric, label: 'GRI', value: m.gri.round().toString()),
+                StatTile(variant: StatVariant.metric, label: 'LBGI', value: m.lbgi.toStringAsFixed(1)),
+                StatTile(variant: StatVariant.metric, label: 'HBGI', value: m.hbgi.toStringAsFixed(1)),
               ],
             ),
             const SizedBox(height: 6),
@@ -228,11 +215,11 @@ class _TirBar extends StatelessWidget {
     final b = m.bands;
     final inRange = b.inRange;
     final segments = <(double, Color)>[
-      (b.veryLow, Colors.red.shade900),
-      (b.low, Colors.red.shade400),
-      (b.inRange, Colors.green.shade500),
-      (b.high, Colors.orange.shade400),
-      (b.veryHigh, Colors.orange.shade800),
+      (b.veryLow, GlucoseColors.veryLowBand),
+      (b.low, GlucoseColors.lowBand),
+      (b.inRange, GlucoseColors.inRangeBand),
+      (b.high, GlucoseColors.highBand),
+      (b.veryHigh, GlucoseColors.veryHighBand),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,23 +293,22 @@ class _AgpChart extends StatelessWidget {
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
+            sideTitles: numericSideTitles(
               reservedSize: 34,
-              getTitlesWidget: (v, meta) => Text(v.toStringAsFixed(0),
-                  style: const TextStyle(fontSize: 9)),
+              clipEdges: false,
+              format: (v) => v.toStringAsFixed(0),
             ),
           ),
           bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
+            sideTitles: numericSideTitles(
+              reservedSize: 22,
               interval: 6,
-              getTitlesWidget: (v, meta) => Text('${v.toInt()}h',
-                  style: const TextStyle(fontSize: 9)),
+              clipEdges: false,
+              format: (v) => '${v.toInt()}h',
             ),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: hiddenAxis,
+          rightTitles: hiddenAxis,
         ),
         rangeAnnotations: RangeAnnotations(horizontalRangeAnnotations: [
           HorizontalRangeAnnotation(
@@ -368,19 +354,17 @@ class _Episodes extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               leading: Icon(
                 e.isLow ? Icons.arrow_downward : Icons.arrow_upward,
-                color: e.isLow ? Colors.red : Colors.orange,
+                color: e.isLow ? GlucoseColors.low : GlucoseColors.high,
               ),
               title: Text(
                   '${e.isLow ? 'Low' : 'High'} to ${Mgdl(e.extremeMgdl).display(unit)} ${unit.label}'),
               subtitle: Text(
-                  '${_fmt(e.start)} · ${e.duration.inMinutes} min'),
+                  '${formatShortDateTime(e.start)} · ${e.duration.inMinutes} min'),
             ),
       ],
     );
   }
 
-  static String _fmt(DateTime d) =>
-      '${d.month}/${d.day} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
 class _Banner extends StatelessWidget {

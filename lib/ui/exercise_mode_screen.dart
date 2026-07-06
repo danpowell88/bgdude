@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/time_format.dart';
 import '../core/units.dart';
 import '../insights/exercise_mode.dart';
 import '../insights/workout_classifier.dart';
@@ -141,7 +142,7 @@ class _ActiveCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium),
             ]),
             const SizedBox(height: 8),
-            Text('Low alerts lead earlier until ${_fmt(plan.effectEnd)} '
+            Text('Low alerts lead earlier until ${formatHhmm(plan.effectEnd)} '
                 '(session + recovery tail).'),
             const SizedBox(height: 12),
             OutlinedButton(onPressed: onEnd, child: const Text('End exercise mode')),
@@ -151,8 +152,6 @@ class _ActiveCard extends StatelessWidget {
     );
   }
 
-  static String _fmt(DateTime t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 }
 
 class _PrepCard extends StatelessWidget {

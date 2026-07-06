@@ -13,6 +13,7 @@ import '../analytics/carb_math.dart';
 import '../analytics/insulin_math.dart';
 import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
+import '../core/time_format.dart';
 import '../core/units.dart';
 import '../feedback/annotations.dart';
 import '../ml/event_detectors.dart';
@@ -198,8 +199,8 @@ class ReadingExplainer {
     final endBg = _bgAt(window, at);
     final riseText = (startBg != null && endBg != null && endBg > startBg)
         ? 'Glucose rose ~${_delta(endBg - startBg)} between '
-            '${_hhmm(first.time)} and ${_hhmm(at)}'
-        : 'Glucose rose steadily from ${_hhmm(first.time)}';
+            '${formatHhmm(first.time)} and ${formatHhmm(at)}'
+        : 'Glucose rose steadily from ${formatHhmm(first.time)}';
 
     return Explanation(
       kind: ExplanationKind.missedCarbs,
@@ -424,7 +425,7 @@ class ReadingExplainer {
       kind: ExplanationKind.insulinStacking,
       title: ExplanationKind.insulinStacking.label,
       detail: '${recent.length} boluses totalling ${totalUnits.toStringAsFixed(1)} U '
-          'between ${_hhmm(recent.first.time)} and ${_hhmm(recent.last.time)} '
+          'between ${formatHhmm(recent.first.time)} and ${formatHhmm(recent.last.time)} '
           'overlapped: ${iob.units.toStringAsFixed(1)} U was still active 30 min '
           'before this low — enough to lower glucose another '
           '~${_delta(potentialDrop)}.',
@@ -481,7 +482,7 @@ class ReadingExplainer {
       best = Explanation(
         kind: ExplanationKind.underbolusedMeal,
         title: ExplanationKind.underbolusedMeal.label,
-        detail: 'You logged ${entry.grams.round()} g at ${_hhmm(entry.time)}, '
+        detail: 'You logged ${entry.grams.round()} g at ${formatHhmm(entry.time)}, '
             'but glucose rose ${_delta(observedRise)} — about '
             '${_delta(excess)} more than the model expects for that entry. '
             'Roughly ${extraGrams.round()} g looks uncovered (underestimated '
@@ -505,7 +506,7 @@ class ReadingExplainer {
   Explanation _fallback(DateTime at) => Explanation(
         kind: ExplanationKind.unexplained,
         title: ExplanationKind.unexplained.label,
-        detail: 'Nothing in the pump or CGM history around ${_hhmm(at)} stands '
+        detail: 'Nothing in the pump or CGM history around ${formatHhmm(at)} stands '
             'out. Possible drivers the engine cannot see: stress, hormones, a '
             'slowly failing set, or sensor noise.',
         score: fallbackScore,
@@ -565,9 +566,6 @@ class ReadingExplainer {
 
   String _annotationId(ExplanationKind kind, DateTime at) =>
       'explain-${kind.name}-${at.millisecondsSinceEpoch}';
-
-  String _hhmm(DateTime t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
   String _hoursText(Duration d) {
     final h = d.inMinutes / 60;

@@ -28,6 +28,19 @@ enum GlucoseTrend {
         GlucoseTrend.doubleDown => -3.5,
         GlucoseTrend.unknown => 0.0,
       };
+
+  /// Unicode trend-arrow glyph (empty for unknown). Single source shared by the widget
+  /// formatter and the Pump screen (TASK-107).
+  String get arrow => switch (this) {
+        GlucoseTrend.doubleUp => '⇈',
+        GlucoseTrend.singleUp => '↑',
+        GlucoseTrend.fortyFiveUp => '↗',
+        GlucoseTrend.flat => '→',
+        GlucoseTrend.fortyFiveDown => '↘',
+        GlucoseTrend.singleDown => '↓',
+        GlucoseTrend.doubleDown => '⇊',
+        GlucoseTrend.unknown => '',
+      };
 }
 
 /// A single CGM reading.

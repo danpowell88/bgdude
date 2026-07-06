@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../reports/therapy_report.dart';
 import '../../state/providers.dart';
 import '../basal_recommendations_screen.dart';
+import '../widgets/chart_axis.dart';
 import 'report_range_picker.dart';
 
 /// The Therapy report: learned sensitivity drift (Autotune trend), the time-of-day
@@ -134,19 +135,18 @@ class _TrendChart extends StatelessWidget {
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
+            sideTitles: numericSideTitles(
               reservedSize: 30,
               interval: 0.2,
-              getTitlesWidget: (v, _) =>
-                  Text(v.toStringAsFixed(1), style: const TextStyle(fontSize: 9)),
+              clipEdges: false,
+              format: (v) => v.toStringAsFixed(1),
             ),
           ),
           bottomTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              hiddenAxis,
+          topTitles: hiddenAxis,
           rightTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              hiddenAxis,
         ),
         extraLinesData: ExtraLinesData(horizontalLines: [
           HorizontalLine(y: 1.0, color: cs.outline, strokeWidth: 1, dashArray: [4, 4]),

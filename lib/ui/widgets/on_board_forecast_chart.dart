@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'chart_axis.dart';
 import '../../analytics/carb_math.dart';
 import '../../analytics/insulin_math.dart';
 import '../../state/providers.dart';
@@ -91,37 +92,27 @@ class OnBoardForecastChart extends ConsumerWidget {
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
             topTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                hiddenAxis,
             leftTitles: AxisTitles(
               axisNameSize: 14,
               axisNameWidget: const Text('U · U/h',
                   style: TextStyle(fontSize: 9, color: _iobColor)),
-              sideTitles: SideTitles(
-                showTitles: true,
+              sideTitles: numericSideTitles(
                 reservedSize: 26,
                 interval: maxInsulin / 2,
-                getTitlesWidget: (v, meta) =>
-                    (v <= meta.min || v >= meta.max)
-                        ? const SizedBox.shrink()
-                        : Text(v.toStringAsFixed(1),
-                            style: TextStyle(
-                                fontSize: 9, color: cs.onSurfaceVariant)),
+                color: cs.onSurfaceVariant,
+                format: (v) => v.toStringAsFixed(1),
               ),
             ),
             rightTitles: AxisTitles(
               axisNameSize: 14,
               axisNameWidget: const Text('g',
                   style: TextStyle(fontSize: 9, color: _cobColor)),
-              sideTitles: SideTitles(
-                showTitles: true,
+              sideTitles: numericSideTitles(
                 reservedSize: 26,
                 interval: maxInsulin / 2,
-                getTitlesWidget: (v, meta) =>
-                    (v <= meta.min || v >= meta.max)
-                        ? const SizedBox.shrink()
-                        : Text((v / carbToInsulin).round().toString(),
-                            style: TextStyle(
-                                fontSize: 9, color: cs.onSurfaceVariant)),
+                color: cs.onSurfaceVariant,
+                format: (v) => (v / carbToInsulin).round().toString(),
               ),
             ),
             bottomTitles: AxisTitles(

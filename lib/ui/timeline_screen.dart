@@ -6,6 +6,7 @@ import '../insights/reading_explainer.dart';
 import '../state/providers.dart';
 import '../timeline/day_event.dart';
 import 'explain_reading_screen.dart';
+import '../core/time_format.dart';
 import '../core/sleep_window.dart';
 
 /// The day "stream": every event from today on one page. The user reviews each and
@@ -72,7 +73,7 @@ class TimelineEventCard extends ConsumerWidget {
                       Text(event.title,
                           style: Theme.of(context).textTheme.titleSmall),
                       Text(
-                        '${_hm(event.time)} · ${event.type.label}',
+                        '${formatHhmm(event.time)} · ${event.type.label}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: cs.outline),
                       ),
@@ -196,8 +197,6 @@ class TimelineEventCard extends ConsumerWidget {
     return null;
   }
 
-  static String _hm(DateTime t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 }
 
 class _DispositionChip extends StatelessWidget {

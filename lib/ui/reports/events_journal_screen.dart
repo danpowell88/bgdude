@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/time_format.dart';
 import '../../reports/events_journal.dart';
 import '../../state/providers.dart';
+import '../widgets/glucose_colors.dart';
 import 'report_range_picker.dart';
 
 /// The Events journal: a filterable, newest-first timeline of confirmed events.
@@ -88,7 +90,7 @@ class _EntryTile extends StatelessWidget {
       leading: Icon(_icon(entry.category), color: _color(entry.category, context)),
       title: Text(entry.title),
       subtitle: entry.detail.isEmpty ? null : Text(entry.detail),
-      trailing: Text(_fmt(entry.time),
+      trailing: Text(formatShortDateTime(entry.time),
           style: Theme.of(context).textTheme.bodySmall),
     );
   }
@@ -102,11 +104,9 @@ class _EntryTile extends StatelessWidget {
       };
 
   static Color? _color(JournalCategory c, BuildContext ctx) => switch (c) {
-        JournalCategory.lowEpisode => Colors.red,
-        JournalCategory.highEpisode => Colors.orange,
+        JournalCategory.lowEpisode => GlucoseColors.low,
+        JournalCategory.highEpisode => GlucoseColors.high,
         _ => Theme.of(ctx).colorScheme.outline,
       };
 
-  static String _fmt(DateTime d) =>
-      '${d.month}/${d.day} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }

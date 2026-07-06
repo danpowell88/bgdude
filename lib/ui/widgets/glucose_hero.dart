@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/samples.dart';
 import '../../core/units.dart';
+import 'glucose_colors.dart';
 
 /// The big current-glucose display with a trend arrow and range colouring. Behind the
 /// number sits a subtle sparkline of what glucose has done across the day, so the current
@@ -29,7 +30,7 @@ class GlucoseHero extends StatelessWidget {
     final value = mgdl;
     final color = value == null
         ? Theme.of(context).colorScheme.outline
-        : _rangeColor(value, context);
+        : GlucoseColors.forMgdl(value);
     final display = value == null ? '—' : Mgdl(value).display(unit);
     final staleness = _staleness();
 
@@ -93,11 +94,6 @@ class GlucoseHero extends StatelessWidget {
     return '$mins min ago';
   }
 
-  static Color _rangeColor(double mgdl, BuildContext context) {
-    if (mgdl < GlucoseThresholds.low) return Colors.red;
-    if (mgdl > GlucoseThresholds.high) return Colors.orange;
-    return Colors.green;
-  }
 
   static IconData _trendIcon(GlucoseTrend t) => switch (t) {
         GlucoseTrend.doubleUp => Icons.keyboard_double_arrow_up,

@@ -38,17 +38,9 @@ enum BgRange {
   }
 }
 
-/// Single-character arrow for a CGM trend (empty when unknown).
-String trendArrowChar(GlucoseTrend trend) => switch (trend) {
-      GlucoseTrend.doubleUp => '⇈',
-      GlucoseTrend.singleUp => '↑',
-      GlucoseTrend.fortyFiveUp => '↗',
-      GlucoseTrend.flat => '→',
-      GlucoseTrend.fortyFiveDown => '↘',
-      GlucoseTrend.singleDown => '↓',
-      GlucoseTrend.doubleDown => '⇊',
-      GlucoseTrend.unknown => '',
-    };
+/// Single-character arrow for a CGM trend (empty when unknown). Thin alias over
+/// [GlucoseTrend.arrow] kept for the widget-format call sites.
+String trendArrowChar(GlucoseTrend trend) => trend.arrow;
 
 /// Everything the widget displays, fully formatted.
 class BgWidgetData {

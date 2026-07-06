@@ -10,6 +10,7 @@ import '../pump/pump_snapshot.dart';
 import '../state/providers.dart';
 import 'explain_reading_screen.dart';
 import 'timeline_screen.dart';
+import 'widgets/common.dart';
 import 'widgets/glucose_hero.dart';
 import 'widgets/on_board_forecast_chart.dart';
 import 'widgets/prediction_chart.dart';
@@ -157,13 +158,13 @@ class _Dashboard extends ConsumerWidget {
         Row(
           children: [
             Expanded(
-                child: _StatTile(
+                child: StatTile(variant: StatVariant.card, 
                     label: 'IOB',
                     value: snapshot.iobUnits?.toStringAsFixed(2) ?? '—',
                     suffix: 'U')),
             const SizedBox(width: 12),
             Expanded(
-                child: _StatTile(
+                child: StatTile(variant: StatVariant.card, 
                     label: 'Basal',
                     value: snapshot.basalUnitsPerHour?.toStringAsFixed(2) ?? '—',
                     suffix: 'U/h')),
@@ -173,13 +174,13 @@ class _Dashboard extends ConsumerWidget {
         Row(
           children: [
             Expanded(
-                child: _StatTile(
+                child: StatTile(variant: StatVariant.card, 
                     label: 'Reservoir',
                     value: snapshot.reservoirUnits?.toStringAsFixed(0) ?? '—',
                     suffix: 'U')),
             const SizedBox(width: 12),
             Expanded(
-                child: _StatTile(
+                child: StatTile(variant: StatVariant.card, 
                     label: 'Battery',
                     value: snapshot.batteryPercent?.toString() ?? '—',
                     suffix: '%')),
@@ -282,38 +283,6 @@ class _RescueCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(advice.working.join('  ·  '),
                 style: Theme.of(context).textTheme.bodySmall),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({required this.label, required this.value, required this.suffix});
-  final String label;
-  final String value;
-  final String suffix;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: Theme.of(context).textTheme.labelMedium),
-            const SizedBox(height: 4),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(value, style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(width: 4),
-                Text(suffix, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ),
           ],
         ),
       ),

@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'chart_axis.dart';
 import '../../analytics/predictor.dart';
 import '../../core/units.dart';
 import '../../state/providers.dart';
@@ -112,9 +113,9 @@ class PredictionChart extends ConsumerWidget {
         ),
         titlesData: FlTitlesData(
           topTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              hiddenAxis,
           rightTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              hiddenAxis,
           leftTitles: AxisTitles(
             axisNameSize: 16,
             axisNameWidget: Padding(
@@ -122,19 +123,14 @@ class PredictionChart extends ConsumerWidget {
               child: Text(unit.label,
                   style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
             ),
-            sideTitles: SideTitles(
-              showTitles: true,
-              interval: yInterval,
+            sideTitles: numericSideTitles(
               reservedSize: 30,
-              getTitlesWidget: (v, meta) {
-                if (v <= meta.min || v >= meta.max) return const SizedBox.shrink();
-                return Text(
-                  unit == GlucoseUnit.mmol
-                      ? v.toStringAsFixed(0)
-                      : v.round().toString(),
-                  style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant),
-                );
-              },
+              interval: yInterval,
+              fontSize: 10,
+              color: cs.onSurfaceVariant,
+              format: (v) => unit == GlucoseUnit.mmol
+                  ? v.toStringAsFixed(0)
+                  : v.round().toString(),
             ),
           ),
           bottomTitles: AxisTitles(

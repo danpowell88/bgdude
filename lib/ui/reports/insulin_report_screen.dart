@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../reports/insulin_report.dart';
 import '../../state/providers.dart';
+import '../widgets/common.dart';
+import '../widgets/chart_axis.dart';
 import 'report_range_picker.dart';
 
 /// The Insulin report: daily TDD (basal + bolus) with the split and bolus behaviour.
@@ -49,9 +51,9 @@ class _Body extends StatelessWidget {
       children: [
         Row(
           children: [
-            _Stat(label: 'Avg TDD', value: '${report.avgTdd.toStringAsFixed(1)} U'),
-            _Stat(label: 'Basal', value: '${(report.basalFraction * 100).round()}%'),
-            _Stat(
+            StatTile(variant: StatVariant.metric, label: 'Avg TDD', value: '${report.avgTdd.toStringAsFixed(1)} U'),
+            StatTile(variant: StatVariant.metric, label: 'Basal', value: '${(report.basalFraction * 100).round()}%'),
+            StatTile(variant: StatVariant.metric,
                 label: 'Boluses/day',
                 value: report.bolusesPerDay.toStringAsFixed(1)),
           ],
@@ -97,26 +99,22 @@ class _TddChart extends StatelessWidget {
         titlesData: FlTitlesData(
           show: true,
           topTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              hiddenAxis,
           rightTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              hiddenAxis,
           bottomTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              hiddenAxis,
           // Y-axis: total daily insulin in units.
           leftTitles: AxisTitles(
             axisNameSize: 14,
             axisNameWidget: Text('U/day',
                 style:
                     TextStyle(fontSize: 9, color: cs.onSurfaceVariant)),
-            sideTitles: SideTitles(
-              showTitles: true,
+            sideTitles: numericSideTitles(
               reservedSize: 28,
               interval: (maxTdd / 2).clamp(1, double.infinity),
-              getTitlesWidget: (v, meta) => (v <= meta.min || v >= meta.max)
-                  ? const SizedBox.shrink()
-                  : Text(v.toStringAsFixed(0),
-                      style:
-                          TextStyle(fontSize: 9, color: cs.onSurfaceVariant)),
+              color: cs.onSurfaceVariant,
+              format: (v) => v.toStringAsFixed(0),
             ),
           ),
         ),
@@ -155,19 +153,6 @@ class _Legend extends StatelessWidget {
       dot(cs.tertiary, 'Bolus'),
     ]);
   }
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
-  final String label;
-  final String value;
-  @override
-  Widget build(BuildContext context) => Expanded(
-        child: Column(children: [
-          Text(value, style: Theme.of(context).textTheme.titleLarge),
-          Text(label, style: Theme.of(context).textTheme.labelSmall),
-        ]),
-      );
 }
 
 class _Row extends StatelessWidget {

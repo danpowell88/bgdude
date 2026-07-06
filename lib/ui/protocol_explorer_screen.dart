@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/time_format.dart';
 import '../pump/probe_event.dart';
 import '../pump/pump_snapshot.dart';
 import '../pump/pump_source.dart';
@@ -400,9 +401,7 @@ class _LogCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final tx = event.isTx;
-    final t = event.time;
-    final time =
-        '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}';
+    final time = formatHhmmss(event.time);
     return Card(
       margin: EdgeInsets.zero,
       child: ExpansionTile(

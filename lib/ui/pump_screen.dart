@@ -120,7 +120,7 @@ class _StatusCard extends StatelessWidget {
             _Row(
               'Glucose',
               '${Mgdl(cgm.toDouble()).display(unit)} ${unit.label} '
-                  '${_arrow(snap.cgmTrend)}',
+                  '${(snap.cgmTrend ?? GlucoseTrend.unknown).arrow}',
               emphasize: true,
             ),
           _Row('Insulin on board',
@@ -139,16 +139,6 @@ class _StatusCard extends StatelessWidget {
     );
   }
 
-  static String _arrow(GlucoseTrend? t) => switch (t) {
-        GlucoseTrend.doubleUp => '⇈',
-        GlucoseTrend.singleUp => '↑',
-        GlucoseTrend.fortyFiveUp => '↗',
-        GlucoseTrend.flat => '→',
-        GlucoseTrend.fortyFiveDown => '↘',
-        GlucoseTrend.singleDown => '↓',
-        GlucoseTrend.doubleDown => '⇊',
-        _ => '',
-      };
 
   /// "Off", "Active", or "Active · Sleep" — the mode annotates the on state so the user
   /// sees which target band the loop is steering to.

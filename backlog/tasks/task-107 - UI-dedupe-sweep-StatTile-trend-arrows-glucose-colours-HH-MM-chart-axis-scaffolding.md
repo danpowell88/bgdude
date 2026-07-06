@@ -3,10 +3,10 @@ id: TASK-107
 title: >-
   UI dedupe sweep: StatTile, trend arrows, glucose colours, HH:MM, chart axis
   scaffolding
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:54'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 13:59'
 labels:
   - code-health
   - cleanup
@@ -33,11 +33,11 @@ ordinal: 105100
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 One shared StatTile in ui/widgets/common.dart; the four private variants and _Row deleted
-- [ ] #2 pump_screen imports trendArrowChar; trend mappings consolidated as extensions on GlucoseTrend in core/samples.dart
-- [ ] #3 Shared glucoseColor/band palette keyed off GlucoseThresholds used by hero, TIR bar and journal
-- [ ] #4 Shared formatHhmm/formatShortDateTime utility replaces the 8 hand-rolled copies
-- [ ] #5 Shared chart-axis helper (parameterised formatter + reserved size) used by the 5 charts
+- [x] #1 One shared StatTile in ui/widgets/common.dart; the four private variants and _Row deleted
+- [x] #2 pump_screen imports trendArrowChar; trend mappings consolidated as extensions on GlucoseTrend in core/samples.dart
+- [x] #3 Shared glucoseColor/band palette keyed off GlucoseThresholds used by hero, TIR bar and journal
+- [x] #4 Shared formatHhmm/formatShortDateTime utility replaces the 8 hand-rolled copies
+- [x] #5 Shared chart-axis helper (parameterised formatter + reserved size) used by the 5 charts
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -55,4 +55,6 @@ ordinal: 105100
 - Source: code-health survey 2026-07-06 (lib findings 6, 7, 8, 9, 11)
 - Effort: M
 - Where: see per-item file lists in the description
+
+Implemented all 5 sub-passes. AC#4: lib/core/time_format.dart (formatHhmm/formatHhmmss/formatShortDateTime) replaced the hand-rolled padLeft copies in reading_explainer, event_builder, timeline_screen, exercise_mode, protocol_explorer, events_journal, glucose_report (report_exporter._fmtDate left — single-file full-date ISO, not a cross-file dup). AC#2: GlucoseTrend.arrow getter in core/samples.dart; bg_widget_format.trendArrowChar delegates, pump_screen uses .arrow. AC#3: lib/ui/widgets/glucose_colors.dart (forMgdl 3-way + 5-band palette) used by hero, TIR bar, journal. AC#1: lib/ui/widgets/common.dart StatTile with StatVariant.{card,panel,metric} replaces home _StatTile, your_day _Stat, insulin _Stat, glucose _Metric (kept insulin _Row — spaceBetween layout distinct from KvRow's fixed-width). AC#5: lib/ui/widgets/chart_axis.dart (hiddenAxis + numericSideTitles) used by all 5 charts. Tests: test/ui_helpers_test.dart (colour thresholds + formatters). flutter analyze clean, 527 unit tests green, reports integration test green on emulator. NOTE: two PRE-EXISTING integration failures in app_test (predict tab / therapy editor) fail on the committed state without these changes too — not caused by this task; fixing separately.
 <!-- SECTION:NOTES:END -->

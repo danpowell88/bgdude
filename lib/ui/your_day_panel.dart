@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/units.dart';
 import '../state/providers.dart';
+import 'widgets/common.dart';
 
 /// The "Your Day" panel: at-a-glance current stats plus a plain-language narrative and
 /// actionable suggestions/trends for the day. Sits at the top of the Today tab.
@@ -37,14 +38,14 @@ class YourDayPanel extends ConsumerWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                _Stat(
+                StatTile(
                     label: 'Glucose',
                     value: bg == null ? '—' : Mgdl(bg.toDouble()).display(unit)),
-                _Stat(
+                StatTile(
                     label: 'IOB',
                     value: snap?.iobUnits?.toStringAsFixed(1) ?? '—',
                     suffix: 'U'),
-                _Stat(
+                StatTile(
                     label: 'TIR today',
                     value: metrics.readingCount == 0
                         ? '—'
@@ -73,30 +74,3 @@ class YourDayPanel extends ConsumerWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value, this.suffix = ''});
-  final String label;
-  final String value;
-  final String suffix;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelSmall),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(value, style: Theme.of(context).textTheme.titleLarge),
-              if (suffix.isNotEmpty)
-                Text(' $suffix', style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}

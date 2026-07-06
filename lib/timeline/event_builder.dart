@@ -5,6 +5,7 @@
 library;
 
 import '../core/samples.dart';
+import '../core/time_format.dart';
 import '../core/units.dart';
 import '../ml/event_detectors.dart';
 import '../state/day_data.dart';
@@ -169,7 +170,7 @@ class EventBuilder {
         time: start,
         endTime: end,
         title: 'High — peak ${g(peak)}',
-        detail: 'Above range from ${_hm(start)} to ${_hm(end)}',
+        detail: 'Above range from ${formatHhmm(start)} to ${formatHhmm(end)}',
         mgdl: peak,
         explainable: true,
       )),
@@ -185,7 +186,7 @@ class EventBuilder {
         time: start,
         endTime: end,
         title: 'Low — nadir ${g(nadir)}',
-        detail: 'Below range from ${_hm(start)} to ${_hm(end)}',
+        detail: 'Below range from ${formatHhmm(start)} to ${formatHhmm(end)}',
         mgdl: nadir,
         explainable: true,
       )),
@@ -225,6 +226,4 @@ class EventBuilder {
   }
 
 
-  static String _hm(DateTime t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 }
