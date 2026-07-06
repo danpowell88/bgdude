@@ -1801,6 +1801,9 @@ class AppJobs {
       await _ref.read(historyRepositoryProvider).reconcilePredictions(DateTime.now());
       await updateRecentForecastError();
     });
+    // TASK-62: keep the DB lean — prune stale predictions/health (CGM + insulin kept).
+    await job('pruneOldData',
+        () => _ref.read(historyRepositoryProvider).pruneOldData(DateTime.now()));
     await job('maybeShowMorningSummary', maybeShowMorningSummary);
     await job('checkDeviceReminders', checkDeviceReminders);
     if (!_ref.read(devModeProvider)) {

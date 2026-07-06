@@ -84,6 +84,11 @@ abstract interface class HistoryRepository {
   /// using the stored CGM. Returns how many were updated.
   Future<int> reconcilePredictions(DateTime now);
 
+  /// Prune stale rows to keep the DB lean (TASK-62): predictions older than 90 days and
+  /// health samples older than 180 days. Glucose and insulin history (CGM/bolus/carb/basal)
+  /// is the training corpus and is always kept. Returns the number of rows deleted.
+  Future<int> pruneOldData(DateTime now);
+
   /// Earliest CGM timestamp on record (null when empty) — used to decide backfill.
   Future<DateTime?> earliestCgm();
 }
@@ -406,6 +411,19 @@ class DriftHistoryRepository implements HistoryRepository {
   }
 
   @override
+  Future<int> pruneOldData(DateTime now) async {
+    final predCutoff = now.subtract(const Duration(days: 90));
+    final healthCutoff = now.subtract(const Duration(days: 180));
+    final prunedPredictions = await (_db.delete(_db.predictions)
+          ..where((t) => t.madeAt.isSmallerThanValue(predCutoff)))
+        .go();
+    final prunedHealth = await (_db.delete(_db.healthSamples)
+          ..where((t) => t.time.isSmallerThanValue(healthCutoff)))
+        .go();
+    return prunedPredictions + prunedHealth;
+  }
+
+  @override
   Future<DateTime?> earliestCgm() async {
     final row = await (_db.select(_db.cgmReadings)
           ..orderBy([(t) => OrderingTerm(expression: t.time)])
@@ -553,6 +571,16 @@ class InMemoryHistoryRepository implements HistoryRepository {
       updated++;
     }
     return updated;
+  }
+
+  @override
+  Future<int> pruneOldData(DateTime now) async {
+    final predCutoff = now.subtract(const Duration(days: 90));
+    final healthCutoff = now.subtract(const Duration(days: 180));
+    final before = _predictions.length + _health.length;
+    _predictions.removeWhere((p) => p.madeAt.isBefore(predCutoff));
+    _health.removeWhere((h) => h.time.isBefore(healthCutoff));
+    return before - (_predictions.length + _health.length);
   }
 
   @override

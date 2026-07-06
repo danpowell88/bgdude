@@ -4,13 +4,14 @@ title: KvStore behind the DI seam
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 16:24'
 labels:
   - roadmap
   - architecture
   - detail-needed
 milestone: m-6
-dependencies: []
+dependencies:
+  - TASK-35
 priority: medium
 ordinal: 104000
 ---
@@ -57,5 +58,11 @@ author: Claude
 created: 2026-07-06 05:29
 ---
 detail-needed (2026-07-06, goal triage): Depends on §3.A (PersistedStateNotifier) landing first; then a ~40-call-site KvStore seam migration — sequence after the anchor refactor.
+---
+
+author: Claude
+created: 2026-07-06 16:24
+---
+detail-needed (scope + coordination): AC#3 requires removing the static KvStore facade, but it has 68 call sites across 14 files — a pervasive migration. Two constraints make it focused work rather than a quick change: (1) TASK-40 just made lib/ml/ Riverpod-free, and forecaster_service.dart / other ml code call KvStore.* — injecting a keyValueStoreProvider there would re-couple ml/ to Riverpod, so the KeyValueStore interface must be threaded as a PLAIN param into ml/ (not a provider), which needs a small design decision on how ml training gets its store. (2) The demo-override (AC#2) is the same swappable-seam idea as the planned TASK-35 provider split and the TASK-42 background-isolate story — best sequenced with TASK-35 so the notifiers that own KvStore access move behind the DI seam together. Recommend doing this as part of the TASK-35 split with a decided approach for ml/ store access. Interface + Db/Memory impls (AC#1) are easy; the migration + facade removal is the bulk.
 ---
 <!-- COMMENTS:END -->
