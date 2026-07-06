@@ -4,7 +4,6 @@ analyzer:
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
-    - "lib/pump/pigeon/pump_api.g.dart"
   language:
     strict-casts: true
     strict-raw-types: true

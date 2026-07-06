@@ -3,10 +3,10 @@ id: TASK-15
 title: >-
   Replace silent catch(_) with logged catches; do not advance _lastFired on
   failed urgent-low
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 14:47'
 labels:
   - roadmap
   - architecture
@@ -28,9 +28,9 @@ ordinal: 103100
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 No unlogged catch(_) in the swept paths
-- [ ] #2 Failed urgent-low does not advance _lastFired
-- [ ] #3 Per-job startup failures recorded
+- [x] #1 No unlogged catch(_) in the swept paths
+- [x] #2 Failed urgent-low does not advance _lastFired
+- [x] #3 Per-job startup failures recorded
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -50,6 +50,8 @@ ordinal: 103100
 - Effort: S
 - Where: `providers.dart` throughout
 - Roadmap status: open
+
+Resolved by TASK-38, which superset this ticket: (AC#2) the urgent-low path now records the fire only after a successful send (_coolPassed + _markFired) so a failed send retries; (AC#3) runStartup logs each job failure via appLog; (AC#1) the swept alert-send + startup catches now log via the new lib/logging/app_log.dart instead of swallowing. See commit e87be9f.
 <!-- SECTION:NOTES:END -->
 
 ## Comments

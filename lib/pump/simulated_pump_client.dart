@@ -171,4 +171,11 @@ class SimulatedPumpClient implements PumpSource {
     await _errors.close();
     await _probes.close();
   }
+
+  @override
+  Future<List<dynamic>> fetchHistory(
+          {required int fromEpochMs, required int toEpochMs}) async =>
+      // The simulator seeds its history directly into the store, so there is no on-device
+      // pump log to backfill from — an empty result (backfill imports nothing) is correct.
+      const [];
 }

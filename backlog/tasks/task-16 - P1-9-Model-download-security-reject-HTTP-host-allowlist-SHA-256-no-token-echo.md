@@ -4,7 +4,7 @@ title: 'Model-download security (reject HTTP, host allowlist, SHA-256, no token 
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 14:48'
 labels:
   - roadmap
   - security
@@ -60,5 +60,11 @@ author: Claude
 created: 2026-07-06 05:28
 ---
 detail-needed (2026-07-06, goal triage): Needs the concrete model-host allowlist decision (HF/Kaggle exact hosts) + a known-good model URL and its published SHA-256 to verify the integrity flow end-to-end.
+---
+
+author: Claude
+created: 2026-07-06 14:48
+---
+detail-needed (goal triage): AC#1 (reject HTTP), AC#2 (token only to allowlisted hosts) and AC#4 (never log URL/token) are implementable on PanelModelManager.download. But AC#3 (SHA-256 verification) has two unresolved questions: (1) SOURCE OF THE EXPECTED HASH — the model URL is user-provided (Gemma is licence-gated, so there's no bundled manifest of known-good hashes); do we pin hashes for specific recommended models, require the user to paste an expected hash, or drop AC#3? (2) HOW TO VERIFY — flutter_gemma's installModel().fromNetwork(url).install() owns the download + storage internally, so there's no byte stream to hash mid-download and no documented path to the stored file to hash post-install; verifying would mean downloading ourselves and bypassing the plugin's installer. Need a decision on both before implementing.
 ---
 <!-- COMMENTS:END -->

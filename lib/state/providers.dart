@@ -1827,8 +1827,10 @@ class AppJobs {
     final now = DateTime.now();
     final siteChanges = <DateTime>[];
     final events = <PumpEvent>[];
-    final count =
-        await HistoryBackfillService(_ref.read(historyRepositoryProvider)).backfill(
+    final count = await HistoryBackfillService(
+      _ref.read(historyRepositoryProvider),
+      _ref.read(pumpClientProvider),
+    ).backfill(
       from: now.subtract(const Duration(days: 14)),
       to: now,
       onDeviceChange: (kind, at) {

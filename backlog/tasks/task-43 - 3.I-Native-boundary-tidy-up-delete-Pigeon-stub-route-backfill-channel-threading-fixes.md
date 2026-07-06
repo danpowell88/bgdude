@@ -3,10 +3,10 @@ id: TASK-43
 title: >-
   Native boundary tidy-up (delete Pigeon stub, route backfill channel, threading
   fixes)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 14:59'
 labels:
   - roadmap
   - native
@@ -29,9 +29,9 @@ ordinal: 104400
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Pigeon stub + comments removed
-- [ ] #2 Backfill channel routed through PumpClient
-- [ ] #3 MutableSnapshot copied under lock; requestStatusJson returns current snapshot
+- [x] #1 Pigeon stub + comments removed
+- [x] #2 Backfill channel routed through PumpClient
+- [x] #3 MutableSnapshot copied under lock; requestStatusJson returns current snapshot
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -53,6 +53,8 @@ ordinal: 104400
 - Depends on: P1-4
 - Flags: 🔌 hardware
 - Roadmap status: open
+
+Implemented all three. AC#1: removed the stale Pigeon comments in pump_client.dart and the dead lib/pump/pigeon/pump_api.g.dart exclude from analysis_options.yaml (the file never existed). AC#2: fetchHistory is now on the PumpSource interface (PumpClient real impl + SimulatedPumpClient returns [] since the sim seeds history directly); HistoryBackfillService takes a PumpSource and calls source.fetchHistory instead of its own MethodChannel, so the simulator can intercept the backfill. Provider + the routing test updated (test passes a PumpClient bound to the mocked channel). AC#3: MutableSnapshot is now guarded by a snapshotLock — the four BLE-thread write sites (PumpResponseMapper.apply, discovery pumpName/mac, onPumpModel, onJpakeProgress) and a new handler.snapshotJson() read are synchronized, so requestStatusJson (platform thread) hands out a consistent snapshot instead of racing a concurrent write. Deadlock-free: only field writes / toJson run inside the lock, no callbacks or I/O. flutter analyze clean, 532 tests green, gradlew :app:testDebugUnitTest green, debug APK builds.
 <!-- SECTION:NOTES:END -->
 
 ## Comments

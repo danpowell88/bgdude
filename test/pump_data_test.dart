@@ -4,6 +4,7 @@ import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/logging/device_changes.dart';
 import 'package:bgdude/pump/history_backfill.dart';
+import 'package:bgdude/pump/pump_client.dart';
 import 'package:bgdude/pump/pump_events.dart';
 import 'package:bgdude/pump/pump_snapshot.dart';
 import 'package:flutter/services.dart';
@@ -134,7 +135,10 @@ void main() {
       final repo = InMemoryHistoryRepository();
       final deviceChanges = <(DeviceKind, DateTime)>[];
       final events = <PumpEvent>[];
-      final imported = await HistoryBackfillService(repo).backfill(
+      final imported = await HistoryBackfillService(
+        repo,
+        PumpClient(commands: channel),
+      ).backfill(
         from: DateTime(2026, 7, 4),
         to: DateTime(2026, 7, 5),
         onDeviceChange: (k, at) => deviceChanges.add((k, at)),

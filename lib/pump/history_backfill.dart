@@ -15,15 +15,17 @@ import '../core/samples.dart';
 import '../data/history_repository.dart';
 import '../data/kv_store.dart';
 import '../logging/device_changes.dart';
-import 'channels.dart';
 import 'pump_events.dart';
+import 'pump_source.dart';
 
 class HistoryBackfillService {
-  HistoryBackfillService(this._repo, {MethodChannel? commands})
-      : _commands = commands ?? const MethodChannel(PumpChannels.commands);
+  HistoryBackfillService(this._repo, this._source);
 
   final HistoryRepository _repo;
-  final MethodChannel _commands;
+
+  /// The active pump source (real bridge or simulator) — history is fetched through it so
+  /// the simulator can intercept the backfill (TASK-43).
+  final PumpSource _source;
   final _log = Logger('HistoryBackfill');
   static const _hwmKey = 'history_backfill_hwm_ms';
 
@@ -46,13 +48,12 @@ class HistoryBackfillService {
 
     final List<dynamic> raw;
     try {
-      raw = await _commands.invokeMethod<List<dynamic>>('fetchHistory', {
-            'fromEpochMs': effectiveFrom.millisecondsSinceEpoch,
-            'toEpochMs': to.millisecondsSinceEpoch,
-          }) ??
-          const [];
+      raw = await _source.fetchHistory(
+        fromEpochMs: effectiveFrom.millisecondsSinceEpoch,
+        toEpochMs: to.millisecondsSinceEpoch,
+      );
     } on MissingPluginException {
-      return 0; // command not wired (e.g. simulator/tests)
+      return 0; // command not wired (e.g. tests without the native bridge)
     } on PlatformException catch (e) {
       _log.warning('fetchHistory failed', e);
       return 0;

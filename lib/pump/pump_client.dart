@@ -2,9 +2,8 @@
 /// EventChannel for connection-state changes and status snapshots, and exposes them as
 /// broadcast streams the rest of the app (and Riverpod providers) can watch.
 ///
-/// Commands (start/stop scan, submit pairing code) go through the Pigeon-generated
-/// `PumpHostApi`; until Pigeon is generated, the MethodChannel fallback below is used so
-/// the read path works end-to-end.
+/// Read-only command surface (start/stop scan, submit pairing code, request status,
+/// fetch history) goes over the `bgdude/pump_commands` MethodChannel.
 library;
 
 import 'dart:async';
@@ -140,12 +139,23 @@ class PumpClient implements PumpSource {
     }
   }
 
+  @override
+  Future<List<dynamic>> fetchHistory(
+      {required int fromEpochMs, required int toEpochMs}) async {
+    final raw = await _commands.invokeMethod<List<dynamic>>('fetchHistory', {
+      'fromEpochMs': fromEpochMs,
+      'toEpochMs': toEpochMs,
+    });
+    return raw ?? const [];
+  }
+
   Future<void> _invoke(String method, Map<String, dynamic> args) async {
     try {
       await _commands.invokeMethod<void>(method, args);
     } on MissingPluginException {
-      // Pigeon host API not generated yet; read path via EventChannel still works.
-      _log.info('command $method not wired (pigeon not generated)');
+      // No native handler registered (e.g. running without the bridge); the read path via
+      // the EventChannel still works, so a missing command is non-fatal.
+      _log.info('command $method not wired');
     } on PlatformException catch (e) {
       _log.warning('command $method failed', e);
       rethrow;

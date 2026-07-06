@@ -86,7 +86,7 @@ class PumpService : Service(), PumpCommHandler.Listener {
     fun submitPairingCode(code: String, type: PairingCodeType) =
         commHandler?.submitPairingCode(code, type)
     fun unpair() = commHandler?.unpair()
-    fun snapshotJson(): String = commHandler?.snapshot?.toJson() ?: "{}"
+    fun snapshotJson(): String = commHandler?.snapshotJson() ?: "{}"
 
     // --- PumpCommHandler.Listener → forward to bridge + refresh notification ---
 

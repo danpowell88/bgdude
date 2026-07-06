@@ -91,8 +91,15 @@ class PumpCommHandler(
     /** The challenge from onWaitingForPairingCode, needed to complete pairing. */
     private var pendingChallenge: AbstractCentralChallengeResponse? = null
 
-    /** Accumulates the latest values as responses stream in. */
+    /** Accumulates the latest values as responses stream in. Mutated only on the BLE
+     *  callback thread, but read from the platform thread via [snapshotJson], so all writes
+     *  and that read are guarded by [snapshotLock] to hand out a consistent snapshot
+     *  (TASK-43). */
     val snapshot = MutableSnapshot()
+    private val snapshotLock = Any()
+
+    /** A consistent JSON copy of the current snapshot (safe to call off the BLE thread). */
+    fun snapshotJson(): String = synchronized(snapshotLock) { snapshot.toJson() }
 
     fun start(macFilter: String?) {
         this.macFilter = macFilter
@@ -214,7 +221,7 @@ class PumpCommHandler(
                 }
                 listener.onProbeMessage(event)
             }
-            PumpResponseMapper.apply(message, snapshot)
+            synchronized(snapshotLock) { PumpResponseMapper.apply(message, snapshot) }
             listener.onSnapshotUpdated(snapshot)
             handleProfileMessage(peripheral, message)
             handleHistoryMessage(peripheral, message)
@@ -320,23 +327,27 @@ class PumpCommHandler(
         if (mac != null && !peripheral.address.equals(mac, ignoreCase = true)) {
             return false // ignore other pumps
         }
-        snapshot.pumpName = peripheral.name
-        snapshot.macAddress = peripheral.address
+        synchronized(snapshotLock) {
+            snapshot.pumpName = peripheral.name
+            snapshot.macAddress = peripheral.address
+        }
         emitState(ConnectionStage.DISCOVERED)
         return true
     }
 
     override fun onPumpModel(peripheral: BluetoothPeripheral, model: KnownDeviceModel) {
-        snapshot.model = when (model) {
-            KnownDeviceModel.TSLIM_X2 -> PumpModel.TSLIM_X2
-            KnownDeviceModel.MOBI -> PumpModel.MOBI
-            else -> PumpModel.UNKNOWN
+        synchronized(snapshotLock) {
+            snapshot.model = when (model) {
+                KnownDeviceModel.TSLIM_X2 -> PumpModel.TSLIM_X2
+                KnownDeviceModel.MOBI -> PumpModel.MOBI
+                else -> PumpModel.UNKNOWN
+            }
         }
         listener.onSnapshotUpdated(snapshot)
     }
 
     override fun onJpakeProgress(step: JpakeAuthBuilder.JpakeStep) {
-        snapshot.jpakeProgress = step.ordinal
+        synchronized(snapshotLock) { snapshot.jpakeProgress = step.ordinal }
         emitState(ConnectionStage.JPAKE_IN_PROGRESS)
     }
 

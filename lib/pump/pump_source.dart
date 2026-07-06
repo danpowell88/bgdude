@@ -37,4 +37,10 @@ abstract interface class PumpSource {
   /// Fire one read-only `currentStatus` request by pumpx2 class name. Returns null on
   /// success, or a human-readable refusal reason (the native layer safety-gates every send).
   Future<String?> sendProbe(String className, {int? arg1, int? arg2});
+
+  /// Fetch decoded history-log entries in the epoch-ms window (read-only backfill). Routed
+  /// through the source so a non-hardware implementation (the demo/simulator) can intercept
+  /// it rather than callers reaching the native command channel directly (TASK-43).
+  Future<List<dynamic>> fetchHistory(
+      {required int fromEpochMs, required int toEpochMs});
 }
