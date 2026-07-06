@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/providers.dart';
+import 'log_viewer_screen.dart';
 import 'model_accuracy_screen.dart';
 import 'widgets/error_grid_chart.dart';
 
@@ -136,6 +137,21 @@ class AdvancedScreen extends ConsumerWidget {
                     ),
                   )
                 : ErrorGridChart(points: pts, unit: unit),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('Diagnostics log'),
+              subtitle: const Text(
+                  'Recent on-device errors and events (read-only). Nothing is sent '
+                  'anywhere — for diagnosing issues in the field.'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                    builder: (_) => const LogViewerScreen()),
+              ),
+            ),
           ),
         ],
       ),

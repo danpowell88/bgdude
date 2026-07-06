@@ -462,6 +462,7 @@
     <li><b>Model internals</b> — effective sensitivity, the learned time-of-day profile, forecaster state and a Clarke error grid.</li>
     <li><b>Forecast accuracy</b> — how predictions have scored against actual outcomes (RMSE, Clarke A+B and hypo sensitivity per horizon; hypo sensitivity shows "—" when the window simply contained no lows to detect).</li>
     <li><b>Retrain forecaster now</b> — rebuild the learned correction from your history. A retrain also runs automatically about once a day at startup, and a new model is only promoted if it passes the safety gate <em>and</em> beats both the physics baseline and the currently active model on the same held-out data — so a retrain can never make the live forecast worse. The card shows the candidate / baseline / active RMSE from the last run and why a candidate was kept or rejected.</li>
+    <li><b>Diagnostics log</b> — a read-only, on-device log of recent errors and events (the last ~500). It exists so a problem that would otherwise be invisible — an alert that failed to send, a startup job that didn't run — leaves a trace you can read (and <b>Copy</b> for a bug report or <b>Clear</b>). Nothing here is ever sent anywhere on its own.</li>
   </ul>
 </section>
 

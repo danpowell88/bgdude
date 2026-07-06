@@ -55,6 +55,7 @@ import '../integrations/glucose_meter_service.dart';
 import '../integrations/glucose_meter_transport.dart';
 import '../integrations/glucose_meter_transport_fbp.dart';
 import '../integrations/nightscout.dart';
+import '../logging/app_log.dart';
 import '../logging/device_changes.dart';
 import '../data/health_sync.dart';
 import '../data/history_repository.dart';
@@ -1379,14 +1380,25 @@ class AlertService {
   /// Gate on the category's enabled state and repeat interval (repeatMinutes; a category
   /// with repeat 0 uses a 30-min re-alert floor so a persistent condition isn't silent
   /// forever, but doesn't spam).
-  bool _shouldFire(NotificationCategory c, DateTime now) {
+  /// Whether [c]'s repeat cooldown has elapsed. Pure — does NOT record a fire, so a send
+  /// that then fails won't suppress the next attempt (critical for urgent lows, TASK-38).
+  bool _coolPassed(NotificationCategory c, DateTime now) {
     final pref = _ref.read(notificationPrefsProvider).of(c);
     if (!pref.enabled) return false;
     final interval =
         Duration(minutes: pref.repeatMinutes > 0 ? pref.repeatMinutes : 30);
     final last = _lastFired[c];
-    if (last != null && now.difference(last) < interval) return false;
-    _lastFired[c] = now;
+    return last == null || now.difference(last) >= interval;
+  }
+
+  void _markFired(NotificationCategory c, DateTime now) => _lastFired[c] = now;
+
+  /// Cooldown check that also records the fire immediately. Kept for the non-critical
+  /// alerts where an optimistic mark is fine; the urgent path uses [_coolPassed] +
+  /// [_markFired] so a failed send is retried.
+  bool _shouldFire(NotificationCategory c, DateTime now) {
+    if (!_coolPassed(c, now)) return false;
+    _markFired(c, now);
     return true;
   }
 
@@ -1459,12 +1471,17 @@ class AlertService {
     if (alert != null) {
       firedSpecific = true;
       final category = _categoryFor(alert.kind);
-      if (_shouldFire(category, now)) {
+      // Urgent/predicted alerts: record the fire only AFTER a successful send, so a failed
+      // urgent-low is retried on the next cycle rather than being silently suppressed.
+      if (_coolPassed(category, now)) {
         try {
           await _ref
               .read(notificationServiceProvider)
               .show(category, alert.title, alert.body);
-        } catch (_) {}
+          _markFired(category, now);
+        } catch (e) {
+          appLog.error('alerts', 'send failed: ${category.name}', error: e);
+        }
       }
     }
 
@@ -1492,7 +1509,7 @@ class AlertService {
               'A post-meal rise is on the way — even 10 minutes of walking now will '
                   'blunt the spike.',
             );
-      } catch (_) {}
+      } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
     }
 
     // Rescue carbs: fire the act-now case (urgent) as its own category so it can be
@@ -1507,7 +1524,7 @@ class AlertService {
                 'Take rescue carbs',
                 '~${rescue.grams.round()}g fast carbs now — ${rescue.reason}',
               );
-        } catch (_) {}
+        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
       }
     }
 
@@ -1531,7 +1548,7 @@ class AlertService {
                 'A ~${missed.estimatedCarbsGrams.round()}g rise with no bolus logged — '
                     'correct now if you ate.',
               );
-        } catch (_) {}
+        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
       }
     }
 
@@ -1559,7 +1576,7 @@ class AlertService {
                   : 'High for a while with IOB not bringing it down — watch for a '
                       'possible site issue.',
             );
-      } catch (_) {}
+      } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
     }
 
     // Ketone / DKA sick-day prompt: sustained high + a ketone risk factor (illness,
@@ -1581,7 +1598,7 @@ class AlertService {
           await _ref.read(notificationServiceProvider).show(
                 NotificationCategory.ketoneCheck, 'Check ketones', ketone.reason,
                 bigText: true);
-        } catch (_) {}
+        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
       }
     }
 
@@ -1603,7 +1620,7 @@ class AlertService {
                 'Something looks unusual',
                 anomaly.reason,
               );
-        } catch (_) {}
+        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
       }
     }
 
@@ -1623,7 +1640,7 @@ class AlertService {
             upperMgdl: f.upperMgdl,
             modelId: trained ? 'residual' : 'deterministic',
           ));
-        } catch (_) {}
+        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
       }
     }
   }
@@ -1652,7 +1669,7 @@ class AlertService {
                 snap.activeAlarms.isNotEmpty ? 'Pump alarm' : 'Pump alert',
                 '${active.map(_humanizeAlarm).join(', ')} — check your pump.',
               );
-        } catch (_) {}
+        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
       }
     } else {
       _lastAlarmSignature = null;
@@ -1668,7 +1685,7 @@ class AlertService {
               'Low reservoir',
               '~${reservoir.round()} U left — plan a cartridge change soon.',
             );
-      } catch (_) {}
+      } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
     }
 
     await _checkBattery(snap, now);
@@ -1685,7 +1702,7 @@ class AlertService {
     try {
       await BatteryHistoryStore.append(
           BatterySample(time: now, percent: pct, charging: snap.isCharging));
-    } catch (_) {}
+    } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
     if (snap.isCharging == true) return; // no warning while charging
 
     final estimate = const BatteryDrainEstimator()
@@ -1739,39 +1756,35 @@ class AppJobs {
   final Ref _ref;
 
   Future<void> runStartup() async {
-    if (!_ref.read(devModeProvider)) {
+    // Each job is independent and best-effort — one failing must not abort the rest — but a
+    // failure is now recorded so a job that silently never runs is diagnosable (TASK-38).
+    Future<void> job(String name, Future<void> Function() run) async {
       try {
-        await syncHealth();
-      } catch (_) {}
+        await run();
+      } catch (e) {
+        appLog.error('startup', 'job "$name" failed', error: e);
+      }
     }
-    try {
-      await refreshForecastHealthSampler();
-    } catch (_) {}
-    try {
-      await runMealOutcomeLoop();
-    } catch (_) {}
-    try {
+
+    if (!_ref.read(devModeProvider)) {
+      await job('syncHealth', syncHealth);
+    }
+    await job('refreshForecastHealthSampler', refreshForecastHealthSampler);
+    await job('runMealOutcomeLoop', runMealOutcomeLoop);
+    await job('reconcilePredictions', () async {
       await _ref.read(historyRepositoryProvider).reconcilePredictions(DateTime.now());
       await updateRecentForecastError();
-    } catch (_) {}
-    try {
-      await maybeShowMorningSummary();
-    } catch (_) {}
-    try {
-      await checkDeviceReminders();
-    } catch (_) {}
+    });
+    await job('maybeShowMorningSummary', maybeShowMorningSummary);
+    await job('checkDeviceReminders', checkDeviceReminders);
     if (!_ref.read(devModeProvider)) {
-      try {
-        await backfillHistory();
-      } catch (_) {}
+      await job('backfillHistory', backfillHistory);
     }
-    try {
-      await checkIllnessSuggestion();
-    } catch (_) {}
+    await job('checkIllnessSuggestion', checkIllnessSuggestion);
     // The forecaster GBM is persisted, so retraining it on *every* launch is wasted
     // heat — once a day is plenty. (Sensitivity models are held in memory only, so
     // they still train each startup; their heavy lifting runs off the UI isolate.)
-    try {
+    await job('trainForecaster', () async {
       if (await _forecasterTrainingDue()) {
         final outcome = await trainForecaster();
         if (outcome.trained) {
@@ -1779,10 +1792,8 @@ class AppJobs {
               _forecasterTrainStampKey, DateTime.now().toIso8601String());
         }
       }
-    } catch (_) {}
-    try {
-      await trainSensitivity();
-    } catch (_) {}
+    });
+    await job('trainSensitivity', trainSensitivity);
   }
 
   static const _forecasterTrainStampKey = 'forecaster_last_trained_at';

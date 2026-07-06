@@ -282,5 +282,12 @@ void main() {
     expect(find.text('Effective sensitivity'), findsOneWidget);
     expect(find.text('Forecaster'), findsOneWidget);
     expect(find.text('Clarke error grid'), findsOneWidget);
+
+    // §4-6.4 / TASK-38: the read-only diagnostics log opens from Advanced.
+    await tester.scrollUntilVisible(find.text('Diagnostics log'), 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Diagnostics log'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'Diagnostics log'), findsOneWidget);
   });
 }
