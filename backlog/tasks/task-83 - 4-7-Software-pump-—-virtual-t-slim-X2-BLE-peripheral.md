@@ -47,9 +47,9 @@ ordinal: 83000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §4-7
-Effort: L
-Depends on: 2-5 (JPAKE+framing known), §4-6.2 (BLE inspector); needs TWO phones (BLE cannot loopback)
-Flags: 🔌 hardware
-⚠ NEEDS MORE EXPLORATION: The JPAKE SERVER side is the hard, unproven part — port the maths from pumpx2 JpakeAuthBuilder (client) to a server counterpart and cross-check against the captured handshake bytes. Prototype the pairing handshake before committing to the full peripheral. Desktop variant blocked until a BLE-peripheral stack the pump/consumer accepts is found (bleak/WinRT could not bond — see doc/pump-recon-findings.md).
+- Source: ROADMAP §4-7
+- Effort: L
+- Depends on: 2-5 (JPAKE+framing known), §4-6.2 (BLE inspector); needs TWO phones (BLE cannot loopback)
+- Flags: 🔌 hardware
+- ⚠ NEEDS MORE EXPLORATION: The JPAKE SERVER side is the hard, unproven part — port the maths from pumpx2 JpakeAuthBuilder (client) to a server counterpart and cross-check against the captured handshake bytes. Prototype the pairing handshake before committing to the full peripheral. Desktop variant blocked until a BLE-peripheral stack the pump/consumer accepts is found (bleak/WinRT could not bond — see doc/pump-recon-findings.md).
 <!-- SECTION:NOTES:END -->

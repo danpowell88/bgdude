@@ -43,9 +43,9 @@ ordinal: 30000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §2 item 2-2
-Effort: M
-Depends on: P1-2
-Flags: 🔌 hardware
-Roadmap status: partial
+- Source: ROADMAP §2 item 2-2
+- Effort: M
+- Depends on: P1-2
+- Flags: 🔌 hardware
+- Roadmap status: partial
 <!-- SECTION:NOTES:END -->

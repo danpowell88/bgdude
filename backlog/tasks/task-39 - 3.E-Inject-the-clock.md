@@ -40,8 +40,8 @@ ordinal: 39000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §3.E
-Effort: S–M
-Depends on: moves with 3.A
-Roadmap status: open
+- Source: ROADMAP §3.E
+- Effort: S–M
+- Depends on: moves with 3.A
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

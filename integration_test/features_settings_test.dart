@@ -120,4 +120,11 @@ void main() {
     // Toggling doesn't crash and the control is still present.
     expect(advanced, findsOneWidget);
   });
+
+  testWidgets('P1-6: a DB-open failure shows a banner (not a silent fallback)',
+      (tester) async {
+    await pumpDemoApp(tester,
+        dbOpenError: 'Storage failed to open — the app is running without saving.');
+    expect(find.textContaining('running without saving'), findsOneWidget);
+  });
 }

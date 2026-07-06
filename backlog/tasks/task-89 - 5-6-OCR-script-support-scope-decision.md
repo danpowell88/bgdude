@@ -42,8 +42,8 @@ ordinal: 89000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §5 item 6
-Effort: M
-Depends on: 2-1
-⚠ NEEDS MORE EXPLORATION: Scope decision, not just code: add CJK recognizers vs limit to Latin labels. Decide from real usage during 2-1.
+- Source: ROADMAP §5 item 6
+- Effort: M
+- Depends on: 2-1
+- ⚠ NEEDS MORE EXPLORATION: Scope decision, not just code: add CJK recognizers vs limit to Latin labels. Decide from real usage during 2-1.
 <!-- SECTION:NOTES:END -->

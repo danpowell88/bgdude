@@ -58,13 +58,41 @@ class _MainShellState extends ConsumerState<MainShell> {
     PumpPairingListener.attach(ref, context);
 
     final devMode = ref.watch(devModeProvider);
+    final dbError = ref.watch(dbOpenErrorProvider);
 
-    final body = switch (_index) {
+    final tab = switch (_index) {
       0 => const TodayTab(),
       1 => const PredictionsScreen(),
       2 => const InsightsScreen(),
       _ => const MealLibraryScreen(embedded: true),
     };
+    // P1-6: a persistent banner when storage failed to open (running in-memory).
+    final body = dbError == null
+        ? tab
+        : Column(
+            children: [
+              Material(
+                color: Theme.of(context).colorScheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          color: Theme.of(context).colorScheme.onErrorContainer),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(dbError,
+                            style: TextStyle(
+                                color:
+                                    Theme.of(context).colorScheme.onErrorContainer)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(child: tab),
+            ],
+          );
 
     return Scaffold(
       appBar: AppBar(

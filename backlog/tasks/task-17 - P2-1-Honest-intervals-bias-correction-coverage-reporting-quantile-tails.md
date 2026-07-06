@@ -41,7 +41,7 @@ ordinal: 17000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P2-1 → §4-1.1/1.2
-Effort: M
-Roadmap status: partial
+- Source: ROADMAP §1 P2-1 → §4-1.1/1.2
+- Effort: M
+- Roadmap status: partial
 <!-- SECTION:NOTES:END -->

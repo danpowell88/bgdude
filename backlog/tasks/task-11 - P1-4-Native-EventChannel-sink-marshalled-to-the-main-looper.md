@@ -41,11 +41,11 @@ ordinal: 11000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P1-4
-Effort: S
-Where: PumpBridge.kt:128-155
-Flags: 🔌 hardware
-Roadmap status: open
+- Source: ROADMAP §1 P1-4
+- Effort: S
+- Where: PumpBridge.kt:128-155
+- Flags: 🔌 hardware
+- Roadmap status: open
 
-Done 2026-07-06: all EventChannel emissions marshalled onto the main looper via emit(); compiles (:app:compileDebugKotlin). Correct-by-construction; on-device stream-survival across a real connection is the confirming check (the live-pump Explorer session already streamed snapshots cleanly).
+- Done 2026-07-06: all EventChannel emissions marshalled onto the main looper via emit(); compiles (:app:compileDebugKotlin). Correct-by-construction; on-device stream-survival across a real connection is the confirming check (the live-pump Explorer session already streamed snapshots cleanly).
 <!-- SECTION:NOTES:END -->

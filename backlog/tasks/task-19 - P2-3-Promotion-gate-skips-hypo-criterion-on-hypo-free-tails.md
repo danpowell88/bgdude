@@ -33,7 +33,7 @@ ordinal: 19000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P2-3
-Effort: S
-Roadmap status: done ✅
+- Source: ROADMAP §1 P2-3
+- Effort: S
+- Roadmap status: done ✅
 <!-- SECTION:NOTES:END -->

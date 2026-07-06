@@ -24,13 +24,20 @@ Future<void> main() async {
   // initialise (e.g. an unsupported host), fall back to in-memory so the app still
   // runs rather than crashing on launch.
   HistoryRepository repository;
+  String? dbOpenError; // P1-6: surfaced to the UI instead of a silent fallback.
   try {
     final keys = await SecureKeyStore.open();
     final db = AppDatabase(openEncryptedDatabase(keys.getOrCreatePassphrase()));
     repository = DriftHistoryRepository(db);
     KvStore.init(db); // encrypted key-value store for app state
-  } catch (_) {
+  } catch (e, st) {
+    // Don't crash on launch, but don't pretend it's fine either: run in-memory and tell
+    // the user their history isn't being saved.
+    debugPrint('DB open failed — running in-memory (data will NOT persist): $e\n$st');
     repository = InMemoryHistoryRepository();
+    dbOpenError =
+        'Storage failed to open — the app is running without saving. Your data will '
+        'not persist. Restart the app; if it keeps happening, reinstall.';
   }
 
   final notifications = NotificationService();
@@ -53,6 +60,7 @@ Future<void> main() async {
         onboardingDoneProvider.overrideWith((ref) => onboarded),
         devModeProvider.overrideWith((ref) => devMode),
         persistentHistoryRepositoryProvider.overrideWithValue(repository),
+        dbOpenErrorProvider.overrideWithValue(dbOpenError),
       ],
       child: const BgDudeApp(),
     ),

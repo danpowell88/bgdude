@@ -348,6 +348,10 @@ final advancedModeProvider = StateProvider<bool>((ref) => false);
 /// exited from the header / Settings. Persisted (prefs `dev_mode`) in main().
 final devModeProvider = StateProvider<bool>((ref) => false);
 
+/// P1-6: non-null with a message when the encrypted database failed to open and the app
+/// fell back to an in-memory store (data not persisting). Overridden in `main()`.
+final dbOpenErrorProvider = Provider<String?>((ref) => null);
+
 /// The active pump data source — real native bridge, or the simulator in dev mode.
 /// Recreated when [devModeProvider] flips so switching modes takes effect live.
 final pumpClientProvider = Provider<PumpSource>((ref) {

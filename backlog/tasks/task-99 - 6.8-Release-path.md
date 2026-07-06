@@ -43,8 +43,8 @@ ordinal: 99000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §6
-Effort: M
-Flags: 🔌 hardware
-⚠ NEEDS MORE EXPLORATION: Decide distribution (Play internal track vs sideload-only) and set up real signing — a product/release decision.
+- Source: ROADMAP §6
+- Effort: M
+- Flags: 🔌 hardware
+- ⚠ NEEDS MORE EXPLORATION: Decide distribution (Play internal track vs sideload-only) and set up real signing — a product/release decision.
 <!-- SECTION:NOTES:END -->

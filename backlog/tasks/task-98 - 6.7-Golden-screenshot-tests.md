@@ -40,7 +40,7 @@ ordinal: 98000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §6
-Effort: M
-Roadmap status: open
+- Source: ROADMAP §6
+- Effort: M
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

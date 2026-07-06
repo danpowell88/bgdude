@@ -41,11 +41,11 @@ ordinal: 3000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P0-3
-Effort: M (falls out of P0-2)
-Where: autotune.dart, time_of_day_sensitivity.dart
-Depends on: P0-2
-Roadmap status: open
+- Source: ROADMAP §1 P0-3
+- Effort: M (falls out of P0-2)
+- Where: autotune.dart, time_of_day_sensitivity.dart
+- Depends on: P0-2
+- Roadmap status: open
 
-detail-needed (2026-07-06): blocked on TASK-2 (P0-2). This 'falls out of' the net-insulin model change; can't be done or validated until P0-2's approach + validation data are settled.
+- detail-needed (2026-07-06): blocked on TASK-2 (P0-2). This 'falls out of' the net-insulin model change; can't be done or validated until P0-2's approach + validation data are settled.
 <!-- SECTION:NOTES:END -->

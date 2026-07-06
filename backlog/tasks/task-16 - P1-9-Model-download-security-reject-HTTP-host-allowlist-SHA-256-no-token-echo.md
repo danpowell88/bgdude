@@ -44,9 +44,9 @@ ordinal: 16000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P1-9 (overlaps §5-5)
-Effort: S–M
-Where: panel_model_manager.dart, ai_model_screen.dart
-Flags: 🧠 llm
-Roadmap status: open
+- Source: ROADMAP §1 P1-9 (overlaps §5-5)
+- Effort: S–M
+- Where: panel_model_manager.dart, ai_model_screen.dart
+- Flags: 🧠 llm
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

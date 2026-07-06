@@ -1,10 +1,10 @@
 ---
 id: TASK-13
 title: P1-6 Surface DB-open failure instead of silent in-memory swap
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:49'
 labels:
   - roadmap
   - §1-P1
@@ -41,8 +41,8 @@ ordinal: 13000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P1-6
-Effort: S
-Where: main.dart:26-34
-Roadmap status: open
+- Source: ROADMAP §1 P1-6
+- Effort: S
+- Where: main.dart:26-34
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

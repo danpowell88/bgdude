@@ -41,9 +41,9 @@ ordinal: 12000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P1-5
-Effort: S–M
-Where: BootReceiver.kt, PumpService.kt
-Flags: 🔌 hardware
-Roadmap status: open
+- Source: ROADMAP §1 P1-5
+- Effort: S–M
+- Where: BootReceiver.kt, PumpService.kt
+- Flags: 🔌 hardware
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

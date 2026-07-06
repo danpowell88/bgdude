@@ -40,8 +40,8 @@ ordinal: 36000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §3.B
-Effort: M
-Depends on: 3.A (PersistedStateNotifier)
-Roadmap status: open
+- Source: ROADMAP §3.B
+- Effort: M
+- Depends on: 3.A (PersistedStateNotifier)
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

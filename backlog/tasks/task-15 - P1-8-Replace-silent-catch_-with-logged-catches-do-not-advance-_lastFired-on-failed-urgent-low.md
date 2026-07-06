@@ -43,8 +43,8 @@ ordinal: 15000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P1-8 / §3.D
-Effort: S
-Where: providers.dart throughout
-Roadmap status: open
+- Source: ROADMAP §1 P1-8 / §3.D
+- Effort: S
+- Where: providers.dart throughout
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

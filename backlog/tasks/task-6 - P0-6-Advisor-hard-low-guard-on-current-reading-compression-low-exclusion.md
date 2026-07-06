@@ -41,9 +41,9 @@ ordinal: 6000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P0-6
-Effort: S
-Where: bolus_advisor.dart:183
-Flags: 🔒 safety
-Roadmap status: open
+- Source: ROADMAP §1 P0-6
+- Effort: S
+- Where: bolus_advisor.dart:183
+- Flags: 🔒 safety
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

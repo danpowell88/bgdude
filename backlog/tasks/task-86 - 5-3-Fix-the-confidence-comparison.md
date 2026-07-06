@@ -40,9 +40,9 @@ ordinal: 86000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §5 item 3 (P2-11)
-Effort: S
-Depends on: 5-2
-Flags: 🧠 llm
-Roadmap status: open
+- Source: ROADMAP §5 item 3 (P2-11)
+- Effort: S
+- Depends on: 5-2
+- Flags: 🧠 llm
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

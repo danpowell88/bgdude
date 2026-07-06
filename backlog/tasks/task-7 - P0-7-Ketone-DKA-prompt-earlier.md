@@ -40,9 +40,9 @@ ordinal: 7000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P0-7
-Effort: S
-Where: ketone_risk.dart:21
-Flags: 🔒 safety
-Roadmap status: open
+- Source: ROADMAP §1 P0-7
+- Effort: S
+- Where: ketone_risk.dart:21
+- Flags: 🔒 safety
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

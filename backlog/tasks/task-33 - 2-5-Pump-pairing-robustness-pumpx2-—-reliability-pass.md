@@ -44,9 +44,9 @@ ordinal: 33000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §2 item 2-5
-Effort: M
-Depends on: P1-4, P1-5
-Flags: 🔌 hardware
-Roadmap status: partial (JPAKE pairing verified)
+- Source: ROADMAP §2 item 2-5
+- Effort: M
+- Depends on: P1-4, P1-5
+- Flags: 🔌 hardware
+- Roadmap status: partial (JPAKE pairing verified)
 <!-- SECTION:NOTES:END -->

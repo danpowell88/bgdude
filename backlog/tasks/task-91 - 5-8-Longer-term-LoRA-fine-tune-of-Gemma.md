@@ -43,8 +43,8 @@ ordinal: 91000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §5 item 8
-Effort: L
-Flags: 🧠 llm
-⚠ NEEDS MORE EXPLORATION: Research spike: synthetic-panel generation + LoRA training pipeline + on-device eval of a 270M vs 1B model. Unproven; scope before committing.
+- Source: ROADMAP §5 item 8
+- Effort: L
+- Flags: 🧠 llm
+- ⚠ NEEDS MORE EXPLORATION: Research spike: synthetic-panel generation + LoRA training pipeline + on-device eval of a 270M vs 1B model. Unproven; scope before committing.
 <!-- SECTION:NOTES:END -->

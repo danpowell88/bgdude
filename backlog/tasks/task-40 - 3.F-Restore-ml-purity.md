@@ -41,8 +41,8 @@ ordinal: 40000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §3.F
-Effort: S
-Depends on: 3.B
-Roadmap status: open
+- Source: ROADMAP §3.F
+- Effort: S
+- Depends on: 3.B
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

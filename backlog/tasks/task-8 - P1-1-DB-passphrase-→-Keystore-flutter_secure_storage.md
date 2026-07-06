@@ -42,8 +42,8 @@ ordinal: 8000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P1-1 (headline issue #2)
-Effort: S
-Where: secure_key.dart, database.dart:187, main.dart
-Roadmap status: open
+- Source: ROADMAP §1 P1-1 (headline issue #2)
+- Effort: S
+- Where: secure_key.dart, database.dart:187, main.dart
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

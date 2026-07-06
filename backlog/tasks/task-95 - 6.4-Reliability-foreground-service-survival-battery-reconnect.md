@@ -43,8 +43,8 @@ ordinal: 95000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §6
-Effort: M
-Flags: 🔌 hardware
-Roadmap status: open
+- Source: ROADMAP §6
+- Effort: M
+- Flags: 🔌 hardware
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

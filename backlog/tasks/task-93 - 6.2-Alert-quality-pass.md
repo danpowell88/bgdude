@@ -42,8 +42,8 @@ ordinal: 93000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §6
-Effort: M
-Flags: 🔒 safety
-Roadmap status: open
+- Source: ROADMAP §6
+- Effort: M
+- Flags: 🔒 safety
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

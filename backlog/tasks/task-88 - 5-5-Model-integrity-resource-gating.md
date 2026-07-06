@@ -43,9 +43,9 @@ ordinal: 88000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §5 item 5 (overlaps P1-9)
-Effort: M
-Depends on: P1-9
-Flags: 🧠 llm 🔌 hardware
-Roadmap status: open
+- Source: ROADMAP §5 item 5 (overlaps P1-9)
+- Effort: M
+- Depends on: P1-9
+- Flags: 🧠 llm 🔌 hardware
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

@@ -40,8 +40,8 @@ ordinal: 5000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P0-5
-Effort: S
-Where: rescue_carbs.dart:56
-Roadmap status: open
+- Source: ROADMAP §1 P0-5
+- Effort: S
+- Where: rescue_carbs.dart:56
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

@@ -42,8 +42,8 @@ ordinal: 38000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §3.D (P1-8)
-Effort: S–M
-Depends on: pairs with §4-6.4
-Roadmap status: open
+- Source: ROADMAP §3.D (P1-8)
+- Effort: S–M
+- Depends on: pairs with §4-6.4
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

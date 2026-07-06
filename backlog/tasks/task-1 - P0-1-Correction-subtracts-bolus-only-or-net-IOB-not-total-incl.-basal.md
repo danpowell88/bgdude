@@ -41,8 +41,8 @@ ordinal: 1000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P0-1
-Effort: S
-Where: bolus_advisor.dart:191,293-294
-Roadmap status: open
+- Source: ROADMAP §1 P0-1
+- Effort: S
+- Where: bolus_advisor.dart:191,293-294
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

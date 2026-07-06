@@ -42,7 +42,7 @@ ordinal: 45000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §3.K
-Effort: ongoing
-Roadmap status: open
+- Source: ROADMAP §3.K
+- Effort: ongoing
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

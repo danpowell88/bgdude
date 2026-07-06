@@ -41,8 +41,8 @@ ordinal: 34000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §2 item 2-6
-Effort: S
-Depends on: §4-4.3 (if wired)
-⚠ NEEDS MORE EXPLORATION: Decide the direction — wire to correlation analysis vs journal-only. Small but a product decision, not just code.
+- Source: ROADMAP §2 item 2-6
+- Effort: S
+- Depends on: §4-4.3 (if wired)
+- ⚠ NEEDS MORE EXPLORATION: Decide the direction — wire to correlation analysis vs journal-only. Small but a product decision, not just code.
 <!-- SECTION:NOTES:END -->

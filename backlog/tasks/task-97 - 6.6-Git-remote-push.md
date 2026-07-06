@@ -40,5 +40,5 @@ ordinal: 97000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Done 2026-07-06: remote origin = https://github.com/danpowell88/bgdude.git; main pushed and tracking origin/main. (CI/GitHub Pages workflows still to verify on GitHub.)
+- Done 2026-07-06: remote origin = https://github.com/danpowell88/bgdude.git; main pushed and tracking origin/main. (CI/GitHub Pages workflows still to verify on GitHub.)
 <!-- SECTION:NOTES:END -->

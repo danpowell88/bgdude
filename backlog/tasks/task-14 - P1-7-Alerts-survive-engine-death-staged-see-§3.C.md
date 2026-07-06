@@ -42,10 +42,10 @@ ordinal: 14000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P1-7 / §3.C
-Effort: L
-Where: app.dart, native
-Depends on: §3.H (single DB connection) for step 3
-Flags: 🔒 safety
-Roadmap status: open
+- Source: ROADMAP §1 P1-7 / §3.C
+- Effort: L
+- Where: app.dart, native
+- Depends on: §3.H (single DB connection) for step 3
+- Flags: 🔒 safety
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

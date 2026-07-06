@@ -43,9 +43,9 @@ ordinal: 37000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §3.C (P1-7)
-Effort: L
-Depends on: §3.H for step 3
-Flags: 🔒 safety
-Roadmap status: open
+- Source: ROADMAP §3.C (P1-7)
+- Effort: L
+- Depends on: §3.H for step 3
+- Flags: 🔒 safety
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->

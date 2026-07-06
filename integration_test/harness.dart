@@ -17,6 +17,7 @@ Future<void> pumpDemoApp(
   WidgetTester tester, {
   bool onboarded = true,
   bool devMode = true,
+  String? dbOpenError,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -24,6 +25,7 @@ Future<void> pumpDemoApp(
         notificationServiceProvider.overrideWithValue(NotificationService()),
         onboardingDoneProvider.overrideWith((ref) => onboarded),
         devModeProvider.overrideWith((ref) => devMode),
+        dbOpenErrorProvider.overrideWithValue(dbOpenError),
       ],
       child: const BgDudeApp(),
     ),

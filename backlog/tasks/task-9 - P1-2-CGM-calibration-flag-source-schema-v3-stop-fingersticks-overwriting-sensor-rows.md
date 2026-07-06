@@ -44,8 +44,8 @@ ordinal: 9000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Source: ROADMAP §1 P1-2 (headline issue #3)
-Effort: M
-Where: database.dart, history_repository.dart, glucose_meter.dart
-Roadmap status: open
+- Source: ROADMAP §1 P1-2 (headline issue #3)
+- Effort: M
+- Where: database.dart, history_repository.dart, glucose_meter.dart
+- Roadmap status: open
 <!-- SECTION:NOTES:END -->
