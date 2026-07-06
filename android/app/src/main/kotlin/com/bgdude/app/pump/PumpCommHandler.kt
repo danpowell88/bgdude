@@ -33,6 +33,7 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.HistoryLogStatusR
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.IDPSegmentResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.IDPSettingsResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ProfileStatusResponse
+import com.jwoglom.pumpx2.pump.messages.response.historyLog.HistoryLogStreamResponse
 import com.jwoglom.pumpx2.pump.messages.response.qualifyingEvent.QualifyingEvent
 import com.welie.blessed.BluetoothPeripheral
 import com.welie.blessed.HciStatus
@@ -252,8 +253,13 @@ class PumpCommHandler(
             }
             return
         }
-        val entry = PumpHistoryMapper.map(message) ?: return
-        synchronized(this) { historyBuffer.addLast(entry) }
+        // History entries arrive inside a HistoryLogStreamResponse (a Message) — unpack the
+        // decoded HistoryLog list and map each. The entries are not Messages themselves, so
+        // mapping the outer Message directly never matched anything.
+        if (message !is HistoryLogStreamResponse) return
+        val entries = message.historyLogs.mapNotNull { PumpHistoryMapper.map(it) }
+        if (entries.isEmpty()) return
+        synchronized(this) { historyBuffer.addAll(entries) }
     }
 
     override fun onReceiveQualifyingEvent(

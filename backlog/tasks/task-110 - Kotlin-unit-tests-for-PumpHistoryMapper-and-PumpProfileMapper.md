@@ -1,10 +1,10 @@
 ---
 id: TASK-110
 title: Kotlin unit tests for PumpHistoryMapper and PumpProfileMapper
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:54'
-updated_date: '2026-07-06 08:07'
+updated_date: '2026-07-06 12:56'
 labels:
   - code-health
   - testing
@@ -29,9 +29,9 @@ ordinal: 110000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 PumpHistoryMapperTest: known Tandem-seconds map to expected Unix-ms for each mapped type; unmapped types return null; the CgmDataGx timestamp-field divergence is pinned by a test
-- [ ] #2 PumpProfileMapperTest: fixture segments produce expected basal/ISF/CR/target JSON; complete flag only set when all segments present
-- [ ] #3 cd android && ./gradlew :app:testDebugUnitTest green
+- [x] #1 PumpHistoryMapperTest: known Tandem-seconds map to expected Unix-ms for each mapped type; unmapped types return null; the CgmDataGx timestamp-field divergence is pinned by a test
+- [x] #2 PumpProfileMapperTest: fixture segments produce expected basal/ISF/CR/target JSON; complete flag only set when all segments present
+- [x] #3 cd android && ./gradlew :app:testDebugUnitTest green
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -48,4 +48,6 @@ ordinal: 110000
 - Source: code-health survey 2026-07-06 (test finding 3)
 - Effort: S–M
 - Where: android/app/src/main/kotlin/com/bgdude/app/pump/PumpHistoryMapper.kt, PumpProfileMapper.kt
+
+Implemented + BUG FIX. Writing the tests exposed that PumpHistoryMapper.map took a Message and matched 'is <X>HistoryLog', but HistoryLog does NOT extend Message (verified via javap) — so map() never matched and history import silently returned null for everything. The pump actually delivers entries inside a HistoryLogStreamResponse (a Message) via getHistoryLogs(): List<HistoryLog>. Fix: map(HistoryLog) (type-correct now), and handleHistoryMessage unpacks HistoryLogStreamResponse.historyLogs and maps each. Read-only path (inbound parse only). Tests: PumpHistoryMapperTest (all 8 mapped types field-by-field, the CgmDataGx timestamp-vs-pumpTimeSec divergence pinned, unmapped AlarmCleared→null) and PumpProfileMapperTest (mU/1000 basal+CR, complete flag gating, wrong-idp ignored, full JSON). Added testImplementation org.json:json for the profile JSON assertions. ./gradlew :app:testDebugUnitTest green; debug APK builds.
 <!-- SECTION:NOTES:END -->
