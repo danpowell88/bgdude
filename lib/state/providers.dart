@@ -754,6 +754,7 @@ final correlationReportProvider =
     range: range,
     now: DateTime.now(),
     dailyTempC: await WeatherHistoryStore.loadDaily(),
+    annotations: await repo.annotations(range.from, range.to),
   );
 });
 

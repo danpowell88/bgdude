@@ -1,10 +1,10 @@
 ---
 id: TASK-34
 title: Mood logging — make it do something or declare journal-only
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:11'
+updated_date: '2026-07-06 08:33'
 labels:
   - roadmap
   - needs-exploration
@@ -47,6 +47,8 @@ ordinal: 34000
 - Source: ROADMAP section 2 item 2-6
 - Effort: S
 - Depends on: TASK-67 (4-4.3) (if wired)
+
+Resolved by TASK-67: mood is no longer journal-only — it now feeds the Correlations report (mood <-> time-in-range / mean glucose), so tagging mood does something actionable.
 <!-- SECTION:NOTES:END -->
 
 ## Comments

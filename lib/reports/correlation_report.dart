@@ -12,6 +12,7 @@ import 'dart:math' as math;
 import '../analytics/metrics.dart';
 import '../core/samples.dart';
 import '../data/health_sync.dart';
+import '../feedback/annotations.dart';
 import 'report_range.dart';
 
 class CorrelationFinding {
@@ -70,12 +71,16 @@ class CorrelationReportBuilder {
   /// A day needs at least this many CGM readings to yield a trustworthy daily outcome.
   final int minReadingsPerDay;
 
+  /// §4-4.3: mood needs at least this many tagged days before it's correlated at all.
+  static const int _minMoodDays = 8;
+
   CorrelationReport build({
     required List<CgmSample> cgm,
     required List<HealthSample> health,
     required ReportRange range,
     required DateTime now,
     Map<String, double> dailyTempC = const {},
+    List<Annotation> annotations = const [],
   }) {
     // Daily glucose outcomes.
     final byDayCgm = <String, List<CgmSample>>{};
@@ -113,6 +118,20 @@ class CorrelationReportBuilder {
       }
     }
 
+    // §4-4.3: daily mood tag (Great/OK/Low → 2/1/0), latest of the day. Only correlated
+    // once there are enough tagged days, and only shown if it clears the same |r| gate.
+    final moodByDay = <String, double>{};
+    for (final a in annotations) {
+      if (a.kind != AnnotationKind.mood || !range.contains(a.start)) continue;
+      final v = switch (a.note.trim().toLowerCase()) {
+        'great' => 2.0,
+        'ok' => 1.0,
+        'low' => 0.0,
+        _ => double.nan,
+      };
+      if (!v.isNaN) moodByDay[_dayKey(a.start)] = v; // last of the day wins
+    }
+
     final predictors = <({String label, Map<String, double> byDay})>[
       (label: 'sleep', byDay: {for (final e in sleep.entries) e.key: _max(e.value)}),
       (label: 'exercise', byDay: exercise),
@@ -123,6 +142,8 @@ class CorrelationReportBuilder {
       ),
       if (dailyTempC.isNotEmpty)
         (label: 'ambient temperature', byDay: dailyTempC),
+      if (moodByDay.length >= _minMoodDays)
+        (label: 'better mood', byDay: moodByDay),
     ];
     final outcomes = <({String label, Map<String, double> byDay})>[
       (label: 'time-in-range', byDay: tir),
