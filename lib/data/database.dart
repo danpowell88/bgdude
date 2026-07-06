@@ -29,6 +29,12 @@ class CgmReadings extends Table {
   BoolColumn get sensorWarmup => boolean().withDefault(const Constant(false))();
   BoolColumn get compressionLow => boolean().withDefault(const Constant(false))();
 
+  /// A calibration finger-prick (excluded from metrics/training) — schema v3 (TASK-9).
+  BoolColumn get isCalibration => boolean().withDefault(const Constant(false))();
+
+  /// 'sensor' | 'meter'. Sensor rows own their time slot; meter rows never overwrite them.
+  TextColumn get source => text().withDefault(const Constant('sensor'))();
+
   @override
   List<Set<Column>> get uniqueKeys => [
         {time},
@@ -141,7 +147,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   /// Read a value from the encrypted key-value store.
   Future<String?> readKv(String key) async {
@@ -165,6 +171,11 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.createTable(appKv);
+          if (from < 3) {
+            // TASK-9: distinguish sensor readings from finger-prick / calibration ones.
+            await m.addColumn(cgmReadings, cgmReadings.isCalibration);
+            await m.addColumn(cgmReadings, cgmReadings.source);
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA journal_mode=WAL');

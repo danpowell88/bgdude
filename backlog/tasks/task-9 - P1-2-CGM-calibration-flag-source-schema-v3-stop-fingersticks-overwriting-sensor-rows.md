@@ -3,10 +3,10 @@ id: TASK-9
 title: >-
   CGM calibration flag + source (schema v3); stop fingersticks overwriting
   sensor rows
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 15:11'
 labels:
   - roadmap
   - data-integrity
@@ -28,10 +28,10 @@ ordinal: 102000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 CGM rows carry isCalibration + source
-- [ ] #2 Fingersticks never overwrite sensor rows
-- [ ] #3 Calibrations excluded from metrics & training
-- [ ] #4 Drift schema-export + migration test precedes v3
+- [x] #1 CGM rows carry isCalibration + source
+- [x] #2 Fingersticks never overwrite sensor rows
+- [x] #3 Calibrations excluded from metrics & training
+- [x] #4 Drift schema-export + migration test precedes v3
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -51,6 +51,8 @@ ordinal: 102000
 - Effort: M
 - Where: `database.dart`, `history_repository.dart`, `glucose_meter.dart`
 - Roadmap status: open
+
+Implemented. AC#1: CgmReadings gains isCalibration (bool) + source ('sensor'|'meter') columns; CgmSample gains a GlucoseSource enum + source field (isCalibration already existed). AC#2: saveCgm now branches on source — a sensor reading DoUpdates its time slot (stream dedup preserved), a meter/finger-prick reading uses DoNothing so it can never overwrite an existing sensor row on a same-time collision. AC#3: added s.isCalibration to the 7 metrics/training exclusion predicates (metrics.dart x2, autotune, event_detectors x2, forecaster_training, time_of_day_sensitivity), so calibrations never count toward stats or model training. AC#4: schemaVersion 2→3 with an addColumn migration; test/cgm_calibration_test.dart builds a real v2 DB (old schema + user_version=2), opens AppDatabase to run the migration, and asserts the columns are added and existing rows preserved (source defaults 'sensor'), plus the no-overwrite and metrics-exclusion behaviours. build_runner regen, analyze clean, 536 tests green, APK builds.
 <!-- SECTION:NOTES:END -->
 
 ## Comments

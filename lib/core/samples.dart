@@ -43,6 +43,17 @@ enum GlucoseTrend {
       };
 }
 
+/// Where a glucose reading came from. Sensor readings are the continuous stream; meter
+/// readings are separate finger-prick values that must never overwrite sensor history and
+/// (when they're calibrations) are excluded from stats/training (TASK-9).
+enum GlucoseSource {
+  sensor,
+  meter;
+
+  static GlucoseSource fromName(String? s) =>
+      s == 'meter' ? GlucoseSource.meter : GlucoseSource.sensor;
+}
+
 /// A single CGM reading.
 class CgmSample {
   const CgmSample({
@@ -50,6 +61,7 @@ class CgmSample {
     required this.mgdl,
     this.trend = GlucoseTrend.unknown,
     this.isCalibration = false,
+    this.source = GlucoseSource.sensor,
     this.sensorWarmup = false,
     this.compressionLow = false,
   });
@@ -57,7 +69,13 @@ class CgmSample {
   final DateTime time;
   final double mgdl;
   final GlucoseTrend trend;
+
+  /// A finger-prick reading entered to calibrate the sensor. Excluded from metrics and
+  /// model training so it doesn't count as real sensor exposure (TASK-9).
   final bool isCalibration;
+
+  /// The device this reading came from.
+  final GlucoseSource source;
 
   /// True while the sensor is in warm-up (readings unreliable / absent).
   final bool sensorWarmup;

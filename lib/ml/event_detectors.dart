@@ -44,7 +44,7 @@ class MealDetector {
     required TherapySettings settings,
   }) {
     final sorted = [...cgm]
-      ..removeWhere((s) => s.sensorWarmup || s.mgdl <= 0)
+      ..removeWhere((s) => s.sensorWarmup || s.isCalibration || s.mgdl <= 0)
       ..sort((a, b) => a.time.compareTo(b.time));
     final out = <MealCandidate>[];
     var sustained = 0;
@@ -131,7 +131,7 @@ class CompressionLowDetector {
     required bool Function(DateTime) isAsleep,
   }) {
     final sorted = [...cgm]
-      ..removeWhere((s) => s.sensorWarmup || s.mgdl <= 0)
+      ..removeWhere((s) => s.sensorWarmup || s.isCalibration || s.mgdl <= 0)
       ..sort((a, b) => a.time.compareTo(b.time));
     final out = <CompressionLowEvent>[];
 

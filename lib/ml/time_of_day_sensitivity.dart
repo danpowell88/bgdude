@@ -120,7 +120,7 @@ class TimeOfDaySensitivityAnalyzer {
     final dayEnd = dayStart.add(const Duration(days: 1));
 
     final sorted = [...cgm]
-      ..removeWhere((s) => s.sensorWarmup || s.mgdl <= 0)
+      ..removeWhere((s) => s.sensorWarmup || s.isCalibration || s.mgdl <= 0)
       ..sort((a, b) => a.time.compareTo(b.time));
 
     final iob = IobCalculator(model: _model);

@@ -55,9 +55,34 @@ class $CgmReadingsTable extends CgmReadings
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("compression_low" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _isCalibrationMeta =
+      const VerificationMeta('isCalibration');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, time, mgdl, trend, sensorWarmup, compressionLow];
+  late final GeneratedColumn<bool> isCalibration = GeneratedColumn<bool>(
+      'is_calibration', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_calibration" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+      'source', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('sensor'));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        time,
+        mgdl,
+        trend,
+        sensorWarmup,
+        compressionLow,
+        isCalibration,
+        source
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -99,6 +124,16 @@ class $CgmReadingsTable extends CgmReadings
           compressionLow.isAcceptableOrUnknown(
               data['compression_low']!, _compressionLowMeta));
     }
+    if (data.containsKey('is_calibration')) {
+      context.handle(
+          _isCalibrationMeta,
+          isCalibration.isAcceptableOrUnknown(
+              data['is_calibration']!, _isCalibrationMeta));
+    }
+    if (data.containsKey('source')) {
+      context.handle(_sourceMeta,
+          source.isAcceptableOrUnknown(data['source']!, _sourceMeta));
+    }
     return context;
   }
 
@@ -124,6 +159,10 @@ class $CgmReadingsTable extends CgmReadings
           .read(DriftSqlType.bool, data['${effectivePrefix}sensor_warmup'])!,
       compressionLow: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}compression_low'])!,
+      isCalibration: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_calibration'])!,
+      source: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source'])!,
     );
   }
 
@@ -140,13 +179,21 @@ class CgmRow extends DataClass implements Insertable<CgmRow> {
   final int trend;
   final bool sensorWarmup;
   final bool compressionLow;
+
+  /// A calibration finger-prick (excluded from metrics/training) — schema v3 (TASK-9).
+  final bool isCalibration;
+
+  /// 'sensor' | 'meter'. Sensor rows own their time slot; meter rows never overwrite them.
+  final String source;
   const CgmRow(
       {required this.id,
       required this.time,
       required this.mgdl,
       required this.trend,
       required this.sensorWarmup,
-      required this.compressionLow});
+      required this.compressionLow,
+      required this.isCalibration,
+      required this.source});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -156,6 +203,8 @@ class CgmRow extends DataClass implements Insertable<CgmRow> {
     map['trend'] = Variable<int>(trend);
     map['sensor_warmup'] = Variable<bool>(sensorWarmup);
     map['compression_low'] = Variable<bool>(compressionLow);
+    map['is_calibration'] = Variable<bool>(isCalibration);
+    map['source'] = Variable<String>(source);
     return map;
   }
 
@@ -167,6 +216,8 @@ class CgmRow extends DataClass implements Insertable<CgmRow> {
       trend: Value(trend),
       sensorWarmup: Value(sensorWarmup),
       compressionLow: Value(compressionLow),
+      isCalibration: Value(isCalibration),
+      source: Value(source),
     );
   }
 
@@ -180,6 +231,8 @@ class CgmRow extends DataClass implements Insertable<CgmRow> {
       trend: serializer.fromJson<int>(json['trend']),
       sensorWarmup: serializer.fromJson<bool>(json['sensorWarmup']),
       compressionLow: serializer.fromJson<bool>(json['compressionLow']),
+      isCalibration: serializer.fromJson<bool>(json['isCalibration']),
+      source: serializer.fromJson<String>(json['source']),
     );
   }
   @override
@@ -192,6 +245,8 @@ class CgmRow extends DataClass implements Insertable<CgmRow> {
       'trend': serializer.toJson<int>(trend),
       'sensorWarmup': serializer.toJson<bool>(sensorWarmup),
       'compressionLow': serializer.toJson<bool>(compressionLow),
+      'isCalibration': serializer.toJson<bool>(isCalibration),
+      'source': serializer.toJson<String>(source),
     };
   }
 
@@ -201,7 +256,9 @@ class CgmRow extends DataClass implements Insertable<CgmRow> {
           double? mgdl,
           int? trend,
           bool? sensorWarmup,
-          bool? compressionLow}) =>
+          bool? compressionLow,
+          bool? isCalibration,
+          String? source}) =>
       CgmRow(
         id: id ?? this.id,
         time: time ?? this.time,
@@ -209,6 +266,8 @@ class CgmRow extends DataClass implements Insertable<CgmRow> {
         trend: trend ?? this.trend,
         sensorWarmup: sensorWarmup ?? this.sensorWarmup,
         compressionLow: compressionLow ?? this.compressionLow,
+        isCalibration: isCalibration ?? this.isCalibration,
+        source: source ?? this.source,
       );
   CgmRow copyWithCompanion(CgmReadingsCompanion data) {
     return CgmRow(
@@ -222,6 +281,10 @@ class CgmRow extends DataClass implements Insertable<CgmRow> {
       compressionLow: data.compressionLow.present
           ? data.compressionLow.value
           : this.compressionLow,
+      isCalibration: data.isCalibration.present
+          ? data.isCalibration.value
+          : this.isCalibration,
+      source: data.source.present ? data.source.value : this.source,
     );
   }
 
@@ -233,14 +296,16 @@ class CgmRow extends DataClass implements Insertable<CgmRow> {
           ..write('mgdl: $mgdl, ')
           ..write('trend: $trend, ')
           ..write('sensorWarmup: $sensorWarmup, ')
-          ..write('compressionLow: $compressionLow')
+          ..write('compressionLow: $compressionLow, ')
+          ..write('isCalibration: $isCalibration, ')
+          ..write('source: $source')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, time, mgdl, trend, sensorWarmup, compressionLow);
+  int get hashCode => Object.hash(id, time, mgdl, trend, sensorWarmup,
+      compressionLow, isCalibration, source);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -250,7 +315,9 @@ class CgmRow extends DataClass implements Insertable<CgmRow> {
           other.mgdl == this.mgdl &&
           other.trend == this.trend &&
           other.sensorWarmup == this.sensorWarmup &&
-          other.compressionLow == this.compressionLow);
+          other.compressionLow == this.compressionLow &&
+          other.isCalibration == this.isCalibration &&
+          other.source == this.source);
 }
 
 class CgmReadingsCompanion extends UpdateCompanion<CgmRow> {
@@ -260,6 +327,8 @@ class CgmReadingsCompanion extends UpdateCompanion<CgmRow> {
   final Value<int> trend;
   final Value<bool> sensorWarmup;
   final Value<bool> compressionLow;
+  final Value<bool> isCalibration;
+  final Value<String> source;
   const CgmReadingsCompanion({
     this.id = const Value.absent(),
     this.time = const Value.absent(),
@@ -267,6 +336,8 @@ class CgmReadingsCompanion extends UpdateCompanion<CgmRow> {
     this.trend = const Value.absent(),
     this.sensorWarmup = const Value.absent(),
     this.compressionLow = const Value.absent(),
+    this.isCalibration = const Value.absent(),
+    this.source = const Value.absent(),
   });
   CgmReadingsCompanion.insert({
     this.id = const Value.absent(),
@@ -275,6 +346,8 @@ class CgmReadingsCompanion extends UpdateCompanion<CgmRow> {
     this.trend = const Value.absent(),
     this.sensorWarmup = const Value.absent(),
     this.compressionLow = const Value.absent(),
+    this.isCalibration = const Value.absent(),
+    this.source = const Value.absent(),
   })  : time = Value(time),
         mgdl = Value(mgdl);
   static Insertable<CgmRow> custom({
@@ -284,6 +357,8 @@ class CgmReadingsCompanion extends UpdateCompanion<CgmRow> {
     Expression<int>? trend,
     Expression<bool>? sensorWarmup,
     Expression<bool>? compressionLow,
+    Expression<bool>? isCalibration,
+    Expression<String>? source,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -292,6 +367,8 @@ class CgmReadingsCompanion extends UpdateCompanion<CgmRow> {
       if (trend != null) 'trend': trend,
       if (sensorWarmup != null) 'sensor_warmup': sensorWarmup,
       if (compressionLow != null) 'compression_low': compressionLow,
+      if (isCalibration != null) 'is_calibration': isCalibration,
+      if (source != null) 'source': source,
     });
   }
 
@@ -301,7 +378,9 @@ class CgmReadingsCompanion extends UpdateCompanion<CgmRow> {
       Value<double>? mgdl,
       Value<int>? trend,
       Value<bool>? sensorWarmup,
-      Value<bool>? compressionLow}) {
+      Value<bool>? compressionLow,
+      Value<bool>? isCalibration,
+      Value<String>? source}) {
     return CgmReadingsCompanion(
       id: id ?? this.id,
       time: time ?? this.time,
@@ -309,6 +388,8 @@ class CgmReadingsCompanion extends UpdateCompanion<CgmRow> {
       trend: trend ?? this.trend,
       sensorWarmup: sensorWarmup ?? this.sensorWarmup,
       compressionLow: compressionLow ?? this.compressionLow,
+      isCalibration: isCalibration ?? this.isCalibration,
+      source: source ?? this.source,
     );
   }
 
@@ -333,6 +414,12 @@ class CgmReadingsCompanion extends UpdateCompanion<CgmRow> {
     if (compressionLow.present) {
       map['compression_low'] = Variable<bool>(compressionLow.value);
     }
+    if (isCalibration.present) {
+      map['is_calibration'] = Variable<bool>(isCalibration.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
     return map;
   }
 
@@ -344,7 +431,9 @@ class CgmReadingsCompanion extends UpdateCompanion<CgmRow> {
           ..write('mgdl: $mgdl, ')
           ..write('trend: $trend, ')
           ..write('sensorWarmup: $sensorWarmup, ')
-          ..write('compressionLow: $compressionLow')
+          ..write('compressionLow: $compressionLow, ')
+          ..write('isCalibration: $isCalibration, ')
+          ..write('source: $source')
           ..write(')'))
         .toString();
   }
@@ -3460,6 +3549,8 @@ typedef $$CgmReadingsTableCreateCompanionBuilder = CgmReadingsCompanion
   Value<int> trend,
   Value<bool> sensorWarmup,
   Value<bool> compressionLow,
+  Value<bool> isCalibration,
+  Value<String> source,
 });
 typedef $$CgmReadingsTableUpdateCompanionBuilder = CgmReadingsCompanion
     Function({
@@ -3469,6 +3560,8 @@ typedef $$CgmReadingsTableUpdateCompanionBuilder = CgmReadingsCompanion
   Value<int> trend,
   Value<bool> sensorWarmup,
   Value<bool> compressionLow,
+  Value<bool> isCalibration,
+  Value<String> source,
 });
 
 class $$CgmReadingsTableFilterComposer
@@ -3498,6 +3591,12 @@ class $$CgmReadingsTableFilterComposer
   ColumnFilters<bool> get compressionLow => $composableBuilder(
       column: $table.compressionLow,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isCalibration => $composableBuilder(
+      column: $table.isCalibration, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnFilters(column));
 }
 
 class $$CgmReadingsTableOrderingComposer
@@ -3528,6 +3627,13 @@ class $$CgmReadingsTableOrderingComposer
   ColumnOrderings<bool> get compressionLow => $composableBuilder(
       column: $table.compressionLow,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isCalibration => $composableBuilder(
+      column: $table.isCalibration,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnOrderings(column));
 }
 
 class $$CgmReadingsTableAnnotationComposer
@@ -3556,6 +3662,12 @@ class $$CgmReadingsTableAnnotationComposer
 
   GeneratedColumn<bool> get compressionLow => $composableBuilder(
       column: $table.compressionLow, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCalibration => $composableBuilder(
+      column: $table.isCalibration, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
 }
 
 class $$CgmReadingsTableTableManager extends RootTableManager<
@@ -3587,6 +3699,8 @@ class $$CgmReadingsTableTableManager extends RootTableManager<
             Value<int> trend = const Value.absent(),
             Value<bool> sensorWarmup = const Value.absent(),
             Value<bool> compressionLow = const Value.absent(),
+            Value<bool> isCalibration = const Value.absent(),
+            Value<String> source = const Value.absent(),
           }) =>
               CgmReadingsCompanion(
             id: id,
@@ -3595,6 +3709,8 @@ class $$CgmReadingsTableTableManager extends RootTableManager<
             trend: trend,
             sensorWarmup: sensorWarmup,
             compressionLow: compressionLow,
+            isCalibration: isCalibration,
+            source: source,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -3603,6 +3719,8 @@ class $$CgmReadingsTableTableManager extends RootTableManager<
             Value<int> trend = const Value.absent(),
             Value<bool> sensorWarmup = const Value.absent(),
             Value<bool> compressionLow = const Value.absent(),
+            Value<bool> isCalibration = const Value.absent(),
+            Value<String> source = const Value.absent(),
           }) =>
               CgmReadingsCompanion.insert(
             id: id,
@@ -3611,6 +3729,8 @@ class $$CgmReadingsTableTableManager extends RootTableManager<
             trend: trend,
             sensorWarmup: sensorWarmup,
             compressionLow: compressionLow,
+            isCalibration: isCalibration,
+            source: source,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

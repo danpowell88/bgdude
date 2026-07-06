@@ -98,24 +98,35 @@ class DriftHistoryRepository implements HistoryRepository {
   Future<void> saveCgm(List<CgmSample> samples) async {
     await _db.batch((b) {
       for (final s in samples) {
-        b.insert(
-          _db.cgmReadings,
-          CgmReadingsCompanion.insert(
-            time: s.time,
-            mgdl: s.mgdl,
-            trend: Value(s.trend.index),
-            sensorWarmup: Value(s.sensorWarmup),
-            compressionLow: Value(s.compressionLow),
-          ),
-          onConflict: DoUpdate(
-            (_) => CgmReadingsCompanion(
-              mgdl: Value(s.mgdl),
-              trend: Value(s.trend.index),
-              compressionLow: Value(s.compressionLow),
-            ),
-            target: [_db.cgmReadings.time],
-          ),
+        final companion = CgmReadingsCompanion.insert(
+          time: s.time,
+          mgdl: s.mgdl,
+          trend: Value(s.trend.index),
+          sensorWarmup: Value(s.sensorWarmup),
+          compressionLow: Value(s.compressionLow),
+          isCalibration: Value(s.isCalibration),
+          source: Value(s.source.name),
         );
+        // TASK-9: a sensor reading owns its time slot (the stream dedups by updating), but a
+        // meter / finger-prick reading must NEVER overwrite an existing (sensor) row — on a
+        // same-time collision it is ignored rather than clobbering it.
+        if (s.source == GlucoseSource.sensor) {
+          b.insert(
+            _db.cgmReadings,
+            companion,
+            onConflict: DoUpdate(
+              (_) => CgmReadingsCompanion(
+                mgdl: Value(s.mgdl),
+                trend: Value(s.trend.index),
+                compressionLow: Value(s.compressionLow),
+              ),
+              target: [_db.cgmReadings.time],
+            ),
+          );
+        } else {
+          b.insert(_db.cgmReadings, companion,
+              onConflict: DoNothing(target: [_db.cgmReadings.time]));
+        }
       }
     });
   }
@@ -129,6 +140,8 @@ class DriftHistoryRepository implements HistoryRepository {
           time: r.time,
           mgdl: r.mgdl,
           trend: GlucoseTrend.values[r.trend.clamp(0, GlucoseTrend.values.length - 1)],
+          isCalibration: r.isCalibration,
+          source: GlucoseSource.fromName(r.source),
           sensorWarmup: r.sensorWarmup,
           compressionLow: r.compressionLow,
         ),

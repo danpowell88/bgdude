@@ -137,7 +137,7 @@ class MetricsCalculator {
 
   GlucoseMetrics compute(List<CgmSample> samples) {
     final valid = samples
-        .where((s) => !s.sensorWarmup && s.mgdl > 0)
+        .where((s) => !s.sensorWarmup && !s.isCalibration && s.mgdl > 0)
         .toList(growable: false);
     if (valid.isEmpty) {
       return const GlucoseMetrics(
@@ -250,7 +250,7 @@ class AgpCalculator {
   List<AgpBucket> compute(List<CgmSample> samples) {
     final buckets = <int, List<double>>{};
     for (final s in samples) {
-      if (s.sensorWarmup || s.mgdl <= 0) continue;
+      if (s.sensorWarmup || s.isCalibration || s.mgdl <= 0) continue;
       final minuteOfDay = s.time.hour * 60 + s.time.minute;
       final key = (minuteOfDay ~/ bucketMinutes) * bucketMinutes;
       (buckets[key] ??= <double>[]).add(s.mgdl);
