@@ -87,6 +87,12 @@ class NotificationService {
       show(NotificationCategory.morningSummary, headline, body,
           id: 1001, bigText: true);
 
+  /// The weekly digest (§4-4.5) — shares the morning-summary opt-in/quiet settings but a
+  /// distinct id so it doesn't clobber the daily summary.
+  Future<void> showWeeklyDigest(String headline, String body) =>
+      show(NotificationCategory.morningSummary, headline, body,
+          id: 1002, bigText: true);
+
   /// Schedule the daily summary reminder at [hour]:[minute] local.
   Future<void> scheduleDailySummary({int hour = 7, int minute = 0}) async {
     final now = tz.TZDateTime.now(tz.local);

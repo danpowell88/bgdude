@@ -19,6 +19,7 @@ import '../data/secure_key.dart';
 import '../ml/sensitivity_model.dart';
 import 'morning_summary.dart';
 import 'notifications.dart';
+import 'weekly_digest.dart';
 
 const _summaryTask = 'bgdude.morning-summary';
 
@@ -65,6 +66,24 @@ void backgroundCallbackDispatcher() {
           final body = [for (final i in summary.insights.take(3)) '• ${i.detail}']
               .join('\n');
           await notifications.showMorningSummary(summary.headline, body);
+        }
+
+        // Weekly digest (§4-4.5): once a week (Monday morning) summarise this week vs
+        // last, reusing the 14-day CGM pull.
+        if (now.weekday == DateTime.monday) {
+          final weekAgo = now.subtract(const Duration(days: 7));
+          final twoWeeksAgo = now.subtract(const Duration(days: 14));
+          final thisWeek = const MetricsCalculator().compute(
+              [for (final s in baselineCgm) if (!s.time.isBefore(weekAgo)) s]);
+          final lastWeek = const MetricsCalculator().compute([
+            for (final s in baselineCgm)
+              if (s.time.isBefore(weekAgo) && !s.time.isBefore(twoWeeksAgo)) s
+          ]);
+          final digest = const WeeklyDigestGenerator()
+              .generate(thisWeek: thisWeek, lastWeek: lastWeek);
+          if (digest != null) {
+            await notifications.showWeeklyDigest(digest.headline, digest.body);
+          }
         }
       }
       await db.close();
