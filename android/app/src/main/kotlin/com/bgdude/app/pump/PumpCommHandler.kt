@@ -244,11 +244,11 @@ class PumpCommHandler(
 
     private fun handleHistoryMessage(peripheral: BluetoothPeripheral, message: Message) {
         if (message is HistoryLogStatusResponse) {
-            val count = pendingHistoryCount
-            if (count > 0) {
-                val start = (message.lastSequenceNum - count + 1)
-                    .coerceAtLeast(message.firstSequenceNum)
-                sendCommand(peripheral, HistoryLogRequest(start, count))
+            val range = HistoryRangePlanner.plan(
+                message.firstSequenceNum, message.lastSequenceNum, pendingHistoryCount,
+            )
+            if (range != null) {
+                sendCommand(peripheral, HistoryLogRequest(range.start, range.count))
                 pendingHistoryCount = 0
             }
             return
