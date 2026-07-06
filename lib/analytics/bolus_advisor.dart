@@ -236,10 +236,17 @@ class BolusAdvisor {
   static const double _proteinKcalPerG = 4;
   static const double _kcalPerFpu = 100;
 
-  /// Extended-bolus duration heuristic: `(fpu.ceil() + base)` clamped to [min, max] hours.
-  static const int _fpuExtendBaseHours = 2;
-  static const int _fpuExtendMinHours = 3;
-  static const int _fpuExtendMaxHours = 8;
+  /// Extended-bolus duration: the published Pankowska/Warsaw step table (TASK-162) —
+  /// 1 FPU→3 h, 2→4 h, 3→5 h, ≥4→8 h. A partial FPU rounds up to the next step
+  /// (2.3 FPU extends like 3). The old `(ceil+2).clamp(3,8)` heuristic under-extended
+  /// the 4–5 FPU range (6–7 h), risking a rebound rise after big fatty meals.
+  /// Public so `FpuCoach` shares the same table instead of drifting.
+  static int pankowskaExtendHours(double fpu) => switch (fpu.ceil()) {
+        <= 1 => 3,
+        2 => 4,
+        3 => 5,
+        _ => 8,
+      };
 
   /// Control-IQ (auto-correcting) halves a manual correction to avoid stacking.
   static const double _ciqCorrectionFactor = 0.5;
@@ -339,10 +346,7 @@ class BolusAdvisor {
         : fatProteinLevel.fpu;
     var fpuUnits = fpu > 0 ? (fpu * _carbEquivPerFpu) / effectiveCr : 0.0;
     fpuUnits = _floorToIncrement(fpuUnits);
-    final fpuExtendHours = fpu > 0
-        ? (fpu.ceil() + _fpuExtendBaseHours)
-            .clamp(_fpuExtendMinHours, _fpuExtendMaxHours)
-        : 0;
+    final fpuExtendHours = fpu > 0 ? pankowskaExtendHours(fpu) : 0;
 
     // --- Correction component ---
     // P0-6: hard low-guard — never suggest a correction while the current reading is

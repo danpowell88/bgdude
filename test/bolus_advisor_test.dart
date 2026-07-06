@@ -242,6 +242,30 @@ void main() {
       expect(c.fpuUnits, greaterThan(0));
       expect(c.fpuExtendHours, inInclusiveRange(3, 8));
     });
+
+    test('extend hours follow the published Pankowska table (TASK-162)', () {
+      // 1 FPU -> 3 h, 2 -> 4 h, 3 -> 5 h, >= 4 -> 8 h; partial FPU rounds up.
+      expect(BolusAdvisor.pankowskaExtendHours(1), 3);
+      expect(BolusAdvisor.pankowskaExtendHours(2), 4);
+      expect(BolusAdvisor.pankowskaExtendHours(3), 5);
+      expect(BolusAdvisor.pankowskaExtendHours(4), 8);
+      expect(BolusAdvisor.pankowskaExtendHours(5), 8);
+      expect(BolusAdvisor.pankowskaExtendHours(2.3), 5);
+    });
+
+    test('3 FPU extends 5 h, 4 FPU extends 8 h end-to-end', () {
+      // 3 FPU: (20 g fat x 9 + 30 g protein x 4) / 100 = 3.0
+      final three = BolusAdvisor()
+          .computeBolus(state(bg: 120), fatGrams: 20, proteinGrams: 30);
+      expect(three.fpu, closeTo(3.0, 1e-9));
+      expect(three.fpuExtendHours, 5);
+      // 4 FPU: (40 g fat x 9 + 10 g protein x 4) / 100 = 4.0 — the old heuristic
+      // gave 6 h here, ending the extension 2 h early.
+      final four = BolusAdvisor()
+          .computeBolus(state(bg: 120), fatGrams: 40, proteinGrams: 10);
+      expect(four.fpu, closeTo(4.0, 1e-9));
+      expect(four.fpuExtendHours, 8);
+    });
   });
 
   group('rounding direction (TASK-161)', () {

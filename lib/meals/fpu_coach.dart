@@ -7,6 +7,8 @@
 /// watch window for the user to act on themselves.
 library;
 
+import '../analytics/bolus_advisor.dart';
+
 class FpuAdvice {
   const FpuAdvice({
     required this.fpu,
@@ -74,8 +76,9 @@ class FpuCoach {
     final fpu = (fatGrams * 9 + proteinGrams * 4) / 100.0;
     final immediate = carbsGrams / insulinToCarbRatio;
     final extended = (fpu * carbEquivPerFpu) / insulinToCarbRatio;
-    // Pankowska: extend longer for bigger fat/protein loads (≈ FPU+2 hours, 3–8 h).
-    final extendHours = (fpu.ceil() + 2).clamp(3, 8);
+    // Pankowska: the published step table (1→3 h, 2→4 h, 3→5 h, ≥4→8 h), shared
+    // with the bolus advisor so the two surfaces can't drift (TASK-162).
+    final extendHours = BolusAdvisor.pankowskaExtendHours(fpu);
     return FpuAdvice(
       fpu: fpu,
       immediateUnits: immediate,
