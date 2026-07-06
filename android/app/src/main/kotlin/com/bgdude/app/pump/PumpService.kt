@@ -67,6 +67,12 @@ class PumpService : Service(), PumpCommHandler.Listener {
             } catch (e: SecurityException) {
                 Log.w(TAG, "FGS start rejected; continuing bound-only", e)
             }
+            // TASK-12: after a reboot the app isn't open to kick off a scan, so the service
+            // reconnects itself when started with the auto-reconnect flag.
+            if (intent?.getBooleanExtra(EXTRA_AUTO_RECONNECT, false) == true) {
+                Log.i(TAG, "Auto-reconnecting after boot")
+                startScan(null)
+            }
         } else {
             Log.i(TAG, "BLUETOOTH_CONNECT not granted yet; deferring foreground start")
         }
@@ -165,6 +171,9 @@ class PumpService : Service(), PumpCommHandler.Listener {
         private const val TAG = "PumpService"
         private const val CHANNEL_ID = "pump_connection"
         private const val NOTIF_ID = 42
+
+        /** Intent extra: start a scan/reconnect once foregrounded (set by [BootReceiver]). */
+        const val EXTRA_AUTO_RECONNECT = "auto_reconnect"
 
         /** The connectedDevice FGS type requires one of the BT runtime permissions. */
         fun hasBluetoothPermission(context: Context): Boolean =

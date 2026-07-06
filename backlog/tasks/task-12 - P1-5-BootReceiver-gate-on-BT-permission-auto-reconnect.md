@@ -1,10 +1,10 @@
 ---
 id: TASK-12
 title: 'BootReceiver: gate on BT permission + auto-reconnect'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 15:44'
 labels:
   - roadmap
   - native
@@ -26,8 +26,8 @@ ordinal: 102200
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 BootReceiver checks BT permission before starting
-- [ ] #2 Auto-reconnect resumes the link after boot
+- [x] #1 BootReceiver checks BT permission before starting
+- [x] #2 Auto-reconnect resumes the link after boot
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -47,6 +47,8 @@ ordinal: 102200
 - Where: `BootReceiver.kt`, `PumpService.kt`
 - Flags: 🔌 hardware
 - Roadmap status: open
+
+Implemented. AC#1: BootReceiver now checks PumpService.hasBluetoothPermission(context) before startForegroundService and skips quietly (logged) if the BLE runtime permission isn't granted — starting a connectedDevice FGS from BOOT_COMPLETED without it is rejected on Android 12+/15+. AC#2: BootReceiver passes PumpService.EXTRA_AUTO_RECONNECT; PumpService.onStartCommand, once foregrounded with that flag, calls startScan(null) so the link reconnects itself after a reboot (previously it started the service but never scanned). Native-only; no unit test (BroadcastReceiver + FGS + runtime permissions need instrumentation not available headless) — verified by gradle build + APK; logic is a permission gate + one startScan call.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
