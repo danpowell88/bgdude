@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'analytics/therapy_settings.dart';
 import 'state/app_flags.dart';
 import 'state/providers.dart';
+import 'state/snapshot_chain.dart';
 import 'ui/main_shell.dart';
 import 'ui/onboarding_screen.dart';
 
@@ -24,17 +26,24 @@ class BgDudeApp extends ConsumerWidget {
             .pushUpdate(snapshot, ref.read(glucoseUnitProvider));
         // Persist the reading and keep today's history current, THEN run the alert
         // service so it evaluates against the just-arrived reading (not the previous
-        // one). Ordered via the future rather than fire-and-forget.
-        ref
-            .read(dayHistoryControllerProvider.notifier)
-            .ingestSnapshot(snapshot)
-            .then((_) => ref.read(alertServiceProvider).onSnapshot());
+        // one). Each stage logs its own failure and alert evaluation always runs
+        // (TASK-125) — an ingest error must not silence the safety alerts.
+        unawaited(ingestThenEvaluateAlerts(
+          ingest: () => ref
+              .read(dayHistoryControllerProvider.notifier)
+              .ingestSnapshot(snapshot),
+          evaluateAlerts: () => ref.read(alertServiceProvider).onSnapshot(),
+        ));
         // Best-effort Nightscout push (no-op unless configured + enabled).
         final sample = snapshot.toCgmSample();
         final ns = ref.read(nightscoutClientProvider);
-        if (sample != null) ns.uploadEntries([sample]);
+        if (sample != null) {
+          unawaitedLogged(ns.uploadEntries([sample]), 'nightscout',
+              'entry upload failed');
+        }
         if (snapshot.iobUnits != null) {
-          ns.uploadDeviceStatus(iob: snapshot.iobUnits!);
+          unawaitedLogged(ns.uploadDeviceStatus(iob: snapshot.iobUnits!),
+              'nightscout', 'devicestatus upload failed');
         }
       }
     });
