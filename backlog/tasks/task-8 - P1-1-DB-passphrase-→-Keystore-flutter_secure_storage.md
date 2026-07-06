@@ -4,7 +4,7 @@ title: P1-1 DB passphrase → Keystore (flutter_secure_storage)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:53'
+updated_date: '2026-07-06 05:25'
 labels:
   - roadmap
   - §1-P1
@@ -35,9 +35,12 @@ ordinal: 8000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Move the passphrase to flutter_secure_storage (Android Keystore); migrate any existing prefs value across on first run; await the write before opening the DB (secure_key.dart, database.dart:187, main.dart). Correct the misleading comments/README.
-
-**Testing.** Test the migration path (prefs → secure storage) and that the DB opens with the migrated key; verify the passphrase is absent from prefs afterward. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+- Move the passphrase to `flutter_secure_storage` (Android Keystore).
+- Migrate any existing prefs value across on first run.
+- Await the write before opening the DB (`secure_key.dart`, `database.dart:187`, `main.dart`).
+- Correct the misleading comments/README.
+- Test the migration path (prefs → secure storage) and that the DB opens with the migrated key; verify the passphrase is absent from prefs afterward. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -47,6 +50,14 @@ ordinal: 8000
 - Effort: S
 - Where: secure_key.dart, database.dart:187, main.dart
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Security-critical (the DB encryption key): wants your go-ahead to add the flutter_secure_storage dependency + the exact prefs->Keystore migration strategy, since a bad migration would lock you out of the existing encrypted DB.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:25
+---
+detail-needed (2026-07-06, goal triage): Security-critical (the DB encryption key): wants your go-ahead to add the flutter_secure_storage dependency + the exact prefs->Keystore migration strategy, since a bad migration would lock you out of the existing encrypted DB.
+---
+<!-- COMMENTS:END -->

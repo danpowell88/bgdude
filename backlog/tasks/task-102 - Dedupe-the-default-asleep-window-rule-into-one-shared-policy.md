@@ -4,7 +4,7 @@ title: Dedupe the default asleep-window rule into one shared policy
 status: Done
 assignee: []
 created_date: '2026-07-06 04:53'
-updated_date: '2026-07-06 05:04'
+updated_date: '2026-07-06 05:26'
 labels:
   - code-health
   - cleanup
@@ -30,8 +30,8 @@ ordinal: 102000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 One shared helper (`isDefaultAsleep(DateTime)` or a `SleepWindow` value object) in a neutral non-UI module
-- [ ] #2 All six call sites use it; the duplicates are deleted
+- [x] #1 One shared helper (`isDefaultAsleep(DateTime)` or a `SleepWindow` value object) in a neutral non-UI module
+- [x] #2 All six call sites use it; the duplicates are deleted
 - [ ] #3 Unit test covers the boundary hours (22:59, 23:00, 06:59, 07:00)
 <!-- AC:END -->
 
@@ -51,3 +51,19 @@ ordinal: 102000
 - Effort: S
 - Where: event_builder.dart:226, confirmation_service.dart:122, providers.dart:1708, simulated_pump_client.dart:106, home_screen.dart:239, timeline_screen.dart:166
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:26
+---
+Grooming check 2026-07-06: ACs 1-2 verified against commit 2b65236 (all six call sites now import `core/sleep_window.dart`). AC #3 boundary unit test was not found in `test/` — left unchecked; the task is marked Done, so either add the test or accept the gap.
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Added `lib/core/sleep_window.dart` with a single `defaultAsleepAt(DateTime)` policy helper and migrated all six duplicated call sites (`event_builder.dart`, `confirmation_service.dart`, `providers.dart`, `simulated_pump_client.dart`, `home_screen.dart`, `timeline_screen.dart`) to it (commit 2b65236). AC #3 boundary unit test (22:59/23:00/06:59/07:00) is not present under `test/`, so it remains unchecked.
+<!-- SECTION:FINAL_SUMMARY:END -->

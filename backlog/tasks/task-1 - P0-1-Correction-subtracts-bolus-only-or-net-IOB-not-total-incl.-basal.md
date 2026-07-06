@@ -4,7 +4,7 @@ title: 'P0-1 Correction subtracts bolus-only (or net) IOB, not total incl. basal
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:59'
+updated_date: '2026-07-06 05:23'
 labels:
   - roadmap
   - §1-P0
@@ -25,17 +25,19 @@ ordinal: 1000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Correction uses bolus-only/net IOB for the subtraction
-- [ ] #2 Forward prediction still uses full IOB
-- [ ] #3 Regression test on a fasting scenario
+- [x] #1 Correction uses bolus-only/net IOB for the subtraction
+- [x] #2 Forward prediction still uses full IOB
+- [x] #3 Regression test on a fasting scenario
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In bolus_advisor.dart:191 and 293-294 use `_iob.fromBoluses(...)` (bolus-only, or net) for the amount subtracted from the correction; keep full IOB only for the forward BG prediction. Mirrors the rescue-carb fix (P0-5).
-
-**Testing.** Unit test: with only basal IOB the correction is unchanged; with recent bolus IOB it is subtracted. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+- In `bolus_advisor.dart:191` and `293-294`, use `_iob.fromBoluses(...)` (bolus-only, or net) for the amount subtracted from the correction.
+- Keep full IOB only for the forward BG prediction.
+- Mirrors the rescue-carb fix (P0-5).
+- Unit test: with only basal IOB the correction is unchanged; with recent bolus IOB it is subtracted. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,3 +48,9 @@ ordinal: 1000
 - Where: bolus_advisor.dart:191,293-294
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Correction dosing in `bolus_advisor.dart` now subtracts bolus-only/net IOB (`_iob.fromBoluses(...)`) instead of total IOB including basal; the forward BG prediction keeps full IOB. Landed in commit 5c974df (P0 dosing-math fixes) with fasting-scenario regression tests; `flutter analyze` clean and `flutter test` green.
+<!-- SECTION:FINAL_SUMMARY:END -->

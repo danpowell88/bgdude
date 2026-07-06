@@ -4,7 +4,7 @@ title: 5-7 Deterministic column reconstruction
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:53'
+updated_date: '2026-07-06 05:29'
 labels:
   - roadmap
   - §5
@@ -32,9 +32,11 @@ ordinal: 90000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Use ML Kit's block/line geometry (currently discarded) to rebuild per-serve/per-100g columns before parsing — fixes most merged-column cases without the LLM. Plus parser quirks: exclude %DV tokens, split kJ/kcal, capture EU "Salt … g", ml servings.
-
-**Testing.** Column-reconstruction test on multi-column fixtures; a parser test per quirk. Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model; `flutter analyze`/`flutter test` green.
+- Use ML Kit block/line geometry (currently discarded) to rebuild per-serve/per-100g columns before parsing — fixes most merged-column cases without the LLM.
+- Fix parser quirks: exclude %DV tokens, split kJ/kcal, capture EU "Salt … g", ml servings.
+- Column-reconstruction test on multi-column fixtures; a parser test per quirk.
+- Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -43,6 +45,14 @@ ordinal: 90000
 - Source: ROADMAP §5 item 7
 - Effort: M
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Column reconstruction needs ML Kit block/line geometry plumbed through the OCR pipeline (currently discarded) — a medium OCR-pipeline change; confirm scope.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:29
+---
+detail-needed (2026-07-06, goal triage): Column reconstruction needs ML Kit block/line geometry plumbed through the OCR pipeline (currently discarded) — a medium OCR-pipeline change; confirm scope.
+---
+<!-- COMMENTS:END -->

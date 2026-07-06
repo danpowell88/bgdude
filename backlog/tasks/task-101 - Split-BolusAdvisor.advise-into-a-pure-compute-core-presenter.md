@@ -4,7 +4,7 @@ title: Split BolusAdvisor.advise() into a pure compute core + presenter
 status: To Do
 assignee: []
 created_date: '2026-07-06 04:53'
-updated_date: '2026-07-06 05:06'
+updated_date: '2026-07-06 05:25'
 labels:
   - code-health
   - dosing-math
@@ -55,7 +55,15 @@ Clinical constants are embedded mid-method:
 <!-- SECTION:NOTES:BEGIN -->
 - Source: code-health survey 2026-07-06 (lib finding 1)
 - Effort: M
-- Where: lib/analytics/bolus_advisor.dart:137-324
-
-detail-needed (2026-07-06, goal triage): an invasive refactor of the safety-critical BolusAdvisor.advise() — splitting compute from presentation. Want the core's return shape / core-vs-presenter boundary confirmed before restructuring dosing code (high blast radius; the advise() path was just modified by P0-1/4/6).
+- Where: `lib/analytics/bolus_advisor.dart:137-324`
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:25
+---
+detail-needed (2026-07-06, goal triage): an invasive refactor of the safety-critical BolusAdvisor.advise() — splitting compute from presentation. Want the core return shape / core-vs-presenter boundary confirmed before restructuring dosing code (high blast radius; the advise() path was just modified by P0-1/4/6).
+---
+<!-- COMMENTS:END -->

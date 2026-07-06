@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:53'
+updated_date: '2026-07-06 05:27'
 labels:
   - roadmap
   - §1-P1
@@ -36,9 +36,11 @@ ordinal: 15000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Sweep providers.dart: a swallow is legal only if the op is optional AND it logs (via the §3.D app_log). Do not advance _lastFired on a failed urgent-low; make runStartup record per-job failures.
-
-**Testing.** Unit test that a failed urgent-low leaves _lastFired unchanged (so it retries); assert startup records a failing job. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+- Sweep `providers.dart`: a swallow is legal only if the op is optional AND it logs (via the §3.D `app_log`).
+- Do not advance `_lastFired` on a failed urgent-low.
+- Make `runStartup` record per-job failures.
+- Unit test that a failed urgent-low leaves `_lastFired` unchanged (so it retries); assert startup records a failing job. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -48,6 +50,14 @@ ordinal: 15000
 - Effort: S
 - Where: providers.dart throughout
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): The catch-sweep AC depends on the app_log ring buffer from 3.D (TASK-38) existing first; do the two behavioural fixes as part of that sweep.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:27
+---
+detail-needed (2026-07-06, goal triage): The catch-sweep AC depends on the app_log ring buffer from 3.D (TASK-38) existing first; do the two behavioural fixes as part of that sweep.
+---
+<!-- COMMENTS:END -->

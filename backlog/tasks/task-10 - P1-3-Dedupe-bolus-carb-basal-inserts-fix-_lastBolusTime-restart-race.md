@@ -4,7 +4,7 @@ title: P1-3 Dedupe bolus/carb/basal inserts; fix _lastBolusTime restart race
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:52'
+updated_date: '2026-07-06 05:26'
 labels:
   - roadmap
   - §1-P1
@@ -34,9 +34,10 @@ ordinal: 10000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Add a unique key or event-id + upsert for bolus/carb/basal (database.dart, history_backfill.dart); fix the _lastBolusTime restart race in day_history_controller.dart.
-
-**Testing.** ingestSnapshot restart/dedupe test (re-ingest yields no duplicates); repo upsert test on NativeDatabase.memory(). Repository tests on `NativeDatabase.memory()`; add drift schema-export + step-migration tests BEFORE any schema change (§3.H).
+- Add a unique key or event-id + upsert for bolus/carb/basal (`database.dart`, `history_backfill.dart`).
+- Fix the `_lastBolusTime` restart race in `day_history_controller.dart`.
+- `ingestSnapshot` restart/dedupe test (re-ingest yields no duplicates); repo upsert test on `NativeDatabase.memory()`.
+- Repository tests on `NativeDatabase.memory()`; add drift schema-export + step-migration tests BEFORE any schema change (§3.H).
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,6 +47,14 @@ ordinal: 10000
 - Effort: M
 - Where: database.dart, day_history_controller.dart, history_backfill.dart
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Dedupe needs a schema change (unique key / event-id) + the §3.H migration infra; want the dedupe-key design confirmed to avoid a data-losing migration.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:26
+---
+detail-needed (2026-07-06, goal triage): Dedupe needs a schema change (unique key / event-id) + the §3.H migration infra; want the dedupe-key design confirmed to avoid a data-losing migration.
+---
+<!-- COMMENTS:END -->

@@ -4,7 +4,7 @@ title: P2-7 Health-feature look-ahead leak + _activityAt binary search
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:16'
+updated_date: '2026-07-06 05:24'
 labels:
   - roadmap
   - §1-P2
@@ -25,18 +25,20 @@ ordinal: 23000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Resting-HR baseline uses trailing samples only (no look-ahead)
-- [ ] #2 _activityAt uses binary search over sorted samples
-- [ ] #3 Feature values unchanged except for the removed leak
-- [ ] #4 Test asserts no future sample influences a feature
+- [x] #1 Resting-HR baseline uses trailing samples only (no look-ahead)
+- [x] #2 _activityAt uses binary search over sorted samples
+- [x] #3 Feature values unchanged except for the removed leak
+- [x] #4 Test asserts no future sample influences a feature
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In health_features.dart / HealthFeatureSampler use a TRAILING resting-HR baseline only; replace the _activityAt linear scan with a binary search over the sorted sample list.
-
-**Testing.** Test asserts no future sample influences a feature; feature values otherwise unchanged; binary-search correctness test. ML-honesty tests first (coverage + bias, synthetic-data recovery); `flutter analyze` clean, `flutter test` green.
+- In `health_features.dart` / `HealthFeatureSampler`, compute the resting-HR baseline from TRAILING samples only (no look-ahead).
+- Replace the `_activityAt` linear scan with a binary search over the sorted sample list.
+- Test: assert no future sample influences a feature; feature values otherwise unchanged; binary-search correctness test.
+- Run ML-honesty tests first (coverage + bias, synthetic-data recovery).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,3 +48,9 @@ ordinal: 23000
 - Effort: S–M
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Fixed the health-feature look-ahead leak in `lib/ml/health_features.dart`: the resting-HR baseline is now computed trailing (readings at or before the query time) so historical training features never see future readings, and `_activityAt` binary-searches the trailing (from, t] window instead of scanning the whole sorted list (identical values, O(log n)). Verified by tests that a future resting-HR reading no longer changes a past feature and the activity window sum is exact; analyze clean (commit cd10167).
+<!-- SECTION:FINAL_SUMMARY:END -->

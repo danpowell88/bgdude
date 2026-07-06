@@ -4,7 +4,7 @@ title: 5-6 OCR script support (scope decision)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:52'
+updated_date: '2026-07-06 05:28'
 labels:
   - roadmap
   - §5
@@ -35,9 +35,12 @@ ordinal: 89000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Latin-only OCR feeds CJK labels as garbage to the LLM. Decide: add ML Kit script detection + the relevant recognizers, OR scope the copy honestly to Latin-script labels. Inform the decision with real usage during item 2-1.
-
-**Testing.** If extended: script-detection unit test. If scoped: the guide/copy states Latin-only. Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model; `flutter analyze`/`flutter test` green.
+- Context: Latin-only OCR feeds CJK labels as garbage to the LLM.
+- Decide: add ML Kit script detection + the relevant recognizers, OR scope the copy honestly to Latin-script labels.
+- Inform the decision with real usage during item 2-1.
+- If extended: script-detection unit test. If scoped: the guide/copy states Latin-only.
+- Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,7 +49,20 @@ ordinal: 89000
 - Source: ROADMAP §5 item 6
 - Effort: M
 - Depends on: 2-1
-- ⚠ NEEDS MORE EXPLORATION: Scope decision, not just code: add CJK recognizers vs limit to Latin labels. Decide from real usage during 2-1.
-
-detail-needed (2026-07-06, goal triage): Scope decision: add CJK/script recognizers vs limit to Latin-script labels — decide from real usage.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:28
+---
+⚠ NEEDS MORE EXPLORATION: Scope decision, not just code: add CJK recognizers vs limit to Latin labels. Decide from real usage during 2-1.
+---
+
+author: Claude
+created: 2026-07-06 05:28
+---
+"detail-needed" (2026-07-06, goal triage): Scope decision: add CJK/script recognizers vs limit to Latin-script labels — decide from real usage.
+---
+<!-- COMMENTS:END -->

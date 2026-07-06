@@ -4,7 +4,7 @@ title: P2-2 Purged/blocked walk-forward validation
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:52'
+updated_date: '2026-07-06 05:28'
 labels:
   - roadmap
   - §1-P2
@@ -35,9 +35,12 @@ ordinal: 18000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** K=3–4 contiguous blocked folds with a purge gap ≥ maxHorizon (the ±6 min label slop makes the gap mandatory); pooled fold metrics gate promotion; final model retrains on everything; <~10 days falls back to the single split.
-
-**Testing.** Purge-gap leakage assertion (no train row within maxHorizon of a test label); pooled-gate test. Detailed in TASK-55. ML-honesty tests first (coverage + bias, synthetic-data recovery); `flutter analyze` clean, `flutter test` green.
+- K=3–4 contiguous blocked folds with a purge gap ≥ `maxHorizon` (the ±6 min label slop makes the gap mandatory).
+- Pooled fold metrics gate promotion.
+- Final model retrains on everything.
+- <~10 days of data falls back to the single split.
+- Tests: purge-gap leakage assertion (no train row within `maxHorizon` of a test label); pooled-gate test. Detailed in TASK-55. ML-honesty tests first (coverage + bias, synthetic-data recovery).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,6 +49,14 @@ ordinal: 18000
 - Source: ROADMAP §1 P2-2 → §4-1.10
 - Effort: M
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Delivered by TASK-55 (§4-1.10); blocked on P0-2.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:28
+---
+detail-needed (2026-07-06, goal triage): Delivered by TASK-55 (§4-1.10); blocked on P0-2.
+---
+<!-- COMMENTS:END -->

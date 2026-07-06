@@ -4,7 +4,7 @@ title: 5-4 Few-shot prompt + on-device self-check
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:28'
 labels:
   - roadmap
   - §5
@@ -35,9 +35,12 @@ ordinal: 87000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Two few-shot exemplars in buildPanelPrompt (AU/EU two-column, US single-column); a "test the model" button on the AI screen (canned text → LLM → JSON, pass/fail); then run the on-device accuracy integration test with the LLM enabled and record numbers.
-
-**Testing.** Prompt-format test; on-device self-check button; record accuracy numbers. Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model; `flutter analyze`/`flutter test` green.
+- Add two few-shot exemplars in `buildPanelPrompt` (AU/EU two-column, US single-column).
+- Add a "test the model" button on the AI screen (canned text → LLM → JSON, pass/fail).
+- Run the on-device accuracy integration test with the LLM enabled and record numbers.
+- Prompt-format test; on-device self-check button; record accuracy numbers.
+- Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -47,6 +50,14 @@ ordinal: 87000
 - Effort: M
 - Flags: 🧠 llm 🔌 hardware
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Few-shot prompt + on-device self-check needs a real Gemma model on a device to run and record accuracy.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:28
+---
+detail-needed (2026-07-06, goal triage): Few-shot prompt + on-device self-check needs a real Gemma model on a device to run and record accuracy.
+---
+<!-- COMMENTS:END -->

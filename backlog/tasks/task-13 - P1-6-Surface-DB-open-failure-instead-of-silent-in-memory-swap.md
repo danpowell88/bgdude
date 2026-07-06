@@ -4,7 +4,7 @@ title: P1-6 Surface DB-open failure instead of silent in-memory swap
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:49'
+updated_date: '2026-07-06 05:27'
 labels:
   - roadmap
   - §1-P1
@@ -25,17 +25,17 @@ ordinal: 13000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 DB-open failure shows a banner
-- [ ] #2 Failure is logged
-- [ ] #3 No silent in-memory fallback
+- [x] #1 DB-open failure shows a banner
+- [x] #2 Failure is logged
+- [x] #3 No silent in-memory fallback
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In main.dart:26-34 surface a banner + log on DB-open failure instead of the silent in-memory fallback (ties to the §3.D logging infra).
-
-**Testing.** Force a DB-open failure (bad key) and assert the banner shows + failure is logged; app does not silently continue on memory DB. Repository tests on `NativeDatabase.memory()`; add drift schema-export + step-migration tests BEFORE any schema change (§3.H).
+- In `main.dart:26-34` surface a banner + log on DB-open failure instead of the silent in-memory fallback (ties to the §3.D logging infra).
+- Test: force a DB-open failure (bad key) and assert the banner shows + failure is logged; app does not silently continue on memory DB.
+- Repository tests on `NativeDatabase.memory()`; add drift schema-export + step-migration tests BEFORE any schema change (§3.H).
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,3 +46,9 @@ ordinal: 13000
 - Where: main.dart:26-34
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+DB-open failure in `main.dart` is now surfaced with a visible banner and logged instead of silently swapping to an in-memory database. Landed in commit f623821 with tests forcing a bad-key open failure; `flutter analyze` clean and `flutter test` green.
+<!-- SECTION:FINAL_SUMMARY:END -->

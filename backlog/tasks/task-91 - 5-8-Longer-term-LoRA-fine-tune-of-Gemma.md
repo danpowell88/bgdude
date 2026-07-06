@@ -4,7 +4,7 @@ title: '5-8 Longer-term: LoRA fine-tune of Gemma'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:52'
+updated_date: '2026-07-06 05:29'
 labels:
   - roadmap
   - §5
@@ -36,9 +36,13 @@ ordinal: 91000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Spike: generate synthetic panels from test/data/nutrition_panels.json; LoRA fine-tune Gemma (flutter_gemma supports LoRA in installModel); evaluate a fine-tuned 270M vs the 1B baseline for accuracy + latency on the Pixel; record a go/no-go.
-
-**Testing.** Offline eval harness comparing models on the synthetic corpus; documented decision. Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model; `flutter analyze`/`flutter test` green.
+- Spike: generate synthetic panels from `test/data/nutrition_panels.json`.
+- LoRA fine-tune Gemma (`flutter_gemma` supports LoRA in `installModel`).
+- Evaluate a fine-tuned 270M vs the 1B baseline for accuracy + latency on the Pixel.
+- Record a go/no-go.
+- Offline eval harness comparing models on the synthetic corpus; documented decision.
+- Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -47,7 +51,20 @@ ordinal: 91000
 - Source: ROADMAP §5 item 8
 - Effort: L
 - Flags: 🧠 llm
-- ⚠ NEEDS MORE EXPLORATION: Research spike: synthetic-panel generation + LoRA training pipeline + on-device eval of a 270M vs 1B model. Unproven; scope before committing.
-
-detail-needed (2026-07-06, goal triage): Research spike: synthetic-panel generation + LoRA training + on-device eval; go/no-go decision needed.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:29
+---
+⚠ NEEDS MORE EXPLORATION: Research spike: synthetic-panel generation + LoRA training pipeline + on-device eval of a 270M vs 1B model. Unproven; scope before committing.
+---
+
+author: Claude
+created: 2026-07-06 05:29
+---
+detail-needed (2026-07-06, goal triage): Research spike: synthetic-panel generation + LoRA training + on-device eval; go/no-go decision needed.
+---
+<!-- COMMENTS:END -->

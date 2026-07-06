@@ -4,7 +4,7 @@ title: 3.B KvStore behind the DI seam
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:29'
 labels:
   - roadmap
   - §3
@@ -33,9 +33,12 @@ ordinal: 36000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Add a KeyValueStore interface + DbKeyValueStore/MemoryKeyValueStore via kvStoreProvider; demo overrides to a namespaced/memory store. Keep a delegating static facade during migration (~40 call sites), then delete. PersistedStateNotifier takes the interface from day one.
-
-**Testing.** Test that demo mode routes KV writes to the memory store (no real KV mutation); facade delegates correctly during migration. Refactor must be behaviour-preserving: full `flutter test` + `flutter analyze` green before and after; add the new unit tests the refactor unlocks.
+- Add a `KeyValueStore` interface + `DbKeyValueStore`/`MemoryKeyValueStore` via `kvStoreProvider`.
+- Demo mode overrides to a namespaced/memory store.
+- Keep a delegating static facade during migration (~40 call sites), then delete it.
+- `PersistedStateNotifier` takes the interface from day one.
+- Test: demo mode routes KV writes to the memory store (no real KV mutation); facade delegates correctly during migration; add the new unit tests the refactor unlocks.
+- Verify: refactor must be behaviour-preserving — full `flutter test` + `flutter analyze` green before and after.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -45,6 +48,14 @@ ordinal: 36000
 - Effort: M
 - Depends on: 3.A (PersistedStateNotifier)
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Depends on §3.A (PersistedStateNotifier) landing first; then a ~40-call-site KvStore seam migration — sequence after the anchor refactor.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:29
+---
+detail-needed (2026-07-06, goal triage): Depends on §3.A (PersistedStateNotifier) landing first; then a ~40-call-site KvStore seam migration — sequence after the anchor refactor.
+---
+<!-- COMMENTS:END -->

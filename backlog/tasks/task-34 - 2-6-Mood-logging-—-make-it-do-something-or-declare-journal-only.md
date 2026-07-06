@@ -4,7 +4,7 @@ title: 2-6 Mood logging — make it do something or declare journal-only
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:52'
+updated_date: '2026-07-06 05:28'
 labels:
   - roadmap
   - §2
@@ -34,9 +34,11 @@ ordinal: 34000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Decide: wire mood into §4-4.3 (mood↔glucose correlation, TASK-67) OR declare it journal-only in the user guide and stop implying analysis.
-
-**Testing.** If wired: the correlation consumes mood tags (see TASK-67 tests). If journal-only: the guide states it; no dangling "unused" state. Add/extend unit tests under `test/`. `flutter analyze` clean, `flutter test` green before commit.
+- Decide: wire mood into §4-4.3 (mood↔glucose correlation, TASK-67) OR declare it journal-only in the user guide and stop implying analysis.
+- If wired: the correlation consumes mood tags (see TASK-67 tests).
+- If journal-only: the guide states it; no dangling "unused" state.
+- Add/extend unit tests under `test/`.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -45,7 +47,20 @@ ordinal: 34000
 - Source: ROADMAP §2 item 2-6
 - Effort: S
 - Depends on: §4-4.3 (if wired)
-- ⚠ NEEDS MORE EXPLORATION: Decide the direction — wire to correlation analysis vs journal-only. Small but a product decision, not just code.
-
-detail-needed (2026-07-06, goal triage): Decision: wire mood into the correlation (TASK-67) or declare it journal-only. Product call.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:28
+---
+⚠ NEEDS MORE EXPLORATION: Decide the direction — wire to correlation analysis vs journal-only. Small but a product decision, not just code.
+---
+
+author: Claude
+created: 2026-07-06 05:28
+---
+detail-needed (2026-07-06, goal triage): Decision: wire mood into the correlation (TASK-67) or declare it journal-only. Product call.
+---
+<!-- COMMENTS:END -->

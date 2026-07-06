@@ -4,7 +4,7 @@ title: 2-4 Garmin on-watch verification + current-gen devices
 status: In Progress
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 05:27'
 labels:
   - roadmap
   - §2
@@ -34,9 +34,13 @@ ordinal: 32000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Install on a paired watch; confirm phone→watch push + background service; add fenix 8, FR 165/970, venu/vivoactive 6 to the 3 manifests; raise minApiLevel or prune products lacking registerForPhoneAppMessageEvent.
-
-**Testing.** On-watch: install, confirm live BG push + background survival; build succeeds for each added device. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests still green.
+- Install on a paired watch.
+- Confirm phone→watch push + background service.
+- Add fenix 8, FR 165/970, venu/vivoactive 6 to the 3 manifests.
+- Raise `minApiLevel` or prune products lacking `registerForPhoneAppMessageEvent`.
+- On-watch test: install, confirm live BG push + background survival; build succeeds for each added device.
+- On-device (hardware): prepare a build + an exact manual test procedure → run on the real device → report → fix.
+- Verify: desk tests still green — `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

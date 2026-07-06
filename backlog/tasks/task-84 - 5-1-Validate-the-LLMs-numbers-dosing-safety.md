@@ -4,7 +4,7 @@ title: 5-1 Validate the LLM's numbers (dosing safety)
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:34'
+updated_date: '2026-07-06 05:27'
 labels:
   - roadmap
   - §5
@@ -26,17 +26,20 @@ ordinal: 84000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Hard per-field bounds → null on out-of-range
-- [ ] #2 Cross-field checks (sugars≤carbs; per-serve consistency)
-- [ ] #3 All-macros-empty rejection retained
+- [x] #1 Hard per-field bounds → null on out-of-range
+- [x] #2 Cross-field checks (sugars≤carbs; per-serve consistency)
+- [x] #3 All-macros-empty rejection retained
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In the parser (not the prompt): hard per-field bounds (macros 0–100 g/100g, sodium ≤5000 mg, energy ≤4000 kJ/100g, serving 1–1000 g, servings/pack 1–100 → out-of-range = null); cross-field checks (sugars ≤ carbs; per-serve ≈ per-100g×serving/100 within ~25% else keep per-100g + serving and null per-serve); keep the all-macros-empty rejection.
-
-**Testing.** Unit tests per bound and cross-field rule against fixtures; out-of-range → null. Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model; `flutter analyze`/`flutter test` green.
+- In the parser (not the prompt): add hard per-field bounds — macros 0–100 g/100g, sodium ≤5000 mg, energy ≤4000 kJ/100g, serving 1–1000 g, servings/pack 1–100; out-of-range = null.
+- Add cross-field checks: sugars ≤ carbs; per-serve ≈ per-100g×serving/100 within ~25%, else keep per-100g + serving and null per-serve.
+- Keep the all-macros-empty rejection.
+- Unit tests per bound and cross-field rule against fixtures; out-of-range → null.
+- Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -47,3 +50,9 @@ ordinal: 84000
 - Flags: 🧠 llm 🔒 safety
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Added `validatePanel()` in `lib/food/panel_llm.dart` — a pure, model-agnostic post-pass on parsed nutrition panels enforcing hard per-field bounds (macros 0–100 g/100g, sodium ≤5000 mg, energy ≤4000 kJ/100g, serving 1–1000 g, servings/pack 1–100 → null) and cross-field checks (sugars ≤ carbs; per-serve dropped when it disagrees with per-100g × serving by >25%), applied to the LLM output. Tests in `test/panel_llm_test.dart`; verified analyze clean and full suite green (465 tests, 5 new). Commit 2ec61da.
+<!-- SECTION:FINAL_SUMMARY:END -->

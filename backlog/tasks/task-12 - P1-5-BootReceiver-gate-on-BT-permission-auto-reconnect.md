@@ -4,7 +4,7 @@ title: 'P1-5 BootReceiver: gate on BT permission + auto-reconnect'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:26'
 labels:
   - roadmap
   - §1-P1
@@ -34,9 +34,10 @@ ordinal: 12000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Gate BootReceiver on BLUETOOTH_CONNECT (BootReceiver.kt); add auto-reconnect in PumpService.kt so a boot start re-scans/reconnects to the known pump.
-
-**Testing.** On-device: reboot with the pump paired and confirm the link resumes without opening the app. `cd android && ./gradlew :app:testDebugUnitTest` green; verify pumpx2 APIs via `javap` on the cached jar before writing native code.
+- Gate `BootReceiver` on `BLUETOOTH_CONNECT` (`BootReceiver.kt`).
+- Add auto-reconnect in `PumpService.kt` so a boot start re-scans/reconnects to the known pump.
+- On-device: reboot with the pump paired and confirm the link resumes without opening the app.
+- Verify: `cd android && ./gradlew :app:testDebugUnitTest` green; verify pumpx2 APIs via `javap` on the cached jar before writing native code.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -47,6 +48,14 @@ ordinal: 12000
 - Where: BootReceiver.kt, PumpService.kt
 - Flags: 🔌 hardware
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Needs a real device: the auto-reconnect-after-reboot AC can only be confirmed by rebooting a phone with the pump paired; also a reconnect-policy decision (retry cadence/backoff).
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:26
+---
+detail-needed (2026-07-06, goal triage): Needs a real device: the auto-reconnect-after-reboot AC can only be confirmed by rebooting a phone with the pump paired; also a reconnect-policy decision (retry cadence/backoff).
+---
+<!-- COMMENTS:END -->

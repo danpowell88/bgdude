@@ -4,7 +4,7 @@ title: 6.3 Data integrity edges
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:53'
+updated_date: '2026-07-06 05:30'
 labels:
   - roadmap
   - §6
@@ -34,9 +34,12 @@ ordinal: 94000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** CGM gap handling, sensor warm-up/compression robustness, timezone/DST across history, and meter clock-drift detection (PumpSnapshot.fromJson falls back to DateTime.now() with no skew detection).
-
-**Testing.** Unit tests per edge (gaps, warm-up, DST boundary, clock skew). Add/extend unit tests under `test/`. `flutter analyze` clean, `flutter test` green before commit.
+- CGM gap handling.
+- Sensor warm-up/compression robustness.
+- Timezone/DST across history.
+- Meter clock-drift detection (`PumpSnapshot.fromJson` falls back to `DateTime.now()` with no skew detection).
+- Unit tests per edge (gaps, warm-up, DST boundary, clock skew); add/extend under `test/`.
+- Verify: `flutter analyze` clean, `flutter test` green before commit.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -45,6 +48,14 @@ ordinal: 94000
 - Source: ROADMAP §6
 - Effort: M
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Data-integrity edges span several sub-fixes, some needing real-history verification (DST across history, meter clock drift); wants scoping into concrete sub-tickets.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:30
+---
+detail-needed (2026-07-06, goal triage): Data-integrity edges span several sub-fixes, some needing real-history verification (DST across history, meter clock drift); wants scoping into concrete sub-tickets.
+---
+<!-- COMMENTS:END -->

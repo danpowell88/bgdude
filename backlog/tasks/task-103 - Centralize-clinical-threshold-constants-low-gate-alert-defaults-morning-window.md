@@ -6,7 +6,7 @@ title: >-
 status: Done
 assignee: []
 created_date: '2026-07-06 04:53'
-updated_date: '2026-07-06 05:06'
+updated_date: '2026-07-06 05:27'
 labels:
   - code-health
   - cleanup
@@ -30,9 +30,9 @@ ordinal: 103000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Low-gate and alert defaults live in (or beside) GlucoseThresholds as named consts with doc comments explaining any deliberate difference
-- [ ] #2 AlertThresholds constructor and fromJson reference the same static consts
-- [ ] #3 No behavioural change: flutter test green with no test edits other than imports
+- [x] #1 Low-gate and alert defaults live in (or beside) GlucoseThresholds as named consts with doc comments explaining any deliberate difference
+- [x] #2 AlertThresholds constructor and fromJson reference the same static consts
+- [x] #3 No behavioural change: flutter test green with no test edits other than imports
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -50,3 +50,9 @@ ordinal: 103000
 - Effort: S
 - Where: reading_explainer.dart:111, alert_thresholds.dart:9-11+33-35, background_summary.dart:31+45
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Hoisted the clinical gates to named consts: `GlucoseThresholds.lowExplainGate` in `lib/core/units.dart` (referenced by `reading_explainer.dart`) and `AlertThresholds.defaultLowMgdl/defaultHighMgdl/defaultUrgentLowMgdl` in `lib/insights/alert_thresholds.dart`, now shared by both the constructor and `fromJson` (commit f369cd5). No behavioural change; analyze/tests green per the CI pipeline. Note: the morning-window hours in `background_summary.dart:31` were a plan suggestion but not covered by the ACs and remain bare literals.
+<!-- SECTION:FINAL_SUMMARY:END -->

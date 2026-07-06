@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:52'
+updated_date: '2026-07-06 05:25'
 labels:
   - roadmap
   - §1-P1
@@ -37,9 +37,11 @@ ordinal: 9000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Schema v3: add isCalibration + source to CGM rows (database.dart, history_repository.dart). Stop fingersticks upserting over sensor rows (glucose_meter.dart). Exclude calibration rows from metrics/training queries.
-
-**Testing.** Drift schema-export + step-migration test BEFORE v3; repo test that a fingerstick never overwrites a sensor row and that calibrations are excluded from metrics/training. Repository tests on `NativeDatabase.memory()`; add drift schema-export + step-migration tests BEFORE any schema change (§3.H).
+- Schema v3: add `isCalibration` + `source` to CGM rows (`database.dart`, `history_repository.dart`).
+- Stop fingersticks upserting over sensor rows (`glucose_meter.dart`).
+- Exclude calibration rows from metrics/training queries.
+- Drift schema-export + step-migration test BEFORE v3 (repository tests on `NativeDatabase.memory()`; add drift schema-export + step-migration tests BEFORE any schema change, §3.H).
+- Repo test that a fingerstick never overwrites a sensor row and that calibrations are excluded from metrics/training.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -49,6 +51,14 @@ ordinal: 9000
 - Effort: M
 - Where: database.dart, history_repository.dart, glucose_meter.dart
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Schema v3 (isCalibration/source). Per the ROADMAP, the drift schema-export + step-migration tests (§3.H / TASK-42) must exist BEFORE this; also a migration design decision. Sequence after §3.H.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:25
+---
+detail-needed (2026-07-06, goal triage): Schema v3 (isCalibration/source). Per the ROADMAP, the drift schema-export + step-migration tests (§3.H / TASK-42) must exist BEFORE this; also a migration design decision. Sequence after §3.H.
+---
+<!-- COMMENTS:END -->

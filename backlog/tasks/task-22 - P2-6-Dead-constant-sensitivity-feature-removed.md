@@ -4,7 +4,7 @@ title: P2-6 Dead constant sensitivity feature removed
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 05:24'
 labels:
   - roadmap
   - §1-P2
@@ -25,9 +25,10 @@ ordinal: 22000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Feature removed; feature version bumped to v4.
-
-**Testing.** Covered by the feature-version tests. ML-honesty tests first (coverage + bias, synthetic-data recovery); `flutter analyze` clean, `flutter test` green.
+- Remove the dead constant sensitivity feature from the forecast feature set.
+- Bump the feature version to v4 so stale models are discarded.
+- Covered by the feature-version tests; ML-honesty tests first (coverage + bias, synthetic-data recovery).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -37,3 +38,9 @@ ordinal: 22000
 - Effort: S
 - Roadmap status: done ✅
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Dropped the dead constant-1.0 sensitivity feature (both trainer and server always passed neutral) and bumped the feature version to 4 so stale models discard (commit d3eceda). Verified by feature-version tests, `flutter analyze` clean and `flutter test` green.
+<!-- SECTION:FINAL_SUMMARY:END -->

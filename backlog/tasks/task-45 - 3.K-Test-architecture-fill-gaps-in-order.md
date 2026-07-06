@@ -4,7 +4,7 @@ title: 3.K Test architecture (fill gaps in order)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:25'
 labels:
   - roadmap
   - §3
@@ -35,9 +35,13 @@ ordinal: 45000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Order: data-layer tests (§3.H) → alert decision-core tests (§3.C step 1) → provider-module tests (post-§3.A) → architecture_test.dart (§3.G) → widget tests only for bolus sheet + quick-log. The pumpDemoApp integration harness covers the rest.
-
-**Testing.** This IS the testing task — each listed suite lands green; keep the flat test/ layout. Add/extend unit tests under `test/`. `flutter analyze` clean, `flutter test` green before commit.
+- Land data-layer tests (§3.H).
+- Land alert decision-core tests (§3.C step 1).
+- Add provider-module tests (post-§3.A).
+- Land `architecture_test.dart` (§3.G).
+- Add widget tests only for bolus sheet + quick-log; the `pumpDemoApp` integration harness covers the rest.
+- This IS the testing task — each listed suite lands green; keep the flat `test/` layout.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,6 +50,14 @@ ordinal: 45000
 - Source: ROADMAP §3.K
 - Effort: ongoing
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Tracking task: it completes as its constituent test suites (§3.H/§3.C/§3.A/§3.G) land — depends on those.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:25
+---
+detail-needed (2026-07-06, goal triage): Tracking task: it completes as its constituent test suites (§3.H/§3.C/§3.A/§3.G) land — depends on those.
+---
+<!-- COMMENTS:END -->

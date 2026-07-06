@@ -4,7 +4,7 @@ title: 'P2-8 Garmin: real delta + plumb display unit'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:25'
 labels:
   - roadmap
   - §1-P2
@@ -33,9 +33,11 @@ ordinal: 24000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Compute the delta from consecutive distinct CGM timestamps; plumb the user's display unit through to the Garmin payload instead of the mmol literal.
-
-**Testing.** On-watch: delta matches the phone; units follow the app setting. Unit-test the delta calc where extractable. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests (`flutter analyze`/`flutter test`) still green.
+- Compute the delta from consecutive distinct CGM timestamps.
+- Plumb the display unit chosen by the user through to the Garmin payload instead of the mmol literal.
+- Unit-test the delta calc where extractable.
+- On-device (hardware): prepare a build + an exact manual test procedure, run on the real device, report, fix; on-watch the delta must match the phone and units must follow the app setting.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -45,6 +47,14 @@ ordinal: 24000
 - Effort: S
 - Flags: 🔌 hardware
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Native Garmin change; the delta/unit AC needs an on-watch check to confirm the value + unit render correctly. Needs a paired Garmin watch.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:25
+---
+detail-needed (2026-07-06, goal triage): Native Garmin change; the delta/unit AC needs an on-watch check to confirm the value + unit render correctly. Needs a paired Garmin watch.
+---
+<!-- COMMENTS:END -->

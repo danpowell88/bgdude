@@ -4,7 +4,7 @@ title: P0-7 Ketone/DKA prompt earlier
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:12'
+updated_date: '2026-07-06 05:25'
 labels:
   - roadmap
   - §1-P0
@@ -25,16 +25,17 @@ ordinal: 7000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Base threshold 250 mg/dL
-- [ ] #2 Unconditional prompt >~300 rising / very-low IOB
+- [x] #1 Base threshold 250 mg/dL
+- [x] #2 Unconditional prompt >~300 rising / very-low IOB
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In ketone_risk.dart:21 lower the base threshold to 250 mg/dL and add an unconditional prompt above ~300 mg/dL when rising or with very-low IOB.
-
-**Testing.** Unit tests across (BG, trend, IOB) combinations: prompt fires at 250 base and unconditionally >~300 rising / very-low IOB. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+- In `ketone_risk.dart:21` lower the base threshold to 250 mg/dL.
+- Add an unconditional prompt above ~300 mg/dL when rising or with very-low IOB.
+- Unit tests across (BG, trend, IOB) combinations: prompt fires at 250 base and unconditionally >~300 rising / very-low IOB. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,3 +47,9 @@ ordinal: 7000
 - Flags: 🔒 safety
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Ketone/DKA prompt in `ketone_risk.dart` now uses a 250 mg/dL base threshold and fires unconditionally above ~300 mg/dL when rising or with very-low IOB. Landed in commit 5c974df (P0 dosing-math fixes) with unit tests across BG/trend/IOB combinations; `flutter analyze` clean and `flutter test` green.
+<!-- SECTION:FINAL_SUMMARY:END -->

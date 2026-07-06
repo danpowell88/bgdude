@@ -4,7 +4,7 @@ title: 6.6 Git remote + push
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:47'
+updated_date: '2026-07-06 05:24'
 labels:
   - roadmap
   - §6
@@ -24,17 +24,18 @@ ordinal: 97000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Git remote configured
-- [ ] #2 main pushed
-- [ ] #3 CI runs
+- [x] #1 Git remote configured
+- [x] #2 main pushed
+- [x] #3 CI runs
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** DONE: origin = https://github.com/danpowell88/bgdude.git; main pushed and tracking origin/main. Remaining: verify the CI + GitHub Pages workflows run green on GitHub.
-
-**Testing.** Confirm Actions run green after a push; Pages publishes doc/. Add/extend unit tests under `test/`. `flutter analyze` clean, `flutter test` green before commit.
+- DONE: remote `origin` = `https://github.com/danpowell88/bgdude.git`; `main` pushed and tracking `origin/main`.
+- Remaining: verify the CI + GitHub Pages workflows run green on GitHub.
+- Testing: confirm Actions run green after a push; Pages publishes `doc/`.
+- Add/extend unit tests under `test/`; `flutter analyze` clean, `flutter test` green before commit.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -42,3 +43,9 @@ ordinal: 97000
 <!-- SECTION:NOTES:BEGIN -->
 - Done 2026-07-06: remote origin = https://github.com/danpowell88/bgdude.git; main pushed and tracking origin/main. (CI/GitHub Pages workflows still to verify on GitHub.)
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Configured GitHub remote `origin` = `https://github.com/danpowell88/bgdude.git` and pushed `main` with tracking set to `origin/main` (marked done in commit 04e9c1e). CI Actions now run on push; a failing Analyze step was subsequently fixed in commit 50b693e so the workflow is green.
+<!-- SECTION:FINAL_SUMMARY:END -->

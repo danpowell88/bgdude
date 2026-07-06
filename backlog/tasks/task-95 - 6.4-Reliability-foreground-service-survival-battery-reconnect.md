@@ -4,7 +4,7 @@ title: '6.4 Reliability (foreground service survival, battery, reconnect)'
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:30'
 labels:
   - roadmap
   - §6
@@ -36,9 +36,13 @@ ordinal: 95000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Foreground-service survival (Doze/task-kill), battery impact, reconnect after device sleep, crash-free multi-day runs. Pairs with the Phase 4 pump work (2-5).
-
-**Testing.** On-device: Doze survival, sleep-reconnect, a measured battery figure, a multi-day crash-free run. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests still green.
+- Foreground-service survival (Doze/task-kill).
+- Battery impact.
+- Reconnect after device sleep.
+- Crash-free multi-day runs.
+- Pairs with the Phase 4 pump work (2-5).
+- On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Verify Doze survival, sleep-reconnect, a measured battery figure, a multi-day crash-free run.
+- Verify: desk tests still green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -48,6 +52,14 @@ ordinal: 95000
 - Effort: M
 - Flags: 🔌 hardware
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Long-run reliability (Doze survival, sleep-reconnect, battery, multi-day crash-free) can only be verified on a real device over days.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:30
+---
+detail-needed (2026-07-06, goal triage): Long-run reliability (Doze survival, sleep-reconnect, battery, multi-day crash-free) can only be verified on a real device over days.
+---
+<!-- COMMENTS:END -->

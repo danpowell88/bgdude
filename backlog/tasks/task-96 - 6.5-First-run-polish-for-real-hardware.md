@@ -4,7 +4,7 @@ title: 6.5 First-run polish for real hardware
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:31'
 labels:
   - roadmap
   - §6
@@ -35,9 +35,13 @@ ordinal: 96000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Pairing UX, runtime permission flows (BT/location/notifications), Health Connect setup, and "no data yet" empty states across screens.
-
-**Testing.** On-device first-run walkthrough on a clean install; empty-state widget tests. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests still green.
+- Polish pairing UX.
+- Polish runtime permission flows (BT/location/notifications).
+- Health Connect setup.
+- "No data yet" empty states across screens.
+- Empty-state widget tests.
+- On-device (🔌): prepare a build + an exact manual test procedure → run the first-run walkthrough on a clean install on the real device → report → fix.
+- Verify: desk tests still green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -47,6 +51,14 @@ ordinal: 96000
 - Effort: S–M
 - Flags: 🔌 hardware
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): First-run polish needs an on-device clean-install walkthrough (pairing UX, permission flows, Health Connect) to evaluate and tune.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:31
+---
+detail-needed (2026-07-06, goal triage): First-run polish needs an on-device clean-install walkthrough (pairing UX, permission flows, Health Connect) to evaluate and tune.
+---
+<!-- COMMENTS:END -->

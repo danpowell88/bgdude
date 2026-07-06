@@ -4,7 +4,7 @@ title: 2-1 Nutrition-label AI (Gemma) — verify on-device inference
 status: In Progress
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 05:27'
 labels:
   - roadmap
   - §2
@@ -36,9 +36,14 @@ ordinal: 29000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Curate a known-good Gemma 3 1B `.task` URL + licence flow; verify inference on the Pixel; auto-suggest download on scan failure; add RAM/space gating (→ §5-5); evaluate a fine-tuned Gemma 3 270M (→ §5-8).
-
-**Testing.** On-device accuracy integration test with the LLM enabled; record numbers. Verify graceful degradation when no model/insufficient RAM. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests still green.
+- Curate a known-good Gemma 3 1B `.task` URL + licence flow.
+- Verify inference on the Pixel.
+- Auto-suggest download on scan failure.
+- Add RAM/space gating (→ §5-5).
+- Evaluate a fine-tuned Gemma 3 270M (→ §5-8).
+- Test: on-device accuracy integration test with the LLM enabled; record numbers. Verify graceful degradation when no model/insufficient RAM.
+- On-device (hardware): prepare a build + an exact manual test procedure → run on the real device → report → fix.
+- Verify: desk tests still green — `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

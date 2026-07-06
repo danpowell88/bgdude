@@ -4,7 +4,7 @@ title: 3.G Architecture guard test (+ read-only-pump check)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:24'
 labels:
   - roadmap
   - §3
@@ -36,9 +36,12 @@ ordinal: 41000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Add test/architecture_test.dart (~30 lines) walking lib/ui/** imports: UI may import value/DTO types from any layer, never interfaces/stores/services. Fix the two current violations. In the same test, fail the build if any Kotlin file imports request.control.
-
-**Testing.** The test fails on a deliberately-added bad import and on a deliberately-added request.control import; passes once violations are fixed. Add/extend unit tests under `test/`. `flutter analyze` clean, `flutter test` green before commit.
+- Add `test/architecture_test.dart` (~30 lines) walking `lib/ui/**` imports: UI may import value/DTO types from any layer, never interfaces/stores/services.
+- Fix the two current violations (`meal_library_screen`, `protocol_explorer_screen`).
+- In the same test, fail the build if any Kotlin file imports `request.control`.
+- Sanity-check the guard: the test fails on a deliberately-added bad import and on a deliberately-added `request.control` import; passes once violations are fixed.
+- Add/extend unit tests under `test/`.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -48,6 +51,14 @@ ordinal: 41000
 - Effort: S
 - Flags: 🔒 safety
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): The guard test itself is easy, but fixing the existing violation protocol_explorer_screen→PumpSource (an interface import) needs a provider-routing redesign of the probe API — want the approach confirmed so the read-only Explorer keeps working.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:24
+---
+detail-needed (2026-07-06, goal triage): The guard test itself is easy, but fixing the existing violation protocol_explorer_screen→PumpSource (an interface import) needs a provider-routing redesign of the probe API — want the approach confirmed so the read-only Explorer keeps working.
+---
+<!-- COMMENTS:END -->

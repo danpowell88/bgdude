@@ -4,7 +4,7 @@ title: 3.C Decouple aliveness from the widget tree
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:29'
 labels:
   - roadmap
   - §3
@@ -36,9 +36,12 @@ ordinal: 37000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Stage 1: pure evaluate(AlertInputs)→List<AlertDecision> (no Riverpod/clock/notifications). Stage 2: native urgent-low backstop in PumpService (dumb threshold, hysteresis, Flutter-alive heartbeat suppression). Stage 3 (after §3.H single connection): headless Dart evaluation via WorkManager/isolate. Stage 4: document the limitation in the guide until done.
-
-**Testing.** Matrix tests of the pure core (thresholds × trend × quiet hours × dedup); on-device test that killing the Flutter engine still fires an urgent-low via the native backstop. Add/extend unit tests under `test/`. `flutter analyze` clean, `flutter test` green before commit.
+- Stage 1: pure `evaluate(AlertInputs)` → `List<AlertDecision>` (no Riverpod/clock/notifications).
+- Stage 2: native urgent-low backstop in `PumpService` (dumb threshold, hysteresis, Flutter-alive heartbeat suppression).
+- Stage 3 (after §3.H single connection): headless Dart evaluation via WorkManager/isolate.
+- Stage 4: document the limitation in the guide until done.
+- Test: matrix tests of the pure core (thresholds × trend × quiet hours × dedup); on-device test that killing the Flutter engine still fires an urgent-low via the native backstop; add/extend unit tests under `test/`.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -49,6 +52,14 @@ ordinal: 37000
 - Depends on: §3.H for step 3
 - Flags: 🔒 safety
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): L, safety-critical alert re-architecture across widget/native/isolate; depends on §3.H. Want the staged approach signed off before an invasive change to the alert path.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:29
+---
+detail-needed (2026-07-06, goal triage): L, safety-critical alert re-architecture across widget/native/isolate; depends on §3.H. Want the staged approach signed off before an invasive change to the alert path.
+---
+<!-- COMMENTS:END -->

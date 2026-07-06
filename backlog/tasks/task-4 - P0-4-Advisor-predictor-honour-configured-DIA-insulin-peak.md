@@ -4,7 +4,7 @@ title: P0-4 Advisor/predictor honour configured DIA & insulin peak
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:12'
+updated_date: '2026-07-06 05:24'
 labels:
   - roadmap
   - §1-P0
@@ -25,17 +25,17 @@ ordinal: 4000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Advisor uses configured DIA & peak
-- [ ] #2 Predictor uses configured DIA & peak
-- [ ] #3 No hardcoded 360/75 remain in these paths
+- [x] #1 Advisor uses configured DIA & peak
+- [x] #2 Predictor uses configured DIA & peak
+- [x] #3 No hardcoded 360/75 remain in these paths
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In bolus_advisor.dart:102-103 and predictor.dart:177-178, read the configured DIA & peak (same source the care detectors use) instead of the 360/75 literals.
-
-**Testing.** Unit test with a non-default DIA/peak: advisor + predictor IOB match the care-detector curve. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+- In `bolus_advisor.dart:102-103` and `predictor.dart:177-178`, read the configured DIA & peak (same source the care detectors use) instead of the 360/75 literals.
+- Unit test with a non-default DIA/peak: advisor + predictor IOB match the care-detector curve. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,3 +46,9 @@ ordinal: 4000
 - Where: bolus_advisor.dart:102-103, predictor.dart:177-178
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Advisor (`bolus_advisor.dart`) and predictor (`predictor.dart`) now read the configured DIA and insulin peak from the same source as the care detectors, replacing the hardcoded 360/75-minute values. Landed in commit 5c974df (P0 dosing-math fixes) with unit tests covering non-default DIA/peak; `flutter analyze` clean and `flutter test` green.
+<!-- SECTION:FINAL_SUMMARY:END -->

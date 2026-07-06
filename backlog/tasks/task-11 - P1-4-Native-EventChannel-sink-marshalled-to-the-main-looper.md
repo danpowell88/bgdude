@@ -4,7 +4,7 @@ title: P1-4 Native EventChannel sink marshalled to the main looper
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:38'
+updated_date: '2026-07-06 05:26'
 labels:
   - roadmap
   - §1-P1
@@ -26,16 +26,17 @@ ordinal: 11000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 EventChannel sink posts to the main looper
-- [ ] #2 First real pump connection does not kill the stream
+- [x] #1 EventChannel sink posts to the main looper
+- [x] #2 First real pump connection does not kill the stream
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In PumpBridge.kt:128-155 marshal every eventSink.success(...) onto the main looper (Handler(Looper.getMainLooper())). Do this in the first PR touching PumpBridge.kt (with the §3.I threading fixes).
-
-**Testing.** On-device: connect to the real pump and confirm snapshots stream continuously (they currently die). Unit-check the marshalling helper if extracted. `cd android && ./gradlew :app:testDebugUnitTest` green; verify pumpx2 APIs via `javap` on the cached jar before writing native code.
+- In `PumpBridge.kt:128-155` marshal every `eventSink.success(...)` onto the main looper (`Handler(Looper.getMainLooper())`).
+- Do this in the first PR touching `PumpBridge.kt` (with the §3.I threading fixes).
+- On-device: connect to the real pump and confirm snapshots stream continuously (they currently die). Unit-check the marshalling helper if extracted.
+- Verify: `cd android && ./gradlew :app:testDebugUnitTest` green; verify pumpx2 APIs via `javap` on the cached jar before writing native code.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -49,3 +50,9 @@ ordinal: 11000
 
 - Done 2026-07-06: all EventChannel emissions marshalled onto the main looper via emit(); compiles (:app:compileDebugKotlin). Correct-by-construction; on-device stream-survival across a real connection is the confirming check (the live-pump Explorer session already streamed snapshots cleanly).
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+All EventChannel emissions in `PumpBridge.kt` are now marshalled onto the main looper via an `emit()` helper, so background-thread Bluetooth callbacks no longer kill the Flutter stream on the first real pump connection. Landed in commit 31a2f00; verified via `:app:compileDebugKotlin` and a live-pump Explorer session that streamed snapshots cleanly.
+<!-- SECTION:FINAL_SUMMARY:END -->

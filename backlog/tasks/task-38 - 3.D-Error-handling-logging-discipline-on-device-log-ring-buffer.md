@@ -4,7 +4,7 @@ title: 3.D Error-handling & logging discipline + on-device log ring buffer
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:29'
 labels:
   - roadmap
   - §3
@@ -35,9 +35,12 @@ ordinal: 38000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Add lib/logging/app_log.dart: a ~500-entry ring buffer, no network, surfaced read-only on the Developer/Advanced screen (see §4-6.4). Sweep rule: a swallow is legal only if the op is optional AND logs. Behavioural fixes during the sweep: failed urgent-low must not advance _lastFired; runStartup records per-job failures.
-
-**Testing.** Ring-buffer unit test (cap, eviction); assert swept catches log; behavioural tests for _lastFired and runStartup failure recording. Add/extend unit tests under `test/`. `flutter analyze` clean, `flutter test` green before commit.
+- Add `lib/logging/app_log.dart`: a ~500-entry ring buffer, no network.
+- Surface it read-only on the Developer/Advanced screen (see §4-6.4).
+- Sweep the swallowed catches; rule: a swallow is legal only if the op is optional AND logs.
+- Behavioural fixes during the sweep: failed urgent-low must not advance `_lastFired`; `runStartup` records per-job failures.
+- Test: ring-buffer unit test (cap, eviction); assert swept catches log; behavioural tests for `_lastFired` and `runStartup` failure recording; add/extend unit tests under `test/`.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -47,6 +50,14 @@ ordinal: 38000
 - Effort: S–M
 - Depends on: pairs with §4-6.4
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Defines the app_log ring-buffer design + a 43-site catch sweep across the codebase; foundational and wide. Want the logging API/approach confirmed before the sweep.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:29
+---
+detail-needed (2026-07-06, goal triage): Defines the app_log ring-buffer design + a 43-site catch sweep across the codebase; foundational and wide. Want the logging API/approach confirmed before the sweep.
+---
+<!-- COMMENTS:END -->

@@ -4,7 +4,7 @@ title: 3.A Split providers.dart + PersistedStateNotifier
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:28'
 labels:
   - roadmap
   - §3
@@ -35,9 +35,14 @@ ordinal: 35000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** PersistedStateNotifier<T> first: a _ready future completed by restore; saves queue behind it; subclasses provide encode/decode/kvKey. Migrate two notifiers + a race test, then sweep. AlertService/AppJobs take explicit deps (repository, notification service, thresholds, clock), not Ref. Split into state/{settings,mode,meal,pump,forecast,integration}_providers.dart + services/{alert_service,app_jobs}.dart. One documented pattern per state kind. No riverpod codegen migration.
-
-**Testing.** A restore-then-save race test on PersistedStateNotifier; unit tests for AlertService/AppJobs now that they take explicit deps; provider-module tests after the split. Refactor must be behaviour-preserving: full `flutter test` + `flutter analyze` green before and after; add the new unit tests the refactor unlocks.
+- Build `PersistedStateNotifier<T>` first: a `_ready` future completed by restore; saves queue behind it; subclasses provide encode/decode/kvKey.
+- Migrate two notifiers + a race test, then sweep the rest.
+- Make `AlertService`/`AppJobs` take explicit deps (repository, notification service, thresholds, clock), not `Ref`.
+- Split into `state/{settings,mode,meal,pump,forecast,integration}_providers.dart` + `services/{alert_service,app_jobs}.dart`.
+- Document one pattern per state kind.
+- No riverpod codegen migration.
+- Test: a restore-then-save race test on `PersistedStateNotifier`; unit tests for `AlertService`/`AppJobs` now that they take explicit deps; provider-module tests after the split; add the new unit tests the refactor unlocks.
+- Verify: refactor must be behaviour-preserving — full `flutter test` + `flutter analyze` green before and after.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,6 +51,14 @@ ordinal: 35000
 - Source: ROADMAP §3.A (P2-12)
 - Effort: L
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Anchor refactor: splitting providers.dart (85 providers) + PersistedStateNotifier base. High blast-radius; want the module boundaries + migration order confirmed before touching it.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:28
+---
+detail-needed (2026-07-06, goal triage): Anchor refactor: splitting providers.dart (85 providers) + PersistedStateNotifier base. High blast-radius; want the module boundaries + migration order confirmed before touching it.
+---
+<!-- COMMENTS:END -->

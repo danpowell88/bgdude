@@ -4,7 +4,7 @@ title: 6.7 Golden/screenshot tests
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:24'
 labels:
   - roadmap
   - §6
@@ -33,9 +33,11 @@ ordinal: 98000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Add golden/screenshot tests via the existing harness (test_driver/screenshot_driver.dart + integration_test/screenshots_test.dart); establish baseline images; wire into CI or a documented manual command.
-
-**Testing.** Golden tests for the key screens; baselines committed; run documented. Add/extend an integration test in demo mode under `integration_test/` (pumpDemoApp harness); `flutter analyze` clean, `flutter test` green; update `doc/user-guide.html` in the same change (CLAUDE.md).
+- Add golden/screenshot tests via the existing harness (`test_driver/screenshot_driver.dart` + `integration_test/screenshots_test.dart`).
+- Establish baseline images.
+- Wire into CI or a documented manual command.
+- Testing: golden tests for the key screens; baselines committed; run documented.
+- Add/extend an integration test in demo mode under `integration_test/` (pumpDemoApp harness); `flutter analyze` clean, `flutter test` green; update `doc/user-guide.html` in the same change (CLAUDE.md).
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -44,6 +46,14 @@ ordinal: 98000
 - Source: ROADMAP §6
 - Effort: M
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Golden/screenshot tests need a decision on which screens + baseline images captured on a chosen device/CI, then wired in.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:24
+---
+detail-needed (2026-07-06, goal triage): Golden/screenshot tests need a decision on which screens + baseline images captured on a chosen device/CI, then wired in.
+---
+<!-- COMMENTS:END -->

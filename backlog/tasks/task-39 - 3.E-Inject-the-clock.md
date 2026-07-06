@@ -4,7 +4,7 @@ title: 3.E Inject the clock
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:23'
 labels:
   - roadmap
   - §3
@@ -33,9 +33,12 @@ ordinal: 39000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Add clockProvider (DateTime Function()), constructor-injected into AppJobs/AlertService/persisted notifiers during the §3.A moves. Keep analytics/ml explicit-DateTime style; do not sweep display-only UI usages.
-
-**Testing.** Tests inject a fixed clock and assert time-relative behaviour (quiet hours, dedup windows, job cadence). Refactor must be behaviour-preserving: full `flutter test` + `flutter analyze` green before and after; add the new unit tests the refactor unlocks.
+- Add `clockProvider` (`DateTime Function()`).
+- Constructor-inject it into `AppJobs`/`AlertService`/persisted notifiers during the §3.A moves.
+- Keep `analytics`/`ml` explicit-`DateTime` style; do not sweep display-only UI usages.
+- Refactor must be behaviour-preserving: full `flutter test` + `flutter analyze` green before and after.
+- Add the new unit tests the refactor unlocks: inject a fixed clock and assert time-relative behaviour (quiet hours, dedup windows, job cadence).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -45,6 +48,14 @@ ordinal: 39000
 - Effort: S–M
 - Depends on: moves with 3.A
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Clock injection moves with §3.A (constructor-injecting AppJobs/AlertService/notifiers); do it as part of that refactor, not standalone.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:23
+---
+detail-needed (2026-07-06, goal triage): Clock injection moves with §3.A (constructor-injecting AppJobs/AlertService/notifiers); do it as part of that refactor, not standalone.
+---
+<!-- COMMENTS:END -->

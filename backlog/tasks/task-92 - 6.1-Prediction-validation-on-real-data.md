@@ -4,7 +4,7 @@ title: 6.1 Prediction validation on real data
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:29'
 labels:
   - roadmap
   - §6
@@ -34,9 +34,12 @@ ordinal: 92000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Once the pump link is live, run the accuracy screen against real history and tune momentum/IOB/COB params. Depends on P0-2 (labels are poisoned until then).
-
-**Testing.** Run on ≥2 weeks of real history; record before/after RMSE + Clarke. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests still green.
+- Once the pump link is live, run the accuracy screen against real history.
+- Tune momentum/IOB/COB params to the real data.
+- Depends on P0-2 (labels are poisoned until then).
+- Run on ≥2 weeks of real history; record before/after RMSE + Clarke.
+- On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix.
+- Verify: desk tests still green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,6 +49,14 @@ ordinal: 92000
 - Effort: M
 - Flags: 🔌 hardware
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Prediction validation on real data needs a live pump history AND the P0-2 model fix landed first (labels are poisoned until then).
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:29
+---
+detail-needed (2026-07-06, goal triage): Prediction validation on real data needs a live pump history AND the P0-2 model fix landed first (labels are poisoned until then).
+---
+<!-- COMMENTS:END -->

@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 05:23'
 labels:
   - roadmap
   - §1-P2
@@ -33,9 +33,11 @@ ordinal: 21000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In sensitivity_model.dart constrain coefficient signs (physiology); only adopt the learned model when it beats the heuristic on held-out skill.
-
-**Testing.** Test that wrong-sign coefficients are rejected/clamped and that the heuristic wins when it should. ML-honesty tests first (coverage + bias, synthetic-data recovery); `flutter analyze` clean, `flutter test` green.
+- In `sensitivity_model.dart`, constrain coefficient signs to physiologically valid directions.
+- Only adopt the learned model when it beats the heuristic on held-out skill.
+- Run ML-honesty tests first (coverage + bias, synthetic-data recovery).
+- Test: wrong-sign coefficients are rejected/clamped; the heuristic wins when it should.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

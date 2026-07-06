@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:28'
 labels:
   - roadmap
   - §1-P1
@@ -37,9 +37,12 @@ ordinal: 16000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In panel_model_manager.dart / ai_model_screen.dart: reject non-HTTPS; send the token only to allowlisted HF/Kaggle hosts; SHA-256 verify the downloaded file against a pinned hash; never log URL/token.
-
-**Testing.** Unit tests: HTTP rejected; token withheld from non-allowlisted host; wrong SHA-256 rejected; assert no URL/token in log output. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+- In `panel_model_manager.dart` / `ai_model_screen.dart`: reject non-HTTPS.
+- Send the token only to allowlisted HF/Kaggle hosts.
+- SHA-256 verify the downloaded file against a pinned hash.
+- Never log URL/token.
+- Unit tests: HTTP rejected; token withheld from non-allowlisted host; wrong SHA-256 rejected; assert no URL/token in log output. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -50,6 +53,14 @@ ordinal: 16000
 - Where: panel_model_manager.dart, ai_model_screen.dart
 - Flags: 🧠 llm
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Needs the concrete model-host allowlist decision (HF/Kaggle exact hosts) + a known-good model URL and its published SHA-256 to verify the integrity flow end-to-end.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:28
+---
+detail-needed (2026-07-06, goal triage): Needs the concrete model-host allowlist decision (HF/Kaggle exact hosts) + a known-good model URL and its published SHA-256 to verify the integrity flow end-to-end.
+---
+<!-- COMMENTS:END -->

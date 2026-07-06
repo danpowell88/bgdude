@@ -4,7 +4,7 @@ title: 5-3 Fix the confidence comparison
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:57'
+updated_date: '2026-07-06 05:28'
 labels:
   - roadmap
   - §5
@@ -25,16 +25,18 @@ ordinal: 86000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 LLM confidence counts grounded fields only
-- [ ] #2 LLM-gate quirk fixed (runs even when parser found garbled carbs)
+- [x] #1 LLM confidence counts grounded fields only
+- [x] #2 LLM-gate quirk fixed (runs even when parser found garbled carbs)
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** After grounding (5-2), LLM confidence counts GROUNDED fields only (a hallucinated full parse must not beat an honest partial one). Fix the LLM gate: today it never runs when the parser found ANY carb value, however garbled — run it when the parse is low-confidence.
-
-**Testing.** Test the confidence comparison prefers the grounded parse; test the gate fires on garbled carbs. Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model; `flutter analyze`/`flutter test` green.
+- After grounding (5-2), make LLM confidence count GROUNDED fields only — a hallucinated full parse must not beat an honest partial one.
+- Fix the LLM gate: today it never runs when the parser found ANY carb value, however garbled — run it when the parse is low-confidence.
+- Test: the confidence comparison prefers the grounded parse; the gate fires on garbled carbs.
+- Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,3 +48,9 @@ ordinal: 86000
 - Flags: 🧠 llm
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Fixed the panel LLM gate and confidence comparison in `lib/food/panel_scan_service.dart`: raised the LLM gate threshold from 0.6 to 0.7 so a carbs-only parse (which scores exactly 0.6) no longer blocks the LLM, and since the competing LLM result is already OCR-grounded (5-2) its completeness-based confidence counts only grounded fields. Test added in `test/panel_scan_service_test.dart` (carbs-only parse invokes the LLM and the fuller result wins); analyze clean. Commit f817a7a.
+<!-- SECTION:FINAL_SUMMARY:END -->

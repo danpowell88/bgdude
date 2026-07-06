@@ -4,7 +4,7 @@ title: 2-2 Bluetooth meter (Accu-Chek Guide Me) — field test
 status: In Progress
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 05:27'
 labels:
   - roadmap
   - §2
@@ -35,9 +35,13 @@ ordinal: 30000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Field-test pairing + sync; handle bonding/re-discovery edge cases; dedupe/merge fingersticks with CGM (depends on P1-2 schema); add background sync.
-
-**Testing.** On-device: pair, take readings, sync, re-sync (no duplicates via sequence numbers); verify a fingerstick never overwrites a sensor row. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests still green.
+- Field-test pairing + sync against the physical meter.
+- Handle bonding/re-discovery edge cases.
+- Dedupe/merge fingersticks with CGM (depends on P1-2 schema).
+- Add background sync.
+- On-device test: pair, take readings, sync, re-sync (no duplicates via sequence numbers); verify a fingerstick never overwrites a sensor row.
+- On-device (hardware): prepare a build + an exact manual test procedure → run on the real device → report → fix.
+- Verify: desk tests still green — `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

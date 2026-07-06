@@ -4,7 +4,7 @@ title: P2-4 Regularize/early-stop the GBM
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:52'
+updated_date: '2026-07-06 05:23'
 labels:
   - roadmap
   - §1-P2
@@ -35,9 +35,12 @@ ordinal: 20000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In gbm.dart add validation-chosen nEstimators (early stopping on the held-out fold) + row/feature subsampling. Pick nEstimators on the §4-1.10 (TASK-55) folds.
-
-**Testing.** Held-out RMSE no worse than current; early-stopping picks a sensible nEstimators on synthetic data. ML-honesty tests first (coverage + bias, synthetic-data recovery); `flutter analyze` clean, `flutter test` green.
+- In `gbm.dart`, add validation-chosen `nEstimators` using early stopping on the held-out fold.
+- Add row/feature subsampling to `gbm.dart`.
+- Pick `nEstimators` on the §4-1.10 (TASK-55) folds.
+- Run ML-honesty tests first (coverage + bias, synthetic-data recovery).
+- Test: held-out RMSE no worse than current; early stopping picks a sensible `nEstimators` on synthetic data.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,6 +49,14 @@ ordinal: 20000
 - Source: ROADMAP §1 P2-4 (in §4-1.10)
 - Effort: M
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Delivered by TASK-55 (§4-1.10); blocked on P0-2.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:23
+---
+detail-needed (2026-07-06, goal triage): Delivered by TASK-55 (§4-1.10); blocked on P0-2.
+---
+<!-- COMMENTS:END -->

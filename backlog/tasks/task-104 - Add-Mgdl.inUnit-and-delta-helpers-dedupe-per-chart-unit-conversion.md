@@ -4,7 +4,7 @@ title: Add Mgdl.inUnit() and delta helpers; dedupe per-chart unit conversion
 status: Done
 assignee: []
 created_date: '2026-07-06 04:53'
-updated_date: '2026-07-06 05:01'
+updated_date: '2026-07-06 05:28'
 labels:
   - code-health
   - cleanup
@@ -29,9 +29,9 @@ ordinal: 104000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Mgdl gains a numeric `inUnit(GlucoseUnit)` accessor and a delta-display helper in core/units.dart
-- [ ] #2 The four call sites are migrated and their private helpers deleted
-- [ ] #3 Unit tests cover both units and delta formatting
+- [x] #1 Mgdl gains a numeric `inUnit(GlucoseUnit)` accessor and a delta-display helper in core/units.dart
+- [x] #2 The four call sites are migrated and their private helpers deleted
+- [x] #3 Unit tests cover both units and delta formatting
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -50,3 +50,9 @@ ordinal: 104000
 - Effort: S
 - Where: core/units.dart:25 + the four call sites above
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Added numeric `Mgdl.inUnit(GlucoseUnit)` to `lib/core/units.dart`, documented to also convert deltas (a difference converts by the same factor), and migrated the four call sites (`glucose_report_screen.dart:250`, `meals_report_screen.dart:154`, `prediction_chart.dart:50`, `reading_explainer.dart` delta conversion), deleting their private ternary helpers (commit 0f53ebc). Verified by new unit tests in `test/units_test.dart` covering mg/dL, mmol/L and delta conversion; a separate `deltaDisplay` helper was deliberately folded into `inUnit` rather than added as its own method.
+<!-- SECTION:FINAL_SUMMARY:END -->

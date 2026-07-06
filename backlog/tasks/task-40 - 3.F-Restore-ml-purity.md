@@ -4,7 +4,7 @@ title: 3.F Restore ml/ purity
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:23'
 labels:
   - roadmap
   - §3
@@ -34,9 +34,11 @@ ordinal: 40000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Split: store + train/gate/promote logic stay in ml/ (pure; takes KeyValueStore after §3.B); the thin StateNotifier controller moves to state/forecast_providers.dart.
-
-**Testing.** A `dart test` (no Flutter) lane runs analytics/+ml/; controller test lives with the providers. Refactor must be behaviour-preserving: full `flutter test` + `flutter analyze` green before and after; add the new unit tests the refactor unlocks.
+- Split the offending file: store + train/gate/promote logic stay in `ml/` (pure; takes `KeyValueStore` after §3.B).
+- Move the thin `StateNotifier` controller to `state/forecast_providers.dart`.
+- Set up a `dart test` (no Flutter) lane that runs `analytics/` + `ml/`; controller test lives with the providers.
+- Refactor must be behaviour-preserving: full `flutter test` + `flutter analyze` green before and after; add the new unit tests the refactor unlocks.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,6 +48,14 @@ ordinal: 40000
 - Effort: S
 - Depends on: 3.B
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Restoring ml/ purity depends on the §3.B KeyValueStore seam existing first.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:23
+---
+detail-needed (2026-07-06, goal triage): Restoring ml/ purity depends on the §3.B KeyValueStore seam existing first.
+---
+<!-- COMMENTS:END -->

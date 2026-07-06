@@ -4,7 +4,7 @@ title: P2-3 Promotion gate skips hypo criterion on hypo-free tails
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 05:29'
 labels:
   - roadmap
   - §1-P2
@@ -25,9 +25,9 @@ ordinal: 19000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Implemented in the forecaster promotion gate.
-
-**Testing.** Covered by forecaster-service promotion tests. ML-honesty tests first (coverage + bias, synthetic-data recovery); `flutter analyze` clean, `flutter test` green.
+- Implemented in the forecaster promotion gate.
+- Covered by forecaster-service promotion tests. ML-honesty tests first (coverage + bias, synthetic-data recovery).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -37,3 +37,9 @@ ordinal: 19000
 - Effort: S
 - Roadmap status: done ✅
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+The forecaster promotion gate now skips the hypo-detection criterion when the evaluation window contains no lows, so a good model is no longer blocked by an impossible test. Done July 2026 as part of the ML train/promote loop integrity work; covered by forecaster-service promotion tests, `flutter analyze` clean and `flutter test` green.
+<!-- SECTION:FINAL_SUMMARY:END -->

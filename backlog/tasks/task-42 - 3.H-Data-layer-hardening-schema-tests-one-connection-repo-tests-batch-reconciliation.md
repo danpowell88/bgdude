@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:24'
 labels:
   - roadmap
   - §3
@@ -38,9 +38,12 @@ ordinal: 42000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Drift schema-export + step-migration tests (test/drift/ snapshots) BEFORE schema v3 (P1-2/P1-3). One DB connection across isolates (drift DatabaseConnection.delayed / isolate port). Repository unit tests on NativeDatabase.memory() (upsert/dedupe, reconciliation, KV). Batch prediction reconciliation.
-
-**Testing.** Migration tests across schema versions; repo tests on in-memory DB; assert a single connection; batched-reconciliation correctness + perf. Repository tests on `NativeDatabase.memory()`; drift schema-export + step-migration tests BEFORE any schema change.
+- Add Drift schema-export + step-migration tests (`test/drift/` snapshots) BEFORE schema v3 (P1-2/P1-3).
+- Move to one DB connection across isolates (drift `DatabaseConnection.delayed` / isolate port).
+- Add repository unit tests on `NativeDatabase.memory()` (upsert/dedupe, reconciliation, KV).
+- Batch prediction reconciliation (replace one-query-per-row).
+- Test: migration tests across schema versions; repo tests on in-memory DB; assert a single connection; batched-reconciliation correctness + perf.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -49,6 +52,14 @@ ordinal: 42000
 - Source: ROADMAP §3.H
 - Effort: M
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Data-layer hardening: drift schema-export + step-migration test infra, single cross-isolate DB connection — big and precedes schema v3. Want the migration-test approach confirmed.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:24
+---
+detail-needed (2026-07-06, goal triage): Data-layer hardening: drift schema-export + step-migration test infra, single cross-isolate DB connection — big and precedes schema v3. Want the migration-test approach confirmed.
+---
+<!-- COMMENTS:END -->

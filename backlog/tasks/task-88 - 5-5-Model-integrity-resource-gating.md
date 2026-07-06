@@ -4,7 +4,7 @@ title: 5-5 Model integrity & resource gating
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:28'
 labels:
   - roadmap
   - §5
@@ -36,9 +36,12 @@ ordinal: 88000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Store + verify the model URL and SHA-256 (with P1-9 host/HTTPS rules); free-space check before download, RAM check before load (silent-null failure today); reconcile the 0.5 GB vs 1.5 GB size claims by measuring on the Pixel.
-
-**Testing.** Unit tests: wrong SHA-256 rejected; insufficient space/RAM blocks with a clear message. Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model; `flutter analyze`/`flutter test` green.
+- Store + verify the model URL and SHA-256 (with P1-9 host/HTTPS rules).
+- Free-space check before download, RAM check before load (silent-null failure today).
+- Reconcile the 0.5 GB vs 1.5 GB size claims by measuring on the Pixel.
+- Unit tests: wrong SHA-256 rejected; insufficient space/RAM blocks with a clear message.
+- Validation/grounding tests (bounds + OCR-grounding); degrade gracefully with no model.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -49,6 +52,14 @@ ordinal: 88000
 - Depends on: P1-9
 - Flags: 🧠 llm 🔌 hardware
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Model integrity/resource gating needs the concrete model URL + published SHA-256 and on-device RAM/space measurement to reconcile the 0.5 vs 1.5 GB claim.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:28
+---
+detail-needed (2026-07-06, goal triage): Model integrity/resource gating needs the concrete model URL + published SHA-256 and on-device RAM/space measurement to reconcile the 0.5 vs 1.5 GB claim.
+---
+<!-- COMMENTS:END -->

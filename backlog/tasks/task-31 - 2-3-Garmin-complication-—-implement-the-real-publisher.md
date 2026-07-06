@@ -4,7 +4,7 @@ title: 2-3 Garmin complication — implement the real publisher
 status: In Progress
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 05:27'
 labels:
   - roadmap
   - §2
@@ -34,9 +34,11 @@ ordinal: 31000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Implement the real publisher: resource-defined complication + updateComplication, gated on `has :Complications`; verify on-watch.
-
-**Testing.** On-watch: complication shows BG and updates; falls back cleanly on devices lacking :Complications. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests still green.
+- Implement the real publisher: resource-defined complication + `updateComplication`.
+- Gate on `has :Complications`.
+- On-watch test: complication shows BG and updates; falls back cleanly on devices lacking `:Complications`.
+- On-device (hardware): prepare a build + an exact manual test procedure → run on the real device → report → fix.
+- Verify: desk tests still green — `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

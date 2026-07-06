@@ -6,7 +6,7 @@ title: >-
 status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:22'
+updated_date: '2026-07-06 05:25'
 labels:
   - roadmap
   - §1-P2
@@ -26,17 +26,19 @@ ordinal: 25000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Report providers ref.watch the repository so a demo-mode toggle rebuilds them
-- [ ] #2 Pending confirmations re-scanned when a new CGM value arrives
-- [ ] #3 Switching demo<->real shows correct data without an app restart
+- [x] #1 Report providers ref.watch the repository so a demo-mode toggle rebuilds them
+- [x] #2 Pending confirmations re-scanned when a new CGM value arrives
+- [x] #3 Switching demo<->real shows correct data without an app restart
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Make the report providers ref.watch the repository; trigger a pending-confirmation re-scan on each new CGM sample.
-
-**Testing.** Provider test: demo↔real toggle rebuilds reports; a new CGM value re-scans pending confirmations. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+- Make the report providers `ref.watch` the repository so a demo-mode toggle rebuilds them.
+- Trigger a pending-confirmation re-scan on each new CGM sample.
+- Provider test: demo-real toggle rebuilds reports; a new CGM value re-scans pending confirmations.
+- Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,3 +48,9 @@ ordinal: 25000
 - Effort: S
 - Roadmap status: open
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+In `lib/state/providers.dart`, report/journal providers now `ref.watch(historyRepositoryProvider)` instead of `ref.read`, so a demo-mode toggle rebuilds the reports without an app restart; `pendingConfirmationsProvider` watches the CGM timestamp via `select` so it re-scans when a new reading lands without re-scanning on same-snapshot IOB ticks. Verified: analyze clean, full suite of 460 tests green (commit f895b68).
+<!-- SECTION:FINAL_SUMMARY:END -->

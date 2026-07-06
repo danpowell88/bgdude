@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:24'
 labels:
   - roadmap
   - §3
@@ -37,9 +37,12 @@ ordinal: 43000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Delete PumpHostApiImpl.kt + the "until Pigeon is generated" comments. Route history_backfill.dart's MethodChannel through PumpClient. Threading fixes (P1-4 main-looper sink, MutableSnapshot copy-under-lock, requestStatusJson returning the previous snapshot) in the first PR touching PumpBridge.kt.
-
-**Testing.** `./gradlew :app:testDebugUnitTest` green; on-device confirm snapshots are consistent under load; simulator can intercept backfill. `cd android && ./gradlew :app:testDebugUnitTest` green; verify pumpx2 APIs via `javap` on the cached jar before writing native code.
+- Delete `PumpHostApiImpl.kt` + the "until Pigeon is generated" comments.
+- Route `history_backfill.dart` MethodChannel through `PumpClient`.
+- Apply threading fixes (P1-4 main-looper sink, `MutableSnapshot` copy-under-lock, `requestStatusJson` returning the previous snapshot) in the first PR touching `PumpBridge.kt`.
+- Verify pumpx2 APIs via `javap` on the cached jar before writing native code.
+- Test: `cd android && ./gradlew :app:testDebugUnitTest` green; on-device confirm snapshots are consistent under load and the simulator can intercept backfill.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -50,6 +53,14 @@ ordinal: 43000
 - Depends on: P1-4
 - Flags: 🔌 hardware
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): The threading fixes (snapshot copy-under-lock, requestStatusJson) must be verified under a real pump connection; Pigeon-stub removal is safe but should ride the same real-pump PR.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:24
+---
+detail-needed (2026-07-06, goal triage): The threading fixes (snapshot copy-under-lock, requestStatusJson) must be verified under a real pump connection; Pigeon-stub removal is safe but should ride the same real-pump PR.
+---
+<!-- COMMENTS:END -->

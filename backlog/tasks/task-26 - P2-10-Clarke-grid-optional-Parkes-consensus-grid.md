@@ -4,7 +4,7 @@ title: 'P2-10 Clarke grid: optional Parkes/consensus grid'
 status: In Progress
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 05:26'
 labels:
   - roadmap
   - §1-P2
@@ -32,9 +32,11 @@ ordinal: 26000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Implement Parkes/consensus zones alongside Clarke; ModelAccuracyScreen uses/offers the chosen grid. Reuse the existing zone reference-test pattern.
-
-**Testing.** Per-zone reference tests (as already done for Clarke) against published boundary points. ML-honesty tests first (coverage + bias, synthetic-data recovery); `flutter analyze` clean, `flutter test` green.
+- Implement Parkes/consensus grid zones alongside Clarke.
+- Make `ModelAccuracyScreen` use/offer the chosen grid.
+- Reuse the existing zone reference-test pattern: per-zone reference tests (as already done for Clarke) against published boundary points.
+- Run ML-honesty tests first (coverage + bias, synthetic-data recovery).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

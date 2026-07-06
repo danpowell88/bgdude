@@ -4,7 +4,7 @@ title: P0-3 Autotune & TOD sensitivity compare like-for-like (after P0-2)
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:13'
+updated_date: '2026-07-06 05:24'
 labels:
   - roadmap
   - §1-P0
@@ -33,9 +33,10 @@ ordinal: 3000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In autotune.dart / time_of_day_sensitivity.dart, align the insulin-effect basis with P0-2 (net insulin). A well-tuned fasting user should produce ratios ≈1.0.
-
-**Testing.** Fasting well-tuned user scores ≈1.0 in Autotune and TOD sensitivity; add a direct test. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+- In `autotune.dart` / `time_of_day_sensitivity.dart`, align the insulin-effect basis with P0-2 (net insulin).
+- A well-tuned fasting user should produce ratios ≈1.0.
+- Add a direct test: fasting well-tuned user scores ≈1.0 in Autotune and TOD sensitivity. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able).
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -46,6 +47,14 @@ ordinal: 3000
 - Where: autotune.dart, time_of_day_sensitivity.dart
 - Depends on: P0-2
 - Roadmap status: open
-
-- detail-needed (2026-07-06): blocked on TASK-2 (P0-2). This 'falls out of' the net-insulin model change; can't be done or validated until P0-2's approach + validation data are settled.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:24
+---
+detail-needed (2026-07-06): blocked on TASK-2 (P0-2). This 'falls out of' the net-insulin model change; can't be done or validated until P0-2's approach + validation data are settled.
+---
+<!-- COMMENTS:END -->

@@ -4,7 +4,7 @@ title: P2-12 Split providers.dart + PersistedStateNotifier base
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:51'
+updated_date: '2026-07-06 05:26'
 labels:
   - roadmap
   - §1-P2
@@ -34,9 +34,11 @@ ordinal: 28000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Deliver via §3.A / TASK-35: PersistedStateNotifier<T> base first, then split into settings/mode/meal/pump/forecast/integration provider modules + services/{alert_service,app_jobs}.
-
-**Testing.** A restore-then-save race test on PersistedStateNotifier; provider-module tests after the split. Detailed in TASK-35. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+- Deliver via §3.A / TASK-35.
+- Build the `PersistedStateNotifier<T>` base first (restore-then-save ordering).
+- Then split `providers.dart` into settings/mode/meal/pump/forecast/integration provider modules + `services/{alert_service,app_jobs}`.
+- Test: a restore-then-save race test on `PersistedStateNotifier`; provider-module tests after the split (detailed in TASK-35); add/extend unit tests under `test/`.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -45,6 +47,14 @@ ordinal: 28000
 - Source: ROADMAP §1 P2-12 → §3.A
 - Effort: L
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): The 2,239-line providers.dart split (= §3.A / TASK-35): an invasive, risk-laden refactor of app-wide state. Want scope/sequencing sign-off before starting.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:26
+---
+detail-needed (2026-07-06, goal triage): The 2,239-line providers.dart split (= §3.A / TASK-35): an invasive, risk-laden refactor of app-wide state. Want scope/sequencing sign-off before starting.
+---
+<!-- COMMENTS:END -->

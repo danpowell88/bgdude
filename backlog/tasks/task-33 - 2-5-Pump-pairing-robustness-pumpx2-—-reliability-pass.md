@@ -4,7 +4,7 @@ title: 2-5 Pump pairing robustness (pumpx2) — reliability pass
 status: In Progress
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:44'
+updated_date: '2026-07-06 05:28'
 labels:
   - roadmap
   - §2
@@ -36,9 +36,15 @@ ordinal: 33000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Reliability pass: pairing retries, reconnect after drop, error surfacing to the UI, t:connect mutual-exclusion handling, long-run stability; tighten the reconnect/pairing-window loop; consider gating the derived-secret reuse path.
-
-**Testing.** On-device: repeated pair/unpair, reconnect after sleep/range-loss, multi-hour stability; confirm the read-only guarantee (only currentStatus sent) holds throughout. On-device (🔌): prepare a build + an exact manual test procedure → run on the real device → report → fix. Desk tests still green.
+- Add pairing retries and reconnect after drop.
+- Surface errors to the UI.
+- Handle t:connect mutual-exclusion.
+- Verify long-run stability.
+- Tighten the reconnect/pairing-window loop.
+- Consider gating the derived-secret reuse path.
+- On-device test: repeated pair/unpair, reconnect after sleep/range-loss, multi-hour stability; confirm the read-only guarantee (only `currentStatus` sent) holds throughout.
+- On-device (hardware): prepare a build + an exact manual test procedure → run on the real device → report → fix.
+- Verify: desk tests still green — `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

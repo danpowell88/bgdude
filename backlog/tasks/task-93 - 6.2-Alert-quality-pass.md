@@ -4,7 +4,7 @@ title: 6.2 Alert quality pass
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 04:53'
+updated_date: '2026-07-06 05:30'
 labels:
   - roadmap
   - §6
@@ -35,9 +35,12 @@ ordinal: 93000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Snooze/acknowledge semantics, smarter dedup (no repeat spam), do-not-alert-during-exercise nuances. Build on the §3.C decision-core and §4-2.3 per-TOD thresholds.
-
-**Testing.** Decision-core matrix tests cover snooze/ack/dedup/exercise-suppression. Add/extend unit tests under `test/`. `flutter analyze` clean, `flutter test` green before commit.
+- Add snooze/acknowledge semantics.
+- Smarter dedup (no repeat spam).
+- Do-not-alert-during-exercise nuances.
+- Build on the §3.C decision-core and §4-2.3 per-TOD thresholds.
+- Decision-core matrix tests cover snooze/ack/dedup/exercise-suppression; add/extend unit tests under `test/`.
+- Verify: `flutter analyze` clean, `flutter test` green before commit.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -47,6 +50,14 @@ ordinal: 93000
 - Effort: M
 - Flags: 🔒 safety
 - Roadmap status: open
-
-detail-needed (2026-07-06, goal triage): Alert quality (snooze/ack/dedup) is best built on the §3.C pure decision-core (TASK-37, detail-needed); blocked on that.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-06 05:30
+---
+detail-needed (2026-07-06, goal triage): Alert quality (snooze/ack/dedup) is best built on the §3.C pure decision-core (TASK-37, detail-needed); blocked on that.
+---
+<!-- COMMENTS:END -->

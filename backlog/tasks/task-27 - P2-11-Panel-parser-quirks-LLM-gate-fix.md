@@ -4,7 +4,7 @@ title: P2-11 Panel parser quirks + LLM-gate fix
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 05:26'
 labels:
   - roadmap
   - §1-P2
@@ -34,9 +34,13 @@ ordinal: 27000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** In the panel parser: exclude %DV tokens; split kJ/kcal; map EU "Salt … g" → sodium (×400); handle ml servings. Fix the LLM gate to run when the parser result is low-confidence even if a carb value exists.
-
-**Testing.** A parser unit test per quirk against fixtures in test/data/nutrition_panels.json; test the LLM gate fires on garbled carbs. Add/extend unit tests under `test/` (pure analytics/ml is `dart test`-able). `flutter analyze` clean and `flutter test` green before commit.
+- In the panel parser, exclude %DV tokens from parsing.
+- Split combined kJ/kcal energy values.
+- Map EU "Salt … g" → sodium (×400).
+- Handle ml servings.
+- Fix the LLM gate to run when the parser result is low-confidence even if a carb value exists.
+- Add a parser unit test per quirk against fixtures in `test/data/nutrition_panels.json`; test the LLM gate fires on garbled carbs.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

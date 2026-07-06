@@ -4,7 +4,7 @@ title: 'P2-1 Honest intervals: bias correction + coverage reporting + quantile t
 status: In Progress
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 05:28'
 labels:
   - roadmap
   - §1-P2
@@ -33,9 +33,12 @@ ordinal: 17000
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-**Technical notes.** Add bias correction (mean signed error) and per-horizon coverage reporting on ModelAccuracyScreen from stored lower/upperMgdl; implement quantile tails via §4-1.1 (TASK-46). Prerequisite: P0-2.
-
-**Testing.** Per-horizon coverage + mean-signed-error surfaced and asserted on synthetic data; quantile recovery test in gbm_test. ML-honesty tests first (coverage + bias, synthetic-data recovery); `flutter analyze` clean, `flutter test` green.
+- Add bias correction (mean signed error).
+- Add per-horizon coverage reporting on `ModelAccuracyScreen` from stored `lower/upperMgdl`.
+- Implement quantile tails via §4-1.1 (TASK-46).
+- Prerequisite: P0-2.
+- ML-honesty tests first: per-horizon coverage + mean-signed-error surfaced and asserted on synthetic data; quantile recovery test in `gbm_test`.
+- Verify: `flutter analyze` clean, `flutter test` green.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
