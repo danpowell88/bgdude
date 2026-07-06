@@ -1,10 +1,10 @@
 ---
 id: TASK-101
 title: Split BolusAdvisor.advise() into a pure compute core + presenter
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 04:53'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-06 15:34'
 labels:
   - code-health
   - dosing-math
@@ -35,10 +35,10 @@ Clinical constants are embedded mid-method:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Pure compute step returns a numeric result object (meal/correction/FPU units, modifiers applied, cap and guard flags) with zero string formatting
-- [ ] #2 A separate presenter builds the AdviceStep working list from that result; advice output is unchanged (existing tests pass)
-- [ ] #3 Clinical constants hoisted to named static consts with doc comments
-- [ ] #4 New unit tests assert on the numeric fields directly, not on strings
+- [x] #1 Pure compute step returns a numeric result object (meal/correction/FPU units, modifiers applied, cap and guard flags) with zero string formatting
+- [x] #2 A separate presenter builds the AdviceStep working list from that result; advice output is unchanged (existing tests pass)
+- [x] #3 Clinical constants hoisted to named static consts with doc comments
+- [x] #4 New unit tests assert on the numeric fields directly, not on strings
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -57,6 +57,8 @@ Clinical constants are embedded mid-method:
 - Source: code-health survey 2026-07-06 (lib finding 1)
 - Effort: M
 - Where: `lib/analytics/bolus_advisor.dart:137-324`
+
+Implemented. AC#1: new BolusComputation result object carries every numeric value + flag (meal/correction/FPU units, IOB, cap/capped, currentlyLow, ciqHalved/ciqSleepNote, predicted-low severity/applied, shownMeal/shownCorrection, fpuOverCap, confidence) with ZERO string formatting; computeBolus() is the pure math. AC#2: _present(BolusComputation) builds the AdviceStep working list + notes; advise() = compute then present then assemble BolusAdvice. Output is byte-identical — all 16 existing bolus_advisor tests pass unchanged. AC#3: the FPU calorie split (9/4/100 kcal), extend-hours heuristic (base 2, clamp 3..8), Control-IQ halving (0.5), 0.05-U action threshold and pump increment (1/100) are hoisted to named static consts with docs. AC#4: 5 new tests assert on computeBolus() numeric fields directly (correction/total, meal sum, low-guard, cap, FPU hours) — no string parsing. analyze clean, 548 tests green, APK builds.
 <!-- SECTION:NOTES:END -->
 
 ## Comments

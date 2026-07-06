@@ -201,4 +201,46 @@ void main() {
       expect(advice.recommendedUnits, closeTo(6.0, 0.1)); // 4 meal + 2 correction
     });
   });
+
+  // TASK-101: the pure compute step is asserted on directly — numeric fields, no strings.
+  group('computeBolus (pure numeric result)', () {
+    test('correction and total without touching display strings', () {
+      final c = BolusAdvisor().computeBolus(state(bg: 200));
+      expect(c.correctionUnits, closeTo(2.0, 0.05));
+      expect(c.mealUnits, 0);
+      expect(c.total, closeTo(2.0, 0.05));
+      expect(c.capped, isFalse);
+      expect(c.currentlyLow, isFalse);
+      expect(c.ciqHalved, isFalse);
+    });
+
+    test('meal + correction sum', () {
+      final c = BolusAdvisor().computeBolus(state(bg: 200), carbsGrams: 40);
+      expect(c.mealUnits, closeTo(4.0, 0.05));
+      expect(c.correctionUnits, closeTo(2.0, 0.05));
+      expect(c.total, closeTo(6.0, 0.1));
+    });
+
+    test('low reading trips the hard low-guard: no correction', () {
+      final c = BolusAdvisor().computeBolus(state(bg: 60));
+      expect(c.currentlyLow, isTrue);
+      expect(c.correctionUnits, 0);
+    });
+
+    test('total is capped at the pump max bolus', () {
+      // 300g of carbs at CR10 = 30U meal, well over the 15U max.
+      final c = BolusAdvisor().computeBolus(state(bg: 120), carbsGrams: 300);
+      expect(c.capped, isTrue);
+      expect(c.total, c.cap);
+      expect(c.cap, 15);
+    });
+
+    test('fat/protein yields an extended dose within the hour bounds', () {
+      final c = BolusAdvisor()
+          .computeBolus(state(bg: 120), carbsGrams: 30, fatGrams: 40, proteinGrams: 30);
+      expect(c.fpu, greaterThan(0));
+      expect(c.fpuUnits, greaterThan(0));
+      expect(c.fpuExtendHours, inInclusiveRange(3, 8));
+    });
+  });
 }

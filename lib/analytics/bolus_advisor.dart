@@ -97,6 +97,115 @@ class BolusAdvice {
   bool get refused => confidence == AdviceConfidence.refused;
 }
 
+/// The pure numeric outcome of the dose math (TASK-101): every value and flag the presenter
+/// needs to render the working/notes, with **zero string formatting**. Unit-tested directly
+/// so the clinical arithmetic is checked without parsing display strings.
+class BolusComputation {
+  const BolusComputation({
+    required this.displayUnit,
+    required this.carbsGrams,
+    required this.effectiveCr,
+    required this.isf,
+    required this.mult,
+    required this.mealUnits,
+    required this.fpu,
+    required this.exactMacros,
+    required this.fatGrams,
+    required this.proteinGrams,
+    required this.fatProteinLevel,
+    required this.fpuUnits,
+    required this.fpuExtendHours,
+    required this.currentMgdl,
+    required this.targetMgdl,
+    required this.iob,
+    required this.cgmNoisy,
+    required this.currentlyLow,
+    required this.correctionAfterIob,
+    required this.iobCoveredCorrection,
+    required this.ciqHalved,
+    required this.ciqSleepNote,
+    required this.predictedMinMgdl,
+    required this.predictedLowApplied,
+    required this.predictedLowSeverity,
+    required this.correctionBeforePredCut,
+    required this.correctionUnits,
+    required this.cap,
+    required this.capped,
+    required this.total,
+    required this.shownMeal,
+    required this.shownCorrection,
+    required this.fpuOverCap,
+    required this.contextConfidence,
+    required this.contextReasons,
+    required this.confidence,
+  });
+
+  final GlucoseUnit displayUnit;
+  final double carbsGrams;
+  final double effectiveCr;
+  final double isf;
+  final double mult;
+
+  /// Immediate meal insulin (carbs ÷ CR), pre-cap.
+  final double mealUnits;
+
+  final double fpu;
+  final bool exactMacros;
+  final double fatGrams;
+  final double proteinGrams;
+  final FatProteinLevel fatProteinLevel;
+  final double fpuUnits;
+  final int fpuExtendHours;
+
+  final double currentMgdl;
+  final double targetMgdl;
+
+  /// Bolus-only IOB subtracted from the correction.
+  final double iob;
+
+  final bool cgmNoisy;
+  final bool currentlyLow;
+
+  /// Correction right after subtracting IOB (may be negative), as shown in the working.
+  final double correctionAfterIob;
+
+  /// The IOB already covered the correction (it was clamped up to 0).
+  final bool iobCoveredCorrection;
+
+  /// Control-IQ halved the correction (active + auto-correcting).
+  final bool ciqHalved;
+
+  /// Control-IQ Sleep note applies (active, non-auto-correcting, correction present).
+  final bool ciqSleepNote;
+
+  final double predictedMinMgdl;
+  final bool predictedLowApplied;
+
+  /// 1.0 for a very-low forecast (full cut), 0.5 otherwise.
+  final double predictedLowSeverity;
+
+  /// Correction before the predicted-low reduction (to word "reduced by X%").
+  final double correctionBeforePredCut;
+
+  /// Final correction after IOB, Control-IQ and predicted-low adjustments.
+  final double correctionUnits;
+
+  final double cap;
+  final bool capped;
+
+  /// Final, capped, rounded immediate suggestion (meal + correction).
+  final double total;
+  final double shownMeal;
+  final double shownCorrection;
+
+  /// Immediate + extended exceeds the pump max bolus.
+  final bool fpuOverCap;
+
+  final double contextConfidence;
+  final List<String> contextReasons;
+  final AdviceConfidence confidence;
+}
+
 class BolusAdvisor {
   BolusAdvisor({GlucosePredictor? predictor, IobCalculator? iobCalculator})
       : _predictor = predictor ?? GlucosePredictor(),
@@ -118,6 +227,28 @@ class BolusAdvisor {
 
   /// 1 fat-protein unit ≈ this many grams of carb for insulin purposes (Pankowska).
   static const double _carbEquivPerFpu = 10;
+
+  // --- Clinical constants (TASK-101), hoisted out of the dose math for testability. ---
+
+  /// Calories per gram of fat / protein, and calories per fat-protein unit — one FPU is
+  /// 100 kcal of fat+protein (Warsaw/Pankowska method).
+  static const double _fatKcalPerG = 9;
+  static const double _proteinKcalPerG = 4;
+  static const double _kcalPerFpu = 100;
+
+  /// Extended-bolus duration heuristic: `(fpu.ceil() + base)` clamped to [min, max] hours.
+  static const int _fpuExtendBaseHours = 2;
+  static const int _fpuExtendMinHours = 3;
+  static const int _fpuExtendMaxHours = 8;
+
+  /// Control-IQ (auto-correcting) halves a manual correction to avoid stacking.
+  static const double _ciqCorrectionFactor = 0.5;
+
+  /// Corrections/doses below this many units are treated as "nothing to do".
+  static const double _minActionableUnits = 0.05;
+
+  /// The pump's dose increment: round displayed units to 0.01 U (1/100).
+  static const double _pumpIncrementsPerUnit = 100;
 
   /// [carbsGrams] is the meal being dosed for (0 for a pure correction).
   ///
@@ -144,183 +275,282 @@ class BolusAdvisor {
     bool compressionLowSuspected = false,
     GlucoseUnit displayUnit = GlucoseUnit.mmol,
   }) {
+    final c = computeBolus(
+      state,
+      carbsGrams: carbsGrams,
+      fatGrams: fatGrams,
+      proteinGrams: proteinGrams,
+      fatProteinLevel: fatProteinLevel,
+      cgmNoisy: cgmNoisy,
+      compressionLowSuspected: compressionLowSuspected,
+      displayUnit: displayUnit,
+    );
+    final (working, notes) = _present(c);
+    return BolusAdvice(
+      correctionUnits: c.correctionUnits,
+      mealUnits: c.mealUnits,
+      iobUsed: c.iob,
+      recommendedUnits: c.total,
+      confidence: c.confidence,
+      working: working,
+      notes: notes,
+      fpu: c.fpu,
+      fpuUnits: c.fpuUnits,
+      fpuExtendHours: c.fpuExtendHours,
+    );
+  }
+
+  /// The pure dose math (TASK-101): no string formatting. Returns every value and flag the
+  /// presenter needs. Directly unit-testable.
+  BolusComputation computeBolus(
+    PredictionState state, {
+    double carbsGrams = 0,
+    double fatGrams = 0,
+    double proteinGrams = 0,
+    FatProteinLevel fatProteinLevel = FatProteinLevel.none,
+    bool cgmNoisy = false,
+    bool compressionLowSuspected = false,
+    GlucoseUnit displayUnit = GlucoseUnit.mmol,
+  }) {
     final seg = state.settings.segmentAt(state.now);
     final mult = state.context.effectiveMultiplier;
     final isf = seg.isf / mult;
     final effectiveCr = seg.carbRatio / mult;
     final iob = _bolusIobNow(state);
-
-    final working = <AdviceStep>[];
-    final notes = <String>[];
     var confidence = _baseConfidence(state.context);
 
     // --- Meal component ---
     final mealUnits = carbsGrams > 0 ? carbsGrams / effectiveCr : 0.0;
-    if (carbsGrams > 0) {
-      working
-        ..add(AdviceStep('Carbs', '${carbsGrams.toStringAsFixed(0)} g'))
-        ..add(AdviceStep(
-            'Carb ratio', '1U : ${effectiveCr.toStringAsFixed(1)} g'))
-        ..add(AdviceStep('Meal insulin',
-            '${carbsGrams.toStringAsFixed(0)} ÷ ${effectiveCr.toStringAsFixed(1)} = ${mealUnits.toStringAsFixed(2)} U'));
-    }
 
     // --- Fat/protein (FPU) extended component ---
-    // Fat and protein cause a delayed, prolonged rise carb-counting misses. Estimate
-    // fat-protein units from exact grams, else from the qualitative level, and convert to
-    // an insulin amount to deliver *extended* (combo/dual-wave), separate from the dose now.
     final exactMacros = fatGrams > 0 || proteinGrams > 0;
     final fpu = exactMacros
-        ? (fatGrams * 9 + proteinGrams * 4) / 100.0
+        ? (fatGrams * _fatKcalPerG + proteinGrams * _proteinKcalPerG) / _kcalPerFpu
         : fatProteinLevel.fpu;
     var fpuUnits = fpu > 0 ? (fpu * _carbEquivPerFpu) / effectiveCr : 0.0;
-    fpuUnits = (fpuUnits * 100).roundToDouble() / 100;
-    final fpuExtendHours = fpu > 0 ? (fpu.ceil() + 2).clamp(3, 8) : 0;
-    if (fpu > 0) {
-      final src = exactMacros
-          ? 'fat ${fatGrams.toStringAsFixed(0)} g + protein ${proteinGrams.toStringAsFixed(0)} g'
-          : '${fatProteinLevel.label.toLowerCase()} load';
-      working
-        ..add(AdviceStep('Fat/protein', src))
-        ..add(AdviceStep('Fat-protein units', '${fpu.toStringAsFixed(1)} FPU'))
-        ..add(AdviceStep('Extended insulin',
-            '${fpu.toStringAsFixed(1)} FPU × ${_carbEquivPerFpu.toStringAsFixed(0)} g ÷ ${effectiveCr.toStringAsFixed(1)} = ${fpuUnits.toStringAsFixed(2)} U'));
-      notes.add(
-          'Fat/protein adds ~${fpuUnits.toStringAsFixed(1)} U — deliver it extended over '
-          '~$fpuExtendHours h (combo/dual-wave), not up front. Expect a delayed rise ~3–5 h '
-          'out, then watch for a later low.');
-    }
+    fpuUnits =
+        (fpuUnits * _pumpIncrementsPerUnit).roundToDouble() / _pumpIncrementsPerUnit;
+    final fpuExtendHours = fpu > 0
+        ? (fpu.ceil() + _fpuExtendBaseHours)
+            .clamp(_fpuExtendMinHours, _fpuExtendMaxHours)
+        : 0;
 
     // --- Correction component ---
-    var correctionUnits = 0.0;
     // P0-6: hard low-guard — never suggest a correction while the current reading is
-    // already low ("treat the low first"). A suspected compression low (false low from
-    // sensor pressure) is excluded so it can't block a legitimate dose.
+    // already low. A suspected compression low is excluded so it can't block a real dose.
+    var correctionUnits = 0.0;
+    var correctionAfterIob = 0.0;
+    var iobCoveredCorrection = false;
     final currentlyLow = state.currentMgdl < GlucoseThresholds.low &&
         !compressionLowSuspected;
     if (cgmNoisy) {
-      notes.add('CGM noisy / in warm-up — no correction from this reading.');
       confidence = AdviceConfidence.refused;
     } else if (currentlyLow) {
-      working.add(AdviceStep('Glucose',
-          '${Mgdl(state.currentMgdl).display(displayUnit)} ${displayUnit.label} (low)'));
-      notes.add(
-          'You\'re low (${Mgdl(state.currentMgdl).display(displayUnit)} ${displayUnit.label}) — '
-          'treat the low first; no correction from this reading.');
-      if (carbsGrams > 0) {
-        notes.add(
-            'Treat the low before dosing for the meal, then bolus once you\'re back in range.');
-      }
       confidence = AdviceConfidence.moderate;
     } else {
-      final bg = state.currentMgdl;
-      final target = seg.targetMgdl;
-      working
-        ..add(AdviceStep('Glucose', Mgdl(bg).display(displayUnit)))
-        ..add(AdviceStep('Target', Mgdl(target).display(displayUnit)))
-        ..add(AdviceStep('ISF',
-            '1U : ${Mgdl(isf).display(displayUnit)} ${displayUnit.label}'));
-      final rawCorrection = (bg - target) / isf;
-      correctionUnits = rawCorrection - iob;
-      working.add(AdviceStep('Correction',
-          '(${Mgdl(bg).display(displayUnit)} − ${Mgdl(target).display(displayUnit)}) ÷ ISF − bolus IOB ${iob.toStringAsFixed(2)} = ${correctionUnits.toStringAsFixed(2)} U'));
-      if (correctionUnits < 0) {
-        notes.add('IOB already covers the correction — none needed.');
+      final rawCorrection = (state.currentMgdl - seg.targetMgdl) / isf;
+      correctionAfterIob = rawCorrection - iob;
+      if (correctionAfterIob < 0) {
+        iobCoveredCorrection = true;
         correctionUnits = 0;
+      } else {
+        correctionUnits = correctionAfterIob;
       }
     }
 
     // --- Control-IQ awareness ---
-    // When the closed loop is running it changes basal automatically. In Standard /
-    // Exercise it also delivers automatic correction boluses, so a full manual correction
-    // on top risks stacking into a low — halve it and say why. In Sleep it won't
-    // auto-correct, so a manual correction is more likely warranted (just flag it).
     final ciq = state.controlIq;
+    var ciqHalved = false;
+    var ciqSleepNote = false;
     if (ciq.enabled) {
-      if (ciq.autoCorrects && correctionUnits > 0.05) {
-        correctionUnits *= 0.5;
-        notes.add(
-            'Control-IQ is active and auto-corrects highs — correction halved to avoid '
-            'stacking. Consider letting the loop work before dosing.');
+      if (ciq.autoCorrects && correctionUnits > _minActionableUnits) {
+        correctionUnits *= _ciqCorrectionFactor;
+        ciqHalved = true;
         confidence = _downgrade(confidence);
-      } else if (!ciq.autoCorrects && correctionUnits > 0.05) {
-        notes.add(
-            'Control-IQ Sleep mode adjusts basal but does not auto-correct — a manual '
-            'correction may be needed.');
+      } else if (!ciq.autoCorrects && correctionUnits > _minActionableUnits) {
+        ciqSleepNote = true;
       }
     }
 
     // --- Predicted-low guardrail ---
-    // Always surface a predicted low, even when there is no correction to trim —
-    // the user deciding on a meal bolus needs to know either way.
-    final prediction = _predictor.predict(state);
-    final predictedMin = prediction.minMgdl;
+    final predictedMin = _predictor.predict(state).minMgdl;
+    var predictedLowApplied = false;
+    var predictedLowSeverity = 0.0;
+    final correctionBeforePredCut = correctionUnits;
     if (predictedMin < GlucoseThresholds.low) {
-      final severity = predictedMin < GlucoseThresholds.veryLow ? 1.0 : 0.5;
-      final before = correctionUnits;
-      correctionUnits *= (1 - severity);
-      if (before > 0) {
-        notes.add(
-            'Predicted low (${Mgdl(predictedMin).display(displayUnit)} ${displayUnit.label}) — correction reduced by ${(severity * 100).round()}%.');
-      } else {
-        notes.add(
-            'Predicted low ahead (${Mgdl(predictedMin).display(displayUnit)} ${displayUnit.label}) — dose with care.');
-      }
+      predictedLowApplied = true;
+      predictedLowSeverity =
+          predictedMin < GlucoseThresholds.veryLow ? 1.0 : 0.5;
+      correctionUnits *= (1 - predictedLowSeverity);
       confidence = _downgrade(confidence);
-      if (predictedMin < GlucoseThresholds.veryLow && carbsGrams == 0) {
-        notes.add('Consider fast carbs rather than insulin.');
-      }
     }
 
     // --- Total + cap ---
     var total = mealUnits + correctionUnits;
     final cap = state.settings.maxBolusUnits;
+    var capped = false;
     if (total > cap) {
-      notes.add(
-          'Capped at max bolus ${cap.toStringAsFixed(1)} U (computed ${total.toStringAsFixed(2)} U).');
+      capped = true;
       total = cap;
       confidence = _downgrade(confidence);
     }
     if (total < 0) total = 0;
+    total = (total * _pumpIncrementsPerUnit).roundToDouble() / _pumpIncrementsPerUnit;
 
-    // Round to the pump's typical 0.01U increment for display.
-    total = (total * 100).roundToDouble() / 100;
-
-    // Show the breakdown of the (possibly capped) total, so meal + correction always
-    // sums to the suggested figure rather than the pre-cap amounts.
     final shownMeal = mealUnits > total ? total : mealUnits;
-    final shownCorrection = (total - shownMeal).clamp(0.0, total);
-    working.add(AdviceStep('Suggested',
-        '${total.toStringAsFixed(2)} U  (meal ${shownMeal.toStringAsFixed(2)} + correction ${shownCorrection.toStringAsFixed(2)})'));
+    final shownCorrection = (total - shownMeal).clamp(0.0, total).toDouble();
+    final fpuOverCap = fpuUnits > 0 && (total + fpuUnits > cap);
 
-    if (fpuUnits > 0) {
-      working.add(AdviceStep('Now + extended',
-          '${total.toStringAsFixed(2)} U now + ${fpuUnits.toStringAsFixed(2)} U over ${fpuExtendHours}h'));
-      if (total + fpuUnits > cap) {
+    return BolusComputation(
+      displayUnit: displayUnit,
+      carbsGrams: carbsGrams,
+      effectiveCr: effectiveCr,
+      isf: isf,
+      mult: mult,
+      mealUnits: mealUnits,
+      fpu: fpu,
+      exactMacros: exactMacros,
+      fatGrams: fatGrams,
+      proteinGrams: proteinGrams,
+      fatProteinLevel: fatProteinLevel,
+      fpuUnits: fpuUnits,
+      fpuExtendHours: fpuExtendHours,
+      currentMgdl: state.currentMgdl,
+      targetMgdl: seg.targetMgdl,
+      iob: iob,
+      cgmNoisy: cgmNoisy,
+      currentlyLow: currentlyLow,
+      correctionAfterIob: correctionAfterIob,
+      iobCoveredCorrection: iobCoveredCorrection,
+      ciqHalved: ciqHalved,
+      ciqSleepNote: ciqSleepNote,
+      predictedMinMgdl: predictedMin,
+      predictedLowApplied: predictedLowApplied,
+      predictedLowSeverity: predictedLowSeverity,
+      correctionBeforePredCut: correctionBeforePredCut,
+      correctionUnits: correctionUnits,
+      cap: cap,
+      capped: capped,
+      total: total,
+      shownMeal: shownMeal,
+      shownCorrection: shownCorrection,
+      fpuOverCap: fpuOverCap,
+      contextConfidence: state.context.confidence,
+      contextReasons: state.context.reasons,
+      confidence: confidence,
+    );
+  }
+
+  /// Builds the human-readable working list + notes from a [BolusComputation]. All wording
+  /// and formatting lives here so the dose math above stays string-free (TASK-101).
+  (List<AdviceStep>, List<String>) _present(BolusComputation c) {
+    final unit = c.displayUnit;
+    final working = <AdviceStep>[];
+    final notes = <String>[];
+
+    // --- Meal ---
+    if (c.carbsGrams > 0) {
+      working
+        ..add(AdviceStep('Carbs', '${c.carbsGrams.toStringAsFixed(0)} g'))
+        ..add(AdviceStep(
+            'Carb ratio', '1U : ${c.effectiveCr.toStringAsFixed(1)} g'))
+        ..add(AdviceStep('Meal insulin',
+            '${c.carbsGrams.toStringAsFixed(0)} ÷ ${c.effectiveCr.toStringAsFixed(1)} = ${c.mealUnits.toStringAsFixed(2)} U'));
+    }
+
+    // --- Fat/protein ---
+    if (c.fpu > 0) {
+      final src = c.exactMacros
+          ? 'fat ${c.fatGrams.toStringAsFixed(0)} g + protein ${c.proteinGrams.toStringAsFixed(0)} g'
+          : '${c.fatProteinLevel.label.toLowerCase()} load';
+      working
+        ..add(AdviceStep('Fat/protein', src))
+        ..add(AdviceStep('Fat-protein units', '${c.fpu.toStringAsFixed(1)} FPU'))
+        ..add(AdviceStep('Extended insulin',
+            '${c.fpu.toStringAsFixed(1)} FPU × ${_carbEquivPerFpu.toStringAsFixed(0)} g ÷ ${c.effectiveCr.toStringAsFixed(1)} = ${c.fpuUnits.toStringAsFixed(2)} U'));
+      notes.add(
+          'Fat/protein adds ~${c.fpuUnits.toStringAsFixed(1)} U — deliver it extended over '
+          '~${c.fpuExtendHours} h (combo/dual-wave), not up front. Expect a delayed rise ~3–5 h '
+          'out, then watch for a later low.');
+    }
+
+    // --- Correction ---
+    if (c.cgmNoisy) {
+      notes.add('CGM noisy / in warm-up — no correction from this reading.');
+    } else if (c.currentlyLow) {
+      working.add(AdviceStep('Glucose',
+          '${Mgdl(c.currentMgdl).display(unit)} ${unit.label} (low)'));
+      notes.add(
+          'You\'re low (${Mgdl(c.currentMgdl).display(unit)} ${unit.label}) — '
+          'treat the low first; no correction from this reading.');
+      if (c.carbsGrams > 0) {
         notes.add(
-            'Immediate + extended (${(total + fpuUnits).toStringAsFixed(1)} U) is over the '
-            'max bolus ${cap.toStringAsFixed(1)} U — split it across the combo bolus and '
+            'Treat the low before dosing for the meal, then bolus once you\'re back in range.');
+      }
+    } else {
+      working
+        ..add(AdviceStep('Glucose', Mgdl(c.currentMgdl).display(unit)))
+        ..add(AdviceStep('Target', Mgdl(c.targetMgdl).display(unit)))
+        ..add(AdviceStep('ISF',
+            '1U : ${Mgdl(c.isf).display(unit)} ${unit.label}'));
+      working.add(AdviceStep('Correction',
+          '(${Mgdl(c.currentMgdl).display(unit)} − ${Mgdl(c.targetMgdl).display(unit)}) ÷ ISF − bolus IOB ${c.iob.toStringAsFixed(2)} = ${c.correctionAfterIob.toStringAsFixed(2)} U'));
+      if (c.iobCoveredCorrection) {
+        notes.add('IOB already covers the correction — none needed.');
+      }
+    }
+
+    // --- Control-IQ ---
+    if (c.ciqHalved) {
+      notes.add(
+          'Control-IQ is active and auto-corrects highs — correction halved to avoid '
+          'stacking. Consider letting the loop work before dosing.');
+    } else if (c.ciqSleepNote) {
+      notes.add(
+          'Control-IQ Sleep mode adjusts basal but does not auto-correct — a manual '
+          'correction may be needed.');
+    }
+
+    // --- Predicted-low ---
+    if (c.predictedLowApplied) {
+      if (c.correctionBeforePredCut > 0) {
+        notes.add(
+            'Predicted low (${Mgdl(c.predictedMinMgdl).display(unit)} ${unit.label}) — correction reduced by ${(c.predictedLowSeverity * 100).round()}%.');
+      } else {
+        notes.add(
+            'Predicted low ahead (${Mgdl(c.predictedMinMgdl).display(unit)} ${unit.label}) — dose with care.');
+      }
+      if (c.predictedMinMgdl < GlucoseThresholds.veryLow && c.carbsGrams == 0) {
+        notes.add('Consider fast carbs rather than insulin.');
+      }
+    }
+
+    // --- Cap ---
+    if (c.capped) {
+      notes.add(
+          'Capped at max bolus ${c.cap.toStringAsFixed(1)} U (computed ${(c.mealUnits + c.correctionUnits).toStringAsFixed(2)} U).');
+    }
+
+    working.add(AdviceStep('Suggested',
+        '${c.total.toStringAsFixed(2)} U  (meal ${c.shownMeal.toStringAsFixed(2)} + correction ${c.shownCorrection.toStringAsFixed(2)})'));
+
+    if (c.fpuUnits > 0) {
+      working.add(AdviceStep('Now + extended',
+          '${c.total.toStringAsFixed(2)} U now + ${c.fpuUnits.toStringAsFixed(2)} U over ${c.fpuExtendHours}h'));
+      if (c.fpuOverCap) {
+        notes.add(
+            'Immediate + extended (${(c.total + c.fpuUnits).toStringAsFixed(1)} U) is over the '
+            'max bolus ${c.cap.toStringAsFixed(1)} U — split it across the combo bolus and '
             're-check.');
       }
     }
 
-    if (state.context.confidence > 0 && state.context.reasons.isNotEmpty) {
+    if (c.contextConfidence > 0 && c.contextReasons.isNotEmpty) {
       notes.add(
-          'Sensitivity context applied (${state.context.reasons.join(', ')}), ×${mult.toStringAsFixed(2)}.');
+          'Sensitivity context applied (${c.contextReasons.join(', ')}), ×${c.mult.toStringAsFixed(2)}.');
     }
 
-    return BolusAdvice(
-      correctionUnits: correctionUnits,
-      mealUnits: mealUnits,
-      iobUsed: iob,
-      recommendedUnits: total,
-      confidence: confidence,
-      working: working,
-      notes: notes,
-      fpu: fpu,
-      fpuUnits: fpuUnits,
-      fpuExtendHours: fpuExtendHours,
-    );
+    return (working, notes);
   }
 
   /// IOB used to trim the correction: **bolus-only** (P0-1). Scheduled basal is
