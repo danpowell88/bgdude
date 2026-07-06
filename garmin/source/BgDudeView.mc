@@ -34,7 +34,7 @@ class BgDudeView extends WatchUi.View {
 
         var stale = BgData.isStale();
         var subColor = stale ? Graphics.COLOR_DK_GRAY : Graphics.COLOR_LT_GRAY;
-        var valueColor = stale ? Graphics.COLOR_DK_GRAY : BgData.bgColor();
+        var valueColor = BgData.valueColorFor(stale);
 
         // Unit label, top.
         dc.setColor(subColor, Graphics.COLOR_TRANSPARENT);

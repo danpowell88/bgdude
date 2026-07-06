@@ -47,7 +47,7 @@ class BgDudeDataFieldView extends WatchUi.DataField {
         }
 
         var stale = BgData.isStale();
-        var valueColor = stale ? Graphics.COLOR_DK_GRAY : BgData.bgColor();
+        var valueColor = BgData.valueColorFor(stale);
         // On a light field background, keep in-range green readable by darkening white.
         if (!stale && bgColor != Graphics.COLOR_BLACK
                 && valueColor == Graphics.COLOR_GREEN) {
@@ -55,17 +55,9 @@ class BgDudeDataFieldView extends WatchUi.DataField {
         }
 
         var font = pickFont(dc, bg, w, h);
-        var bgWidth = dc.getTextWidthInPixels(bg, font);
         var arrowSize = h / 6;
         if (arrowSize < 8) { arrowSize = 8; }
-        var groupW = bgWidth + arrowSize * 2 + 4;
-        var startX = cx - groupW / 2;
-        if (startX < 2) { startX = 2; }
-
-        dc.setColor(valueColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(startX, cy, font, bg,
-            Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
-        BgData.drawTrendArrow(dc, startX + bgWidth + arrowSize + 2, cy, arrowSize,
+        BgData.drawValueWithArrow(dc, cx, cy, bg, font, arrowSize, valueColor,
             BgData.trend());
 
         if (stale) {

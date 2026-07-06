@@ -212,6 +212,30 @@ module BgData {
         return (age == null) || (age > STALE_AFTER_SEC);
     }
 
+    //! The BG number's colour: greyed out once [stale], otherwise the range colour. Shared
+    //! by every view so the stale-vs-range choice lives in one place (TASK-107/112).
+    function valueColorFor(stale as Boolean) as Graphics.ColorType {
+        return stale ? Graphics.COLOR_DK_GRAY : bgColor();
+    }
+
+    //! Draw the BG [text] in [color] with the trend arrow beside it, the whole (value+arrow)
+    //! group centred on [cx] at vertical [y]. [arrowSize] is the arrow length, [font] the
+    //! value font, [trendName] the arrow direction. Both the watch-face and data-field views
+    //! use this so the centring width math isn't re-derived per view (TASK-112).
+    function drawValueWithArrow(dc as Graphics.Dc, cx as Number, y as Number,
+                                text as String, font as Graphics.FontDefinition,
+                                arrowSize as Number, color as Graphics.ColorType,
+                                trendName as String) as Void {
+        var textW = dc.getTextWidthInPixels(text, font);
+        var groupW = textW + arrowSize * 2 + 4;
+        var startX = cx - groupW / 2;
+        if (startX < 2) { startX = 2; }
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(startX, y, font, text,
+            Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+        drawTrendArrow(dc, startX + textW + arrowSize + 2, y, arrowSize, trendName);
+    }
+
     //! Draw the trend arrow at (x, y) (arrow center), self-contained polygon drawing so no
     //! custom font is required. `size` is the arrow length in px.
     function drawTrendArrow(dc as Graphics.Dc, x as Number, y as Number,

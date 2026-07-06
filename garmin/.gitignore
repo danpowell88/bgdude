@@ -1,0 +1,4 @@
+# Connect IQ build artifacts and the private developer key — never commit these.
+developer_key.der
+developer_key.pem
+bin/

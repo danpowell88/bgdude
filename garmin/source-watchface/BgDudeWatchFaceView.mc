@@ -64,19 +64,12 @@ class BgDudeWatchFaceView extends WatchUi.WatchFace {
         }
 
         var stale = BgData.isStale();
-        var valueColor = stale ? Graphics.COLOR_DK_GRAY : BgData.bgColor();
+        var valueColor = BgData.valueColorFor(stale);
         var subColor = stale ? Graphics.COLOR_DK_GRAY : Graphics.COLOR_LT_GRAY;
 
         var bgFont = Graphics.FONT_NUMBER_MEDIUM;
-        var bgWidth = dc.getTextWidthInPixels(bg, bgFont);
         var arrowSize = h / 12;
-        // Center the (value + arrow) group.
-        var groupW = bgWidth + arrowSize * 2 + 4;
-        var startX = cx - groupW / 2;
-        dc.setColor(valueColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(startX, bgY, bgFont, bg,
-            Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
-        BgData.drawTrendArrow(dc, startX + bgWidth + arrowSize + 2, bgY, arrowSize,
+        BgData.drawValueWithArrow(dc, cx, bgY, bg, bgFont, arrowSize, valueColor,
             BgData.trend());
 
         // --- delta + IOB + age line ---
