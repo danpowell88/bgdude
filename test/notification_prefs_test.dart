@@ -117,9 +117,12 @@ void main() {
       //  * missedBolus — a retrospective care nudge, not an emergency; overnight the
       //    stubborn-high / ketone paths cover the dangerous continuation.
       //  * preBolusTimer — a user-initiated meal timer; it isn't fired while asleep.
+      //  * dataStale (TASK-176) — the pump/CGM's own alarms remain the primary
+      //    overnight safety net; this flags the companion app going blind.
       const reviewedExclusions = {
         NotificationCategory.missedBolus,
         NotificationCategory.preBolusTimer,
+        NotificationCategory.dataStale,
       };
       final defaults = NotificationPrefs.defaults();
       for (final c in NotificationCategory.values) {

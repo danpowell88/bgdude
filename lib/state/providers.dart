@@ -44,6 +44,7 @@ import '../insights/medication_mode.dart';
 import '../insights/sleep_insight.dart';
 import '../insights/morning_summary.dart';
 import '../insights/notification_prefs.dart';
+import '../insights/stale_data_watchdog.dart';
 import '../insights/notifications.dart';
 import '../insights/post_meal_movement.dart';
 import '../insights/workout_classifier.dart';
@@ -1396,6 +1397,52 @@ class ConnectionAlertService {
       });
     }
   }
+}
+
+/// Stale-data watchdog (TASK-176): alerts only run when a snapshot arrives, so a
+/// feed that silently stalls while the BLE link stays "connected" would never be
+/// noticed. A periodic timer checks last-snapshot age independent of connection
+/// stage; the alert goes through the normal notification path (enabled/quiet-hours
+/// rules apply).
+final staleDataWatchdogProvider = Provider<StaleDataWatchdogService>((ref) {
+  final service = StaleDataWatchdogService(ref);
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+class StaleDataWatchdogService {
+  StaleDataWatchdogService(this._ref) {
+    _timer = Timer.periodic(const Duration(minutes: 5), (_) => _check());
+  }
+
+  final Ref _ref;
+  final StaleDataMonitor monitor = StaleDataMonitor();
+  Timer? _timer;
+
+  /// Called from the app root on every snapshot arrival.
+  void onSnapshot() {
+    if (monitor.onSnapshot(DateTime.now()) == StaleDataEvent.recovered) {
+      appLog.info('alerts', 'data feed recovered after a stall');
+    }
+  }
+
+  Future<void> _check() async {
+    if (monitor.check(DateTime.now()) != StaleDataEvent.becameStale) return;
+    final mins = monitor.age(DateTime.now())?.inMinutes;
+    try {
+      await _ref.read(notificationServiceProvider).show(
+            NotificationCategory.dataStale,
+            'Readings have stopped',
+            'No new pump data for ~$mins min even though the connection looks '
+                'healthy — check the sensor and pump. Predictions and app alerts '
+                'are paused on stale data.',
+          );
+    } catch (e) {
+      appLog.error('alerts', 'send failed: dataStale', error: e);
+    }
+  }
+
+  void dispose() => _timer?.cancel();
 }
 
 /// Fires real-time predicted-low/high nudges and logs predictions for accuracy

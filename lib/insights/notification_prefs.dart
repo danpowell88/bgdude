@@ -26,6 +26,8 @@ enum NotificationCategory {
   morningSummary,
   reportDigest,
   preBolusTimer,
+  // Appended last: notification ids derive from the index (TASK-176).
+  dataStale,
 }
 
 extension NotificationCategoryX on NotificationCategory {
@@ -49,6 +51,7 @@ extension NotificationCategoryX on NotificationCategory {
         NotificationCategory.morningSummary => 'Morning summary',
         NotificationCategory.reportDigest => 'Weekly report',
         NotificationCategory.preBolusTimer => 'Pre-bolus timer',
+        NotificationCategory.dataStale => 'Readings stalled',
       };
 
   String get description => switch (this) {
@@ -87,6 +90,9 @@ extension NotificationCategoryX on NotificationCategory {
         NotificationCategory.reportDigest =>
           'A weekly nudge that your report is ready to review.',
         NotificationCategory.preBolusTimer => 'Time to eat after pre-bolusing.',
+        NotificationCategory.dataStale =>
+          'Readings stopped arriving even though the pump link looks healthy — '
+              'predictions and app alerts are running blind.',
       };
 }
 
@@ -158,8 +164,10 @@ extension NotificationCategoryQuietHours on NotificationCategory {
   /// TASK-144: the acute act-NOW alerts (rescue carbs during a real hypo, the
   /// ketone/DKA prompt) bypass too — overnight is exactly when they matter most, and
   /// they must never rank below a mere prediction. Acute categories deliberately NOT
-  /// here: missedBolus (a retrospective care nudge, fine to hold until morning) and
-  /// preBolusTimer (a user-initiated meal timer, not fired while asleep).
+  /// here: missedBolus (a retrospective care nudge, fine to hold until morning),
+  /// preBolusTimer (a user-initiated meal timer, not fired while asleep), and
+  /// dataStale (TASK-176: the pump/CGM's own alarms remain the primary overnight
+  /// safety net — this flags the companion app's added value going blind).
   bool get bypassesQuietHours =>
       this == NotificationCategory.urgentLow ||
       this == NotificationCategory.predictedLow ||
@@ -364,6 +372,12 @@ class NotificationPrefs {
             sound: false,
             repeatMinutes: 0),
         NotificationCategory.preBolusTimer => const CategoryPref(
+            enabled: true,
+            importance: NotifImportance.high,
+            vibrate: true,
+            sound: true,
+            repeatMinutes: 0),
+        NotificationCategory.dataStale => const CategoryPref(
             enabled: true,
             importance: NotifImportance.high,
             vibrate: true,

@@ -21,6 +21,9 @@ class BgDudeApp extends ConsumerWidget {
     ref.listen(pumpSnapshotProvider, (_, next) {
       final snapshot = next.valueOrNull;
       if (snapshot != null) {
+        // Feed the stale-data watchdog (TASK-176) so it can tell when readings
+        // STOP arriving even though the connection stage still looks healthy.
+        ref.read(staleDataWatchdogProvider).onSnapshot();
         ref
             .read(homeWidgetServiceProvider)
             .pushUpdate(snapshot, ref.read(glucoseUnitProvider));
