@@ -80,6 +80,38 @@ void main() {
     expect(r.suggestCheck, isFalse);
   });
 
+  test('P0-7: very high AND rising → prompt even with insulin working', () {
+    // Ascending series from 260 → 340 (all above the 250 base threshold), ending
+    // very high (>300) and still rising, with a normal correction IOB. Old logic
+    // treated this as "a correction in progress"; P0-7 flags it.
+    final cgm = [
+      for (var i = 0; i < 25; i++)
+        CgmSample(
+          time: now.subtract(Duration(minutes: 5 * i)),
+          mgdl: 340 - i * 4.0, // i=0 (now) = 340, older = lower
+        ),
+    ];
+    final r = det.detect(
+      cgm: cgm,
+      iobUnits: 4.0, // correcting, but still climbing
+      illnessActive: false,
+      likelySiteIssue: false,
+      now: now,
+    );
+    expect(r.suggestCheck, isTrue);
+    expect(r.reason.toLowerCase(), contains('rising'));
+  });
+
+  test('P0-7: sustained high at 260 + illness prompts (base threshold now 250)', () {
+    final r = det.detect(
+      cgm: _sustainedHigh(now, 260), // between the old 270 and new 250 thresholds
+      iobUnits: 2.0,
+      illnessActive: true,
+      now: now,
+    );
+    expect(r.suggestCheck, isTrue);
+  });
+
   test('too few readings → no prompt', () {
     final r = det.detect(
       cgm: [CgmSample(time: now, mgdl: 320)],

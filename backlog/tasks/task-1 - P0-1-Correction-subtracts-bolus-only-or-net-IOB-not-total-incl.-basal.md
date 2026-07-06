@@ -1,10 +1,10 @@
 ---
 id: TASK-1
 title: 'P0-1 Correction subtracts bolus-only (or net) IOB, not total incl. basal'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 03:59'
 labels:
   - roadmap
   - §1-P0

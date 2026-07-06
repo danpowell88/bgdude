@@ -38,7 +38,10 @@ class RescueCarbCalculator {
   final double maxRescueGrams;
 
   /// [currentMgdl] now, [targetMgdl] the correction target, [isf] mg/dL per unit,
-  /// [carbRatio] g per unit, [iobUnits] insulin on board, and optionally
+  /// [carbRatio] g per unit, [iobUnits] **bolus-only** insulin on board (P0-5:
+  /// scheduled basal is EGP-neutral / Control-IQ-managed, so counting it would
+  /// over-estimate the insulin still pulling glucose down and over-treat the low),
+  /// and optionally
   /// [predictedNadirMgdl] (the min of the forecast). Returns advice, or a "no rescue
   /// needed" result when you're safely above target.
   RescueCarbAdvice advise({

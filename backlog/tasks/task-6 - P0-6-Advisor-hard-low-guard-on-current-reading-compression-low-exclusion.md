@@ -1,10 +1,10 @@
 ---
 id: TASK-6
 title: P0-6 Advisor hard low-guard on current reading + compression-low exclusion
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 03:43'
+updated_date: '2026-07-06 04:12'
 labels:
   - roadmap
   - §1-P0

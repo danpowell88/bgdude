@@ -100,10 +100,21 @@ class BolusAdvice {
 class BolusAdvisor {
   BolusAdvisor({GlucosePredictor? predictor, IobCalculator? iobCalculator})
       : _predictor = predictor ?? GlucosePredictor(),
-        _iob = iobCalculator ?? const IobCalculator();
+        _injectedIob = iobCalculator;
 
   final GlucosePredictor _predictor;
-  final IobCalculator _iob;
+
+  /// An explicitly-injected calculator (tests) overrides the configured curve.
+  final IobCalculator? _injectedIob;
+
+  /// P0-4: honour the configured DIA / insulin peak from [TherapySettings].
+  IobCalculator _iobFor(TherapySettings s) => _injectedIob ??
+      IobCalculator(
+        model: InsulinModel(
+          durationMinutes: s.durationOfInsulinActionMinutes,
+          peakMinutes: s.insulinPeakMinutes,
+        ),
+      );
 
   /// 1 fat-protein unit ≈ this many grams of carb for insulin purposes (Pankowska).
   static const double _carbEquivPerFpu = 10;
@@ -118,6 +129,11 @@ class BolusAdvisor {
   ///
   /// [cgmNoisy] should be set when recent CGM variance is high or the sensor is in
   /// warm-up — the advisor then refuses to compute a correction from the reading.
+  ///
+  /// [compressionLowSuspected] excludes the current reading from the P0-6 hard low-guard
+  /// (a compression low is a false low from lying on the sensor, so it must not block a
+  /// legitimate dose). There is no live compression-low detector feeding this yet — see
+  /// TASK-6 follow-up; callers pass `false` until one exists.
   BolusAdvice advise(
     PredictionState state, {
     double carbsGrams = 0,
@@ -125,13 +141,14 @@ class BolusAdvisor {
     double proteinGrams = 0,
     FatProteinLevel fatProteinLevel = FatProteinLevel.none,
     bool cgmNoisy = false,
+    bool compressionLowSuspected = false,
     GlucoseUnit displayUnit = GlucoseUnit.mmol,
   }) {
     final seg = state.settings.segmentAt(state.now);
     final mult = state.context.effectiveMultiplier;
     final isf = seg.isf / mult;
     final effectiveCr = seg.carbRatio / mult;
-    final iob = _iobNow(state);
+    final iob = _bolusIobNow(state);
 
     final working = <AdviceStep>[];
     final notes = <String>[];
@@ -176,9 +193,25 @@ class BolusAdvisor {
 
     // --- Correction component ---
     var correctionUnits = 0.0;
+    // P0-6: hard low-guard — never suggest a correction while the current reading is
+    // already low ("treat the low first"). A suspected compression low (false low from
+    // sensor pressure) is excluded so it can't block a legitimate dose.
+    final currentlyLow = state.currentMgdl < GlucoseThresholds.low &&
+        !compressionLowSuspected;
     if (cgmNoisy) {
       notes.add('CGM noisy / in warm-up — no correction from this reading.');
       confidence = AdviceConfidence.refused;
+    } else if (currentlyLow) {
+      working.add(AdviceStep('Glucose',
+          '${Mgdl(state.currentMgdl).display(displayUnit)} ${displayUnit.label} (low)'));
+      notes.add(
+          'You\'re low (${Mgdl(state.currentMgdl).display(displayUnit)} ${displayUnit.label}) — '
+          'treat the low first; no correction from this reading.');
+      if (carbsGrams > 0) {
+        notes.add(
+            'Treat the low before dosing for the meal, then bolus once you\'re back in range.');
+      }
+      confidence = AdviceConfidence.moderate;
     } else {
       final bg = state.currentMgdl;
       final target = seg.targetMgdl;
@@ -190,7 +223,7 @@ class BolusAdvisor {
       final rawCorrection = (bg - target) / isf;
       correctionUnits = rawCorrection - iob;
       working.add(AdviceStep('Correction',
-          '(${Mgdl(bg).display(displayUnit)} − ${Mgdl(target).display(displayUnit)}) ÷ ISF − IOB ${iob.toStringAsFixed(2)} = ${correctionUnits.toStringAsFixed(2)} U'));
+          '(${Mgdl(bg).display(displayUnit)} − ${Mgdl(target).display(displayUnit)}) ÷ ISF − bolus IOB ${iob.toStringAsFixed(2)} = ${correctionUnits.toStringAsFixed(2)} U'));
       if (correctionUnits < 0) {
         notes.add('IOB already covers the correction — none needed.');
         correctionUnits = 0;
@@ -290,8 +323,12 @@ class BolusAdvisor {
     );
   }
 
-  double _iobNow(PredictionState s) =>
-      _iob.total(s.boluses, s.basal, s.now).units;
+  /// IOB used to trim the correction: **bolus-only** (P0-1). Scheduled basal is
+  /// EGP-neutral and, on a Control-IQ pump, already accounted for — counting it here
+  /// would shrink corrections and under-dose highs. The forward-prediction path
+  /// ([_predictor]) still models full insulin activity from the whole [PredictionState].
+  double _bolusIobNow(PredictionState s) =>
+      _iobFor(s.settings).fromBoluses(s.boluses, s.now).units;
 
   static AdviceConfidence _baseConfidence(SensitivityContext ctx) {
     if (ctx.confidence >= 0.6) return AdviceConfidence.high;

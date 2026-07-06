@@ -25,6 +25,7 @@ void main() {
     required double bg,
     double roc = 0,
     List<BolusEvent> boluses = const [],
+    List<BasalSegment> basal = const [],
     List<CarbEntry> carbs = const [],
     SensitivityContext ctx = SensitivityContext.neutral,
   }) =>
@@ -33,7 +34,7 @@ void main() {
         currentMgdl: bg,
         recentRocMgdlPerMin: roc,
         boluses: boluses,
-        basal: const [],
+        basal: basal,
         carbs: carbs,
         settings: settings,
         context: ctx,
@@ -54,12 +55,70 @@ void main() {
     expect(advice.recommendedUnits, closeTo(6.0, 0.1));
   });
 
-  test('IOB is subtracted from the correction', () {
+  test('bolus IOB is subtracted from the correction', () {
     final advice = BolusAdvisor().advise(
       state(bg: 200, boluses: [BolusEvent(time: now, units: 1.5)]),
     );
-    // 2U raw correction − ~1.5U IOB ≈ 0.5U.
+    // 2U raw correction − ~1.5U bolus IOB ≈ 0.5U.
     expect(advice.correctionUnits, closeTo(0.5, 0.15));
+  });
+
+  test('P0-1: basal IOB does NOT reduce the correction', () {
+    // Three hours of 0.8 U/h scheduled basal generates real basal IOB, but on a
+    // Control-IQ pump that basal is already accounted for — the correction must use
+    // bolus-only IOB, so it stays at the full 2.0 U.
+    final advice = BolusAdvisor().advise(
+      state(bg: 200, basal: [
+        BasalSegment(
+          start: now.subtract(const Duration(hours: 3)),
+          end: now,
+          unitsPerHour: 0.8,
+        ),
+      ]),
+    );
+    expect(advice.correctionUnits, closeTo(2.0, 0.05));
+    expect(advice.iobUsed, closeTo(0.0, 0.001));
+  });
+
+  test('P0-4: configured DIA changes how much bolus IOB is subtracted', () {
+    final bolus = [
+      BolusEvent(time: now.subtract(const Duration(minutes: 90)), units: 2.0),
+    ];
+    TherapySettings withDia(int dia) => TherapySettings(
+          segments: settings.segments,
+          durationOfInsulinActionMinutes: dia,
+          maxBolusUnits: 15,
+        );
+    PredictionState st(TherapySettings s) => PredictionState(
+          now: now,
+          currentMgdl: 200,
+          recentRocMgdlPerMin: 0,
+          boluses: bolus,
+          basal: const [],
+          carbs: const [],
+          settings: s,
+          context: SensitivityContext.neutral,
+        );
+    final short = BolusAdvisor().advise(st(withDia(180)));
+    final long = BolusAdvisor().advise(st(withDia(360)));
+    // Shorter DIA → more of the 90-min-old bolus has acted → less IOB remaining →
+    // a larger correction is suggested. Proves the configured DIA flows through.
+    expect(short.iobUsed, lessThan(long.iobUsed));
+    expect(short.correctionUnits, greaterThan(long.correctionUnits));
+  });
+
+  test('P0-6: low-guard blocks a correction on a current low', () {
+    final advice = BolusAdvisor().advise(state(bg: 60)); // 60 < low (70)
+    expect(advice.correctionUnits, 0);
+    expect(advice.notes.join(' ').toLowerCase(), contains('treat the low first'));
+  });
+
+  test('P0-6: suspected compression low is excluded from the low-guard', () {
+    final advice =
+        BolusAdvisor().advise(state(bg: 60), compressionLowSuspected: true);
+    // The guard must not fire on a false (compression) low — no "treat the low first".
+    expect(advice.notes.join(' ').toLowerCase(),
+        isNot(contains('treat the low first')));
   });
 
   test('refuses a correction when CGM is noisy', () {

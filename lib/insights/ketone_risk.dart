@@ -18,7 +18,8 @@ class KetoneRiskResult {
 
 class KetoneRiskDetector {
   const KetoneRiskDetector({
-    this.highThresholdMgdl = 270, // ~15 mmol/L
+    this.highThresholdMgdl = 250, // ~13.9 mmol/L (P0-7: lowered from 270)
+    this.veryHighThresholdMgdl = 300, // ~16.7 mmol/L
     this.sustainMinutes = 120,
     this.minReadings = 6,
     this.highFraction = 0.8,
@@ -26,6 +27,11 @@ class KetoneRiskDetector {
   });
 
   final double highThresholdMgdl;
+
+  /// Above this, a rising glucose or very-low IOB prompts a ketone check
+  /// **unconditionally** (no illness/site factor required) — a rising very-high can
+  /// precede DKA (P0-7).
+  final double veryHighThresholdMgdl;
   final int sustainMinutes;
   final int minReadings;
 
@@ -57,6 +63,21 @@ class KetoneRiskDetector {
         recent.where((s) => s.mgdl > highThresholdMgdl).length / recent.length;
     final stillHigh = recent.last.mgdl > highThresholdMgdl;
     if (above < highFraction || !stillHigh) return KetoneRiskResult.none;
+
+    // P0-7: unconditional prompt when very high AND (still rising OR little insulin on
+    // board) — a rising very-high can precede DKA even without a named risk factor.
+    final veryHigh = recent.last.mgdl > veryHighThresholdMgdl;
+    final rising = recent.length >= 2 && recent.last.mgdl > recent.first.mgdl;
+    if (veryHigh && (rising || iobUnits < lowIobUnits)) {
+      return KetoneRiskResult(
+        suggestCheck: true,
+        reason: rising
+            ? 'Very high and still rising — check ketones now and correct; a rising '
+                'very-high can precede DKA.'
+            : 'Very high with almost no insulin on board — check ketones now and '
+                'correct (a missed dose or occlusion can cause ketones).',
+      );
+    }
 
     // A ketone-promoting factor must accompany the sustained high.
     if (illnessActive) {

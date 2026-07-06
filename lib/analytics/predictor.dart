@@ -175,7 +175,7 @@ class GlucosePredictor {
     CarbModel? carbModel,
     InsulinModel? insulinModel,
   })  : _carbModel = carbModel ?? const CarbModel(),
-        _iob = IobCalculator(model: insulinModel ?? InsulinModel.rapidActing);
+        _injectedInsulinModel = insulinModel;
 
   final int stepMinutes;
   final int horizonMinutes;
@@ -184,7 +184,19 @@ class GlucosePredictor {
   final int momentumDecayMinutes;
 
   final CarbModel _carbModel;
-  final IobCalculator _iob;
+
+  /// An explicitly-injected insulin model (tests) overrides the configured one.
+  final InsulinModel? _injectedInsulinModel;
+
+  /// P0-4: honour the user's configured DIA (duration of insulin action) and insulin
+  /// peak from [TherapySettings] instead of a hardcoded 360/75 curve.
+  IobCalculator _iobFor(TherapySettings s) => IobCalculator(
+        model: _injectedInsulinModel ??
+            InsulinModel(
+              durationMinutes: s.durationOfInsulinActionMinutes,
+              peakMinutes: s.insulinPeakMinutes,
+            ),
+      );
 
   /// The primary prediction: insulin + carbs + decaying momentum.
   PredictionLine predict(PredictionState s, {String label = 'Predicted'}) {
@@ -282,12 +294,13 @@ class GlucosePredictor {
     var bg = s.currentMgdl;
     points.add((time: s.now, mgdl: bg));
 
+    final iob = _iobFor(s.settings);
     final steps = horizonMinutes ~/ stepMinutes;
     for (var i = 1; i <= steps; i++) {
       final t = s.now.add(Duration(minutes: i * stepMinutes));
 
       // Insulin effect over this step: activity(units/min) × ISF × dt.
-      final act = _iob.total(boluses, basal, t).activityUnitsPerMin;
+      final act = iob.total(boluses, basal, t).activityUnitsPerMin;
       final insulinDelta = -act * isf * stepMinutes;
 
       // Carb effect over this step.

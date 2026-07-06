@@ -604,8 +604,11 @@ final rescueCarbAdviceProvider = Provider<RescueCarbAdvice?>((ref) {
   if (state == null) return null;
   final seg = state.settings.segmentAt(state.now);
   final mult = state.context.effectiveMultiplier;
+  // P0-5: rescue-carb sizing subtracts **bolus-only** IOB. Scheduled basal is
+  // EGP-neutral (and Control-IQ-managed), so counting it would over-estimate the
+  // insulin still pulling glucose down and over-treat the low.
   final iob =
-      const IobCalculator().total(state.boluses, state.basal, state.now).units;
+      const IobCalculator().fromBoluses(state.boluses, state.now).units;
   final forecasts = ref.watch(forecasterProvider).forecastState(state);
   final nadir = forecasts.isEmpty
       ? null
