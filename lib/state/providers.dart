@@ -5,10 +5,10 @@ library;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
-import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../alerts/alert_orchestrator.dart';
 import '../analytics/band_coverage.dart';
 import '../analytics/bolus_advisor.dart';
 import '../analytics/context_builder.dart';
@@ -34,14 +34,10 @@ import '../food/panel_ocr_mlkit.dart';
 import '../food/panel_scan_service.dart';
 import '../insights/a1c_goal.dart';
 import '../insights/alcohol_watch.dart';
-import '../insights/alert_monitor.dart';
 import '../insights/alert_thresholds.dart';
-import '../insights/anomaly_detector.dart';
-import '../insights/care_detectors.dart';
 import '../insights/daily_narrative.dart';
 import '../insights/exercise_mode.dart';
 import '../insights/illness_mode.dart';
-import '../insights/ketone_risk.dart';
 import '../insights/lab_a1c.dart';
 import '../insights/medication_mode.dart';
 import '../insights/sleep_insight.dart';
@@ -103,7 +99,6 @@ import '../timeline/event_builder.dart';
 import '../widget/home_widget_service.dart';
 import 'day_data.dart';
 import 'day_history_controller.dart';
-import '../core/sleep_window.dart';
 
 export 'day_data.dart';
 
@@ -1405,233 +1400,102 @@ class AlertService {
     return true;
   }
 
-  static NotificationCategory _categoryFor(GlucoseAlertKind k) => switch (k) {
-        GlucoseAlertKind.urgentLow => NotificationCategory.urgentLow,
-        GlucoseAlertKind.predictedLow => NotificationCategory.predictedLow,
-        GlucoseAlertKind.predictedHigh => NotificationCategory.predictedHigh,
-      };
-
+  /// Gather one cycle's inputs as values, run the pure [AlertOrchestrator], then own
+  /// the side effects: cooldown/dedup gating, `NotificationService.show`, battery
+  /// history I/O and throttled prediction logging (TASK-116).
   Future<void> onSnapshot() async {
-    // Pump-status alerts (alarms + low reservoir) come straight off the snapshot and
-    // don't depend on a CGM/prediction being available, so check them first.
-    await _checkPumpStatus();
+    final now = DateTime.now();
+    final snap = _ref.read(pumpSnapshotProvider).valueOrNull;
+
+    // Battery history I/O stays here; the low/soon-empty decision is pure.
+    var batterySamples = const <BatterySample>[];
+    final batteryPct = snap?.batteryPercent;
+    if (batteryPct != null) {
+      try {
+        await BatteryHistoryStore.append(BatterySample(
+            time: now, percent: batteryPct, charging: snap!.isCharging));
+      } catch (e) { appLog.error('alerts', 'battery history append failed', error: e); }
+      batterySamples = await BatteryHistoryStore.load();
+    }
 
     final state = _ref.read(livePredictionStateProvider);
-    if (state == null) return;
-    final forecasts = const UncertaintyCalibrator().calibrateAll(
-      _ref.read(forecasterProvider).forecastState(state),
-      _ref.read(recentHorizonErrorProvider),
-    );
-    final now = DateTime.now();
-    // Tracks whether a *named* condition is present this cycle; the general anomaly alert
-    // only fires as a catch-all when none is.
-    var firedSpecific = false;
-
-    // Start from the user's own alert thresholds, then let safety modifiers raise the
-    // low line: impaired-awareness risk (older age, long-standing diabetes), an active
-    // alcohol watch (delayed lows), and an announced exercise session.
-    final thresholds = _ref.read(alertThresholdsProvider);
-    // §4-2.3: pick the per-time-of-day row. A carb entry in the last 2h counts as
-    // "post-meal" so the higher post-meal ceiling (if set) applies while digesting.
-    final meals = _ref.read(dayDataProvider);
-    final postMeal = meals.carbs.any((c) =>
-        !c.time.isAfter(now) && now.difference(c.time) <= const Duration(hours: 2));
-    final band = thresholds.resolve(at: now, postMeal: postMeal);
-    final profile = _ref.read(userProfileProvider);
-    final hypoBump =
-        const HypoAwarenessRisk().lowThresholdBump(profile, now);
-    const alcohol = AlcoholWatch();
-    final recentAnnotations = await _ref
-        .read(historyRepositoryProvider)
-        .annotations(now.subtract(alcohol.window), now);
-    var lowMgdl = band.lowMgdl + hypoBump;
-    if (alcohol.activeAt(recentAnnotations, now)) {
-      lowMgdl = math.max(lowMgdl, band.lowMgdl + 10);
+    var forecasts = const <HorizonForecast>[];
+    DayData? day;
+    UserProfile? profile;
+    Iterable<Annotation> recentAnnotations = const <Annotation>[];
+    ExercisePlan? exercise;
+    double? ambientTempC;
+    RescueCarbAdvice? rescue;
+    double? siteAgeHours;
+    var illnessActive = false;
+    var activity = 0.0;
+    if (state != null) {
+      forecasts = const UncertaintyCalibrator().calibrateAll(
+        _ref.read(forecasterProvider).forecastState(state),
+        _ref.read(recentHorizonErrorProvider),
+      );
+      day = _ref.read(dayDataProvider);
+      profile = _ref.read(userProfileProvider);
+      const alcohol = AlcoholWatch();
+      recentAnnotations = await _ref
+          .read(historyRepositoryProvider)
+          .annotations(now.subtract(alcohol.window), now);
+      exercise = _ref.read(exercisePlanProvider);
+      ambientTempC = _ref.read(weatherProvider).valueOrNull?.tempC;
+      rescue = _ref.read(rescueCarbAdviceProvider);
+      final siteMin =
+          _ref.read(deviceStateProvider).age(DeviceKind.site, now)?.inMinutes;
+      siteAgeHours = siteMin == null ? null : siteMin / 60.0;
+      illnessActive = _ref.read(illnessModeProvider).active;
+      activity =
+          _ref.read(forecastHealthSamplerProvider)?.featuresAt(now).first ?? 0.0;
     }
-    final exercise = _ref.read(exercisePlanProvider);
-    if (exercise != null && exercise.affectsAt(now)) {
-      lowMgdl = math.max(
-          lowMgdl, band.lowMgdl + const ExerciseModeCoach().lowBump(exercise.type));
-    }
-    // Hot/cold ambient weather raises the low line (faster/altered insulin absorption).
-    final weatherBump = const WeatherRiskModifier()
-        .lowThresholdBump(_ref.read(weatherProvider).valueOrNull?.tempC);
-    if (weatherBump > 0) lowMgdl = math.max(lowMgdl, band.lowMgdl + weatherBump);
 
-    // Evaluate without an internal cooldown — repeat/opt-out is governed by prefs here.
-    final alert = AlertMonitor(
-      cooldown: Duration.zero,
-      lowMgdl: lowMgdl,
-      highMgdl: band.highMgdl,
-      urgentLowMgdl: band.urgentLowMgdl,
-    ).evaluate(
+    final result = const AlertOrchestrator().evaluate(AlertCycleInput(
+      now: now,
+      snapshot: snap,
+      lastAlarmSignature: _lastAlarmSignature,
+      batterySamples: batterySamples,
+      state: state,
       forecasts: forecasts,
-      currentMgdl: state.currentMgdl,
-      now: now,
-      lastFired: const {},
       unit: _ref.read(glucoseUnitProvider),
-      // TASK-93: mute predicted-high nudges during an active workout (lows still fire).
-      suppressPredictedHigh: exercise != null && exercise.affectsAt(now),
-    );
-    if (alert != null) {
-      firedSpecific = true;
-      final category = _categoryFor(alert.kind);
-      // Urgent/predicted alerts: record the fire only AFTER a successful send, so a failed
-      // urgent-low is retried on the next cycle rather than being silently suppressed.
-      if (_coolPassed(category, now)) {
-        try {
-          await _ref
-              .read(notificationServiceProvider)
-              .show(category, alert.title, alert.body);
-          _markFired(category, now);
-        } catch (e) {
-          appLog.error('alerts', 'send failed: ${category.name}', error: e);
-        }
-      }
-    }
+      thresholds: _ref.read(alertThresholdsProvider),
+      day: day,
+      profile: profile,
+      recentAnnotations: recentAnnotations,
+      exercise: exercise,
+      ambientTempC: ambientTempC,
+      rescue: rescue,
+      siteAgeHours: siteAgeHours,
+      illnessActive: illnessActive,
+      recentActivityFeature: activity,
+    ));
+    _lastAlarmSignature = result.alarmSignature;
 
-    // Post-meal "walk it off": a spike predicted soon after a meal, and not already
-    // moving → suggest a short walk (a short post-meal walk blunts the spike).
-    final dayForMeal = _ref.read(dayDataProvider);
-    final ateRecently = dayForMeal.carbs.any((c) =>
-        !c.time.isAfter(now) && now.difference(c.time) <= const Duration(minutes: 45));
-    final peak = forecasts.isEmpty
-        ? state.currentMgdl
-        : forecasts.map((f) => f.mgdl).reduce((a, b) => a > b ? a : b);
-    final activity =
-        _ref.read(forecastHealthSamplerProvider)?.featuresAt(now).first ?? 0.0;
-    if (const PostMealMovementCoach().shouldNudge(
-          ateWithinWindow: ateRecently,
-          currentMgdl: state.currentMgdl,
-          forecastPeakMgdl: peak,
-          recentStepsPerMin: activity * 100, // activity feature ≈ steps/min ÷ 100
-        ) &&
-        _shouldFire(NotificationCategory.postMealMovement, now)) {
+    for (final d in result.decisions) {
+      // A critical decision checks the cooldown here and records the fire only after
+      // a successful send (so a failed urgent-low is retried next cycle, TASK-38);
+      // normal decisions record optimistically. bypassCooldown (a NEW pump alarm)
+      // fires regardless and leaves the repeat cooldown untouched.
+      final fire = d.bypassCooldown ||
+          (d.urgency == AlertUrgency.critical
+              ? _coolPassed(d.category, now)
+              : _shouldFire(d.category, now));
+      if (!fire) continue;
       try {
-        await _ref.read(notificationServiceProvider).show(
-              NotificationCategory.postMealMovement,
-              'A short walk would help',
-              'A post-meal rise is on the way — even 10 minutes of walking now will '
-                  'blunt the spike.',
-            );
-      } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
-    }
-
-    // Rescue carbs: fire the act-now case (urgent) as its own category so it can be
-    // tuned/opted separately from the predictive low alert above.
-    final rescue = _ref.read(rescueCarbAdviceProvider);
-    if (rescue != null && rescue.urgent) {
-      firedSpecific = true;
-      if (_shouldFire(NotificationCategory.rescueCarb, now)) {
-        try {
-          await _ref.read(notificationServiceProvider).show(
-                NotificationCategory.rescueCarb,
-                'Take rescue carbs',
-                '~${rescue.grams.round()}g fast carbs now — ${rescue.reason}',
-              );
-        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
-      }
-    }
-
-    // Care alerts: missed bolus and stubborn-high (possible site failure).
-    final day = _ref.read(dayDataProvider);
-    final missed = const MissedBolusDetector().detect(
-      cgm: day.cgm,
-      boluses: day.boluses,
-      carbs: day.carbs,
-      basal: day.basal,
-      settings: day.settings,
-      now: now,
-    );
-    if (missed != null) {
-      firedSpecific = true;
-      if (_shouldFire(NotificationCategory.missedBolus, now)) {
-        try {
-          await _ref.read(notificationServiceProvider).show(
-                NotificationCategory.missedBolus,
-                'Missed bolus?',
-                'A ~${missed.estimatedCarbsGrams.round()}g rise with no bolus logged — '
-                    'correct now if you ate.',
-              );
-        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
-      }
-    }
-
-    final siteMin = _ref.read(deviceStateProvider).age(DeviceKind.site, now)?.inMinutes;
-    final stubborn = const StubbornHighDetector().detect(
-      cgm: day.cgm,
-      boluses: day.boluses,
-      basal: day.basal,
-      settings: day.settings,
-      siteAgeHours: siteMin == null ? null : siteMin / 60.0,
-      now: now,
-    );
-    if (stubborn != null) {
-      firedSpecific = true;
-    }
-    if (stubborn != null && _shouldFire(NotificationCategory.stubbornHigh, now)) {
-      try {
-        await _ref.read(notificationServiceProvider).show(
-              NotificationCategory.stubbornHigh,
-              'Stubborn high',
-              stubborn.likelySiteIssue
-                  ? 'High for a while with insulin doing little, and your site is '
-                      '~${(stubborn.siteAgeHours! / 24).toStringAsFixed(1)} days old — '
-                      'consider a set change.'
-                  : 'High for a while with IOB not bringing it down — watch for a '
-                      'possible site issue.',
-            );
-      } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
-    }
-
-    // Ketone / DKA sick-day prompt: sustained high + a ketone risk factor (illness,
-    // likely site failure, or very high with minimal IOB).
-    final iob = const IobCalculator()
-        .total(state.boluses, state.basal, now)
-        .units;
-    final ketone = const KetoneRiskDetector().detect(
-      cgm: day.cgm,
-      iobUnits: iob,
-      illnessActive: _ref.read(illnessModeProvider).active,
-      likelySiteIssue: stubborn?.likelySiteIssue ?? false,
-      now: now,
-    );
-    if (ketone.suggestCheck) {
-      firedSpecific = true;
-      if (_shouldFire(NotificationCategory.ketoneCheck, now)) {
-        try {
-          await _ref.read(notificationServiceProvider).show(
-                NotificationCategory.ketoneCheck, 'Check ketones', ketone.reason,
-                bigText: true);
-        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
-      }
-    }
-
-    // General anomaly catch-all: when no named condition above is present, flag glucose
-    // that's moving faster than the carbs/insulin model expects — an early "something out
-    // of the norm" heads-up (unannounced meal, sensor/site trouble, stress, illness onset).
-    if (!firedSpecific) {
-      final current = state.currentMgdl;
-      final expectedRoc = forecasts.isEmpty
-          ? 0.0
-          : (forecasts.first.mgdl - current) / forecasts.first.horizonMinutes;
-      final anomaly = const AnomalyDetector()
-          .detect(cgm: day.cgm, expectedRocMgdlPerMin: expectedRoc, now: now);
-      if (anomaly.detected &&
-          _shouldFire(NotificationCategory.anomalyDetected, now)) {
-        try {
-          await _ref.read(notificationServiceProvider).show(
-                NotificationCategory.anomalyDetected,
-                'Something looks unusual',
-                anomaly.reason,
-              );
-        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
+        await _ref
+            .read(notificationServiceProvider)
+            .show(d.category, d.title, d.body, bigText: d.bigText);
+        if (d.urgency == AlertUrgency.critical) _markFired(d.category, now);
+      } catch (e) {
+        appLog.error('alerts', 'send failed: ${d.category.name}', error: e);
       }
     }
 
     // Log predictions (throttled) so the model-accuracy view can score them later.
-    if (_lastPredictionLog == null ||
-        now.difference(_lastPredictionLog!).inMinutes >= 5) {
+    if (state != null &&
+        (_lastPredictionLog == null ||
+            now.difference(_lastPredictionLog!).inMinutes >= 5)) {
       _lastPredictionLog = now;
       final trained = _ref.read(forecasterModelProvider).isTrained;
       final repo = _ref.read(historyRepositoryProvider);
@@ -1645,111 +1509,14 @@ class AlertService {
             upperMgdl: f.upperMgdl,
             modelId: trained ? 'residual' : 'deterministic',
           ));
-        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
+        } catch (e) { appLog.error('alerts', 'prediction log failed', error: e); }
       }
     }
   }
 
-  /// Below this many units left, warn about the reservoir.
-  static const double _reservoirLowUnits = 15.0;
+  /// Signature of the pump's active alarm/alert set last cycle, so a CHANGED set
+  /// re-alerts immediately (see AlertOrchestrator).
   String? _lastAlarmSignature;
-
-  /// Surface active pump alarms and a low reservoir from the latest snapshot.
-  Future<void> _checkPumpStatus() async {
-    final snap = _ref.read(pumpSnapshotProvider).valueOrNull;
-    if (snap == null) return;
-    final now = DateTime.now();
-
-    // Active alarms/alerts on the pump. Fire when the active set changes (so a new alarm
-    // notifies) and re-alert per the category's repeat interval while it persists.
-    final active = [...snap.activeAlarms, ...snap.activeAlerts];
-    final signature = active.join('|');
-    if (active.isNotEmpty) {
-      final changed = signature != _lastAlarmSignature;
-      if ((changed || _shouldFire(NotificationCategory.pumpAlarm, now))) {
-        _lastAlarmSignature = signature;
-        try {
-          await _ref.read(notificationServiceProvider).show(
-                NotificationCategory.pumpAlarm,
-                snap.activeAlarms.isNotEmpty ? 'Pump alarm' : 'Pump alert',
-                '${active.map(_humanizeAlarm).join(', ')} — check your pump.',
-              );
-        } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
-      }
-    } else {
-      _lastAlarmSignature = null;
-    }
-
-    final reservoir = snap.reservoirUnits;
-    if (reservoir != null &&
-        reservoir <= _reservoirLowUnits &&
-        _shouldFire(NotificationCategory.reservoirLow, now)) {
-      try {
-        await _ref.read(notificationServiceProvider).show(
-              NotificationCategory.reservoirLow,
-              'Low reservoir',
-              '~${reservoir.round()} U left — plan a cartridge change soon.',
-            );
-      } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
-    }
-
-    await _checkBattery(snap, now);
-  }
-
-  /// Log a battery sample and warn on a low level or a predicted soon-drain (e.g. "won't
-  /// last the night"). The pump raises its own critical-battery alarms; this is the
-  /// earlier, predictive heads-up.
-  static const int _batteryLowPercent = 20;
-  static const Duration _batteryWarnWithin = Duration(hours: 6);
-  Future<void> _checkBattery(PumpSnapshot snap, DateTime now) async {
-    final pct = snap.batteryPercent;
-    if (pct == null) return;
-    try {
-      await BatteryHistoryStore.append(
-          BatterySample(time: now, percent: pct, charging: snap.isCharging));
-    } catch (e) { appLog.error('alerts', 'notification send failed', error: e); }
-    if (snap.isCharging == true) return; // no warning while charging
-
-    final estimate = const BatteryDrainEstimator()
-        .estimate(await BatteryHistoryStore.load(), now: now);
-    final tte = estimate.timeToEmpty;
-    final soon = tte != null && tte <= _batteryWarnWithin;
-    if ((pct <= _batteryLowPercent || soon) &&
-        _shouldFire(NotificationCategory.batteryLow, now)) {
-      final body = soon
-          ? 'About ${_hoursText(tte)} of battery left at the current rate — '
-              'charge before it runs out${_overnight(now, tte) ? ' (it won’t last the night)' : ''}.'
-          : 'Pump battery at $pct% — charge it soon.';
-      try {
-        await _ref.read(notificationServiceProvider).show(
-              NotificationCategory.batteryLow, 'Low pump battery', body);
-      } catch (_) {}
-    }
-  }
-
-  static String _hoursText(Duration d) {
-    final h = d.inMinutes / 60.0;
-    return h < 1 ? '${d.inMinutes} min' : '${h.toStringAsFixed(h < 3 ? 1 : 0)} h';
-  }
-
-  /// True when the predicted empty time lands during typical sleep hours (23:00–07:00).
-  static bool _overnight(DateTime now, Duration tte) {
-    final at = now.add(tte);
-    return defaultAsleepAt(at);
-  }
-
-  /// Turn a pumpx2 enum-ish alarm name (e.g. "LOW_INSULIN_ALARM") into readable text.
-  static String _humanizeAlarm(String raw) {
-    final words = raw
-        .replaceAll('_', ' ')
-        .toLowerCase()
-        .split(' ')
-        .where((w) => w.isNotEmpty)
-        .toList();
-    if (words.isEmpty) return raw;
-    return words.first[0].toUpperCase() + words.first.substring(1) +
-        (words.length > 1 ? ' ${words.sublist(1).join(' ')}' : '');
-  }
 }
 
 /// Background jobs run at startup (and on demand): close the meal-outcome loop,
