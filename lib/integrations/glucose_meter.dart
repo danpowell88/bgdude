@@ -39,8 +39,12 @@ class GlucoseMeterReading {
 
   /// Import target: a fingerstick, flagged as a calibration-type reading (not a sensor
   /// value) so analytics can treat it distinctly.
-  CgmSample toCgmSample() =>
-      CgmSample(time: time, mgdl: mgdl, isCalibration: true);
+  CgmSample toCgmSample() => CgmSample(
+        time: time,
+        mgdl: mgdl,
+        isCalibration: true,
+        source: GlucoseSource.meter,
+      );
 }
 
 /// Parser for the Glucose Measurement characteristic (0x2A18).
