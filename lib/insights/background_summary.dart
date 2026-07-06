@@ -13,6 +13,7 @@ import 'package:workmanager/workmanager.dart';
 
 import '../analytics/context_builder.dart';
 import '../analytics/metrics.dart';
+import '../core/local_timezone.dart';
 import '../data/database.dart';
 import '../data/history_repository.dart';
 import '../data/secure_key.dart';
@@ -32,6 +33,9 @@ void backgroundCallbackDispatcher() {
       if (now.hour < 6 || now.hour > 11) return true; // morning window only
 
       tzdata.initializeTimeZones();
+      // TASK-175: each isolate has its own tz.local; without this the isolate
+      // schedules in UTC.
+      await configureLocalTimezone();
       final notifications = NotificationService();
       await notifications.init();
 

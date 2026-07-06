@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 
 import 'app.dart';
+import 'core/local_timezone.dart';
 import 'data/database.dart';
 import 'data/history_repository.dart';
 import 'data/kv_store.dart';
@@ -15,6 +16,9 @@ import 'state/providers.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tzdata.initializeTimeZones();
+  // TASK-175: without this, tz.local stays UTC and every wall-clock schedule
+  // fires offset by the UTC delta (the 07:00 summary at 17:00 in AEST).
+  await configureLocalTimezone();
 
   final flags = await AppFlags.load();
   final onboarded = flags.onboardingDone;

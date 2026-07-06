@@ -93,12 +93,35 @@ class NotificationService {
       show(NotificationCategory.morningSummary, headline, body,
           id: 1002, bigText: true);
 
+  /// Next wall-clock [hour]:[minute] in [now]'s location, strictly ahead of [now].
+  /// Pure and location-aware (TASK-175); constructing tomorrow via `day + 1` (not
+  /// `+24h`) keeps the wall-clock hour across a DST transition.
+  static tz.TZDateTime nextDailyInstant(tz.TZDateTime now, int hour, int minute) {
+    var scheduled =
+        tz.TZDateTime(now.location, now.year, now.month, now.day, hour, minute);
+    if (scheduled.isBefore(now)) {
+      scheduled = tz.TZDateTime(
+          now.location, now.year, now.month, now.day + 1, hour, minute);
+    }
+    return scheduled;
+  }
+
+  /// Next [weekday] (1=Mon..7=Sun) at [hour]:00 in [now]'s location, strictly
+  /// ahead of [now]. Day arithmetic, so DST-safe like [nextDailyInstant].
+  static tz.TZDateTime nextWeeklyInstant(tz.TZDateTime now, int weekday, int hour) {
+    var days = 0;
+    var scheduled = tz.TZDateTime(now.location, now.year, now.month, now.day, hour);
+    while (scheduled.weekday != weekday || !scheduled.isAfter(now)) {
+      days += 1;
+      scheduled =
+          tz.TZDateTime(now.location, now.year, now.month, now.day + days, hour);
+    }
+    return scheduled;
+  }
+
   /// Schedule the daily summary reminder at [hour]:[minute] local.
   Future<void> scheduleDailySummary({int hour = 7, int minute = 0}) async {
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduled =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (scheduled.isBefore(now)) scheduled = scheduled.add(const Duration(days: 1));
+    final scheduled = nextDailyInstant(tz.TZDateTime.now(tz.local), hour, minute);
     await _plugin.zonedSchedule(
       1000,
       'Preparing your morning summary…',
@@ -116,11 +139,8 @@ class NotificationService {
   /// Schedule a weekly "your report is ready" nudge on [weekday] (1=Mon..7=Sun) at
   /// [hour]:00 local. Opting out via the reportDigest category disables the channel.
   Future<void> scheduleWeeklyReport({int weekday = DateTime.monday, int hour = 8}) async {
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour);
-    while (scheduled.weekday != weekday || !scheduled.isAfter(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
+    final scheduled =
+        nextWeeklyInstant(tz.TZDateTime.now(tz.local), weekday, hour);
     await _plugin.zonedSchedule(
       1002,
       'Your weekly report is ready',

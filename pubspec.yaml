@@ -88,6 +88,7 @@ dependencies:
   # is the always-on fallback. flutter_gemma needs the AGP 8.x line (see android/).
   flutter_gemma: ^1.0.0
   flutter_gemma_mediapipe: ^1.0.3
+  flutter_timezone: ^5.1.0
 
 dev_dependencies:
   flutter_test:
