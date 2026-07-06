@@ -165,6 +165,25 @@ class PredictionState {
   /// The Control-IQ closed loop, if active — folded into the forward simulation so the
   /// forecast reflects automatic basal changes / corrections. Defaults to off.
   final ControlIqState controlIq;
+
+  PredictionState copyWith({
+    List<BolusEvent>? boluses,
+    List<BasalSegment>? basal,
+    List<CarbEntry>? carbs,
+    double? recentRocMgdlPerMin,
+  }) =>
+      PredictionState(
+        now: now,
+        currentMgdl: currentMgdl,
+        recentRocMgdlPerMin: recentRocMgdlPerMin ?? this.recentRocMgdlPerMin,
+        boluses: boluses ?? this.boluses,
+        basal: basal ?? this.basal,
+        carbs: carbs ?? this.carbs,
+        settings: settings,
+        context: context,
+        healthFeatures: healthFeatures,
+        controlIq: controlIq,
+      );
 }
 
 class GlucosePredictor {
