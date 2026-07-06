@@ -18,6 +18,12 @@ Actionable work is tracked with [Backlog.md](https://github.com/MrLesk/Backlog.m
 `backlog/tasks/` (CLI: `backlog`, e.g. `backlog task list --plain`, `backlog task 42 --plain`).
 `ROADMAP.md` stays the strategic narrative; tasks are the unit of execution.
 
+**Follow the official workflow block in `AGENTS.md`** (`backlog instructions overview` /
+`task-creation` / `task-execution` / `task-finalization` give the canonical guides).
+**Always change tasks through the `backlog` CLI — do not edit the task markdown files
+directly** (the CLI keeps metadata, relationships and history consistent). The formatting
+rules below apply to the *text you pass* via CLI flags.
+
 ### Comment as you work
 Use the **comment field** to leave a trail on the task you're working on:
 
@@ -56,9 +62,8 @@ run-on paragraph, and long prose paragraphs are unreadable there. Rules:
   (`**Background.**`) only for genuine paragraphs, not to glue a list into prose.
 - **Implementation plans are numbered/bulleted steps**, one step per line, not a single
   paragraph narrating the whole plan.
-- Preserve the `<!-- SECTION:…:BEGIN/END -->` markers; write content only between them.
-- When passing multi-line text to the CLI, include real newlines inside the quoted string
-  (or edit the task file directly). Never write literal `\n`.
+- When passing multi-line text to the CLI, include real newlines inside the quoted string.
+  Never write literal `\n`.
 - Wrap code identifiers/paths in backticks so they don't italicise (underscores).
 
 ## Git
