@@ -22,8 +22,6 @@ class NutritionPanelParser {
   static final _numUnit = RegExp(
       r'(\d+(?:[.,]\d+)?)\s*(mg|mcg|µg|kj|kcal|cal|g)?',
       caseSensitive: false);
-  static final _gramsBeforeG =
-      RegExp(r'(\d+(?:[.,]\d+)?)\s*g', caseSensitive: false);
   static final _int = RegExp(r'(\d+)');
 
   // Nutrient names across common label languages (substring match, lower-cased).
@@ -91,8 +89,8 @@ class NutritionPanelParser {
       sugars: grams(_sugarWords),
       fat: grams(_fatWords, exclude: _saturatedWords),
       protein: grams(_proteinWords),
-      energyKj: _value(lines, indexWith(_energyWords), twoColumn, _kEnergy),
-      sodiumMg: _value(lines, indexWith(_sodiumWords), twoColumn, _kSodium),
+      energyKj: _energy(lines, indexWith(_energyWords), twoColumn),
+      sodiumMg: _sodium(lines, indexWith(_sodiumWords), twoColumn),
       fibre: grams(_fibreWords),
       rawText: ocrText,
       source: 'Label scan',
@@ -108,8 +106,6 @@ class NutritionPanelParser {
   }
 
   static const _kGram = {'g', ''};
-  static const _kEnergy = {'kj', 'kcal', 'cal'};
-  static const _kSodium = {'mg'};
 
   /// Pull (perServe, per100g) numbers for the nutrient at [index], keeping only tokens
   /// whose unit is in [units]. If the label line has no numbers (OCR often puts the value
@@ -131,9 +127,44 @@ class NutritionPanelParser {
     return PanelValue(perServe: vals[0], per100g: vals[1]);
   }
 
+  /// Energy in kJ. Labels often print BOTH "1200 kJ" and "287 kcal" on one line; taking
+  /// both as two columns is wrong, so prefer kJ and only fall back to converting kcal
+  /// (×4.184) when no kJ is present (TASK-27).
+  PanelValue _energy(List<String> lines, int index, bool twoColumn) {
+    final kj = _value(lines, index, twoColumn, const {'kj'});
+    if (!kj.isEmpty) return kj;
+    final kcal = _value(lines, index, twoColumn, const {'kcal', 'cal'});
+    if (kcal.isEmpty) return const PanelValue();
+    return PanelValue(
+      perServe: kcal.perServe == null ? null : kcal.perServe! * 4.184,
+      per100g: kcal.per100g == null ? null : kcal.per100g! * 4.184,
+    );
+  }
+
+  /// Sodium in mg. EU labels list "Salt … g" instead — convert salt(g) → sodium(mg) via
+  /// the standard ×400 factor (TASK-27).
+  PanelValue _sodium(List<String> lines, int index, bool twoColumn) {
+    final mg = _value(lines, index, twoColumn, const {'mg'});
+    if (!mg.isEmpty) return mg;
+    if (index < 0) return const PanelValue();
+    final line = lines[index].toLowerCase();
+    final isSalt = const ['salt', 'sel', 'salz', 'sale', 'sal', 'zout']
+        .any(line.contains);
+    if (!isSalt) return const PanelValue();
+    final salt = _value(lines, index, twoColumn, const {'g'});
+    return PanelValue(
+      perServe: salt.perServe == null ? null : salt.perServe! * 400,
+      per100g: salt.per100g == null ? null : salt.per100g! * 400,
+    );
+  }
+
   List<double> _numbersOn(String line, Set<String> units) {
     final out = <double>[];
     for (final m in _numUnit.allMatches(line)) {
+      // %DV exclusion (TASK-27): a number immediately followed by '%' is a US
+      // "% Daily Value", not a gram/mg quantity — never treat it as a macro.
+      final after = m.end < line.length ? line[m.end] : '';
+      if (after == '%') continue;
       final unit = (m.group(2) ?? '').toLowerCase();
       if (!units.contains(unit)) continue;
       final v = double.tryParse(m.group(1)!.replaceAll(',', '.'));
@@ -165,11 +196,15 @@ class NutritionPanelParser {
     return -1;
   }
 
+  static final _servingQty =
+      RegExp(r'(\d+(?:[.,]\d+)?)\s*(?:g|ml)\b', caseSensitive: false);
+
   double? _servingSize(List<String> lines, int index) {
     if (index < 0) return null;
-    // Prefer the grams value nearest the end (e.g. US "2/3 cup (55g)").
+    // Prefer the grams value nearest the end (e.g. US "2/3 cup (55g)"). Also accept an
+    // ml serving for liquids (TASK-27) — 1 ml ≈ 1 g for beverages, a good-enough carb basis.
     double? found;
-    for (final m in _gramsBeforeG.allMatches(lines[index])) {
+    for (final m in _servingQty.allMatches(lines[index])) {
       found = double.tryParse(m.group(1)!.replaceAll(',', '.'));
     }
     return found;

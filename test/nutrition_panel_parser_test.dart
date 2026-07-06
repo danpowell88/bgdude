@@ -142,4 +142,48 @@ Protein 5.0g
     expect(p.carbs.per100g, closeTo(27.0, 0.01));
     expect(p.sugars.per100g, closeTo(9.0, 0.01));
   });
+
+  test('TASK-27: a %DV column is not read as a macro value', () {
+    // US single-column with a Daily Value % after the grams. The 15% must be ignored.
+    const text = '''
+Nutrition Facts
+Serving size 40g
+Total Carbohydrate 24g 9%
+Protein 5g
+Total Fat 3g 4%
+''';
+    final p = parser.parse(text)!;
+    expect(p.carbs.perServe, closeTo(24.0, 0.01)); // 24g, NOT 9%
+    expect(p.fat.perServe, closeTo(3.0, 0.01)); // 3g, NOT 4%
+  });
+
+  test('TASK-27: an ml serving size is captured', () {
+    const text = '''
+Nutrition Information
+Serving size: 250ml
+Carbohydrate 11.0g
+''';
+    final p = parser.parse(text)!;
+    expect(p.servingSizeG, closeTo(250.0, 0.01)); // 1 ml ≈ 1 g
+  });
+
+  test('TASK-27: EU salt (grams) is converted to sodium (mg) ×400', () {
+    const text = '''
+Nutrition (per 100g)
+Carbohydrate 60g
+Salt 0.5g
+''';
+    final p = parser.parse(text)!;
+    expect(p.sodiumMg.per100g, closeTo(200.0, 0.5)); // 0.5 g salt × 400
+  });
+
+  test('TASK-27: combined kJ/kcal energy prefers kJ', () {
+    const text = '''
+Nutrition (per 100g)
+Energy 1200kJ 287kcal
+Carbohydrate 60g
+''';
+    final p = parser.parse(text)!;
+    expect(p.energyKj.per100g, closeTo(1200.0, 1.0)); // kJ, not the kcal figure
+  });
 }

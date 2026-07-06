@@ -1,10 +1,10 @@
 ---
 id: TASK-27
 title: Panel parser quirks + LLM-gate fix
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 08:07'
+updated_date: '2026-07-06 08:14'
 labels:
   - roadmap
   - panel-scanner
