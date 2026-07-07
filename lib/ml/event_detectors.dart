@@ -54,6 +54,7 @@ class MealDetector {
 
     // TASK-137: per-step facts from the shared kernel (no carb gating here —
     // an unannounced meal is exactly what this detector hunts).
+    if (sorted.isEmpty) return out;
     DateTime prevTime = sorted.first.time;
     for (final step in const AttributionKernel().steps(
         sortedCgm: sorted,
