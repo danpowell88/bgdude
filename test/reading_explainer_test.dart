@@ -1,3 +1,4 @@
+import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/insights/reading_explainer.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -85,6 +86,52 @@ void main() {
     expect(result, isNotEmpty);
     final topTwo = result.take(2).map((e) => e.kind).toList();
     expect(topTwo, contains(ExplanationKind.siteFailure));
+  });
+
+  // TASK-247: a zero ISF (a placeholder/copyWith-built segment that bypassed
+  // TherapySegment.fromJson's own guard) used to turn absorbedUnits into Infinity,
+  // rendering literally "roughly Infinity U of insulin was absorbed" in the UI.
+  test('a zero-ISF segment suppresses the site-failure story instead of emitting '
+      'Infinity/NaN', () {
+    // Two segments: a normal ISF for most of the 3h window (so the expected-drop
+    // accumulation is still large enough to clear the early "meaningful IOB
+    // activity" gate), but the segment active AT `noon` itself (settings.segmentAt(at)
+    // -- the one the site-failure division actually uses) is zero-ISF.
+    const zeroAtNoonSettings = TherapySettings(segments: [
+      TherapySegment(
+        startMinuteOfDay: 0,
+        isf: 50,
+        carbRatio: 10,
+        targetMgdl: 100,
+        basalUnitsPerHour: 0.8,
+      ),
+      TherapySegment(
+        startMinuteOfDay: 715, // 11:55am -- active by the time `at` (noon) is reached
+        isf: 0,
+        carbRatio: 10,
+        targetMgdl: 100,
+        basalUnitsPerHour: 0.8,
+      ),
+    ]);
+    // Same stubborn multi-hour rise that produces siteFailure with a normal ISF.
+    final values = [for (var i = 0; i < 36; i++) 150.0 + i * 3.7];
+    final start = noon.subtract(const Duration(hours: 3));
+    final result = explainer.explain(
+      at: noon,
+      cgm: trace(start, values),
+      boluses: [
+        BolusEvent(time: start.add(const Duration(minutes: 15)), units: 8),
+      ],
+      basal: const [],
+      carbs: const [],
+      settings: zeroAtNoonSettings,
+    );
+
+    expect(result.map((e) => e.kind), isNot(contains(ExplanationKind.siteFailure)));
+    for (final e in result) {
+      expect(e.detail, isNot(contains('Infinity')));
+      expect(e.detail, isNot(contains('NaN')));
+    }
   });
 
   test('low after overlapping boluses ranks insulin stacking highly', () {

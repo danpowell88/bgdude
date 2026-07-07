@@ -313,7 +313,13 @@ class ReadingExplainer {
     if (score < minScore) return null;
 
     final seg = settings.segmentAt(at);
-    final absorbedUnits = expectedDrop / seg.isf;
+    // TASK-247: a zero/degenerate ISF (a placeholder or copyWith-built segment that
+    // bypassed TherapySegment.fromJson's guard) must not reach the UI as "roughly
+    // Infinity U of insulin was absorbed" -- suppress the whole site-failure story
+    // rather than show a number computed from a nonsensical ISF.
+    if (seg.isf <= 0) return null;
+    // safeDivide too, matching the other 3 sites TASK-190 guarded (defense in depth).
+    final absorbedUnits = safeDivide(expectedDrop, seg.isf);
 
     return Explanation(
       kind: ExplanationKind.siteFailure,
