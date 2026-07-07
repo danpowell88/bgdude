@@ -6,14 +6,24 @@ library;
 import 'dart:convert';
 
 import 'package:bgdude/analytics/therapy_settings.dart';
+import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/data/kv_store.dart';
+import 'package:bgdude/feedback/pending_confirmation.dart';
 import 'package:bgdude/insights/alert_thresholds.dart';
 import 'package:bgdude/insights/notification_prefs.dart';
+import 'package:bgdude/integrations/glucose_meter.dart';
+import 'package:bgdude/integrations/glucose_meter_controller.dart';
+import 'package:bgdude/integrations/glucose_meter_service.dart';
+import 'package:bgdude/integrations/glucose_meter_transport.dart';
 import 'package:bgdude/logging/app_log.dart';
+import 'package:bgdude/logging/device_changes.dart';
 import 'package:bgdude/meals/meal_library.dart';
 import 'package:bgdude/profile/user_profile.dart';
+import 'package:bgdude/pump/battery_history.dart';
+import 'package:bgdude/pump/pump_events.dart';
 import 'package:bgdude/state/persisted_state_notifier.dart';
 import 'package:bgdude/state/providers.dart';
+import 'package:bgdude/weather/weather_history.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _corrupt = '{"truncated": '; // invalid JSON — the classic torn write
@@ -148,4 +158,154 @@ void main() {
         jsonEncode(const UserProfile().toJson()));
     expect(await KvStore.getString('user_profile_v1.corrupt'), '[1,2,3]');
   });
+
+  // TASK-206: the same unguarded-restore pattern outside providers.dart, across 6
+  // stores. These log loudly (appLog) rather than fully quarantine — a proportionate
+  // response for secondary caches/history logs, not clinical settings.
+  group('TASK-206 stores outside providers.dart', () {
+    bool loggedError(String tag, String messageContains) => appLog.entries.any((e) =>
+        e.level == LogLevel.error &&
+        e.tag == tag &&
+        e.message.contains(messageContains));
+
+    test('PumpEventLog: a totally corrupt blob → empty list, logged', () async {
+      await KvStore.setString('pump_events_v1', _corrupt);
+      expect(await PumpEventLog.load(), isEmpty);
+      expect(loggedError('persistence', 'pump event log'), isTrue);
+    });
+
+    test(
+        'PumpEventLog: one entry with an unknown PumpEventKind is skipped, valid '
+        'entries survive', () async {
+      final good = PumpEvent(
+              time: DateTime(2026, 7, 1), kind: PumpEventKind.alarm, detail: 'Low insulin')
+          .toJson();
+      final bad = {'t': DateTime(2026, 7, 1).toIso8601String(), 'k': 'noLongerExists', 'd': 'x'};
+      await KvStore.setString('pump_events_v1', jsonEncode([good, bad]));
+      final events = await PumpEventLog.load();
+      expect(events, hasLength(1));
+      expect(events.single.detail, 'Low insulin');
+      expect(loggedError('persistence', 'corrupt pump event entry'), isTrue);
+    });
+
+    test('BatteryHistoryStore: a totally corrupt blob → empty list, logged',
+        () async {
+      await KvStore.setString('battery_history_v1', _corrupt);
+      expect(await BatteryHistoryStore.load(), isEmpty);
+      expect(loggedError('persistence', 'battery history'), isTrue);
+    });
+
+    test(
+        'BatteryHistoryStore: one malformed entry is skipped, valid entries '
+        'survive', () async {
+      final good =
+          BatterySample(time: DateTime(2026, 7, 1), percent: 80).toJson();
+      const bad = {'t': 'not-a-date', 'p': 50};
+      await KvStore.setString(
+          'battery_history_v1', jsonEncode([good, bad]));
+      final samples = await BatteryHistoryStore.load();
+      expect(samples, hasLength(1));
+      expect(samples.single.percent, 80);
+      expect(loggedError('persistence', 'corrupt battery sample'), isTrue);
+    });
+
+    test(
+        'ConfirmationDecisionStore: a totally corrupt blob → empty map, logged',
+        () async {
+      await KvStore.setString('confirmation_decisions_v1', _corrupt);
+      expect(await ConfirmationDecisionStore.load(), isEmpty);
+      expect(loggedError('persistence', 'confirmation decisions'), isTrue);
+    });
+
+    test(
+        'ConfirmationDecisionStore: one malformed entry is skipped, valid '
+        'entries survive', () async {
+      await KvStore.setString(
+          'confirmation_decisions_v1',
+          jsonEncode({
+            'good:1': {'d': 'confirmed', 't': DateTime(2026, 7, 1).toIso8601String()},
+            'bad:2': 'not-a-map',
+          }));
+      final decisions = await ConfirmationDecisionStore.load();
+      expect(decisions, {'good:1': ConfirmationDecision.confirmed});
+      expect(loggedError('persistence', 'corrupt confirmation-decision entry'),
+          isTrue);
+    });
+
+    test('WeatherHistoryStore: a totally corrupt blob → empty map, logged',
+        () async {
+      await KvStore.setString('weather_history_v1', _corrupt);
+      expect(await WeatherHistoryStore.loadDaily(), isEmpty);
+      expect(loggedError('persistence', 'weather history'), isTrue);
+    });
+
+    test(
+        'WeatherHistoryStore: one malformed value is skipped, valid days '
+        'survive', () async {
+      await KvStore.setString('weather_history_v1',
+          jsonEncode({'2026-7-1': 22.5, '2026-7-2': 'not-a-number'}));
+      final daily = await WeatherHistoryStore.loadDaily();
+      expect(daily, {'2026-7-1': 22.5});
+      expect(loggedError('persistence', 'corrupt weather-history entry'), isTrue);
+    });
+
+    test('DeviceChangeStore: a totally corrupt blob → default state, logged',
+        () async {
+      await KvStore.setString('device_changes_v1', _corrupt);
+      final state = await DeviceChangeStore.load();
+      expect(state.changes, isEmpty);
+      expect(loggedError('persistence', 'device-change store'), isTrue);
+    });
+
+    test(
+        'DeviceChangeStore: one entry with an unknown DeviceKind is skipped, '
+        'valid entries survive', () async {
+      final good =
+          DeviceChange(kind: DeviceKind.sensor, changedAt: DateTime(2026, 7, 1))
+              .toJson();
+      final bad = {'kind': 'noLongerExists', 'changedAt': DateTime(2026, 7, 2).toIso8601String()};
+      await KvStore.setString(
+          'device_changes_v1',
+          jsonEncode({
+            'changes': [good, bad]
+          }));
+      final state = await DeviceChangeStore.load();
+      expect(state.changes, hasLength(1));
+      expect(state.changes.single.kind, DeviceKind.sensor);
+      expect(loggedError('persistence', 'corrupt device-change entry'), isTrue);
+    });
+
+    test(
+        'GlucoseMeterController: a corrupt paired-device blob does not crash the '
+        'constructor and leaves the controller unpaired', () async {
+      await KvStore.setString('glucose_meter_device_v1', _corrupt);
+      final controller = GlucoseMeterController(
+        service: GlucoseMeterService(
+          transport: _NoopTransport(),
+          repository: InMemoryHistoryRepository(),
+        ),
+        transport: _NoopTransport(),
+      );
+      await _settle();
+      expect(controller.state.isPaired, isFalse);
+      expect(
+          loggedError('persistence', 'corrupt glucose-meter pairing state'),
+          isTrue);
+    });
+  });
+}
+
+/// Minimal transport double — never actually invoked by the corrupt-restore test,
+/// just satisfies GlucoseMeterController's/GlucoseMeterService's constructors.
+class _NoopTransport implements GlucoseMeterTransport {
+  @override
+  Future<bool> isAvailable() async => false;
+  @override
+  Stream<MeterDevice> scan({Duration timeout = const Duration(seconds: 12)}) =>
+      const Stream.empty();
+  @override
+  Future<void> stopScan() async {}
+  @override
+  Future<List<GlucoseMeterReading>> fetchRecords(String deviceId, {int? sinceSeq}) =>
+      throw UnimplementedError();
 }

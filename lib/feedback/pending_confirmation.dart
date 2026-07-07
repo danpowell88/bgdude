@@ -7,6 +7,7 @@ library;
 import 'dart:convert';
 
 import '../data/kv_store.dart';
+import '../logging/app_log.dart';
 import 'annotations.dart';
 
 /// The kinds of events that can be queued for confirmation. Extensible — add a source in
@@ -68,15 +69,29 @@ class ConfirmationDecisionStore {
   static Future<Map<String, ConfirmationDecision>> load() async {
     final raw = await KvStore.getString(_key);
     if (raw == null) return {};
-    final map = (jsonDecode(raw) as Map).cast<String, dynamic>();
+    Map<String, dynamic> map;
+    try {
+      map = (jsonDecode(raw) as Map).cast<String, dynamic>();
+    } catch (e) {
+      appLog.error('persistence', 'corrupt confirmation decisions — starting empty',
+          error: e);
+      return {};
+    }
     final out = <String, ConfirmationDecision>{};
     for (final e in map.entries) {
-      final d = (e.value as Map)['d'] as String?;
-      final decision = ConfirmationDecision.values
-          .where((v) => v.name == d)
-          .cast<ConfirmationDecision?>()
-          .firstOrNull;
-      if (decision != null) out[e.key] = decision;
+      try {
+        // TASK-206: a malformed entry (not a Map) must not lose every other
+        // decision — skip just this one.
+        final d = (e.value as Map)['d'] as String?;
+        final decision = ConfirmationDecision.values
+            .where((v) => v.name == d)
+            .cast<ConfirmationDecision?>()
+            .firstOrNull;
+        if (decision != null) out[e.key] = decision;
+      } catch (err) {
+        appLog.error('persistence', 'skipped corrupt confirmation-decision entry',
+            error: err);
+      }
     }
     return out;
   }
@@ -84,9 +99,19 @@ class ConfirmationDecisionStore {
   static Future<void> record(String id, ConfirmationDecision decision,
       {required DateTime at}) async {
     final raw = await KvStore.getString(_key);
-    final map = raw == null
-        ? <String, dynamic>{}
-        : (jsonDecode(raw) as Map).cast<String, dynamic>();
+    Map<String, dynamic> map;
+    try {
+      map = raw == null
+          ? <String, dynamic>{}
+          : (jsonDecode(raw) as Map).cast<String, dynamic>();
+    } catch (e) {
+      // TASK-206: a corrupt existing blob must not block recording a NEW decision
+      // — start fresh rather than throw.
+      appLog.error(
+          'persistence', 'corrupt confirmation decisions — resetting on write',
+          error: e);
+      map = <String, dynamic>{};
+    }
     map[id] = {'d': decision.name, 't': at.toIso8601String()};
     // Cap: keep the most recently decided entries.
     if (map.length > _maxEntries) {

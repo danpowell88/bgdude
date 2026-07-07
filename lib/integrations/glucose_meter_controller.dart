@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/kv_store.dart';
+import '../logging/app_log.dart';
 import 'glucose_meter_service.dart';
 import 'glucose_meter_transport.dart';
 
@@ -71,25 +72,40 @@ class GlucoseMeterController extends StateNotifier<GlucoseMeterStatus> {
   GlucoseMeterTransport get transport => _transport;
 
   Future<void> _restore() async {
-    final raw = await KvStore.getString(_kDevice);
-    if (raw != null && raw.isNotEmpty) {
-      final device =
-          MeterDevice.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-      final syncRaw = await KvStore.getString(_kLastSync);
-      final total = (await KvStore.getDouble(_kTotal))?.toInt() ?? 0;
-      state = state.copyWith(
-        paired: device,
-        lastSyncAt: syncRaw == null ? null : DateTime.tryParse(syncRaw),
-        totalImported: total,
-      );
-    } else if (demo) {
-      // Populate a representative paired meter so the screen isn't empty without hardware.
-      state = state.copyWith(
-        paired: const MeterDevice(id: 'DEMO-METER', name: 'Accu-Chek Guide Me'),
-        lastSyncAt: DateTime.now().subtract(const Duration(hours: 3)),
-        lastImported: 2,
-        totalImported: 37,
-      );
+    // TASK-206: this runs fire-and-forget from the constructor — an uncaught
+    // decode failure here would be an unhandled async error, not even a logged
+    // one, and would leave the controller permanently stuck without a paired
+    // meter until the KvStore entry is manually cleared.
+    try {
+      final raw = await KvStore.getString(_kDevice);
+      if (raw != null && raw.isNotEmpty) {
+        final device =
+            MeterDevice.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+        final syncRaw = await KvStore.getString(_kLastSync);
+        final total = (await KvStore.getDouble(_kTotal))?.toInt() ?? 0;
+        if (mounted) {
+          state = state.copyWith(
+            paired: device,
+            lastSyncAt: syncRaw == null ? null : DateTime.tryParse(syncRaw),
+            totalImported: total,
+          );
+        }
+      } else if (demo) {
+        // Populate a representative paired meter so the screen isn't empty without
+        // hardware.
+        if (mounted) {
+          state = state.copyWith(
+            paired: const MeterDevice(id: 'DEMO-METER', name: 'Accu-Chek Guide Me'),
+            lastSyncAt: DateTime.now().subtract(const Duration(hours: 3)),
+            lastImported: 2,
+            totalImported: 37,
+          );
+        }
+      }
+    } catch (e) {
+      appLog.error(
+          'persistence', 'corrupt glucose-meter pairing state — starting unpaired',
+          error: e);
     }
   }
 

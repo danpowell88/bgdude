@@ -7,6 +7,7 @@ library;
 import 'dart:convert';
 
 import '../data/kv_store.dart';
+import '../logging/app_log.dart';
 
 class BatterySample {
   const BatterySample({required this.time, required this.percent, this.charging});
@@ -38,8 +39,23 @@ class BatteryHistoryStore {
   static Future<List<BatterySample>> load() async {
     final raw = await KvStore.getString(_key);
     if (raw == null) return const [];
-    final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
-    return [for (final e in list) BatterySample.fromJson(e)];
+    List<dynamic> list;
+    try {
+      list = jsonDecode(raw) as List;
+    } catch (e) {
+      appLog.error('persistence', 'corrupt battery history — starting empty', error: e);
+      return const [];
+    }
+    final samples = <BatterySample>[];
+    for (final e in list) {
+      try {
+        samples.add(BatterySample.fromJson((e as Map).cast<String, dynamic>()));
+      } catch (err) {
+        // TASK-206: one truncated/malformed entry must not lose the whole history.
+        appLog.error('persistence', 'skipped corrupt battery sample', error: err);
+      }
+    }
+    return samples;
   }
 
   /// Append [sample] if it's new information (percent or charging changed, or it's been

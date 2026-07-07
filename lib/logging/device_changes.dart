@@ -8,6 +8,7 @@ library;
 import 'dart:convert';
 
 import '../data/kv_store.dart';
+import 'app_log.dart';
 
 enum DeviceKind { sensor, site }
 
@@ -28,10 +29,20 @@ class DeviceChange {
   Map<String, dynamic> toJson() =>
       {'kind': kind.name, 'changedAt': changedAt.toIso8601String()};
 
-  factory DeviceChange.fromJson(Map<String, dynamic> j) => DeviceChange(
-        kind: DeviceKind.values.byName(j['kind'] as String),
-        changedAt: DateTime.parse(j['changedAt'] as String),
-      );
+  /// TASK-206: throws (not a silent default) on a renamed/removed [DeviceKind]
+  /// name or a malformed entry — [DeviceState.fromJson] catches this per entry
+  /// and skips just that one, rather than losing the whole change history.
+  factory DeviceChange.fromJson(Map<String, dynamic> j) {
+    final kindName = j['kind'] as String?;
+    final kind = DeviceKind.values.asNameMap()[kindName];
+    if (kind == null) {
+      throw FormatException('unknown DeviceKind "$kindName"');
+    }
+    return DeviceChange(
+      kind: kind,
+      changedAt: DateTime.parse(j['changedAt'] as String),
+    );
+  }
 }
 
 class DeviceState {
@@ -65,12 +76,18 @@ class DeviceState {
   Map<String, dynamic> toJson() =>
       {'changes': [for (final c in changes) c.toJson()]};
 
-  factory DeviceState.fromJson(Map<String, dynamic> j) => DeviceState(
-        changes: [
-          for (final c in (j['changes'] as List? ?? const []))
-            DeviceChange.fromJson((c as Map).cast<String, dynamic>()),
-        ],
-      );
+  factory DeviceState.fromJson(Map<String, dynamic> j) {
+    final changes = <DeviceChange>[];
+    for (final c in (j['changes'] as List? ?? const [])) {
+      try {
+        changes.add(DeviceChange.fromJson((c as Map).cast<String, dynamic>()));
+      } catch (err) {
+        // TASK-206: one bad entry must not lose every other device change.
+        appLog.error('persistence', 'skipped corrupt device-change entry', error: err);
+      }
+    }
+    return DeviceState(changes: changes);
+  }
 }
 
 class DeviceChangeStore {
@@ -79,7 +96,13 @@ class DeviceChangeStore {
   static Future<DeviceState> load() async {
     final raw = await KvStore.getString(_key);
     if (raw == null) return const DeviceState();
-    return DeviceState.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    try {
+      return DeviceState.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (e) {
+      appLog.error('persistence', 'corrupt device-change store — starting empty',
+          error: e);
+      return const DeviceState();
+    }
   }
 
   static Future<void> save(DeviceState state) async {

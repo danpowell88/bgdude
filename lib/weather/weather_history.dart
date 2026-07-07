@@ -5,6 +5,7 @@ library;
 import 'dart:convert';
 
 import '../data/kv_store.dart';
+import '../logging/app_log.dart';
 
 class WeatherHistoryStore {
   static const _key = 'weather_history_v1';
@@ -16,8 +17,24 @@ class WeatherHistoryStore {
   static Future<Map<String, double>> loadDaily() async {
     final raw = await KvStore.getString(_key);
     if (raw == null) return const {};
-    final map = (jsonDecode(raw) as Map).cast<String, dynamic>();
-    return {for (final e in map.entries) e.key: (e.value as num).toDouble()};
+    Map<String, dynamic> map;
+    try {
+      map = (jsonDecode(raw) as Map).cast<String, dynamic>();
+    } catch (e) {
+      appLog.error('persistence', 'corrupt weather history — starting empty', error: e);
+      return const {};
+    }
+    final out = <String, double>{};
+    for (final e in map.entries) {
+      try {
+        // TASK-206: a malformed value must not lose every other day's reading.
+        out[e.key] = (e.value as num).toDouble();
+      } catch (err) {
+        appLog.error('persistence', 'skipped corrupt weather-history entry',
+            error: err);
+      }
+    }
+    return out;
   }
 
   /// Record the temperature for [at]'s day (last write wins), keeping the most recent

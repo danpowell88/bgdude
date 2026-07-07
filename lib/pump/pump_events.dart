@@ -7,6 +7,7 @@ library;
 import 'dart:convert';
 
 import '../data/kv_store.dart';
+import '../logging/app_log.dart';
 
 enum PumpEventKind { alarm, alert, cartridgeChange, cannulaChange }
 
@@ -34,11 +35,21 @@ class PumpEvent {
         'd': detail,
       };
 
-  factory PumpEvent.fromJson(Map<String, dynamic> j) => PumpEvent(
-        time: DateTime.parse(j['t'] as String),
-        kind: PumpEventKind.values.byName(j['k'] as String),
-        detail: (j['d'] as String?) ?? '',
-      );
+  /// TASK-206: throws (not a silent default) on a renamed/removed [PumpEventKind]
+  /// name or a malformed entry — the caller (PumpEventLog.load) catches this per
+  /// entry and skips just that one, rather than losing the whole log.
+  factory PumpEvent.fromJson(Map<String, dynamic> j) {
+    final kindName = j['k'] as String?;
+    final kind = PumpEventKind.values.asNameMap()[kindName];
+    if (kind == null) {
+      throw FormatException('unknown PumpEventKind "$kindName"');
+    }
+    return PumpEvent(
+      time: DateTime.parse(j['t'] as String),
+      kind: kind,
+      detail: (j['d'] as String?) ?? '',
+    );
+  }
 
   /// Identity for de-duplication across re-syncs.
   String get _key => '${time.millisecondsSinceEpoch}:${kind.name}:$detail';
@@ -51,8 +62,24 @@ class PumpEventLog {
   static Future<List<PumpEvent>> load() async {
     final raw = await KvStore.getString(_storeKey);
     if (raw == null) return const [];
-    final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
-    return [for (final e in list) PumpEvent.fromJson(e)];
+    List<dynamic> list;
+    try {
+      list = jsonDecode(raw) as List;
+    } catch (e) {
+      appLog.error('persistence', 'corrupt pump event log — starting empty', error: e);
+      return const [];
+    }
+    final events = <PumpEvent>[];
+    for (final e in list) {
+      try {
+        events.add(PumpEvent.fromJson((e as Map).cast<String, dynamic>()));
+      } catch (err) {
+        // TASK-206: one bad entry (a renamed enum value, a truncated write) must
+        // not lose every other event in the log.
+        appLog.error('persistence', 'skipped corrupt pump event entry', error: err);
+      }
+    }
+    return events;
   }
 
   /// Merge [events] into the stored log, de-duplicating and keeping only the most
