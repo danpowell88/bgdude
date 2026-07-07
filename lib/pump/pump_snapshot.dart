@@ -171,6 +171,19 @@ class PumpSnapshot {
   static DateTime? _time(num? epochMs) =>
       epochMs == null ? null : DateTime.fromMillisecondsSinceEpoch(epochMs.toInt());
 
+  /// TASK-250: a battery percentage is physically 0–100; a hostile/torn payload
+  /// (e.g. -81) must not flow through to the UI/alerts unchecked. Null passes through
+  /// (absence of data, not garbage).
+  static int? _clampPercent(int? v) => v?.clamp(0, 100);
+
+  /// TASK-250: reservoir/IOB units are physically non-negative and, for a t:slim X2,
+  /// nowhere near astronomically large (a hostile 1.79e308 is the motivating example)
+  /// — clamp to a generously wide but sane band. NaN (from a garbled double) is
+  /// treated the same as absent data rather than propagating a value that compares
+  /// false to everything downstream.
+  static double? _clampNonNegative(double? v, {double max = 1000}) =>
+      v == null || v.isNaN ? null : v.clamp(0, max);
+
   /// TASK-120: wire-format version expected from the Kotlin side
   /// (MutableSnapshot.SCHEMA_VERSION). Evolution policy is ADDITIVE-ONLY: new
   /// fields may be appended (this parser ignores unknowns); renaming, retyping
@@ -181,10 +194,14 @@ class PumpSnapshot {
   static PumpSnapshot fromJson(Map<String, dynamic> j) => PumpSnapshot(
         schemaVersion: (j['schemaVersion'] as num?)?.toInt(),
         time: _time(j['timestampEpochMs'] as num?) ?? DateTime.now(),
-        batteryPercent: (j['batteryPercent'] as num?)?.toInt(),
+        // TASK-250: the native side is trusted, but a hostile/corrupt payload (e.g. a
+        // torn platform-channel message) must not turn into a physically-impossible
+        // reading flowing unchecked into the rest of the app -- clamp to the
+        // physically sane range rather than pass through raw.
+        batteryPercent: _clampPercent((j['batteryPercent'] as num?)?.toInt()),
         isCharging: j['isCharging'] as bool?,
-        reservoirUnits: (j['reservoirUnits'] as num?)?.toDouble(),
-        iobUnits: (j['iobUnits'] as num?)?.toDouble(),
+        reservoirUnits: _clampNonNegative((j['reservoirUnits'] as num?)?.toDouble()),
+        iobUnits: _clampNonNegative((j['iobUnits'] as num?)?.toDouble()),
         basalUnitsPerHour: (j['basalUnitsPerHour'] as num?)?.toDouble(),
         maxBolusUnits: (j['maxBolusUnits'] as num?)?.toDouble(),
         maxBasalUnitsPerHour: (j['maxBasalUnitsPerHour'] as num?)?.toDouble(),

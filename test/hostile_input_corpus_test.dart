@@ -32,23 +32,52 @@ void main() {
       'activeAlarms': <String>[],
     };
 
+    // TASK-250: on success, assert the physically-sane invariants fromJson's clamps
+    // guarantee — the previous version wrapped the try/catch INSIDE the
+    // returnsNormally closure, so it always passed regardless of whether the parser
+    // threw or produced garbage (e.g. batteryPercent -81, reservoirUnits 1.79e308).
+    void assertSane(PumpSnapshot s) {
+      if (s.batteryPercent != null) {
+        expect(s.batteryPercent, inInclusiveRange(0, 100));
+      }
+      if (s.reservoirUnits != null) {
+        expect(s.reservoirUnits, greaterThanOrEqualTo(0));
+        expect(s.reservoirUnits!.isFinite, isTrue);
+      }
+      if (s.iobUnits != null) {
+        expect(s.iobUnits, greaterThanOrEqualTo(0));
+        expect(s.iobUnits!.isFinite, isTrue);
+      }
+      expect(s.cgmTrend, isNotNull); // _trend() always defaults to .unknown
+      expect(s.activeAlerts, isA<List<String>>());
+      expect(s.activeAlarms, isA<List<String>>());
+    }
+
+    // Separates the fallible PARSE (a synchronous throw is an acceptable "clean
+    // rejection" — PumpClient._onEvent already catches it in production) from the
+    // invariant ASSERTION, which must run OUTSIDE any try/catch: an expect() failure
+    // is itself a thrown exception, so wrapping it in the same catch as the parse
+    // would silently swallow a genuine invariant violation instead of failing the test.
+    PumpSnapshot? tryParse(Map<String, dynamic> json) {
+      try {
+        return PumpSnapshot.fromJson(json);
+      } catch (_) {
+        return null;
+      }
+    }
+
     for (final v in hostileVariantsOf(good)) {
       test(v.name, () {
-        expect(() {
-          try {
-            PumpSnapshot.fromJson(v.json);
-          } catch (_) {
-            // A synchronous throw here is exactly what PumpClient._onEvent's
-            // try/catch already handles in production — acceptable.
-          }
-        }, returnsNormally);
+        final s = tryParse(v.json);
+        if (s != null) assertSane(s);
       });
     }
 
     for (final v
         in hostileTimestampVariantsOf(good, 'timestampEpochMs')) {
       test(v.name, () {
-        expect(() => PumpSnapshot.fromJson(v.json), returnsNormally);
+        final s = tryParse(v.json);
+        if (s != null) assertSane(s);
       });
     }
   });
@@ -65,14 +94,21 @@ void main() {
 
     for (final v in hostileVariantsOf(goodSegment)) {
       test('TherapySegment: ${v.name}', () {
+        // TASK-250: the parse (try) and the invariant assertion must not share a
+        // catch -- an expect() failure is itself a thrown exception, so catching it
+        // alongside a genuine parse throw would silently swallow a real invariant
+        // violation instead of failing the test.
+        TherapySegment? s;
         try {
-          final s = TherapySegment.fromJson(v.json);
+          s = TherapySegment.fromJson(v.json);
+        } catch (_) {
+          // Caught by restoreJsonGuarded in production — acceptable here too.
+        }
+        if (s != null) {
           // TASK-190: whenever it DOES parse, isf/carbRatio must stay sanitized
           // positive no matter how the rest of the row was mutated.
           expect(s.isf, greaterThan(0));
           expect(s.carbRatio, greaterThan(0));
-        } catch (_) {
-          // Caught by restoreJsonGuarded in production — acceptable here too.
         }
       });
     }
@@ -98,15 +134,29 @@ void main() {
       'outcomes': <Map<String, dynamic>>[],
     };
 
+    // TASK-250: on success, assert the physically-sane invariants fromJson's clamps
+    // guarantee, instead of swallowing the exception inside the returnsNormally
+    // closure (which passed regardless of whether the parser threw or produced a
+    // negative/astronomical meal). The parse (fallible) and the assertion (must
+    // never be caught) are kept in separate try/non-try sections -- an expect()
+    // failure is itself a thrown exception, so a shared catch would silently
+    // swallow a real invariant violation instead of failing the test.
     for (final v in hostileVariantsOf(goodMeal)) {
       test(v.name, () {
-        expect(() {
-          try {
-            SavedMeal.fromJson(v.json);
-          } catch (_) {
-            // Caught per-item in MealLibraryNotifier._restore in production.
-          }
-        }, returnsNormally);
+        SavedMeal? m;
+        try {
+          m = SavedMeal.fromJson(v.json);
+        } catch (_) {
+          // Caught per-item in MealLibraryNotifier._restore in production — a
+          // clean rejection.
+        }
+        if (m != null) {
+          expect(m.carbsGrams, inInclusiveRange(0, 2000));
+          expect(m.fatGrams, inInclusiveRange(0, 2000));
+          expect(m.proteinGrams, inInclusiveRange(0, 2000));
+          expect(m.absorptionMinutes, inInclusiveRange(1, 600));
+          expect(m.peakOffsetMinutes, inInclusiveRange(1, 300));
+        }
       });
     }
   });

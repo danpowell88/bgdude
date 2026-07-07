@@ -276,17 +276,33 @@ class SavedMeal {
         emoji: json['emoji'] as String? ?? '🍽️',
         category: MealCategory.values.asNameMap()[json['category']] ??
             MealCategory.other,
-        carbsGrams: (json['carbsGrams'] as num).toDouble(),
-        fatGrams: (json['fatGrams'] as num?)?.toDouble() ?? 0,
-        proteinGrams: (json['proteinGrams'] as num?)?.toDouble() ?? 0,
+        // TASK-250: grams/minutes are physically non-negative and, being read from a
+        // persisted blob, must not let a corrupt row turn into a negative or
+        // astronomically large meal flowing unchecked into dosing-adjacent code.
+        carbsGrams: _clampNonNegative((json['carbsGrams'] as num).toDouble()),
+        fatGrams: _clampNonNegative((json['fatGrams'] as num?)?.toDouble() ?? 0),
+        proteinGrams:
+            _clampNonNegative((json['proteinGrams'] as num?)?.toDouble() ?? 0),
         fatProteinHeavy: json['fatProteinHeavy'] as bool? ?? false,
-        absorptionMinutes: (json['absorptionMinutes'] as num?)?.toInt() ?? 180,
-        peakOffsetMinutes: (json['peakOffsetMinutes'] as num?)?.toInt() ?? 90,
+        absorptionMinutes: _clampMinutes(
+            (json['absorptionMinutes'] as num?)?.toInt() ?? 180,
+            max: 600),
+        peakOffsetMinutes:
+            _clampMinutes((json['peakOffsetMinutes'] as num?)?.toInt() ?? 90, max: 300),
         outcomes: [
           for (final o in (json['outcomes'] as List? ?? const []))
             MealOutcome.fromJson((o as Map).cast<String, dynamic>()),
         ],
       );
+
+  /// TASK-250: a food quantity (grams) is never negative; astronomically large
+  /// values (a corrupt/hostile persisted row) are capped rather than passed through.
+  static double _clampNonNegative(double v) =>
+      v.isNaN ? 0 : v.clamp(0, 2000).toDouble();
+
+  /// TASK-250: absorption/peak-offset minutes are positive and bounded — a corrupt
+  /// row must not produce a meal whose modelled curve runs for years or backwards.
+  static int _clampMinutes(int v, {required int max}) => v.clamp(1, max);
 }
 
 /// Generates a compact unique-enough id for a personal, single-device library.
