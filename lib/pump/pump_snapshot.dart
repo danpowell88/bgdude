@@ -184,6 +184,22 @@ class PumpSnapshot {
   static double? _clampNonNegative(double? v, {double max = 1000}) =>
       v == null || v.isNaN ? null : v.clamp(0, max);
 
+  /// TASK-273: unlike battery/reservoir/IOB above (TASK-250) — where clamping toward
+  /// 0 only ever makes the reading MORE alarming, never less, so a clamped garbage
+  /// value is still a safe fallback — a corrupt glucose reading or dosing field must
+  /// NOT be clamped into a plausible-looking number: clamping -81 mg/dL to 39 would
+  /// show a fake LOW the user might act on (rescue carbs, calling for help) for a
+  /// reading that never happened. Reject out-of-range values to null ("no reading"),
+  /// never a fabricated in-range one. Bounds: glucose 20–600 mg/dL matches the
+  /// existing sanity band in analytics/metrics.dart; dosing bounds match the t:slim
+  /// X2's real hardware limits (max bolus 25 U, max basal 15 U/hr).
+  static int? _rejectOutOfRangeInt(int? v, {required int min, required int max}) =>
+      v == null || v < min || v > max ? null : v;
+
+  static double? _rejectOutOfRangeDouble(double? v,
+          {required double min, required double max}) =>
+      v == null || v.isNaN || v < min || v > max ? null : v;
+
   /// TASK-120: wire-format version expected from the Kotlin side
   /// (MutableSnapshot.SCHEMA_VERSION). Evolution policy is ADDITIVE-ONLY: new
   /// fields may be appended (this parser ignores unknowns); renaming, retyping
@@ -202,16 +218,21 @@ class PumpSnapshot {
         isCharging: j['isCharging'] as bool?,
         reservoirUnits: _clampNonNegative((j['reservoirUnits'] as num?)?.toDouble()),
         iobUnits: _clampNonNegative((j['iobUnits'] as num?)?.toDouble()),
-        basalUnitsPerHour: (j['basalUnitsPerHour'] as num?)?.toDouble(),
-        maxBolusUnits: (j['maxBolusUnits'] as num?)?.toDouble(),
-        maxBasalUnitsPerHour: (j['maxBasalUnitsPerHour'] as num?)?.toDouble(),
+        basalUnitsPerHour: _rejectOutOfRangeDouble(
+            (j['basalUnitsPerHour'] as num?)?.toDouble(), min: 0, max: 15),
+        maxBolusUnits: _rejectOutOfRangeDouble(
+            (j['maxBolusUnits'] as num?)?.toDouble(), min: 0, max: 25),
+        maxBasalUnitsPerHour: _rejectOutOfRangeDouble(
+            (j['maxBasalUnitsPerHour'] as num?)?.toDouble(), min: 0, max: 15),
         controlIqActive: j['controlIqActive'] as bool?,
         closedLoopEnabled: j['closedLoopEnabled'] as bool?,
         controlIqMode: ControlIqMode.fromName(j['controlIqMode'] as String?),
-        cgmMgdl: (j['cgmMgdl'] as num?)?.toInt(),
+        cgmMgdl: _rejectOutOfRangeInt((j['cgmMgdl'] as num?)?.toInt(),
+            min: 20, max: 600),
         cgmTrend: _trend(j['cgmTrend'] as String?),
         cgmTime: _time(j['cgmTimestampEpochMs'] as num?),
-        lastBolusUnits: (j['lastBolusUnits'] as num?)?.toDouble(),
+        lastBolusUnits: _rejectOutOfRangeDouble(
+            (j['lastBolusUnits'] as num?)?.toDouble(), min: 0, max: 25),
         lastBolusTime: _time(j['lastBolusTimestampEpochMs'] as num?),
         apiVersion: j['apiVersion'] as String?,
         firmwareVersion: j['firmwareVersion'] as String?,

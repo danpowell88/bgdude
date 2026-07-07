@@ -25,9 +25,14 @@ void main() {
       'batteryPercent': 80,
       'reservoirUnits': 120.0,
       'iobUnits': 2.5,
+      'basalUnitsPerHour': 0.8,
+      'maxBolusUnits': 12.0,
+      'maxBasalUnitsPerHour': 3.0,
       'cgmMgdl': 120,
       'cgmTimestampEpochMs': 1751799900000,
       'cgmTrend': 'flat',
+      'lastBolusUnits': 4.5,
+      'lastBolusTimestampEpochMs': 1751790000000,
       'activeAlerts': ['LOW_POWER_ALERT'],
       'activeAlarms': <String>[],
     };
@@ -47,6 +52,25 @@ void main() {
       if (s.iobUnits != null) {
         expect(s.iobUnits, greaterThanOrEqualTo(0));
         expect(s.iobUnits!.isFinite, isTrue);
+      }
+      // TASK-273: glucose and dosing fields are reject-to-null, not clamped (a
+      // fabricated in-range value here is worse than "no reading" -- see
+      // pump_snapshot.dart's _rejectOutOfRange* doc comment) -- so the invariant is
+      // simply that a non-null value is never outside the physiologically-sane band.
+      if (s.cgmMgdl != null) {
+        expect(s.cgmMgdl, inInclusiveRange(20, 600));
+      }
+      if (s.basalUnitsPerHour != null) {
+        expect(s.basalUnitsPerHour, inInclusiveRange(0, 15));
+      }
+      if (s.maxBolusUnits != null) {
+        expect(s.maxBolusUnits, inInclusiveRange(0, 25));
+      }
+      if (s.maxBasalUnitsPerHour != null) {
+        expect(s.maxBasalUnitsPerHour, inInclusiveRange(0, 15));
+      }
+      if (s.lastBolusUnits != null) {
+        expect(s.lastBolusUnits, inInclusiveRange(0, 25));
       }
       expect(s.cgmTrend, isNotNull); // _trend() always defaults to .unknown
       expect(s.activeAlerts, isA<List<String>>());
