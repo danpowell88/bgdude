@@ -12,6 +12,7 @@ import 'data/history_repository.dart';
 import 'data/kv_store.dart';
 import 'data/secure_key.dart';
 import 'insights/background_summary.dart';
+import 'insights/notification_bootstrap.dart';
 import 'insights/notifications.dart';
 import 'logging/app_log.dart';
 import 'logging/crash_log.dart';
@@ -73,14 +74,11 @@ Future<void> _run() async {
   final notifications = NotificationService();
   // Notification setup prompts for permission — only after onboarding has
   // walked the user through why (fresh installs go through OnboardingScreen).
+  // TASK-180: every step individually guarded — a plugin failure on an OEM ROM
+  // must never stop the app (and the alert path) from booting.
   if (onboarded) {
-    await notifications.init();
-    await notifications.scheduleDailySummary(hour: 7);
-    await notifications.scheduleWeeklyReport();
-    // Background morning-summary backstop for days the app isn't opened.
-    try {
-      await registerBackgroundSummary();
-    } catch (_) {}
+    await bootstrapNotifications(notifications,
+        registerBackground: registerBackgroundSummary);
   }
 
   runApp(
