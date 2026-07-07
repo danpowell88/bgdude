@@ -52,6 +52,10 @@ class ForecastFeatures {
     required int horizonMinutes,
     List<double> health = HealthFeatureSampler.zeros,
   }) {
+    // TASK-131 contract: [now] must be LOCAL wall-clock time. A UTC timestamp
+    // shifts hour_sin/hour_cos by the UTC offset and corrupts training data
+    // silently; ingest converts once (CgmSample), this assert catches leaks.
+    assert(!now.isUtc, 'time-of-day features need local wall-clock time, got UTC');
     final iob = _iob.total(boluses, basal, now).units;
     final cob = _carb.cob(carbs, now);
     final hour = now.hour + now.minute / 60.0;

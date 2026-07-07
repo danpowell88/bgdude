@@ -302,6 +302,7 @@ class TimeOfDayProfile {
 
   double _interpolate(List<double> values, DateTime time) {
     final minute =
+        // TASK-131: buckets are wall-clock; UTC would shift them by the offset.
         time.hour * 60 + time.minute + time.second / 60.0; // fractional
     // Position in "midpoint units": midpoint of bucket k sits at k*bw + bw/2.
     final bw = bucketMinutes.toDouble();

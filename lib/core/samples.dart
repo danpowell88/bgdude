@@ -59,15 +59,22 @@ class CgmSample {
   /// [mgdl] accepts a plain double at construction (readings arrive as raw
   /// numbers from the pump/DB) and is CARRIED as [Mgdl] (TASK-119). Non-const:
   /// the wrapping initializer is not a constant expression.
+  ///
+  /// TASK-131: [time] is normalized to LOCAL wall-clock here — the one ingest
+  /// point — because every time-of-day feature, TOD sensitivity bucket and
+  /// basal-segment lookup reads `.hour/.minute` and a UTC timestamp (e.g. a
+  /// parsed Nightscout ISO string) would silently land them all in the wrong
+  /// bucket. Converting changes the representation, never the instant.
   CgmSample({
-    required this.time,
+    required DateTime time,
     required double mgdl,
     this.trend = GlucoseTrend.unknown,
     this.isCalibration = false,
     this.source = GlucoseSource.sensor,
     this.sensorWarmup = false,
     this.compressionLow = false,
-  }) : mgdl = Mgdl(mgdl);
+  })  : time = time.isUtc ? time.toLocal() : time,
+        mgdl = Mgdl(mgdl);
 
   final DateTime time;
   final Mgdl mgdl;

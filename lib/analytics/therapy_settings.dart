@@ -64,6 +64,9 @@ class TherapySettings {
 
   /// Segment active at [time]'s local time-of-day.
   TherapySegment segmentAt(DateTime time) {
+    // TASK-131: basal/ISF segments are wall-clock rows; a UTC time picks the
+    // wrong segment by the whole UTC offset.
+    assert(!time.isUtc, 'segmentAt needs local wall-clock time, got UTC');
     final minuteOfDay = time.hour * 60 + time.minute;
     // Segments are sorted by start; find the last one that has started.
     final sorted = [...segments]
