@@ -115,10 +115,12 @@ class PumpService : Service(), PumpCommHandler.Listener {
         // TASK-262: commHandler.stop() is now internally idempotent, but this is defence in
         // depth — an unpair()/stopScan() double-teardown or an unexpected pumpx2/blessed throw
         // must still let the Garmin shutdown and super.onDestroy() below run.
+        // TASK-267: destroy() (not stop()) also marks the handler terminally destroyed, so a
+        // concurrent start() racing in from the off-main pairing executor can't orphan a scan.
         try {
-            commHandler?.stop()
+            commHandler?.destroy()
         } catch (e: Exception) {
-            Log.w(TAG, "commHandler.stop() threw during onDestroy", e)
+            Log.w(TAG, "commHandler.destroy() threw during onDestroy", e)
         } finally {
             commHandler = null
         }

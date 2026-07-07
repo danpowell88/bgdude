@@ -163,6 +163,9 @@ class PumpBridge(
         }
         service?.callbacks = null
         eventSink = null
+        // TASK-267: hostApiImpl's pairingExecutor is a non-daemon thread created fresh in
+        // attach() -- shut it down here or every engine attach/detach cycle leaks one.
+        hostApiImpl.shutdown()
     }
 
     // --- PumpService.Callbacks: push to Dart ---

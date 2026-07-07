@@ -86,9 +86,30 @@ class PumpCommHandler(
     private val historyBuffer = ArrayDeque<Map<String, Any?>>()
     private val profileMapper = PumpProfileMapper()
 
-    private var bluetoothHandler: TandemBluetoothHandler? = null
-    private var peripheral: BluetoothPeripheral? = null
+    /**
+     * TASK-267: `start()` runs on [PumpHostApiImpl]'s off-main pairing executor (TASK-205)
+     * while `stop()`/`onDestroy` run on the main thread — [bluetoothHandler] is guarded by
+     * [bluetoothLock] everywhere it's read or written so the two can't race (see
+     * [stopBluetooth] and [destroy]).
+     */
+    private val bluetoothLock = Any()
+
+    // Internal (not private) so a start-destroy race test can assert the post-race
+    // invariant directly instead of only inferring it from absence of a crash.
+    @Volatile
+    internal var bluetoothHandler: TandemBluetoothHandler? = null
+        private set
+
+    @Volatile
     private var macFilter: String? = null
+
+    /** Set once by [destroy]; makes every later [start] a no-op rather than orphaning a
+     *  scan on a handler this service has already torn down for good. */
+    @Volatile
+    internal var destroyed = false
+        private set
+
+    private var peripheral: BluetoothPeripheral? = null
 
     /** The challenge from onWaitingForPairingCode, needed to complete pairing. */
     private var pendingChallenge: AbstractCentralChallengeResponse? = null
@@ -103,7 +124,14 @@ class PumpCommHandler(
     /** A consistent JSON copy of the current snapshot (safe to call off the BLE thread). */
     fun snapshotJson(): String = synchronized(snapshotLock) { snapshot.toJson() }
 
-    fun start(macFilter: String?) {
+    fun start(macFilter: String?) = synchronized(bluetoothLock) {
+        // TASK-267: start() runs on a background executor and can race a concurrent
+        // destroy() (e.g. the service being torn down right as a re-pair request comes
+        // in) -- once destroyed, never start a scan nobody will ever stop again.
+        if (destroyed) {
+            Log.w(TAG, "start(): ignored -- handler already destroyed")
+            return@synchronized
+        }
         this.macFilter = macFilter
         // Select the pairing scheme up front. On a fresh pair pumpx2 otherwise falls back
         // to the 16-character challenge-response default (because ApiVersionResponse hasn't
@@ -125,6 +153,19 @@ class PumpCommHandler(
     }
 
     /**
+     * Terminal teardown for [PumpService.onDestroy]: stops the same as [stop] but also
+     * marks this handler destroyed so a [start] that was already in flight on the
+     * pairing executor (TASK-267) cannot slip in afterwards and orphan a scan that
+     * nothing will ever stop -- whichever of destroy()/start() acquires [bluetoothLock]
+     * second sees the other's effect (either the just-started handler gets stopped, or
+     * the flag makes the start a no-op before it ever calls `startScan()`).
+     */
+    fun destroy() {
+        synchronized(bluetoothLock) { destroyed = true }
+        stop()
+    }
+
+    /**
      * TASK-262: `TandemBluetoothHandler` is a process-wide singleton (`getInstance`), and its
      * `stop()` → blessed's `BluetoothCentralManager.close()` unregisters a broadcast receiver
      * that is registered only once, in the handler's constructor — a second `close()` (e.g.
@@ -135,8 +176,11 @@ class PumpCommHandler(
      * one whose receiver is already unregistered and whose callbacks route to a dead listener.
      */
     private fun stopBluetooth() {
-        val handler = bluetoothHandler ?: return
-        bluetoothHandler = null
+        val handler = synchronized(bluetoothLock) {
+            val h = bluetoothHandler
+            bluetoothHandler = null
+            h
+        } ?: return
         try {
             handler.stop()
         } catch (e: IllegalArgumentException) {
