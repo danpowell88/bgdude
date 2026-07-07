@@ -53,7 +53,7 @@ void main() {
 
   group('Absorption learning', () {
     test('moves toward the observed peak with damping', () {
-      final lib = MealLibrary();
+      var lib = MealLibrary();
       const meal = SavedMeal(
         id: 'm',
         name: 'Pasta',
@@ -61,7 +61,7 @@ void main() {
         absorptionMinutes: 180,
         peakOffsetMinutes: 90,
       );
-      lib.add(meal);
+      lib = lib.add(meal);
 
       final outcome = MealOutcome.fromCgm(
         eatenAt: eatenAt,
@@ -69,8 +69,9 @@ void main() {
         bolusUnits: 6,
         postMealCgm: _mealTrace(eatenAt, peakOffsetMin: 60),
       );
-      final updated = lib.learnFromOutcome(
-          meal, outcome, _mealTrace(eatenAt, peakOffsetMin: 60));
+      final updated = lib
+          .learnFromOutcome(meal, outcome, _mealTrace(eatenAt, peakOffsetMin: 60))
+          .meal;
 
       // Damped: 90 + 0.3*(60-90) = 81, not a full jump to 60.
       expect(updated.peakOffsetMinutes, 81);
@@ -80,7 +81,7 @@ void main() {
     });
 
     test('learned parameters stay within physiological bounds', () {
-      final lib = MealLibrary();
+      var lib = MealLibrary();
       var meal = const SavedMeal(
         id: 'm',
         name: 'Glucose gel',
@@ -88,20 +89,22 @@ void main() {
         absorptionMinutes: 60,
         peakOffsetMinutes: 30,
       );
-      lib.add(meal);
+      lib = lib.add(meal);
       // Repeated ultra-fast meals can't push below the minimums.
       for (var i = 0; i < 10; i++) {
         final at = eatenAt.add(Duration(days: i));
         final trace = _mealTrace(at, peakOffsetMin: 15);
-        meal = lib.learnFromOutcome(
-          meal,
-          MealOutcome.fromCgm(
-              eatenAt: at,
-              preBolusMinutes: 0,
-              bolusUnits: 1,
-              postMealCgm: trace),
-          trace,
-        );
+        meal = lib
+            .learnFromOutcome(
+              meal,
+              MealOutcome.fromCgm(
+                  eatenAt: at,
+                  preBolusMinutes: 0,
+                  bolusUnits: 1,
+                  postMealCgm: trace),
+              trace,
+            )
+            .meal;
       }
       expect(meal.absorptionMinutes,
           greaterThanOrEqualTo(SavedMeal.minAbsorptionMinutes));
@@ -110,22 +113,24 @@ void main() {
     });
 
     test('flat trace (no meaningful rise) does not corrupt the curve', () {
-      final lib = MealLibrary();
+      var lib = MealLibrary();
       const meal = SavedMeal(id: 'm', name: 'Salad', carbsGrams: 10);
-      lib.add(meal);
+      lib = lib.add(meal);
       final flat = [
         for (var m = -15; m <= 210; m += 5)
           CgmSample(time: eatenAt.add(Duration(minutes: m)), mgdl: 110),
       ];
-      final updated = lib.learnFromOutcome(
-        meal,
-        MealOutcome.fromCgm(
-            eatenAt: eatenAt,
-            preBolusMinutes: 0,
-            bolusUnits: 0.5,
-            postMealCgm: flat),
-        flat,
-      );
+      final updated = lib
+          .learnFromOutcome(
+            meal,
+            MealOutcome.fromCgm(
+                eatenAt: eatenAt,
+                preBolusMinutes: 0,
+                bolusUnits: 0.5,
+                postMealCgm: flat),
+            flat,
+          )
+          .meal;
       expect(updated.absorptionMinutes, meal.absorptionMinutes);
       expect(updated.peakOffsetMinutes, meal.peakOffsetMinutes);
     });

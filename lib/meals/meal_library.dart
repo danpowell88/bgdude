@@ -292,28 +292,30 @@ class SavedMeal {
 /// Generates a compact unique-enough id for a personal, single-device library.
 String newMealId() => DateTime.now().microsecondsSinceEpoch.toRadixString(36);
 
-/// In-memory meal collection with fuzzy lookup, damped curve learning, and
-/// plain-language insights. Persistence (drift) hydrates/writes through this.
+/// IMMUTABLE meal collection (TASK-121) with fuzzy lookup, damped curve learning,
+/// and plain-language insights. Every "mutator" returns a NEW instance with a
+/// copied map, so Riverpod change detection and old references stay honest.
+/// Persistence (KV) hydrates/writes through this.
 class MealLibrary {
-  MealLibrary({Iterable<SavedMeal> meals = const []}) {
-    for (final m in meals) {
-      _meals[m.id] = m;
-    }
-  }
+  MealLibrary({Iterable<SavedMeal> meals = const []})
+      : _meals = {for (final m in meals) m.id: m};
+
+  MealLibrary._(this._meals);
 
   /// Blend fraction toward each new observation. 0.3 = damped: three-ish
   /// consistent meals shift the curve most of the way, one outlier barely moves it.
   static const double learningRate = 0.3;
 
-  final Map<String, SavedMeal> _meals = {};
+  final Map<String, SavedMeal> _meals;
 
   List<SavedMeal> get meals => List.unmodifiable(_meals.values);
 
-  /// Insert or replace by id.
-  void add(SavedMeal meal) => _meals[meal.id] = meal;
+  /// Insert or replace by id — returns a new library.
+  MealLibrary add(SavedMeal meal) =>
+      MealLibrary._({..._meals, meal.id: meal});
 
   /// Alias for [add]; reads better at call sites that edit an existing meal.
-  void update(SavedMeal meal) => add(meal);
+  MealLibrary update(SavedMeal meal) => add(meal);
 
   SavedMeal? findById(String id) => _meals[id];
 
@@ -339,8 +341,8 @@ class MealLibrary {
 
   /// Records [outcome] on [meal] and re-estimates its absorption curve from the
   /// observed post-meal rise in [postMealCgm] (damped, bounded — see library doc).
-  /// Returns the updated meal, which also replaces the stored copy.
-  SavedMeal learnFromOutcome(
+  /// Returns the new library plus the updated meal (TASK-121: no in-place mutation).
+  ({MealLibrary library, SavedMeal meal}) learnFromOutcome(
     SavedMeal meal,
     MealOutcome outcome,
     List<CgmSample> postMealCgm,
@@ -373,8 +375,7 @@ class MealLibrary {
       );
     }
 
-    add(updated);
-    return updated;
+    return (library: add(updated), meal: updated);
   }
 
   /// Plain-language stats for the detail screen, e.g.

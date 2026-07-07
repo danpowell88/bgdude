@@ -1274,8 +1274,7 @@ class MealLibraryNotifier extends StateNotifier<MealLibrary> {
   }
 
   void add(SavedMeal meal) {
-    state.add(meal);
-    state = MealLibrary(meals: state.meals);
+    state = state.add(meal);
     unawaited(_persist());
   }
 
@@ -1284,8 +1283,7 @@ class MealLibraryNotifier extends StateNotifier<MealLibrary> {
     MealOutcome outcome,
     List<CgmSample> postMealCgm,
   ) {
-    state.learnFromOutcome(meal, outcome, postMealCgm);
-    state = MealLibrary(meals: state.meals);
+    state = state.learnFromOutcome(meal, outcome, postMealCgm).library;
     unawaited(_persist());
   }
 }
