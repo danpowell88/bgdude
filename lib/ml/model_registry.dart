@@ -112,6 +112,58 @@ class PromotionGate {
     }
     return (pass: reasons.isEmpty, reasons: reasons);
   }
+
+  /// TASK-130: judge each horizon on its own evidence — pooled stats let a
+  /// candidate that improves 30-min but regresses 120-min ship anyway.
+  ///
+  /// Promotion is ALL-PASS across the trained horizons: one model blob is
+  /// persisted (there is no per-horizon promotion), so a candidate that fails the
+  /// gate or does not strictly improve RMSE (vs that horizon's incumbent, or the
+  /// baseline when none) at ANY trained horizon does not ship. Horizons the
+  /// candidate left untrained keep baseline behaviour and are not gated.
+  ({bool promoted, List<String> reasons}) decideAcrossHorizons({
+    required Map<int, ModelEvaluation> candidateByHorizon,
+    required Map<int, ModelEvaluation> baselineByHorizon,
+    Map<int, ModelEvaluation>? incumbentByHorizon,
+    required Iterable<int> trainedHorizons,
+  }) {
+    final reasons = <String>[];
+    final horizons = [
+      for (final h in candidateByHorizon.keys)
+        if (trainedHorizons.contains(h)) h,
+    ]..sort();
+    if (horizons.isEmpty) {
+      return (promoted: false, reasons: ['no trained horizons to gate']);
+    }
+    var pass = true;
+    var improvesBaseline = true;
+    var improvesIncumbent = true;
+    for (final h in horizons) {
+      final cand = candidateByHorizon[h]!;
+      final base = baselineByHorizon[h];
+      final inc = incumbentByHorizon?[h];
+      final g = evaluate(cand, incumbent: inc ?? base);
+      if (!g.pass) {
+        pass = false;
+        reasons.addAll(g.reasons.map((r) => '${h}m: $r'));
+      }
+      if (base != null && cand.rmseMgdl >= base.rmseMgdl) {
+        improvesBaseline = false;
+      }
+      if (inc != null && cand.rmseMgdl >= inc.rmseMgdl) {
+        improvesIncumbent = false;
+      }
+    }
+    // Aggregate strings kept stable for callers/tests that match on them.
+    if (!improvesBaseline) reasons.add('no RMSE improvement over baseline');
+    if (!improvesIncumbent) {
+      reasons.add('no RMSE improvement over the active model');
+    }
+    return (
+      promoted: pass && improvesBaseline && improvesIncumbent,
+      reasons: reasons,
+    );
+  }
 }
 
 /// Builds a ModelEvaluation from raw prediction/reference pairs.

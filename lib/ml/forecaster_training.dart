@@ -27,6 +27,9 @@ class ForecasterTrainingResult {
     required this.trainSamples,
     required this.heldOutSamples,
     this.incumbentEval,
+    this.baselineByHorizon = const {},
+    this.candidateByHorizon = const {},
+    this.incumbentByHorizon,
   });
 
   final ResidualGbmModel model;
@@ -44,6 +47,12 @@ class ForecasterTrainingResult {
 
   final int trainSamples;
   final int heldOutSamples;
+
+  /// TASK-130: the same evaluations split per horizon (minutes), so the gate can
+  /// judge each horizon on its own evidence instead of the pooled mix.
+  final Map<int, ModelEvaluation> baselineByHorizon;
+  final Map<int, ModelEvaluation> candidateByHorizon;
+  final Map<int, ModelEvaluation>? incumbentByHorizon;
 }
 
 class ForecasterTrainer {
@@ -184,24 +193,37 @@ class ForecasterTrainer {
     final model = const ResidualGbmTrainer()
         .train(trainingByHorizon, holdoutByHorizon: holdoutByHorizon);
 
-    // Score baseline vs incumbent vs baseline+candidate on the held-out tail.
+    // Score baseline vs incumbent vs baseline+candidate on the held-out tail —
+    // pooled for display, and per horizon for the promotion gate (TASK-130).
     final baselinePairs = <({double reference, double predicted})>[];
     final candidatePairs = <({double reference, double predicted})>[];
     final incumbentPairs = <({double reference, double predicted})>[];
+    final baselinePairsByH = <int, List<({double reference, double predicted})>>{};
+    final candidatePairsByH = <int, List<({double reference, double predicted})>>{};
+    final incumbentPairsByH = <int, List<({double reference, double predicted})>>{};
     final scoreIncumbent = incumbent != null && incumbent.isTrained;
     var heldCount = 0;
     for (final h in horizons) {
+      final bh = baselinePairsByH[h] = [];
+      final ch = candidatePairsByH[h] = [];
+      final ih = incumbentPairsByH[h] = [];
       for (final held in heldOut[h]!) {
         final corrected =
             held.baseline + model.correct(features: held.features, horizonMinutes: h).residual;
-        baselinePairs.add((reference: held.actual, predicted: held.baseline));
-        candidatePairs
-            .add((reference: held.actual, predicted: corrected.clamp(39.0, 400.0)));
+        final basePair = (reference: held.actual, predicted: held.baseline);
+        final candPair =
+            (reference: held.actual, predicted: corrected.clamp(39.0, 400.0));
+        baselinePairs.add(basePair);
+        candidatePairs.add(candPair);
+        bh.add(basePair);
+        ch.add(candPair);
         if (scoreIncumbent) {
           final liveCorrected = held.baseline +
               incumbent.correct(features: held.features, horizonMinutes: h).residual;
-          incumbentPairs.add(
-              (reference: held.actual, predicted: liveCorrected.clamp(39.0, 400.0)));
+          final incPair =
+              (reference: held.actual, predicted: liveCorrected.clamp(39.0, 400.0));
+          incumbentPairs.add(incPair);
+          ih.add(incPair);
         }
         heldCount++;
       }
@@ -213,6 +235,15 @@ class ForecasterTrainer {
       baselineEval: evaluator.evaluate(baselinePairs),
       candidateEval: evaluator.evaluate(candidatePairs),
       incumbentEval: scoreIncumbent ? evaluator.evaluate(incumbentPairs) : null,
+      baselineByHorizon: {
+        for (final h in horizons) h: evaluator.evaluate(baselinePairsByH[h]!),
+      },
+      candidateByHorizon: {
+        for (final h in horizons) h: evaluator.evaluate(candidatePairsByH[h]!),
+      },
+      incumbentByHorizon: scoreIncumbent
+          ? {for (final h in horizons) h: evaluator.evaluate(incumbentPairsByH[h]!)}
+          : null,
       trainSamples: trainCount,
       heldOutSamples: heldCount,
     );

@@ -25,7 +25,9 @@ class ForecasterModelController extends StateNotifier<ResidualModel> {
     restored = _restore();
   }
 
-  final PromotionGate _gate = const PromotionGate();
+  /// Per-horizon gate (TASK-130): the pooled default of 288 held-out samples
+  /// becomes 96 per horizon (3 horizons over ~1 held-out day of 5-min points).
+  final PromotionGate _gate = const PromotionGate(minSampleCount: 96);
   TrainingOutcome lastOutcome = const TrainingOutcome(trained: false, promoted: false);
 
   /// Completes when the initial restore has finished. `train()` awaits it so the
@@ -86,17 +88,18 @@ class ForecasterModelController extends StateNotifier<ResidualModel> {
       return lastOutcome;
     }
 
-    // Gate against the toughest available incumbent, and require the candidate to
-    // actually improve on both the deterministic baseline and the live model —
-    // a retrain that is worse than what's already running must never ship.
+    // TASK-130: gate each horizon on its own evidence (all-pass; documented in
+    // PromotionGate.decideAcrossHorizons) — a candidate that improves 30-min but
+    // regresses the clinically important 120-min must never ship. minSampleCount
+    // applies per horizon (pooled 288 over 3 horizons -> 96 each).
     final incumbentEval = result.incumbentEval;
-    final gate = _gate.evaluate(result.candidateEval,
-        incumbent: incumbentEval ?? result.baselineEval);
-    final improvesBaseline =
-        result.candidateEval.rmseMgdl < result.baselineEval.rmseMgdl;
-    final improvesIncumbent = incumbentEval == null ||
-        result.candidateEval.rmseMgdl < incumbentEval.rmseMgdl;
-    final promoted = gate.pass && improvesBaseline && improvesIncumbent;
+    final decision = _gate.decideAcrossHorizons(
+      candidateByHorizon: result.candidateByHorizon,
+      baselineByHorizon: result.baselineByHorizon,
+      incumbentByHorizon: result.incumbentByHorizon,
+      trainedHorizons: result.model.trainedHorizons,
+    );
+    final promoted = decision.promoted;
 
     if (promoted) {
       _hasNewerLocalModel = true;
@@ -107,11 +110,7 @@ class ForecasterModelController extends StateNotifier<ResidualModel> {
     lastOutcome = TrainingOutcome(
       trained: true,
       promoted: promoted,
-      reasons: [
-        ...gate.reasons,
-        if (!improvesBaseline) 'no RMSE improvement over baseline',
-        if (!improvesIncumbent) 'no RMSE improvement over the active model',
-      ],
+      reasons: decision.reasons,
       baselineRmse: result.baselineEval.rmseMgdl,
       candidateRmse: result.candidateEval.rmseMgdl,
       incumbentRmse: incumbentEval?.rmseMgdl,
