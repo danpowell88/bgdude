@@ -216,8 +216,17 @@ class PumpCommHandler(
 
     // --- pumpx2 TandemPump callbacks (read-only subset) ---
 
-    override fun onReceiveMessage(peripheral: BluetoothPeripheral, message: Message) {
-        try {
+    /**
+     * TASK-189: every externally-invoked callback body goes through [SafeCallbacks]:
+     * a failure is logged with the callback name and skipped, never fatal.
+     */
+    private fun safe(name: String, block: () -> Unit) = SafeCallbacks.run(name, block)
+
+    private fun <T> safe(name: String, fallback: T, block: () -> T): T =
+        SafeCallbacks.run(name, fallback, block)
+
+    override fun onReceiveMessage(peripheral: BluetoothPeripheral, message: Message) =
+        safe("onReceiveMessage(${message.javaClass.simpleName})") {
             if (probeCapture) {
                 val event = ProtocolProbe.describe(message, "rx", System.currentTimeMillis())
                 if (probeLogging) {
@@ -230,10 +239,7 @@ class PumpCommHandler(
             listener.onSnapshotUpdated(snapshot)
             handleProfileMessage(peripheral, message)
             handleHistoryMessage(peripheral, message)
-        } catch (t: Throwable) {
-            Log.w(TAG, "Failed to map ${message.javaClass.simpleName}", t)
         }
-    }
 
     /** Drive the IDP read: settings → per-segment requests → emit the profile. */
     private fun handleProfileMessage(peripheral: BluetoothPeripheral, message: Message) {
@@ -277,7 +283,7 @@ class PumpCommHandler(
     override fun onReceiveQualifyingEvent(
         peripheral: BluetoothPeripheral,
         events: Set<QualifyingEvent>,
-    ) {
+    ) = safe("onReceiveQualifyingEvent") {
         // A qualifying event (e.g. new CGM reading, bolus completed) — pull fresh status.
         requestFullStatus()
     }
@@ -285,7 +291,7 @@ class PumpCommHandler(
     override fun onWaitingForPairingCode(
         peripheral: BluetoothPeripheral,
         centralChallengeResponse: AbstractCentralChallengeResponse?,
-    ) {
+    ) = safe("onWaitingForPairingCode") {
         this.peripheral = peripheral
         this.pendingChallenge = centralChallengeResponse
 
@@ -294,7 +300,7 @@ class PumpCommHandler(
         val saved = PumpState.getPairingCodeCached()
         if (!saved.isNullOrEmpty()) {
             pair(peripheral, centralChallengeResponse, saved)
-            return
+            return@safe
         }
 
         val type = if (PumpState.pairingCodeType == X2PairingCodeType.LONG_16CHAR) {
@@ -306,60 +312,66 @@ class PumpCommHandler(
         listener.onPairingCodeRequired(type)
     }
 
-    override fun onInitialPumpConnection(peripheral: BluetoothPeripheral) {
-        this.peripheral = peripheral
-        emitState(ConnectionStage.BONDING)
-        super.onInitialPumpConnection(peripheral)
-    }
+    override fun onInitialPumpConnection(peripheral: BluetoothPeripheral) =
+        safe("onInitialPumpConnection") {
+            this.peripheral = peripheral
+            emitState(ConnectionStage.BONDING)
+            super.onInitialPumpConnection(peripheral)
+        }
 
-    override fun onPumpConnected(peripheral: BluetoothPeripheral) {
-        this.peripheral = peripheral
-        emitState(ConnectionStage.CONNECTED)
-        // Base class auto-sends ApiVersion/PumpVersion/TimeSinceReset; then get status.
-        super.onPumpConnected(peripheral)
-        requestFullStatus()
-        // Read the therapy profile and backfill recent history on connect.
-        requestProfile()
-        requestRecentHistory()
-    }
+    override fun onPumpConnected(peripheral: BluetoothPeripheral) =
+        safe("onPumpConnected") {
+            this.peripheral = peripheral
+            emitState(ConnectionStage.CONNECTED)
+            // Base class auto-sends ApiVersion/PumpVersion/TimeSinceReset; then get status.
+            super.onPumpConnected(peripheral)
+            requestFullStatus()
+            // Read the therapy profile and backfill recent history on connect.
+            requestProfile()
+            requestRecentHistory()
+        }
 
     override fun onPumpDiscovered(
         peripheral: BluetoothPeripheral,
         scanResult: ScanResult?,
         readyState: PumpReadyState,
-    ): Boolean {
+        // Fallback true: on an unexpected throw, still attempt the connection —
+        // failing open keeps monitoring alive; failing closed would ignore the pump.
+    ): Boolean = safe("onPumpDiscovered", fallback = true) {
         val mac = macFilter
         if (mac != null && !peripheral.address.equals(mac, ignoreCase = true)) {
-            return false // ignore other pumps
+            return@safe false // ignore other pumps
         }
         synchronized(snapshotLock) {
             snapshot.pumpName = peripheral.name
             snapshot.macAddress = peripheral.address
         }
         emitState(ConnectionStage.DISCOVERED)
-        return true
+        true
     }
 
-    override fun onPumpModel(peripheral: BluetoothPeripheral, model: KnownDeviceModel) {
-        synchronized(snapshotLock) {
-            snapshot.model = when (model) {
-                KnownDeviceModel.TSLIM_X2 -> PumpModel.TSLIM_X2
-                KnownDeviceModel.MOBI -> PumpModel.MOBI
-                else -> PumpModel.UNKNOWN
+    override fun onPumpModel(peripheral: BluetoothPeripheral, model: KnownDeviceModel) =
+        safe("onPumpModel") {
+            synchronized(snapshotLock) {
+                snapshot.model = when (model) {
+                    KnownDeviceModel.TSLIM_X2 -> PumpModel.TSLIM_X2
+                    KnownDeviceModel.MOBI -> PumpModel.MOBI
+                    else -> PumpModel.UNKNOWN
+                }
             }
+            listener.onSnapshotUpdated(snapshot)
         }
-        listener.onSnapshotUpdated(snapshot)
-    }
 
-    override fun onJpakeProgress(step: JpakeAuthBuilder.JpakeStep) {
-        synchronized(snapshotLock) { snapshot.jpakeProgress = step.ordinal }
-        emitState(ConnectionStage.JPAKE_IN_PROGRESS)
-    }
+    override fun onJpakeProgress(step: JpakeAuthBuilder.JpakeStep) =
+        safe("onJpakeProgress") {
+            synchronized(snapshotLock) { snapshot.jpakeProgress = step.ordinal }
+            emitState(ConnectionStage.JPAKE_IN_PROGRESS)
+        }
 
     override fun onInvalidPairingCode(
         peripheral: BluetoothPeripheral,
         response: AbstractPumpChallengeResponse?,
-    ) {
+    ) = safe("onInvalidPairingCode") {
         pendingChallenge = null
         emitState(ConnectionStage.ERROR, "Invalid pairing code")
     }
@@ -367,17 +379,20 @@ class PumpCommHandler(
     override fun onPumpDisconnected(
         peripheral: BluetoothPeripheral,
         status: HciStatus,
-    ): Boolean {
+        // Fallback true: always keep requesting the automatic reconnect.
+    ): Boolean = safe("onPumpDisconnected", fallback = true) {
         emitState(ConnectionStage.DISCONNECTED)
         // Return true to request an automatic reconnect (proof-of-concept pairing can
         // drop; the service surfaces persistent failures to the UI).
-        return true
+        true
     }
 
-    override fun onPumpCriticalError(peripheral: BluetoothPeripheral, error: TandemError) {
-        listener.onCriticalError(error.name)
-        emitState(ConnectionStage.ERROR, error.name)
-    }
+    // AC#2 (TASK-189): the critical-error path itself must never throw.
+    override fun onPumpCriticalError(peripheral: BluetoothPeripheral, error: TandemError) =
+        safe("onPumpCriticalError") {
+            listener.onCriticalError(error.name)
+            emitState(ConnectionStage.ERROR, error.name)
+        }
 
     private fun emitState(stage: ConnectionStage, error: String? = null) {
         listener.onState(
