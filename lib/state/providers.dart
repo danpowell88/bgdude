@@ -1687,7 +1687,7 @@ final staleDataWatchdogProvider = Provider<StaleDataWatchdogService>((ref) {
 
 class StaleDataWatchdogService {
   StaleDataWatchdogService(this._ref) {
-    _timer = Timer.periodic(const Duration(minutes: 5), (_) => _check());
+    _timer = Timer.periodic(const Duration(minutes: 5), (_) => checkNow());
   }
 
   final Ref _ref;
@@ -1701,7 +1701,21 @@ class StaleDataWatchdogService {
     }
   }
 
-  Future<void> _check() async {
+  /// Public (not the periodic timer's private callback) so a test can invoke a
+  /// check without waiting on the real 5-minute timer.
+  Future<void> checkNow() async {
+    // TASK-230: this watchdog owns only the connected-but-silent case (its own
+    // class doc says so) -- ConnectionAlertService already owns a genuine BLE
+    // disconnect (connectionLost). Without this gate, a real disconnect fires
+    // BOTH connectionLost at 10 min and a factually-wrong dataStale ("even
+    // though the connection looks healthy") at 15 min. Reset rather than just
+    // skip, so a later reconnect doesn't immediately re-flag on the age that
+    // accrued while disconnected.
+    final stage = _ref.read(pumpConnectionProvider).valueOrNull?.stage;
+    if (stage != PumpConnectionStage.connected) {
+      monitor.reset();
+      return;
+    }
     if (monitor.check(DateTime.now()) != StaleDataEvent.becameStale) return;
     final mins = monitor.age(DateTime.now())?.inMinutes;
     try {

@@ -55,4 +55,13 @@ class StaleDataMonitor {
     _stale = true;
     return StaleDataEvent.becameStale;
   }
+
+  /// TASK-230: forget the last snapshot and any stale flag — used when the caller
+  /// hands off staleness to a different alert (a BLE disconnect), so a later
+  /// reconnect starts fresh instead of immediately re-flagging on the age that
+  /// accrued while this monitor wasn't the one responsible for alerting.
+  void reset() {
+    _lastSnapshotAt = null;
+    _stale = false;
+  }
 }

@@ -62,4 +62,20 @@ void main() {
     expect(m.age(t0.add(const Duration(minutes: 12))),
         const Duration(minutes: 12));
   });
+
+  // TASK-230: reset() is used when a caller hands staleness off to a different
+  // alert (a BLE disconnect) -- a later reconnect must start fresh, not
+  // immediately re-flag on the age that accrued while disconnected.
+  test('reset forgets the last snapshot and any stale flag', () {
+    final m = StaleDataMonitor();
+    m.onSnapshot(t0);
+    expect(
+        m.check(t0.add(const Duration(minutes: 20))), StaleDataEvent.becameStale);
+
+    m.reset();
+
+    expect(m.age(t0.add(const Duration(minutes: 21))), isNull);
+    // No stale carried over, and no feed to go stale until a snapshot arrives.
+    expect(m.check(t0.add(const Duration(hours: 5))), StaleDataEvent.none);
+  });
 }

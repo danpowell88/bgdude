@@ -5,11 +5,12 @@ status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-06 08:37'
-updated_date: '2026-07-07 15:12'
+updated_date: '2026-07-07 19:31'
 labels:
   - code-health
   - ui
   - cleanup
+  - detail-needed
 milestone: m-8
 dependencies: []
 priority: low
@@ -67,6 +68,12 @@ author: Claude
 created: 2026-07-07 15:12
 ---
 Status correction: leaving In Progress rather than Done since AC#3 (integration tests pass on the emulator) is explicitly unverified here, matching this project's convention for emulator/hardware-blocked ACs (see TASK-31/TASK-33) rather than marking a task Done with an unmet AC. AC#1/#2 and all applicable DoD items are genuinely complete; only AC#3 remains, and it needs a session with real emulator connectivity, not further code changes.
+---
+
+author: Claude
+created: 2026-07-07 19:31
+---
+detail-needed: AC#3 (integration tests pass on the emulator) cannot be verified in this sandboxed session -- the emulator VM-service WebSocket connection is broken here for ANY integration_test file (pre-existing, documented environment limitation, not specific to this change). AC#1/#2 and all applicable DoD items are complete; this needs a session with real emulator connectivity to close out, matching the TASK-31/TASK-33 hardware-blocked convention.
 ---
 <!-- COMMENTS:END -->
 
