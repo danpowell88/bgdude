@@ -501,7 +501,7 @@ final sleepInsightProvider = FutureProvider<SleepInsight>((ref) async {
   final cgm = await repo.cgm(now.subtract(const Duration(days: 21)), now);
   final nights = <SleepNight>[];
   for (final h in health) {
-    if (h.type != 'sleepHours') continue;
+    if (h.type != HealthMetric.sleepHours) continue;
     final night = DateTime(h.time.year, h.time.month, h.time.day);
     final ws = night.add(const Duration(days: 1)); // next-morning window
     final we = ws.add(const Duration(hours: 7));
@@ -1915,11 +1915,11 @@ class AppJobs {
     final now = DateTime.now();
     const classifier = WorkoutClassifier();
     final aerobicToday = samples.any((s) =>
-        s.type == 'exercise' &&
+        s.type == HealthMetric.exercise &&
         s.value >= 20 && // a meaningful session
         _sameDay(s.time, now) &&
         classifier
-            .classify((s.meta['activity'] as String?) ?? '')
+            .classify(s.workout.activity)
             .raisesHypoRisk);
     if (!aerobicToday) return;
 

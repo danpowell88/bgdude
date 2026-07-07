@@ -19,7 +19,7 @@ void main() {
         for (var m = 29; m >= 0; m--)
           HealthSample(
               time: t0.subtract(Duration(minutes: m)),
-              type: 'steps',
+              type: HealthMetric.steps,
               value: 100),
       ];
       final s = HealthFeatureSampler(samples);
@@ -33,11 +33,11 @@ void main() {
       final base = [
         HealthSample(
             time: t0.subtract(const Duration(days: 1)),
-            type: 'restingHr',
+            type: HealthMetric.restingHr,
             value: 60),
         HealthSample(
             time: t0.subtract(const Duration(minutes: 2)),
-            type: 'heartRate',
+            type: HealthMetric.heartRate,
             value: 90),
       ];
       final before = HealthFeatureSampler(base).featuresAt(t0)[2]; // hr_rel
@@ -47,7 +47,7 @@ void main() {
         ...base,
         HealthSample(
             time: t0.add(const Duration(hours: 6)),
-            type: 'restingHr',
+            type: HealthMetric.restingHr,
             value: 120),
       ]).featuresAt(t0)[2];
       expect(withFuture, closeTo(before, 1e-9));
@@ -57,19 +57,19 @@ void main() {
       final s = HealthFeatureSampler([
         HealthSample( // 40 min ago — outside the 30-min window
             time: t0.subtract(const Duration(minutes: 40)),
-            type: 'steps',
+            type: HealthMetric.steps,
             value: 500),
         HealthSample(
             time: t0.subtract(const Duration(minutes: 20)),
-            type: 'steps',
+            type: HealthMetric.steps,
             value: 1500),
         HealthSample(
             time: t0.subtract(const Duration(minutes: 5)),
-            type: 'steps',
+            type: HealthMetric.steps,
             value: 1500),
         HealthSample( // future — excluded
             time: t0.add(const Duration(minutes: 5)),
-            type: 'steps',
+            type: HealthMetric.steps,
             value: 9999),
       ]);
       // In-window steps = 3000 over 30 min = 100/min = brisk → 1.0.
@@ -80,7 +80,7 @@ void main() {
       final samples = [
         HealthSample(
             time: t0.subtract(const Duration(minutes: 5)),
-            type: 'steps',
+            type: HealthMetric.steps,
             value: 9000),
       ];
       expect(HealthFeatureSampler(samples).featuresAt(t0)[0], 1.5);
@@ -91,7 +91,7 @@ void main() {
       final samples = [
         HealthSample(
             time: t0.subtract(const Duration(minutes: 60)),
-            type: 'exercise',
+            type: HealthMetric.exercise,
             value: 60),
       ];
       final s = HealthFeatureSampler(samples);
@@ -110,11 +110,11 @@ void main() {
       final samples = [
         HealthSample(
             time: t0.subtract(const Duration(days: 1)),
-            type: 'restingHr',
+            type: HealthMetric.restingHr,
             value: 60),
         HealthSample(
             time: t0.subtract(const Duration(minutes: 5)),
-            type: 'heartRate',
+            type: HealthMetric.heartRate,
             value: 90), // +50% over resting
       ];
       final s = HealthFeatureSampler(samples);
@@ -126,7 +126,7 @@ void main() {
 
     test('no resting baseline → hr feature is 0', () {
       final samples = [
-        HealthSample(time: t0, type: 'heartRate', value: 120),
+        HealthSample(time: t0, type: HealthMetric.heartRate, value: 120),
       ];
       expect(HealthFeatureSampler(samples).featuresAt(t0)[2], 0);
     });

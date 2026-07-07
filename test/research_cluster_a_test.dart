@@ -48,10 +48,10 @@ void main() {
     test('period detection and phase classification', () {
       final health = [
         // A period starting 7/1 (3 flow days), then a gap, then next period 7/29.
-        HealthSample(time: DateTime(2026, 7, 1), type: 'menstruationFlow', value: 2),
-        HealthSample(time: DateTime(2026, 7, 2), type: 'menstruationFlow', value: 2),
-        HealthSample(time: DateTime(2026, 7, 3), type: 'menstruationFlow', value: 1),
-        HealthSample(time: DateTime(2026, 7, 29), type: 'menstruationFlow', value: 2),
+        HealthSample(time: DateTime(2026, 7, 1), type: HealthMetric.menstruationFlow, value: 2),
+        HealthSample(time: DateTime(2026, 7, 2), type: HealthMetric.menstruationFlow, value: 2),
+        HealthSample(time: DateTime(2026, 7, 3), type: HealthMetric.menstruationFlow, value: 1),
+        HealthSample(time: DateTime(2026, 7, 29), type: HealthMetric.menstruationFlow, value: 2),
       ];
       final starts = periodStarts(health);
       expect(starts, hasLength(2));
@@ -61,7 +61,7 @@ void main() {
 
     test('compares follicular vs luteal TIR when both have enough days', () {
       final health = [
-        HealthSample(time: DateTime(2026, 7, 1), type: 'menstruationFlow', value: 2),
+        HealthSample(time: DateTime(2026, 7, 1), type: HealthMetric.menstruationFlow, value: 2),
       ];
       final cgm = <CgmSample>[];
       // Follicular days 7/2–7/5: steady 120 (high TIR).

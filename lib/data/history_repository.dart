@@ -268,7 +268,7 @@ class DriftHistoryRepository implements HistoryRepository {
           _db.healthSamples,
           HealthSamplesCompanion.insert(
             time: s.time,
-            type: s.type,
+            type: s.type.dbString,
             value: s.value,
             meta: Value(jsonEncode(s.meta)),
           ),
@@ -284,13 +284,16 @@ class DriftHistoryRepository implements HistoryRepository {
           ..orderBy([(t) => OrderingTerm(expression: t.time)]))
         .get();
     return [
+      // Rows whose type this build doesn't know (newer schema) are skipped
+      // rather than guessed (TASK-118).
       for (final r in rows)
-        HealthSample(
-          time: r.time,
-          type: r.type,
-          value: r.value,
-          meta: (jsonDecode(r.meta) as Map).cast<String, Object?>(),
-        ),
+        if (HealthMetric.fromDbString(r.type) case final HealthMetric metric)
+          HealthSample(
+            time: r.time,
+            type: metric,
+            value: r.value,
+            meta: (jsonDecode(r.meta) as Map).cast<String, Object?>(),
+          ),
     ];
   }
 

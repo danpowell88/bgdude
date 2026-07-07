@@ -11,6 +11,63 @@ library;
 import 'package:health/health.dart';
 import 'package:logging/logging.dart';
 
+/// Every contextual metric the app ingests (TASK-118). The [dbString] values are
+/// the exact strings already persisted in `health_samples.type` — adding here is
+/// fine, renaming is a DB migration.
+enum HealthMetric {
+  sleepHours('sleepHours'),
+  sleepDeepHours('sleepDeepHours'),
+  sleepEfficiency('sleepEfficiency'),
+  hrvRmssd('hrvRmssd'),
+  restingHr('restingHr'),
+  heartRate('heartRate'),
+  steps('steps'),
+  distanceM('distanceM'),
+  flights('flights'),
+  activeEnergyKcal('activeEnergyKcal'),
+  totalEnergyKcal('totalEnergyKcal'),
+  spo2('spo2'),
+  respiratoryRate('respiratoryRate'),
+  bpSystolic('bpSystolic'),
+  bpDiastolic('bpDiastolic'),
+  bodyTempC('bodyTempC'),
+  weightKg('weightKg'),
+  bodyFatPct('bodyFatPct'),
+  waterL('waterL'),
+  dietaryCarbsG('dietaryCarbsG'),
+  menstruationFlow('menstruationFlow'),
+  exercise('exercise');
+
+  const HealthMetric(this.dbString);
+
+  /// The persisted string — identical to the pre-enum values (no migration).
+  final String dbString;
+
+  static final Map<String, HealthMetric> _byDb = {
+    for (final m in HealthMetric.values) m.dbString: m,
+  };
+
+  /// Null for a string this build doesn't know (e.g. a newer schema) — the
+  /// repository skips such rows rather than guessing.
+  static HealthMetric? fromDbString(String s) => _byDb[s];
+}
+
+/// Typed view of a workout sample's [HealthSample.meta] (TASK-118).
+class WorkoutMeta {
+  const WorkoutMeta({this.activity = '', this.source = ''});
+
+  /// Health Connect activity type name (RUNNING, STRENGTH_TRAINING, ...).
+  final String activity;
+  final String source;
+
+  Map<String, Object?> toMeta() => {'activity': activity, 'source': source};
+
+  factory WorkoutMeta.fromMeta(Map<String, Object?> meta) => WorkoutMeta(
+        activity: meta['activity'] as String? ?? '',
+        source: meta['source'] as String? ?? '',
+      );
+}
+
 /// A normalised contextual sample ready to persist to `health_samples`.
 class HealthSample {
   const HealthSample({
@@ -21,11 +78,12 @@ class HealthSample {
   });
 
   final DateTime time;
-
-  /// 'sleepHours' | 'sleepEfficiency' | 'hrvRmssd' | 'restingHr' | 'steps' | 'exercise'
-  final String type;
+  final HealthMetric type;
   final double value;
   final Map<String, Object?> meta;
+
+  /// Typed workout metadata (meaningful when [type] is [HealthMetric.exercise]).
+  WorkoutMeta get workout => WorkoutMeta.fromMeta(meta);
 }
 
 class HealthSyncService {
@@ -110,81 +168,81 @@ class HealthSyncService {
         case HealthDataType.HEART_RATE_VARIABILITY_RMSSD:
           out.add(HealthSample(
               time: point.dateFrom,
-              type: 'hrvRmssd',
+              type: HealthMetric.hrvRmssd,
               value: _numeric(point)));
         case HealthDataType.RESTING_HEART_RATE:
           out.add(HealthSample(
               time: point.dateFrom,
-              type: 'restingHr',
+              type: HealthMetric.restingHr,
               value: _numeric(point)));
         case HealthDataType.HEART_RATE:
           // Per-reading heart rate — an acute exercise/stress signal for the forecaster.
           out.add(HealthSample(
-              time: point.dateFrom, type: 'heartRate', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.heartRate, value: _numeric(point)));
         case HealthDataType.STEPS:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'steps', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.steps, value: _numeric(point)));
         case HealthDataType.DISTANCE_DELTA:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'distanceM', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.distanceM, value: _numeric(point)));
         case HealthDataType.FLIGHTS_CLIMBED:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'flights', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.flights, value: _numeric(point)));
         case HealthDataType.ACTIVE_ENERGY_BURNED:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'activeEnergyKcal', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.activeEnergyKcal, value: _numeric(point)));
         case HealthDataType.TOTAL_CALORIES_BURNED:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'totalEnergyKcal', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.totalEnergyKcal, value: _numeric(point)));
         case HealthDataType.BLOOD_OXYGEN:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'spo2', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.spo2, value: _numeric(point)));
         case HealthDataType.RESPIRATORY_RATE:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'respiratoryRate', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.respiratoryRate, value: _numeric(point)));
         case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'bpSystolic', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.bpSystolic, value: _numeric(point)));
         case HealthDataType.BLOOD_PRESSURE_DIASTOLIC:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'bpDiastolic', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.bpDiastolic, value: _numeric(point)));
         case HealthDataType.BODY_TEMPERATURE:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'bodyTempC', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.bodyTempC, value: _numeric(point)));
         case HealthDataType.WEIGHT:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'weightKg', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.weightKg, value: _numeric(point)));
         case HealthDataType.BODY_FAT_PERCENTAGE:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'bodyFatPct', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.bodyFatPct, value: _numeric(point)));
         case HealthDataType.WATER:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'waterL', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.waterL, value: _numeric(point)));
         case HealthDataType.NUTRITION:
           // Store dietary carbs (informational — not auto-logged as a bolus carb entry
           // to avoid double-counting the pump's own carbs).
           final carbs = _nutritionCarbs(point);
           if (carbs != null) {
             out.add(HealthSample(
-                time: point.dateFrom, type: 'dietaryCarbsG', value: carbs));
+                time: point.dateFrom, type: HealthMetric.dietaryCarbsG, value: carbs));
           }
         case HealthDataType.MENSTRUATION_FLOW:
           out.add(HealthSample(
-              time: point.dateFrom, type: 'menstruationFlow', value: _numeric(point)));
+              time: point.dateFrom, type: HealthMetric.menstruationFlow, value: _numeric(point)));
         case HealthDataType.WORKOUT:
           final v = point.value;
           out.add(HealthSample(
             time: point.dateFrom,
-            type: 'exercise',
+            type: HealthMetric.exercise,
             value: point.dateTo.difference(point.dateFrom).inMinutes.toDouble(),
             // Capture the workout activity type (RUNNING, STRENGTH_TRAINING, …) so the
             // aerobic-vs-resistance classifier can tailor post-exercise hypo risk.
-            meta: {
-              'activity': v is WorkoutHealthValue
+            meta: WorkoutMeta(
+              activity: v is WorkoutHealthValue
                   ? v.workoutActivityType.name
                   : point.sourceName,
-              'source': point.sourceName,
-            },
+              source: point.sourceName,
+            ).toMeta(),
           ));
         case HealthDataType.SLEEP_ASLEEP:
         case HealthDataType.SLEEP_LIGHT:
@@ -211,12 +269,12 @@ class HealthSyncService {
       final total = acc.asleepMinutes + acc.awakeMinutes;
       out
         ..add(HealthSample(
-            time: night, type: 'sleepHours', value: acc.asleepMinutes / 60.0))
+            time: night, type: HealthMetric.sleepHours, value: acc.asleepMinutes / 60.0))
         ..add(HealthSample(
-            time: night, type: 'sleepDeepHours', value: acc.deepMinutes / 60.0))
+            time: night, type: HealthMetric.sleepDeepHours, value: acc.deepMinutes / 60.0))
         ..add(HealthSample(
             time: night,
-            type: 'sleepEfficiency',
+            type: HealthMetric.sleepEfficiency,
             value: total == 0 ? 0 : acc.asleepMinutes / total));
     });
 

@@ -26,7 +26,7 @@ void main() {
         }
         health.add(HealthSample(
             time: day.add(const Duration(hours: 7)),
-            type: 'sleepHours',
+            type: HealthMetric.sleepHours,
             value: 6 + d * 0.5));
       }
 
@@ -55,7 +55,7 @@ void main() {
       final report = const CorrelationReportBuilder().build(
         cgm: cgm,
         health: [
-          HealthSample(time: base, type: 'sleepHours', value: 7),
+          HealthSample(time: base, type: HealthMetric.sleepHours, value: 7),
         ],
         range: _range(base, base.add(const Duration(days: 2))),
         now: base.add(const Duration(days: 2)),

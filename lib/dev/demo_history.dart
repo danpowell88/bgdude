@@ -110,27 +110,27 @@ class DemoHistory {
       health
         ..add(HealthSample(
             time: date.add(const Duration(hours: 2)),
-            type: 'sleepHours',
+            type: HealthMetric.sleepHours,
             value: sleepHours))
         ..add(HealthSample(
             time: date.add(const Duration(hours: 2)),
-            type: 'sleepEfficiency',
+            type: HealthMetric.sleepEfficiency,
             value: sleepEff))
         ..add(HealthSample(
             time: date.add(const Duration(hours: 2)),
-            type: 'hrvRmssd',
+            type: HealthMetric.hrvRmssd,
             value: hrv))
         ..add(HealthSample(
             time: date.add(const Duration(hours: 7)),
-            type: 'restingHr',
+            type: HealthMetric.restingHr,
             value: restingHr))
         ..add(HealthSample(
             time: date.add(const Duration(hours: 20)),
-            type: 'steps',
+            type: HealthMetric.steps,
             value: steps))
         ..add(HealthSample(
             time: date.add(const Duration(hours: 13, minutes: 30)),
-            type: 'exercise',
+            type: HealthMetric.exercise,
             value: exerciseLoad));
 
       // Scored predictions (known actuals) so the model-accuracy report renders.

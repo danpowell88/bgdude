@@ -107,14 +107,16 @@ class CorrelationReportBuilder {
       if (!range.contains(s.time)) continue;
       final k = _dayKey(s.time);
       switch (s.type) {
-        case 'sleepHours':
+        case HealthMetric.sleepHours:
           (sleep[k] ??= []).add(s.value);
-        case 'exercise':
+        case HealthMetric.exercise:
           exercise[k] = (exercise[k] ?? 0) + s.value;
-        case 'hrvRmssd':
+        case HealthMetric.hrvRmssd:
           (hrv[k] ??= []).add(s.value);
-        case 'restingHr':
+        case HealthMetric.restingHr:
           (restingHr[k] ??= []).add(s.value);
+        default:
+          break;
       }
     }
 

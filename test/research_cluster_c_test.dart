@@ -66,7 +66,7 @@ void main() {
         meals.add((eatenAt: eatenAt, excursionMgdl: 120.0 - i * 10));
         steps.add(HealthSample(
             time: eatenAt.add(const Duration(minutes: 30)),
-            type: 'steps',
+            type: HealthMetric.steps,
             value: (i * 300).toDouble()));
       }
       final r = analyzer.analyze(meals: meals, steps: steps);

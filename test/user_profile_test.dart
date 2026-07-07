@@ -74,8 +74,8 @@ void main() {
     final now = DateTime(2026, 7, 25);
     // A period started 20 days ago → luteal window (days 14–28).
     final health = [
-      HealthSample(time: DateTime(2026, 7, 5), type: 'menstruationFlow', value: 2),
-      HealthSample(time: now, type: 'sleepHours', value: 7),
+      HealthSample(time: DateTime(2026, 7, 5), type: HealthMetric.menstruationFlow, value: 2),
+      HealthSample(time: now, type: HealthMetric.sleepHours, value: 7),
     ];
 
     test('luteal inferred when the profile has a cycle', () {

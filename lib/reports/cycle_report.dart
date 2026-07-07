@@ -16,7 +16,7 @@ enum CyclePhase { follicular, luteal, unknown }
 List<DateTime> periodStarts(List<HealthSample> health) {
   final days = <DateTime>{
     for (final s in health)
-      if (s.type == 'menstruationFlow' && s.value > 0)
+      if (s.type == HealthMetric.menstruationFlow && s.value > 0)
         DateTime(s.time.year, s.time.month, s.time.day),
   }.toList()
     ..sort();

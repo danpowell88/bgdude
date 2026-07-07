@@ -49,18 +49,18 @@ void main() {
     test('builds features with relative baselines from health samples', () {
       final now = DateTime(2026, 7, 4, 7);
       final today = [
-        HealthSample(time: now, type: 'sleepHours', value: 5.5),
-        HealthSample(time: now, type: 'sleepEfficiency', value: 0.85),
-        HealthSample(time: now, type: 'hrvRmssd', value: 40),
-        HealthSample(time: now, type: 'restingHr', value: 62),
-        HealthSample(time: now, type: 'exercise', value: 45),
+        HealthSample(time: now, type: HealthMetric.sleepHours, value: 5.5),
+        HealthSample(time: now, type: HealthMetric.sleepEfficiency, value: 0.85),
+        HealthSample(time: now, type: HealthMetric.hrvRmssd, value: 40),
+        HealthSample(time: now, type: HealthMetric.restingHr, value: 62),
+        HealthSample(time: now, type: HealthMetric.exercise, value: 45),
       ];
       final baseline = [
         for (var d = 1; d < 14; d++) ...[
           HealthSample(
-              time: now.subtract(Duration(days: d)), type: 'hrvRmssd', value: 55),
+              time: now.subtract(Duration(days: d)), type: HealthMetric.hrvRmssd, value: 55),
           HealthSample(
-              time: now.subtract(Duration(days: d)), type: 'restingHr', value: 56),
+              time: now.subtract(Duration(days: d)), type: HealthMetric.restingHr, value: 56),
         ],
       ];
       final f = ContextBuilder.build(today: today, baseline: baseline)!;

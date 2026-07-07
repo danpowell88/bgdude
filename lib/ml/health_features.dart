@@ -23,13 +23,13 @@ class HealthFeatureSampler {
     this.exerciseHalfLife = const Duration(minutes: 90),
     this.briskStepsPerMin = 100.0,
     this.hrWindow = const Duration(minutes: 15),
-  })  : _steps = (samples.where((s) => s.type == 'steps').toList()
+  })  : _steps = (samples.where((s) => s.type == HealthMetric.steps).toList()
           ..sort((a, b) => a.time.compareTo(b.time))),
-        _exercise = (samples.where((s) => s.type == 'exercise').toList()
+        _exercise = (samples.where((s) => s.type == HealthMetric.exercise).toList()
           ..sort((a, b) => a.time.compareTo(b.time))),
-        _hr = (samples.where((s) => s.type == 'heartRate').toList()
+        _hr = (samples.where((s) => s.type == HealthMetric.heartRate).toList()
           ..sort((a, b) => a.time.compareTo(b.time))),
-        _restingHr = (samples.where((s) => s.type == 'restingHr').toList()
+        _restingHr = (samples.where((s) => s.type == HealthMetric.restingHr).toList()
           ..sort((a, b) => a.time.compareTo(b.time)));
 
   /// Steps are summed over this trailing window to estimate current movement.

@@ -26,13 +26,13 @@ class ContextBuilder {
     if (today.isEmpty && baseline.isEmpty) return null;
     final ref = now ?? DateTime.now();
 
-    double? latest(List<HealthSample> src, String type) {
+    double? latest(List<HealthSample> src, HealthMetric type) {
       final matching = [for (final s in src) if (s.type == type) s]
         ..sort((a, b) => a.time.compareTo(b.time));
       return matching.isEmpty ? null : matching.last.value;
     }
 
-    double median(List<HealthSample> src, String type) {
+    double median(List<HealthSample> src, HealthMetric type) {
       final vals = [for (final s in src) if (s.type == type) s.value]..sort();
       if (vals.isEmpty) return 0;
       final n = vals.length;
@@ -41,35 +41,35 @@ class ContextBuilder {
           : (vals[n ~/ 2 - 1] + vals[n ~/ 2]) / 2;
     }
 
-    final sleepHours = latest(today, 'sleepHours') ?? 7.5;
-    final sleepEfficiency = latest(today, 'sleepEfficiency') ?? 0.9;
-    final hrv = latest(today, 'hrvRmssd') ?? median(baseline, 'hrvRmssd');
-    final restingHr = latest(today, 'restingHr') ?? median(baseline, 'restingHr');
+    final sleepHours = latest(today, HealthMetric.sleepHours) ?? 7.5;
+    final sleepEfficiency = latest(today, HealthMetric.sleepEfficiency) ?? 0.9;
+    final hrv = latest(today, HealthMetric.hrvRmssd) ?? median(baseline, HealthMetric.hrvRmssd);
+    final restingHr = latest(today, HealthMetric.restingHr) ?? median(baseline, HealthMetric.restingHr);
 
     // Yesterday's exercise load: total workout minutes in the last 36h, normalised
     // (~90 min of activity → full load).
     var exerciseMinutes = 0.0;
     for (final s in today) {
-      if (s.type == 'exercise') exerciseMinutes += s.value;
+      if (s.type == HealthMetric.exercise) exerciseMinutes += s.value;
     }
     final exerciseLoad = (exerciseMinutes / 90.0).clamp(0.0, 1.0);
 
-    final baselineHrv = median(baseline, 'hrvRmssd');
-    final baselineRestingHr = median(baseline, 'restingHr');
+    final baselineHrv = median(baseline, HealthMetric.hrvRmssd);
+    final baselineRestingHr = median(baseline, HealthMetric.restingHr);
 
     // Extended signals.
-    final respiratory = latest(today, 'respiratoryRate') ??
-        median(baseline, 'respiratoryRate');
-    final spo2 = latest(today, 'spo2') ?? median(baseline, 'spo2');
-    final bodyTemp = latest(today, 'bodyTempC') ?? median(baseline, 'bodyTempC');
+    final respiratory = latest(today, HealthMetric.respiratoryRate) ??
+        median(baseline, HealthMetric.respiratoryRate);
+    final spo2 = latest(today, HealthMetric.spo2) ?? median(baseline, HealthMetric.spo2);
+    final bodyTemp = latest(today, HealthMetric.bodyTempC) ?? median(baseline, HealthMetric.bodyTempC);
     var activeEnergy = 0.0;
     for (final s in today) {
-      if (s.type == 'activeEnergyKcal') activeEnergy += s.value;
+      if (s.type == HealthMetric.activeEnergyKcal) activeEnergy += s.value;
     }
     // Baseline active energy: median of per-day totals over the baseline window.
     final energyByDay = <DateTime, double>{};
     for (final s in baseline) {
-      if (s.type != 'activeEnergyKcal') continue;
+      if (s.type != HealthMetric.activeEnergyKcal) continue;
       final d = DateTime(s.time.year, s.time.month, s.time.day);
       energyByDay[d] = (energyByDay[d] ?? 0) + s.value;
     }
@@ -98,15 +98,15 @@ class ContextBuilder {
       spo2: spo2,
       bodyTempC: bodyTemp,
       activeEnergyKcal: activeEnergy,
-      baselineRespiratoryRate: median(baseline, 'respiratoryRate'),
-      baselineSpo2: median(baseline, 'spo2'),
-      baselineBodyTempC: median(baseline, 'bodyTempC'),
+      baselineRespiratoryRate: median(baseline, HealthMetric.respiratoryRate),
+      baselineSpo2: median(baseline, HealthMetric.spo2),
+      baselineBodyTempC: median(baseline, HealthMetric.bodyTempC),
       baselineActiveEnergyKcal: baselineEnergy,
     );
   }
 
   static double _lutealFromFlow(List<HealthSample> samples, DateTime now) {
-    final flows = [for (final s in samples) if (s.type == 'menstruationFlow') s.time]
+    final flows = [for (final s in samples) if (s.type == HealthMetric.menstruationFlow) s.time]
       ..sort();
     if (flows.isEmpty) return 0;
     // Most recent period start = the earliest flow day of the latest contiguous run.

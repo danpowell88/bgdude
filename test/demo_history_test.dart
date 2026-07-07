@@ -1,3 +1,4 @@
+import 'package:bgdude/data/health_sync.dart';
 import 'package:bgdude/dev/demo_history.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,17 +19,17 @@ void main() {
     });
 
     test('has daily sleep + HRV + resting-HR + exercise health samples', () {
-      final sleep = b.health.where((h) => h.type == 'sleepHours').length;
+      final sleep = b.health.where((h) => h.type == HealthMetric.sleepHours).length;
       expect(sleep, greaterThanOrEqualTo(14));
-      expect(b.health.any((h) => h.type == 'hrvRmssd'), isTrue);
-      expect(b.health.any((h) => h.type == 'restingHr'), isTrue);
-      expect(b.health.any((h) => h.type == 'exercise'), isTrue);
-      expect(b.health.any((h) => h.type == 'steps'), isTrue);
+      expect(b.health.any((h) => h.type == HealthMetric.hrvRmssd), isTrue);
+      expect(b.health.any((h) => h.type == HealthMetric.restingHr), isTrue);
+      expect(b.health.any((h) => h.type == HealthMetric.exercise), isTrue);
+      expect(b.health.any((h) => h.type == HealthMetric.steps), isTrue);
     });
 
     test('sleep varies across days so correlations have signal', () {
       final sleeps = b.health
-          .where((h) => h.type == 'sleepHours')
+          .where((h) => h.type == HealthMetric.sleepHours)
           .map((h) => h.value)
           .toSet();
       expect(sleeps.length, greaterThan(1));

@@ -78,7 +78,7 @@ class PostMealMovementAnalyzer {
       final end = m.eatenAt.add(window);
       var s = 0.0;
       for (final st in steps) {
-        if (st.type != 'steps') continue;
+        if (st.type != HealthMetric.steps) continue;
         if (!st.time.isBefore(m.eatenAt) && st.time.isBefore(end)) s += st.value;
       }
       xs.add(s);

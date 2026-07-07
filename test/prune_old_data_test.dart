@@ -28,8 +28,8 @@ void main() {
     await repo.saveBolus(BolusEvent(time: old, units: 3));
     // Health: one old (>180d), one recent.
     await repo.saveHealth([
-      HealthSample(time: old, type: 'sleepHours', value: 7),
-      HealthSample(time: recent, type: 'sleepHours', value: 8),
+      HealthSample(time: old, type: HealthMetric.sleepHours, value: 7),
+      HealthSample(time: recent, type: HealthMetric.sleepHours, value: 8),
     ]);
     // Predictions: one old (>90d), one recent.
     await repo.savePrediction(StoredPrediction(
