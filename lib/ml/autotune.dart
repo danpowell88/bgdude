@@ -19,6 +19,7 @@
 library;
 
 import '../analytics/insulin_math.dart';
+import 'attribution_kernel.dart';
 import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
 
@@ -99,36 +100,32 @@ class Autotune {
       winMinutes = 0;
     }
 
-    for (var i = 1; i < sorted.length; i++) {
-      final prev = sorted[i - 1];
-      final cur = sorted[i];
-      final gapMin = cur.time.difference(prev.time).inMinutes;
-      if (gapMin <= 0 || gapMin > 15) {
+    // TASK-137: the per-step attribution facts come from the shared kernel;
+    // this loop keeps only the windowing policy.
+    final kernel = AttributionKernel(stepMinutes: stepMinutes);
+    for (final step in kernel.steps(
+        sortedCgm: sorted,
+        boluses: boluses,
+        basal: basal,
+        carbs: carbs,
+        settings: settings,
+        iob: iob)) {
+      if (step.isGapBreak) {
         closeWindow(); // sensor gap breaks the contiguous stretch.
         continue;
       }
-
       // Only use windows with no active carb absorption.
-      final carbActive = carbs.any((c) {
-        final since = cur.time.difference(c.time).inMinutes;
-        return since >= -stepMinutes && since <= c.absorptionMinutes;
-      });
-      if (carbActive) {
+      if (step.carbActive) {
         closeWindow();
         continue;
       }
-      carbFreeMinutes += gapMin;
-
-      final seg = settings.segmentAt(cur.time);
-      final act = iob.total(boluses, basal, cur.time).activityUnitsPerMin;
-      final modelledDelta = -act * seg.isf * gapMin; // negative = drop
-      final observedDelta = cur.mgdl - prev.mgdl;
+      carbFreeMinutes += step.gapMinutes;
 
       // Only attribute when insulin is meaningfully active (avoid divide noise).
-      if (modelledDelta.abs() < 0.5) continue;
-      winObserved += observedDelta;
-      winModelled += modelledDelta;
-      winMinutes += gapMin;
+      if (step.modelledDelta.abs() < 0.5) continue;
+      winObserved += step.observedDelta;
+      winModelled += step.modelledDelta;
+      winMinutes += step.gapMinutes;
       if (winMinutes >= windowMinutes) closeWindow();
     }
     closeWindow();

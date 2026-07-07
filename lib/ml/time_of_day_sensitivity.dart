@@ -24,6 +24,7 @@ library;
 import 'dart:math' as math;
 
 import '../analytics/insulin_math.dart';
+import 'attribution_kernel.dart';
 import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
 
@@ -129,33 +130,28 @@ class TimeOfDaySensitivityAnalyzer {
     final modelled = List.filled(bucketCount, 0.0);
     final minutes = List.filled(bucketCount, 0);
 
-    for (var i = 1; i < sorted.length; i++) {
-      final prev = sorted[i - 1];
-      final cur = sorted[i];
-      if (cur.time.isBefore(dayStart) || !cur.time.isBefore(dayEnd)) continue;
-      final gapMin = cur.time.difference(prev.time).inMinutes;
-      if (gapMin <= 0 || gapMin > 15) continue; // skip gaps
-
+    // TASK-137: per-step facts from the shared kernel; only the bucketing
+    // policy lives here.
+    final kernel = AttributionKernel(stepMinutes: stepMinutes);
+    for (final step in kernel.steps(
+        sortedCgm: sorted,
+        boluses: boluses,
+        basal: basal,
+        carbs: carbs,
+        settings: settings,
+        iob: iob)) {
+      if (step.isGapBreak) continue; // skip gaps
+      if (step.time.isBefore(dayStart) || !step.time.isBefore(dayEnd)) continue;
       // Only use windows with no active carb absorption.
-      final carbActive = carbs.any((c) {
-        final since = cur.time.difference(c.time).inMinutes;
-        return since >= -stepMinutes && since <= c.absorptionMinutes;
-      });
-      if (carbActive) continue;
-
-      final seg = settings.segmentAt(cur.time);
-      final act = iob.total(boluses, basal, cur.time).activityUnitsPerMin;
-      final modelledDelta = -act * seg.isf * gapMin; // negative = drop
-      final observedDelta = cur.mgdl - prev.mgdl;
-
+      if (step.carbActive) continue;
       // Only attribute when insulin is meaningfully active (avoid divide noise).
-      if (modelledDelta.abs() < 0.5) continue;
+      if (step.modelledDelta.abs() < 0.5) continue;
 
-      final minuteOfDay = cur.time.hour * 60 + cur.time.minute;
+      final minuteOfDay = step.time.hour * 60 + step.time.minute;
       final bucket = math.min(minuteOfDay ~/ bucketMinutes, bucketCount - 1);
-      observed[bucket] += observedDelta;
-      modelled[bucket] += modelledDelta;
-      minutes[bucket] += gapMin;
+      observed[bucket] += step.observedDelta;
+      modelled[bucket] += step.modelledDelta;
+      minutes[bucket] += step.gapMinutes;
     }
 
     final samples = <BucketObservation>[];

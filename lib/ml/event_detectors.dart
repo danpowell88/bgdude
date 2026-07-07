@@ -6,6 +6,7 @@ library;
 import 'dart:math' as math;
 
 import '../analytics/insulin_math.dart';
+import 'attribution_kernel.dart';
 import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
 
@@ -51,24 +52,31 @@ class MealDetector {
     DateTime? candidateStart;
     var accumulatedRise = 0.0;
 
-    for (var i = 1; i < sorted.length; i++) {
-      final prev = sorted[i - 1];
-      final cur = sorted[i];
-      final gap = cur.time.difference(prev.time).inMinutes;
-      if (gap <= 0 || gap > 15) {
+    // TASK-137: per-step facts from the shared kernel (no carb gating here —
+    // an unannounced meal is exactly what this detector hunts).
+    DateTime prevTime = sorted.first.time;
+    for (final step in const AttributionKernel().steps(
+        sortedCgm: sorted,
+        boluses: boluses,
+        basal: basal,
+        settings: settings,
+        iob: _iob)) {
+      final gap = step.gapMinutes;
+      if (step.isGapBreak) {
         sustained = 0;
         candidateStart = null;
         accumulatedRise = 0;
+        prevTime = step.time;
         continue;
       }
-      final roc = (cur.mgdl - prev.mgdl) / gap;
-      final seg = settings.segmentAt(cur.time);
-      final act = _iob.total(boluses, basal, cur.time).activityUnitsPerMin;
-      final insulinDrag = act * seg.isf; // mg/dL/min the insulin is pulling down
+      final roc = step.observedDelta / gap;
+      final seg = step.segment!;
+      final insulinDrag =
+          step.insulinDragPerMin; // mg/dL/min the insulin is pulling down
       final unexplainedRise = roc + insulinDrag; // add back what insulin subtracted
 
       if (unexplainedRise >= riseThresholdMgdlPerMin) {
-        final start = candidateStart ?? prev.time;
+        final start = candidateStart ?? prevTime;
         candidateStart = start;
         sustained += gap;
         accumulatedRise += unexplainedRise * gap;
@@ -90,6 +98,7 @@ class MealDetector {
         candidateStart = null;
         accumulatedRise = 0;
       }
+      prevTime = step.time;
     }
     return out;
   }
@@ -151,9 +160,15 @@ class CompressionLowDetector {
 
       // A real insulin-driven low wouldn't rebound sharply while IOB is high. If IOB
       // activity can't explain such a fast drop, mark as compression artifact.
-      final seg = settings.segmentAt(cur.time);
-      final act = _iob.total(boluses, basal, cur.time).activityUnitsPerMin;
-      final insulinDrop = act * seg.isf; // mg/dL/min explainable by insulin
+      // TASK-137: the drag computation is the shared kernel piece (this
+      // detector's i-1/i/i+1 shape doesn't iterate pairs).
+      final insulinDrop = AttributionKernel.insulinDragPerMinAt(
+        iob: _iob,
+        boluses: boluses,
+        basal: basal,
+        segment: settings.segmentAt(cur.time),
+        t: cur.time,
+      ); // mg/dL/min explainable by insulin
       final unexplained = dropRate - insulinDrop;
       if (unexplained < 1.0) continue; // insulin explains it → probably real
 
