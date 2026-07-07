@@ -29,7 +29,8 @@ void main() {
 
   test('a repository swap re-runs the report providers (guards ref.watch)',
       () async {
-    final now = DateTime.now();
+    // reportRange/pending-confirmations read the wall clock (TASK-39).
+    final now = DateTime.now(); // now-ok: providers are wall-clock internally
     final repoA = InMemoryHistoryRepository();
     await repoA.saveCgm([
       for (var i = 0; i < 24; i++)
@@ -75,7 +76,7 @@ void main() {
     final baseline = repo.cgmReads;
     expect(baseline, greaterThan(0));
 
-    final t0 = DateTime.now();
+    final t0 = DateTime.now(); // now-ok: scan window is wall-clock relative
     snapshots.add(PumpSnapshot(time: t0, cgmMgdl: 120, cgmTime: t0, iobUnits: 1.0));
     await Future<void>.delayed(Duration.zero);
     await container.read(pendingConfirmationsProvider.future);

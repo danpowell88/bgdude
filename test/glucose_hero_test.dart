@@ -13,7 +13,7 @@ void main() {
       mgdl: 120,
       trend: GlucoseTrend.flat,
       unit: GlucoseUnit.mmol,
-      time: DateTime.now(),
+      time: DateTime(2026, 7, 4, 12), // fixed instant (TASK-170)
       dayTrend: List<double>.generate(288, (i) => 90 + (i % 60).toDouble()),
     )));
 

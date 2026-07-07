@@ -19,8 +19,9 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     repo = InMemoryHistoryRepository();
-    // Anchor the simulated day to real "now" so it lands in the trainer's read window.
-    now = DateTime.now();
+    // Anchor the simulated day to real "now" so it lands in the trainer's read
+    // window — AppJobs uses the wall clock internally until TASK-39 injects it.
+    now = DateTime.now(); // now-ok: production reads the wall clock (TASK-39)
     final day = SimulatedDay.generate(now: now, seed: 5);
     await repo.saveCgm(day.cgm);
     for (final b in day.boluses) {
