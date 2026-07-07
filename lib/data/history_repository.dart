@@ -338,18 +338,29 @@ class DriftHistoryRepository implements HistoryRepository {
           ..where((t) => t.start.isSmallerOrEqualValue(to) &
               t.end.isBiggerOrEqualValue(from)))
         .get();
-    return [
-      for (final r in rows)
-        Annotation(
-          id: r.id,
-          kind: AnnotationKind.values[r.kind],
-          start: r.start,
-          end: r.end,
-          carbsGrams: r.carbsGrams,
-          note: r.note,
-          confidence: r.confidence,
-        ),
-    ];
+    final out = <Annotation>[];
+    for (final r in rows) {
+      // TASK-268: kind is persisted as a raw enum index (saveAnnotation writes
+      // a.kind.index) -- an out-of-range value (an AnnotationKind removed/reordered,
+      // the exact enum-drift scenario this repository already guards elsewhere, or a
+      // corrupt row) must skip just that row, not abort the whole read and silently
+      // drop every confirmed annotation (reports + training labels read this).
+      if (r.kind < 0 || r.kind >= AnnotationKind.values.length) {
+        appLog.error('persistence',
+            'annotation "${r.id}" has an out-of-range kind index (${r.kind}) — skipped');
+        continue;
+      }
+      out.add(Annotation(
+        id: r.id,
+        kind: AnnotationKind.values[r.kind],
+        start: r.start,
+        end: r.end,
+        carbsGrams: r.carbsGrams,
+        note: r.note,
+        confidence: r.confidence,
+      ));
+    }
+    return out;
   }
 
   @override
