@@ -118,12 +118,8 @@ class NotificationPrefsNotifier extends PersistedStateNotifier<NotificationPrefs
   NotificationPrefsNotifier() : super(NotificationPrefs.defaults());
   static const _key = 'notification_prefs_v1';
   @override
-  Future<NotificationPrefs?> load() async {
-    final raw = await KvStore.getString(_key);
-    return raw == null
-        ? null
-        : NotificationPrefs.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-  }
+  Future<NotificationPrefs?> load() =>
+      restoreJsonGuarded(key: _key, fromJson: NotificationPrefs.fromJson);
 
   @override
   Future<void> store(NotificationPrefs v) =>
@@ -263,12 +259,8 @@ class UserProfileNotifier extends PersistedStateNotifier<UserProfile> {
   UserProfileNotifier() : super(const UserProfile());
   static const _key = 'user_profile_v1';
   @override
-  Future<UserProfile?> load() async {
-    final raw = await KvStore.getString(_key);
-    return raw == null
-        ? null
-        : UserProfile.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-  }
+  Future<UserProfile?> load() =>
+      restoreJsonGuarded(key: _key, fromJson: UserProfile.fromJson);
 
   @override
   Future<void> store(UserProfile v) =>
@@ -290,12 +282,13 @@ class AlertThresholdsNotifier extends PersistedStateNotifier<AlertThresholds> {
   AlertThresholdsNotifier() : super(const AlertThresholds());
   static const _key = 'alert_thresholds_v1';
   @override
-  Future<AlertThresholds?> load() async {
-    final raw = await KvStore.getString(_key);
-    return raw == null
-        ? null
-        : AlertThresholds.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-  }
+  Future<AlertThresholds?> load() => restoreJsonGuarded(
+        key: _key,
+        fromJson: AlertThresholds.fromJson,
+        resetNotice:
+            'Your alert thresholds could not be read and were reset to the '
+            'defaults — review them in Settings before relying on alerts.',
+      );
 
   @override
   Future<void> store(AlertThresholds t) =>
@@ -404,12 +397,13 @@ class TherapyNotifier extends PersistedStateNotifier<TherapySettings> {
   TherapyNotifier() : super(TherapySettings.placeholder());
   static const _key = 'therapy_settings_v1';
   @override
-  Future<TherapySettings?> load() async {
-    final raw = await KvStore.getString(_key);
-    return raw == null
-        ? null
-        : TherapySettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-  }
+  Future<TherapySettings?> load() => restoreJsonGuarded(
+        key: _key,
+        fromJson: TherapySettings.fromJson,
+        resetNotice:
+            'Your therapy settings (ISF, carb ratio, targets) could not be read '
+            'and were reset — review them before trusting any dose suggestion.',
+      );
 
   @override
   Future<void> store(TherapySettings v) =>
@@ -897,9 +891,12 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
 
   Future<void> _restore() async {
     final raw = await KvStore.getString(_prefsKey);
-    if (raw != null) {
+    if (raw == null) return;
+    try {
       _controller.mode = IllnessMode.decode(raw);
       state = _controller.mode;
+    } catch (e) {
+      await quarantineCorruptValue(_prefsKey, raw, e);
     }
   }
 
@@ -973,10 +970,9 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
   static const _key = 'medication_mode_v1';
 
   Future<void> _restore() async {
-    final raw = await KvStore.getString(_key);
-    if (raw != null) {
-      state = MedicationMode.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    }
+    final restored = await restoreJsonGuarded(
+        key: _key, fromJson: MedicationMode.fromJson);
+    if (restored != null) state = restored;
   }
 
   Future<void> _persist() async =>
@@ -1045,12 +1041,8 @@ class WeatherSettingsNotifier extends PersistedStateNotifier<WeatherSettings> {
   WeatherSettingsNotifier() : super(const WeatherSettings());
   static const _key = 'weather_settings_v1';
   @override
-  Future<WeatherSettings?> load() async {
-    final raw = await KvStore.getString(_key);
-    return raw == null
-        ? null
-        : WeatherSettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-  }
+  Future<WeatherSettings?> load() =>
+      restoreJsonGuarded(key: _key, fromJson: WeatherSettings.fromJson);
 
   @override
   Future<void> store(WeatherSettings v) =>
@@ -1239,12 +1231,16 @@ class MealLibraryNotifier extends StateNotifier<MealLibrary> {
       return;
     }
     if (raw != null && raw.isNotEmpty) {
-      state = MealLibrary(
-        meals: [
-          for (final r in raw)
-            SavedMeal.fromJson(jsonDecode(r) as Map<String, dynamic>),
-        ],
-      );
+      // TASK-188: decode per item — one corrupt entry must not wipe the library.
+      final meals = <SavedMeal>[];
+      for (final r in raw) {
+        try {
+          meals.add(SavedMeal.fromJson(jsonDecode(r) as Map<String, dynamic>));
+        } catch (e) {
+          await quarantineCorruptValue(_prefsKey, r, e);
+        }
+      }
+      state = MealLibrary(meals: meals);
     }
   }
 
@@ -1306,12 +1302,8 @@ class NightscoutConfigNotifier extends PersistedStateNotifier<NightscoutConfig> 
   NightscoutConfigNotifier() : super(const NightscoutConfig());
   static const _key = 'nightscout_config_v1';
   @override
-  Future<NightscoutConfig?> load() async {
-    final raw = await KvStore.getString(_key);
-    return raw == null
-        ? null
-        : NightscoutConfig.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-  }
+  Future<NightscoutConfig?> load() =>
+      restoreJsonGuarded(key: _key, fromJson: NightscoutConfig.fromJson);
 
   @override
   Future<void> store(NightscoutConfig v) =>

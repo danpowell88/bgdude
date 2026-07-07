@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/app_flags.dart';
+import '../state/persisted_state_notifier.dart';
 import '../state/providers.dart';
 import 'bolus_advisor_screen.dart';
 import 'home_screen.dart';
@@ -66,32 +67,50 @@ class _MainShellState extends ConsumerState<MainShell> {
       _ => const MealLibraryScreen(embedded: true),
     };
     // P1-6: a persistent banner when storage failed to open (running in-memory).
-    final body = dbError == null
-        ? tab
-        : Column(
-            children: [
+    // TASK-188: plus one per settings-reset notice (corrupt persisted state) —
+    // clinical settings must be reviewed, not silently defaulted. Dismissible.
+    final body = ValueListenableBuilder<List<String>>(
+      valueListenable: CorruptStateNotices.notices,
+      builder: (context, notices, _) {
+        final banners = [
+          if (dbError != null) (message: dbError, dismissible: false),
+          for (final n in notices) (message: n, dismissible: true),
+        ];
+        if (banners.isEmpty) return tab;
+        final cs = Theme.of(context).colorScheme;
+        return Column(
+          children: [
+            for (final b in banners)
               Material(
-                color: Theme.of(context).colorScheme.errorContainer,
+                color: cs.errorContainer,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Row(
                     children: [
                       Icon(Icons.warning_amber_rounded,
-                          color: Theme.of(context).colorScheme.onErrorContainer),
+                          color: cs.onErrorContainer),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(dbError,
-                            style: TextStyle(
-                                color:
-                                    Theme.of(context).colorScheme.onErrorContainer)),
+                        child: Text(b.message,
+                            style: TextStyle(color: cs.onErrorContainer)),
                       ),
+                      if (b.dismissible)
+                        IconButton(
+                          icon: Icon(Icons.close,
+                              size: 18, color: cs.onErrorContainer),
+                          tooltip: 'Dismiss',
+                          onPressed: () =>
+                              CorruptStateNotices.dismiss(b.message),
+                        ),
                     ],
                   ),
                 ),
               ),
-              Expanded(child: tab),
-            ],
-          );
+            Expanded(child: tab),
+          ],
+        );
+      },
+    );
 
     return Scaffold(
       appBar: AppBar(

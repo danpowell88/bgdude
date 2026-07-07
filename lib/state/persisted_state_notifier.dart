@@ -7,9 +7,77 @@
 ///
 /// Subclasses implement [load]/[store] with whatever KvStore accessors fit their value
 /// (string+JSON, bool, double, …), and call [persist] to set + save.
+///
+/// TASK-188: corruption is LOUD, never silent. [restoreJsonGuarded] is the one decode
+/// path for JSON blobs — on a corrupt value it logs an error, preserves the raw bytes
+/// under `<key>.corrupt` for diagnosis, optionally posts a user-visible reset notice,
+/// and returns null so the caller's defaults apply explicitly.
 library;
 
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../data/kv_store.dart';
+import '../logging/app_log.dart';
+
+/// User-visible notices that persisted settings were reset after corruption
+/// (TASK-188). The main shell shows these as a persistent banner; clinical
+/// settings (therapy, alert thresholds) must be reviewed, not silently defaulted.
+class CorruptStateNotices {
+  static final ValueNotifier<List<String>> notices =
+      ValueNotifier(const <String>[]);
+
+  static void add(String message) => notices.value = [...notices.value, message];
+
+  static void dismiss(String message) =>
+      notices.value = [for (final m in notices.value) if (m != message) m];
+
+  @visibleForTesting
+  static void clear() => notices.value = const <String>[];
+}
+
+/// Decode the JSON blob stored at [key], or null when nothing is stored.
+/// On a corrupt/mis-shaped value: log loudly, quarantine the raw string at
+/// `<key>.corrupt` (the original key is left to be overwritten by the next save),
+/// post [resetNotice] when given, and return null so defaults apply explicitly.
+Future<T?> restoreJsonGuarded<T>({
+  required String key,
+  required T Function(Map<String, dynamic>) fromJson,
+  String? resetNotice,
+}) async {
+  final raw = await KvStore.getString(key);
+  if (raw == null) return null;
+  try {
+    return fromJson(jsonDecode(raw) as Map<String, dynamic>);
+  } catch (e) {
+    await quarantineCorruptValue(key, raw, e, resetNotice: resetNotice);
+    return null;
+  }
+}
+
+/// Shared corruption handling for restore paths that decode by hand (lists,
+/// custom encodings): loud log + raw preserved at `<key>.corrupt` + optional
+/// user-visible notice.
+Future<void> quarantineCorruptValue(
+  String key,
+  String raw,
+  Object error, {
+  String? resetNotice,
+}) async {
+  appLog.error(
+      'persistence',
+      'corrupt persisted state "$key" — using defaults; raw value preserved at '
+          '"$key.corrupt"',
+      error: error);
+  try {
+    await KvStore.setString('$key.corrupt', raw);
+  } catch (e) {
+    appLog.error('persistence', 'quarantine write failed for "$key"', error: e);
+  }
+  if (resetNotice != null) CorruptStateNotices.add(resetNotice);
+}
 
 abstract class PersistedStateNotifier<T> extends StateNotifier<T> {
   PersistedStateNotifier(super.initial) {
@@ -31,8 +99,11 @@ abstract class PersistedStateNotifier<T> extends StateNotifier<T> {
     final T? loaded;
     try {
       loaded = await load();
-    } catch (_) {
-      return; // corrupt/legacy payload — keep the default
+    } catch (e) {
+      // TASK-188: never silent — a failed restore means running on defaults.
+      appLog.error('persistence', '$runtimeType restore failed — keeping defaults',
+          error: e);
+      return;
     }
     // Re-check AFTER the await: a persist() may have landed while we were loading, in which
     // case the user's value wins and the stored (stale) one must not overwrite it.
