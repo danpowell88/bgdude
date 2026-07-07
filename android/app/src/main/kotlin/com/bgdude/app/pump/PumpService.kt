@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -16,6 +17,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.bgdude.app.CrashLogger
+import com.bgdude.app.MainActivity
 import com.bgdude.app.widget.WidgetNativePush
 import com.bgdude.app.garmin.GarminIntegration
 
@@ -197,7 +199,26 @@ class PumpService : Service(), PumpCommHandler.Listener {
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setContentIntent(mainActivityContentIntent())
             .build()
+
+    /**
+     * TASK-203: tapping either the ongoing connection notification or the urgent-low
+     * backstop must open the app instead of doing nothing — the backstop in
+     * particular exists for exactly the scenario where the Flutter UI is dead, so
+     * tapping through to relaunch it is the whole point. `FLAG_IMMUTABLE` is
+     * required on API 31+ for a PendingIntent the app itself doesn't need to mutate.
+     */
+    private fun mainActivityContentIntent(): PendingIntent {
+        val intent = Intent(this, MainActivity::class.java)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        return PendingIntent.getActivity(
+            this,
+            CONTENT_INTENT_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
 
     private fun createChannel() {
         val nm = getSystemService(NotificationManager::class.java)
@@ -242,6 +263,7 @@ class PumpService : Service(), PumpCommHandler.Listener {
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
+            .setContentIntent(mainActivityContentIntent())
             .build()
         try {
             getSystemService(NotificationManager::class.java)
@@ -255,6 +277,11 @@ class PumpService : Service(), PumpCommHandler.Listener {
         private const val TAG = "PumpService"
         private const val CHANNEL_ID = "pump_connection"
         private const val NOTIF_ID = 42
+
+        // TASK-203: shared request code for the MainActivity content intent — both
+        // notifications resolve to the same PendingIntent (same intent + code =
+        // FLAG_UPDATE_CURRENT just refreshes it rather than creating duplicates).
+        private const val CONTENT_INTENT_REQUEST_CODE = 44
 
         // TASK-37: native urgent-low safety net.
         private const val URGENT_CHANNEL_ID = "urgent_low_backstop"
