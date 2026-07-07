@@ -95,13 +95,19 @@ class HealthFeatureSampler {
 
   /// Heart rate relative to the resting baseline at [t]: (hr − resting)/resting, clamped.
   /// 0 when there's no baseline or no recent reading.
+  ///
+  /// TASK-132: BACKWARD-ONLY — the nearest reading at or before [t] within
+  /// [hrWindow]. The old bidirectional ±window let historical training rows read
+  /// a FUTURE heart-rate sample (train/serve skew: live serving only has the
+  /// past), inflating offline accuracy.
   double _hrRelAt(DateTime t) {
     final baseline = _restingBaselineAt(t);
     if (baseline <= 0 || _hr.isEmpty) return 0;
     HealthSample? nearest;
     var bestGap = hrWindow;
     for (final s in _hr) {
-      final gap = (s.time.difference(t)).abs();
+      if (s.time.isAfter(t)) continue; // never read the future
+      final gap = t.difference(s.time);
       if (gap <= bestGap) {
         bestGap = gap;
         nearest = s;

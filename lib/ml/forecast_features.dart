@@ -23,7 +23,10 @@ class ForecastFeatures {
   /// v4: dropped the sensitivity-multiplier slot — both trainer and server always
   /// passed the neutral context, so it was a constant-1.0 column the GBM could
   /// never split on.
-  static const int version = 4;
+  /// v5: hr_rel became backward-only (TASK-132) — the old ±window could read a
+  /// future heart-rate sample in training rows, so models trained on v4 features
+  /// carry train/serve skew and are discarded.
+  static const int version = 5;
 
   static const List<String> names = [
     'bg/100',

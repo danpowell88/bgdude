@@ -53,6 +53,44 @@ void main() {
       expect(withFuture, closeTo(before, 1e-9));
     });
 
+    test('TASK-132: a FUTURE-only heart-rate sample is never used (hr_rel = 0)',
+        () {
+      // The old bidirectional ±15 min lookup would happily read this reading
+      // from 5 minutes in the future — information live serving never has.
+      final s = HealthFeatureSampler([
+        HealthSample(
+            time: t0.subtract(const Duration(days: 1)),
+            type: HealthMetric.restingHr,
+            value: 60),
+        HealthSample(
+            time: t0.add(const Duration(minutes: 5)),
+            type: HealthMetric.heartRate,
+            value: 150),
+      ]);
+      expect(s.featuresAt(t0)[2], 0,
+          reason: 'backward-only: no past reading -> no hr_rel signal');
+    });
+
+    test('TASK-132: a past reading within the window still counts', () {
+      final s = HealthFeatureSampler([
+        HealthSample(
+            time: t0.subtract(const Duration(days: 1)),
+            type: HealthMetric.restingHr,
+            value: 60),
+        HealthSample(
+            time: t0.subtract(const Duration(minutes: 10)),
+            type: HealthMetric.heartRate,
+            value: 90),
+        // A closer FUTURE reading must not win over the past one.
+        HealthSample(
+            time: t0.add(const Duration(minutes: 1)),
+            type: HealthMetric.heartRate,
+            value: 150),
+      ]);
+      // (90-60)/60 = 0.5 — from the past sample, not 1.0 from the future one.
+      expect(s.featuresAt(t0)[2], closeTo(0.5, 1e-9));
+    });
+
     test('P2-7: activity sums exactly the trailing (from, t] window', () {
       final s = HealthFeatureSampler([
         HealthSample( // 40 min ago — outside the 30-min window
@@ -133,8 +171,9 @@ void main() {
   });
 
   group('ForecastFeatures with health', () {
-    test('vector length and names include the health features (v4)', () {
-      expect(ForecastFeatures.version, 4);
+    test('vector length and names include the health features (v5)', () {
+      // v5: hr_rel became backward-only (TASK-132).
+      expect(ForecastFeatures.version, 5);
       final v = ForecastFeatures.build(
         now: DateTime(2026, 7, 4, 9),
         currentMgdl: 140,
