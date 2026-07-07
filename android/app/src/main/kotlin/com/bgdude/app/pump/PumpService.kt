@@ -101,6 +101,21 @@ class PumpService : Service(), PumpCommHandler.Listener {
         return START_STICKY // restart if killed
     }
 
+    /**
+     * TASK-202: repeated restart cycles (crash, OS kill, foreground-service
+     * revocation) would otherwise accumulate BLE scan state and Connect IQ
+     * connections indefinitely — nothing previously stopped `commHandler` or shut
+     * down the Garmin SDK when the service itself was torn down. `stop()` was only
+     * ever reachable via the command channel, which the OS destroying the service
+     * doesn't go through.
+     */
+    override fun onDestroy() {
+        commHandler?.stop()
+        commHandler = null
+        GarminIntegration.shutdown()
+        super.onDestroy()
+    }
+
     fun startScan(macFilter: String?) = commHandler?.start(macFilter)
     fun stopScan() = commHandler?.stop()
     fun requestStatus() = commHandler?.requestFullStatus()
