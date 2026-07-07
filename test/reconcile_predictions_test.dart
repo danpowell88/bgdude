@@ -60,4 +60,49 @@ void main() {
     final updated = await repo.reconcilePredictions(base.add(const Duration(hours: 1)));
     expect(updated, 0);
   });
+
+  test('TASK-133: a compression-low nadir is never chosen as ground truth',
+      () async {
+    final base = DateTime(2026, 7, 7, 2); // overnight — the classic case
+    final target = base.add(const Duration(minutes: 30));
+    await repo.saveCgm([
+      // The artifact sits EXACTLY on the target time with a scary value...
+      CgmSample(time: target, mgdl: 48, compressionLow: true),
+      // ...while the real reading is 4 minutes later.
+      CgmSample(time: target.add(const Duration(minutes: 4)), mgdl: 112),
+    ]);
+    await repo.savePrediction(StoredPrediction(
+        madeAt: base, horizonMinutes: 30, predictedMgdl: 110,
+        lowerMgdl: 95, upperMgdl: 125, modelId: 'test'));
+
+    final updated =
+        await repo.reconcilePredictions(base.add(const Duration(minutes: 60)));
+    expect(updated, 1);
+    final scored = await db.select(db.predictions).get();
+    expect(scored.single.actualMgdl, 112,
+        reason: 'the artifact must be skipped, not scored against');
+  });
+
+  test('TASK-133: reconciliation is skipped when only artifact rows exist',
+      () async {
+    final base = DateTime(2026, 7, 7, 2);
+    final target = base.add(const Duration(minutes: 30));
+    await repo.saveCgm([
+      CgmSample(time: target, mgdl: 48, compressionLow: true),
+      CgmSample(
+          time: target.add(const Duration(minutes: 2)),
+          mgdl: 90,
+          sensorWarmup: true),
+    ]);
+    await repo.savePrediction(StoredPrediction(
+        madeAt: base, horizonMinutes: 30, predictedMgdl: 110,
+        lowerMgdl: 95, upperMgdl: 125, modelId: 'test'));
+
+    final updated =
+        await repo.reconcilePredictions(base.add(const Duration(minutes: 60)));
+    expect(updated, 0);
+    final scored = await db.select(db.predictions).get();
+    expect(scored.single.actualMgdl, isNull,
+        reason: 'better unscored than scored against an artifact');
+  });
 }

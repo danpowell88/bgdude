@@ -391,7 +391,14 @@ class DriftHistoryRepository implements HistoryRepository {
       if (t.isBefore(lo)) lo = t;
       if (t.isAfter(hi)) hi = t;
     }
-    final cgm = await _db.cgmBetween(lo.subtract(window), hi.add(window));
+    // TASK-133: only CONFIRMED readings can be ground truth — warm-up rows,
+    // compression-low artifacts and non-positive values are exactly what
+    // training labels exclude; scoring against them pollutes accuracy reports
+    // and the live-RMSE recalibration behind the alert bands.
+    final cgm = [
+      for (final s in await _db.cgmBetween(lo.subtract(window), hi.add(window)))
+        if (!s.sensorWarmup && !s.compressionLow && s.mgdl > 0) s,
+    ];
     if (cgm.isEmpty) return 0;
 
     var updated = 0;
@@ -556,11 +563,14 @@ class InMemoryHistoryRepository implements HistoryRepository {
     for (var i = 0; i < _predictions.length; i++) {
       final p = _predictions[i];
       if (p.actualMgdl != null || p.targetTime.isAfter(now)) continue;
+      // TASK-133: mirror the drift implementation — artifacts are never truth.
       final near = _between(
-          _cgm,
-          p.targetTime.subtract(const Duration(minutes: 5)),
-          p.targetTime.add(const Duration(minutes: 5)),
-          (s) => s.time);
+              _cgm,
+              p.targetTime.subtract(const Duration(minutes: 5)),
+              p.targetTime.add(const Duration(minutes: 5)),
+              (s) => s.time)
+          .where((s) => !s.sensorWarmup && !s.compressionLow && s.mgdl > 0)
+          .toList();
       if (near.isEmpty) continue;
       final actual = near
           .reduce((a, b) => a.time.difference(p.targetTime).abs() <
