@@ -107,6 +107,71 @@ void main() {
       expect(r.sensitivityMultiplier, 1.0);
     });
 
+    test(
+        'a hand-specified linear glucose fall (independent of InsulinModel) '
+        'recovers a multiplier near the hand-derived expected value (TASK-174)',
+        () {
+      // The other cases above build their "ground truth" CGM trace by calling
+      // the SAME InsulinModel Autotune later compares against (`iob.total(...)`),
+      // scaled by k at every step. That means a bug in the model's activity
+      // CURVE (e.g. a wrong peak time or shape) would be baked into both sides
+      // identically and still read multiplier ≈ k — the round-trip can't catch
+      // it. This case instead derives its expected value from basic dosing
+      // math the model doesn't participate in: by definition, ISF is "1 unit
+      // lowers BG by ISF mg/dL", so a single bolus's FULL modelled effect over
+      // the model's own duration-of-action is `units * ISF`, independent of
+      // how the model's activity is distributed across that duration (the
+      // model's own doc comment guarantees its activity curve integrates to 1
+      // per unit over the full duration, by construction of its normalisation
+      // constant — that integral-to-1 property holds even if the curve's
+      // SHAPE, e.g. its peak timing, is wrong).
+      //
+      // The observed CGM here is a plain straight-line fall — NOT shaped like
+      // the insulin activity curve at all — totalling exactly `units * ISF`
+      // over the model's full 360-minute duration. Autotune still computes its
+      // per-window ratios against the REAL (curved) modelled activity
+      // internally, so recovering a multiplier close to 1.0 here is a
+      // genuine, independent check that the model's overall potency (not just
+      // its self-consistency) is calibrated to ISF.
+      const units = 3.0;
+      const isf = 54.0; // TherapySettings.placeholder()'s ISF.
+      const durationMinutes = 360; // InsulinModel.rapidActing.durationMinutes.
+      const stepMin = 5;
+      const totalSteps = durationMinutes ~/ stepMin; // 72.
+      const totalDrop = 1.0 * units * isf; // k=1.0 -> settings should match.
+      const perStepDrop = totalDrop / totalSteps;
+
+      final linearBolusTime = DateTime(2026, 7, 1, 6, 0);
+      final linearBoluses = [BolusEvent(time: linearBolusTime, units: units)];
+      const startMgdl = 250.0;
+      var g = startMgdl;
+      var t = linearBolusTime;
+      final cgm = [CgmSample(time: t, mgdl: g)];
+      for (var i = 1; i <= totalSteps; i++) {
+        t = t.add(const Duration(minutes: stepMin));
+        g -= perStepDrop;
+        cgm.add(CgmSample(time: t, mgdl: g));
+      }
+      expect(g, closeTo(startMgdl - totalDrop, 1e-9)); // sanity: hand math lines up.
+
+      final r = Autotune().analyseDay(
+        day: day,
+        cgm: cgm,
+        boluses: linearBoluses,
+        basal: const [],
+        carbs: const [],
+        settings: settings,
+      );
+      // Looser than the exact round-trip cases above — real curve-shape
+      // variation across windows (vs. this test's perfectly linear ground
+      // truth) is expected noise here, not a bug: a straight-line fall reads
+      // as mildly "insulin under-performing" against the real curve's
+      // front-loaded ramp (observed ≈1.15 with the parameters above). The
+      // point is recovering the right ballpark from a hand-derived target the
+      // model never produced, not exact agreement.
+      expect(r.sensitivityMultiplier, closeTo(1.0, 0.25));
+    });
+
     test('confidence scales with carb-free observation time', () {
       final short = analyse(_cgmWithFactor(
           k: 1.0,
