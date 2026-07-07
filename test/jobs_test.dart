@@ -1,10 +1,13 @@
 import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/dev/sim_data.dart';
 import 'package:bgdude/insights/notifications.dart';
+import 'package:bgdude/ml/health_features.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/faults.dart';
 
 /// Exercises the background jobs (AppJobs) end-to-end against an in-memory repository
 /// seeded with a simulated day — verifying they run without throwing and that the
@@ -68,5 +71,55 @@ void main() {
   test('runStartup completes without throwing', () async {
     final jobs = container.read(appJobsProvider);
     await expectLater(jobs.runStartup(), completes);
+  });
+
+  // TASK-213: runStartup's per-job try/catch isolation (lib/state/startup_jobs.dart) is
+  // load-bearing but was only ever pinned at the "completes without throwing" level --
+  // nothing proved that a failing job's INDEPENDENT neighbours still did their real work.
+  group('per-job failure isolation', () {
+    test('a failing health sync does not stop forecaster training (a later, '
+        'independent job)', () async {
+      final c = ProviderContainer(overrides: [
+        historyRepositoryProvider.overrideWithValue(repo),
+        notificationServiceProvider.overrideWithValue(NotificationService()),
+        devModeProvider.overrideWith((ref) => false),
+        therapySettingsProvider.overrideWith((ref) => TherapyNotifier()),
+        healthSyncServiceProvider.overrideWithValue(ThrowingHealthSyncService()),
+      ]);
+      addTearDown(c.dispose);
+
+      final report = await c.read(appJobsProvider).runStartup();
+
+      // The injected failure genuinely surfaced...
+      expect(report.failures.map((f) => f.name), contains('syncHealth'));
+      // ...but a later, unrelated job still did its real work: the forecaster
+      // trained from the seeded history and recorded a model run.
+      expect(await repo.modelRuns(), isNotEmpty);
+    });
+
+    test('health-permission-denied yields the zero-features contract end-to-end '
+        'via livePredictionStateProvider', () async {
+      final c = ProviderContainer(overrides: [
+        historyRepositoryProvider.overrideWithValue(repo),
+        notificationServiceProvider.overrideWithValue(NotificationService()),
+        devModeProvider.overrideWith((ref) => false),
+        therapySettingsProvider.overrideWith((ref) => TherapyNotifier()),
+        healthSyncServiceProvider.overrideWithValue(ThrowingHealthSyncService()),
+      ]);
+      addTearDown(c.dispose);
+      // Let the real DayHistoryController load the seeded CGM so
+      // livePredictionStateProvider has a latest reading to build from.
+      await c.read(dayHistoryControllerProvider.notifier).reload();
+
+      await c.read(appJobsProvider).runStartup();
+
+      final state = c.read(livePredictionStateProvider);
+      expect(state, isNotNull);
+      // syncHealth failed (permission denied), but refreshForecastHealthSampler -- a
+      // separate, unconditional startup job right after it -- still ran and left the
+      // sampler built from no data, which resolves to the exact same zero contract as
+      // no sampler at all (HealthFeatureSampler([]).featuresAt(t) == zeros).
+      expect(state!.healthFeatures, HealthFeatureSampler.zeros);
+    });
   });
 }
