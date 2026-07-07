@@ -1,3 +1,4 @@
+import 'package:bgdude/core/units.dart';
 import 'package:bgdude/insights/alert_thresholds.dart';
 import 'package:bgdude/insights/exercise_mode.dart';
 import 'package:bgdude/insights/notification_prefs.dart';
@@ -57,7 +58,7 @@ void main() {
 
   group('AlertThresholds', () {
     test('JSON round-trip and copyWith', () {
-      const t = AlertThresholds(lowMgdl: 80, highMgdl: 220);
+      const t = AlertThresholds(lowMgdl: Mgdl(80), highMgdl: Mgdl(220));
       final r = AlertThresholds.fromJson(t.toJson());
       expect(r.lowMgdl, 80);
       expect(r.highMgdl, 220);

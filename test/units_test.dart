@@ -13,4 +13,19 @@ void main() {
     // A +18 mg/dL rise is +1.0 mmol/L (near enough); the helper keeps the precision.
     expect(const Mgdl(18.0182).inUnit(GlucoseUnit.mmol), closeTo(1.0, 1e-9));
   });
+
+  test('Mgdl behaves as a double: arithmetic and comparison work (TASK-119)', () {
+    const a = Mgdl(120);
+    const b = Mgdl(20);
+    expect(a + b, 140);
+    expect(a - b, 100);
+    expect(a.compareTo(b), greaterThan(0));
+    expect(a > b, isTrue);
+    expect(a < 180, isTrue);
+    // It flows into double slots without ceremony...
+    double takesDouble(double v) => v;
+    expect(takesDouble(a), 120);
+    // ...while the reverse direction requires an explicit Mgdl(...) wrap —
+    // that one-way asymmetry is the unit safety (compile-time, not testable here).
+  });
 }

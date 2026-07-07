@@ -10,22 +10,26 @@
 library;
 
 import '../core/sleep_window.dart';
+import '../core/units.dart';
 
 /// The parts of the day a threshold row can apply to. `day` is everything that isn't the
 /// overnight window; `postMeal` takes precedence over both while a meal is digesting.
 enum AlertSegment { overnight, day, postMeal }
 
-/// One low/high/urgent-low triple, in mg/dL.
+/// One low/high/urgent-low triple, typed [Mgdl] (TASK-119). The constructor takes
+/// plain doubles (values arrive from JSON/steppers) and wraps once here.
 class AlertBand {
-  const AlertBand({
-    required this.lowMgdl,
-    required this.highMgdl,
-    required this.urgentLowMgdl,
-  });
+  AlertBand({
+    required double lowMgdl,
+    required double highMgdl,
+    required double urgentLowMgdl,
+  })  : lowMgdl = Mgdl(lowMgdl),
+        highMgdl = Mgdl(highMgdl),
+        urgentLowMgdl = Mgdl(urgentLowMgdl);
 
-  final double lowMgdl;
-  final double highMgdl;
-  final double urgentLowMgdl;
+  final Mgdl lowMgdl;
+  final Mgdl highMgdl;
+  final Mgdl urgentLowMgdl;
 
   AlertBand copyWith({double? lowMgdl, double? highMgdl, double? urgentLowMgdl}) =>
       AlertBand(
@@ -54,16 +58,18 @@ class AlertThresholds {
   static const double defaultHighMgdl = 200;
   static const double defaultUrgentLowMgdl = 55;
 
+  /// Fields are typed [Mgdl] (TASK-119); the constructor stays const-able by
+  /// taking [Mgdl] directly (wrap literals as `Mgdl(80)` at the call site).
   const AlertThresholds({
-    this.lowMgdl = defaultLowMgdl,
-    this.highMgdl = defaultHighMgdl,
-    this.urgentLowMgdl = defaultUrgentLowMgdl,
+    this.lowMgdl = const Mgdl(defaultLowMgdl),
+    this.highMgdl = const Mgdl(defaultHighMgdl),
+    this.urgentLowMgdl = const Mgdl(defaultUrgentLowMgdl),
     this.segments = const {},
   });
 
-  final double lowMgdl;
-  final double highMgdl;
-  final double urgentLowMgdl;
+  final Mgdl lowMgdl;
+  final Mgdl highMgdl;
+  final Mgdl urgentLowMgdl;
 
   /// Per-segment overrides. Empty ⇒ the all-day row applies all day (the migrated state).
   final Map<AlertSegment, AlertBand> segments;
@@ -102,9 +108,10 @@ class AlertThresholds {
     Map<AlertSegment, AlertBand>? segments,
   }) =>
       AlertThresholds(
-        lowMgdl: lowMgdl ?? this.lowMgdl,
-        highMgdl: highMgdl ?? this.highMgdl,
-        urgentLowMgdl: urgentLowMgdl ?? this.urgentLowMgdl,
+        lowMgdl: lowMgdl == null ? this.lowMgdl : Mgdl(lowMgdl),
+        highMgdl: highMgdl == null ? this.highMgdl : Mgdl(highMgdl),
+        urgentLowMgdl:
+            urgentLowMgdl == null ? this.urgentLowMgdl : Mgdl(urgentLowMgdl),
         segments: segments ?? this.segments,
       );
 
@@ -122,9 +129,10 @@ class AlertThresholds {
   /// with no overrides, so existing users keep their exact thresholds all day.
   factory AlertThresholds.fromJson(Map<String, dynamic> j) {
     final base = AlertThresholds(
-      lowMgdl: (j['low'] as num?)?.toDouble() ?? defaultLowMgdl,
-      highMgdl: (j['high'] as num?)?.toDouble() ?? defaultHighMgdl,
-      urgentLowMgdl: (j['urgentLow'] as num?)?.toDouble() ?? defaultUrgentLowMgdl,
+      lowMgdl: Mgdl((j['low'] as num?)?.toDouble() ?? defaultLowMgdl),
+      highMgdl: Mgdl((j['high'] as num?)?.toDouble() ?? defaultHighMgdl),
+      urgentLowMgdl:
+          Mgdl((j['urgentLow'] as num?)?.toDouble() ?? defaultUrgentLowMgdl),
     );
     final segJson = j['segments'] as Map<String, dynamic>?;
     if (segJson == null || segJson.isEmpty) return base;

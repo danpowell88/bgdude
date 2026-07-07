@@ -19,20 +19,25 @@ const double kForecastZ90 = 1.64;
 
 /// Forecast at a single horizon.
 class HorizonForecast {
-  const HorizonForecast({
+  /// Values arrive as raw doubles from the model math and are CARRIED as
+  /// [Mgdl] (TASK-119); non-const because the wrapping initializer isn't a
+  /// constant expression.
+  HorizonForecast({
     required this.horizonMinutes,
-    required this.mgdl,
-    required this.lowerMgdl,
-    required this.upperMgdl,
-  });
+    required double mgdl,
+    required double lowerMgdl,
+    required double upperMgdl,
+  })  : mgdl = Mgdl(mgdl),
+        lowerMgdl = Mgdl(lowerMgdl),
+        upperMgdl = Mgdl(upperMgdl);
 
   final int horizonMinutes;
-  final double mgdl;
+  final Mgdl mgdl;
 
   /// Prediction interval (from residual-model uncertainty; falls back to a widening
   /// band with horizon for the deterministic-only case).
-  final double lowerMgdl;
-  final double upperMgdl;
+  final Mgdl lowerMgdl;
+  final Mgdl upperMgdl;
 
   double get intervalWidth => upperMgdl - lowerMgdl;
 }

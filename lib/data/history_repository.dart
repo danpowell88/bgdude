@@ -6,6 +6,7 @@
 /// context without the native SQLCipher database (e.g. host widget tests).
 library;
 
+import '../core/units.dart';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
@@ -18,23 +19,28 @@ import 'health_sync.dart';
 /// A persisted glucose prediction, later back-filled with the actual outcome so the
 /// model-accuracy view can score it.
 class StoredPrediction {
-  const StoredPrediction({
+  /// Glucose params arrive as raw doubles (DB columns stay `double`; the
+  /// conversion to [Mgdl] happens only here in the mapping — TASK-119).
+  StoredPrediction({
     required this.madeAt,
     required this.horizonMinutes,
-    required this.predictedMgdl,
-    required this.lowerMgdl,
-    required this.upperMgdl,
+    required double predictedMgdl,
+    required double lowerMgdl,
+    required double upperMgdl,
     required this.modelId,
-    this.actualMgdl,
-  });
+    double? actualMgdl,
+  })  : predictedMgdl = Mgdl(predictedMgdl),
+        lowerMgdl = Mgdl(lowerMgdl),
+        upperMgdl = Mgdl(upperMgdl),
+        actualMgdl = actualMgdl == null ? null : Mgdl(actualMgdl);
 
   final DateTime madeAt;
   final int horizonMinutes;
-  final double predictedMgdl;
-  final double lowerMgdl;
-  final double upperMgdl;
+  final Mgdl predictedMgdl;
+  final Mgdl lowerMgdl;
+  final Mgdl upperMgdl;
   final String modelId;
-  final double? actualMgdl;
+  final Mgdl? actualMgdl;
 
   DateTime get targetTime => madeAt.add(Duration(minutes: horizonMinutes));
 }

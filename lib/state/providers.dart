@@ -1792,13 +1792,13 @@ class AppJobs {
     final recent = await repo.cgm(now.subtract(const Duration(hours: 36)), now);
     if (recent.length < 24) return;
     final mean =
-        recent.map((s) => s.mgdl).reduce((a, b) => a + b) / recent.length;
+        recent.map((s) => s.mgdl.value).reduce((a, b) => a + b) / recent.length;
     final base = await repo.cgm(
         now.subtract(const Duration(days: 14)),
         now.subtract(const Duration(days: 2)));
     final baseMean = base.isEmpty
         ? null
-        : base.map((s) => s.mgdl).reduce((a, b) => a + b) / base.length;
+        : base.map((s) => s.mgdl.value).reduce((a, b) => a + b) / base.length;
 
     final ctx = ContextBuilder.build(
       today: await repo.health(now.subtract(const Duration(hours: 36)), now),

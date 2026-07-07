@@ -22,7 +22,13 @@ enum GlucoseUnit {
 }
 
 /// A glucose value, always carried internally as mg/dL.
-extension type const Mgdl(double value) {
+///
+/// TASK-119: `implements double`, so every arithmetic/comparison operator
+/// (`+`, `-`, `<`, `compareTo`, ...) works transparently and an `Mgdl` can flow
+/// into any `double` slot — but a raw `double` can NOT be passed where `Mgdl`
+/// is required without an explicit `Mgdl(...)` wrap. That one-way asymmetry is
+/// the unit safety: mmol values can't silently enter mg/dL fields.
+extension type const Mgdl(double value) implements double {
   double get mmol => value / kMgdlPerMmol;
 
   /// Render in the user's chosen unit with sensible precision

@@ -155,7 +155,7 @@ void main() {
     });
 
     test('a carb entry in the last 2h selects the post-meal band', () {
-      const withPostMeal = AlertThresholds(segments: {
+      final withPostMeal = AlertThresholds(segments: {
         AlertSegment.postMeal:
             AlertBand(lowMgdl: 70, highMgdl: 250, urgentLowMgdl: 55),
       });

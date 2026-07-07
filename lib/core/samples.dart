@@ -56,18 +56,21 @@ enum GlucoseSource {
 
 /// A single CGM reading.
 class CgmSample {
-  const CgmSample({
+  /// [mgdl] accepts a plain double at construction (readings arrive as raw
+  /// numbers from the pump/DB) and is CARRIED as [Mgdl] (TASK-119). Non-const:
+  /// the wrapping initializer is not a constant expression.
+  CgmSample({
     required this.time,
-    required this.mgdl,
+    required double mgdl,
     this.trend = GlucoseTrend.unknown,
     this.isCalibration = false,
     this.source = GlucoseSource.sensor,
     this.sensorWarmup = false,
     this.compressionLow = false,
-  });
+  }) : mgdl = Mgdl(mgdl);
 
   final DateTime time;
-  final double mgdl;
+  final Mgdl mgdl;
   final GlucoseTrend trend;
 
   /// A finger-prick reading entered to calibrate the sensor. Excluded from metrics and
@@ -84,7 +87,8 @@ class CgmSample {
   /// and training can exclude it. Set by the detector or a known-simulated event.
   final bool compressionLow;
 
-  Mgdl get glucose => Mgdl(mgdl);
+  /// Alias retained from the pre-TASK-119 shim; [mgdl] is already typed.
+  Mgdl get glucose => mgdl;
 }
 
 /// A bolus delivery record (from pump history / last-bolus status).

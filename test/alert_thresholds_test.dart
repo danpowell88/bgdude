@@ -1,3 +1,4 @@
+import 'package:bgdude/core/units.dart';
 import 'package:bgdude/insights/alert_thresholds.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -21,7 +22,7 @@ void main() {
     test('round-trips segments through JSON', () {
       final t = const AlertThresholds().withSegment(
         AlertSegment.overnight,
-        const AlertBand(lowMgdl: 85, highMgdl: 180, urgentLowMgdl: 55),
+        AlertBand(lowMgdl: 85, highMgdl: 180, urgentLowMgdl: 55),
       );
       final back = AlertThresholds.fromJson(t.toJson());
       expect(back.segments[AlertSegment.overnight]!.lowMgdl, 85);
@@ -49,11 +50,12 @@ void main() {
   });
 
   group('§4-2.3 resolution', () {
-    final t = const AlertThresholds(lowMgdl: 70, highMgdl: 200, urgentLowMgdl: 55)
+    final t = const AlertThresholds(
+            lowMgdl: Mgdl(70), highMgdl: Mgdl(200), urgentLowMgdl: Mgdl(55))
         .withSegment(AlertSegment.overnight,
-            const AlertBand(lowMgdl: 85, highMgdl: 180, urgentLowMgdl: 55))
+            AlertBand(lowMgdl: 85, highMgdl: 180, urgentLowMgdl: 55))
         .withSegment(AlertSegment.postMeal,
-            const AlertBand(lowMgdl: 70, highMgdl: 240, urgentLowMgdl: 55));
+            AlertBand(lowMgdl: 70, highMgdl: 240, urgentLowMgdl: 55));
 
     test('overnight window uses the overnight row', () {
       expect(t.resolve(at: DateTime(2026, 7, 6, 2)).lowMgdl, 85); // 02:00

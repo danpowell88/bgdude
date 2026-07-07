@@ -66,7 +66,7 @@ void main() {
     });
 
     test('widens the cone to at least recent RMSE', () {
-      const f = HorizonForecast(
+      final f = HorizonForecast(
           horizonMinutes: 30, mgdl: 120, lowerMgdl: 110, upperMgdl: 130);
       final wide = cal.calibrate(f, {30: 40.0});
       // sigma becomes ~40 → interval ±1.64*40 ≈ ±66.
@@ -75,7 +75,7 @@ void main() {
     });
 
     test('leaves a forecast unchanged when no recent error for its horizon', () {
-      const f = HorizonForecast(
+      final f = HorizonForecast(
           horizonMinutes: 30, mgdl: 120, lowerMgdl: 110, upperMgdl: 130);
       expect(cal.calibrate(f, const {}).upperMgdl, f.upperMgdl);
     });
