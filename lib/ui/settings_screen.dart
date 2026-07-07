@@ -7,21 +7,7 @@ import '../core/units.dart';
 import '../integrations/nightscout.dart';
 import '../state/app_flags.dart';
 import '../state/providers.dart';
-import 'advanced_screen.dart';
-import 'ai_model_screen.dart';
-import 'basal_recommendations_screen.dart';
-import 'confirmation_inbox_screen.dart';
-import 'exercise_mode_screen.dart';
-import 'medication_mode_screen.dart';
-import 'model_accuracy_screen.dart';
-import 'notification_settings_screen.dart';
-import 'profile_screen.dart';
-import 'glucose_meter_screen.dart';
-import 'developer_screen.dart';
-import 'pump_screen.dart';
-import 'reports/reports_hub_screen.dart';
-import 'weather_settings_screen.dart';
-import 'therapy_settings_screen.dart';
+import 'app_routes.dart';
 
 /// Nightscout upload configuration section.
 class _NightscoutSection extends ConsumerStatefulWidget {
@@ -153,18 +139,14 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.person_outline),
             title: const Text('Profile'),
             subtitle: const Text('Sex, age & diabetes history — feeds the models'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.profile),
           ),
           ListTile(
             leading: const Icon(Icons.assessment_outlined),
             title: const Text('Reports'),
             subtitle: const Text(
                 'AGP, time-in-range & episodes from confirmed data · PDF/CSV export'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ReportsHubScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.reports),
           ),
           ListTile(
             leading: const Icon(Icons.fact_check_outlined),
@@ -177,39 +159,28 @@ class SettingsScreen extends ConsumerWidget {
                       : Badge(label: Text('${items.length}')),
                   orElse: () => null,
                 ),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const ConfirmationInboxScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.confirmationInbox),
           ),
           ListTile(
             leading: const Icon(Icons.notifications_active_outlined),
             title: const Text('Notifications'),
             subtitle: const Text(
                 'Opt in/out per alert, set intensity, sound & repeat alerts'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const NotificationSettingsScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.notificationSettings),
           ),
           ListTile(
             leading: const Icon(Icons.directions_run),
             title: const Text('Exercise mode'),
             subtitle: const Text(
                 'Announce a workout — leads low alerts and suggests a pre-snack'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ExerciseModeScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.exerciseMode),
           ),
           ListTile(
             leading: const Icon(Icons.medication_outlined),
             title: const Text('Medication / steroid mode'),
             subtitle: const Text(
                 'On a steroid course? Raise expected insulin needs while active'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const MedicationModeScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.medicationMode),
           ),
           const _BatteryExemptionTile(), // TASK-183
           ListTile(
@@ -217,28 +188,20 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Pump'),
             subtitle: const Text(
                 'Live status, insulin today, reservoir, alarms & events'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const PumpScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.pump),
           ),
           ListTile(
             leading: const Icon(Icons.bluetooth_searching),
             title: const Text('Glucose meter'),
             subtitle: const Text(
                 'Import fingersticks from a Bluetooth meter (Accu-Chek Guide Me, etc.)'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const GlucoseMeterScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.glucoseMeter),
           ),
           ListTile(
             leading: const Icon(Icons.medication_outlined),
             title: const Text('Therapy profile'),
             subtitle: const Text('Basal, ISF, carb ratio & targets from your pump'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const TherapySettingsScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.therapySettings),
           ),
           SwitchListTile(
             secondary: const Icon(Icons.tune),
@@ -254,19 +217,14 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Model internals'),
             subtitle: const Text(
                 'Sensitivity, time-of-day profile, forecaster & error grid'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const AdvancedScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.advanced),
           ),
           ListTile(
             leading: const Icon(Icons.schedule),
             title: const Text('Basal suggestions'),
             subtitle: const Text(
                 'Profile changes from repeated fasting trends (advisory)'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const BasalRecommendationsScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.basalRecommendations),
           ),
           const Divider(),
           ListTile(
@@ -274,10 +232,7 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Weather'),
             subtitle: const Text(
                 'Heat-aware low alerts + weather↔glucose (Open-Meteo, free)'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const WeatherSettingsScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.weatherSettings),
           ),
           SwitchListTile(
             secondary: const Icon(Icons.qr_code_scanner),
@@ -295,9 +250,7 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: Text(ref.watch(panelModelProvider).installed
                 ? 'On-device Gemma model installed'
                 : 'Optional on-device model for tricky labels'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const AiModelScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.aiModel),
           ),
           ListTile(
             leading: const Icon(Icons.favorite_border),
@@ -317,10 +270,7 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.query_stats),
             title: const Text('Forecast accuracy'),
             subtitle: const Text('How the predictions score against outcomes'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const ModelAccuracyScreen()),
-            ),
+            onTap: () => AppRoutes.push(context, AppRoute.modelAccuracy),
           ),
           ListTile(
             leading: const Icon(Icons.model_training),
@@ -364,9 +314,7 @@ class SettingsScreen extends ConsumerWidget {
               title: const Text('Developer'),
               subtitle: const Text(
                   'Protocol Explorer & low-level pump diagnostics (read-only)'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const DeveloperScreen()),
-              ),
+              onTap: () => AppRoutes.push(context, AppRoute.developer),
             ),
           ],
           const Divider(),
