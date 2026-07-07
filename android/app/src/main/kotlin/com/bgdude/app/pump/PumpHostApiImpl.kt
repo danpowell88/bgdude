@@ -1,13 +1,21 @@
 package com.bgdude.app.pump
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 /**
  * Implements the read-only command surface for the `bgdude/pump_commands`
  * MethodChannel (dispatched in [PumpBridge]) by forwarding to the bound [PumpService].
  * All methods are safe no-ops while the service is not yet bound.
  */
-class PumpHostApiImpl(@Suppress("unused") private val context: Context) {
+class PumpHostApiImpl(
+    @Suppress("unused") private val context: Context,
+    private val pairingExecutor: ExecutorService = Executors.newSingleThreadExecutor(),
+    private val mainHandler: Handler = Handler(Looper.getMainLooper()),
+) {
 
     private var service: PumpService? = null
 
@@ -15,9 +23,28 @@ class PumpHostApiImpl(@Suppress("unused") private val context: Context) {
         this.service = service
     }
 
+    /**
+     * TASK-205: [PumpCommHandler.start] (via [PumpService.startScan]) and
+     * [PumpCommHandler.submitPairingCode] both hit pumpx2's SharedPreferences-backed
+     * `PumpState` synchronously — Flutter dispatches platform-channel method calls
+     * on the main thread, so that disk I/O ran there as a minor ANR risk. Runs
+     * [work] on a background executor and marshals the callback back onto the main
+     * thread, since a Pigeon `Result` callback must be invoked there.
+     */
+    private fun runOffMain(work: () -> Unit, callback: (Result<Unit>) -> Unit) {
+        pairingExecutor.execute {
+            val result = try {
+                work()
+                Result.success(Unit)
+            } catch (t: Throwable) {
+                Result.failure<Unit>(t)
+            }
+            mainHandler.post { callback(result) }
+        }
+    }
+
     fun startScan(macFilter: String?, callback: (Result<Unit>) -> Unit) {
-        service?.startScan(macFilter)
-        callback(Result.success(Unit))
+        runOffMain({ service?.startScan(macFilter) }, callback)
     }
 
     fun stopScan(callback: (Result<Unit>) -> Unit) {
@@ -26,8 +53,7 @@ class PumpHostApiImpl(@Suppress("unused") private val context: Context) {
     }
 
     fun submitPairingCode(code: String, type: PairingCodeType, callback: (Result<Unit>) -> Unit) {
-        service?.submitPairingCode(code, type)
-        callback(Result.success(Unit))
+        runOffMain({ service?.submitPairingCode(code, type) }, callback)
     }
 
     /** Triggers a fresh status poll and returns the latest snapshot JSON (same schema
