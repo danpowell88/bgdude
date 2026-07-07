@@ -9,8 +9,17 @@
 /// you warn earlier overnight and tolerate the expected bump after a meal without nagging.
 library;
 
+import '../core/samples.dart';
 import '../core/sleep_window.dart';
 import '../core/units.dart';
+
+/// TASK-231: whether a carb entry within the last 2h makes [now] "post-meal" for
+/// [AlertThresholds.resolve]'s segment selection. The single source of truth for this
+/// window — both the alert cycle (`alert_orchestrator.dart`) and the coaching path
+/// (`effectiveLowThresholdProvider` in `providers.dart`) call this rather than each
+/// re-deriving their own `Duration(hours: 2)` check, so the two can't silently diverge.
+bool isPostMealWindow(Iterable<CarbEntry> carbs, DateTime now) => carbs.any(
+    (c) => !c.time.isAfter(now) && now.difference(c.time) <= const Duration(hours: 2));
 
 /// The parts of the day a threshold row can apply to. `day` is everything that isn't the
 /// overnight window; `postMeal` takes precedence over both while a meal is digesting.

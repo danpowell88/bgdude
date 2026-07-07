@@ -10,8 +10,8 @@ import 'package:bgdude/analytics/predictor.dart';
 import 'package:bgdude/analytics/rescue_carbs.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/core/units.dart';
-import 'package:bgdude/feedback/annotations.dart';
 import 'package:bgdude/insights/alert_thresholds.dart';
+import 'package:bgdude/insights/effective_low_threshold.dart';
 import 'package:bgdude/insights/exercise_mode.dart';
 import 'package:bgdude/insights/notification_prefs.dart';
 import 'package:bgdude/insights/workout_classifier.dart';
@@ -60,6 +60,12 @@ void main() {
   HorizonForecast forecast(int minutes, double mgdl) => HorizonForecast(
       horizonMinutes: minutes, mgdl: mgdl, lowerMgdl: mgdl - 10, upperMgdl: mgdl + 10);
 
+  // Matches the default AlertThresholds' lowMgdl (70) with no active modifiers --
+  // the "nothing special going on" coaching-path line these glucose-cycle tests are
+  // set up around; TASK-231's own dedicated wiring test
+  // (alert_effective_low_wiring_test.dart) covers a modifier actually changing this.
+  const defaultEffectiveLow = EffectiveLowThreshold(mgdl: 70, reasons: []);
+
   AlertCycleInput glucoseInput({
     required PredictionState state,
     required DayData day,
@@ -69,12 +75,14 @@ void main() {
     double? siteAgeHours,
     bool illnessActive = false,
     double recentActivityFeature = 0.0,
+    EffectiveLowThreshold effectiveLow = defaultEffectiveLow,
   }) =>
       AlertCycleInput(
         now: now,
         state: state,
         day: day,
         profile: const UserProfile(),
+        effectiveLow: effectiveLow,
         forecasts: forecasts,
         unit: GlucoseUnit.mgdl,
         exercise: exercise,
@@ -88,22 +96,26 @@ void main() {
       [for (final d in r.decisions) d.category];
 
   group('resolveEffectiveThresholds', () {
+    // TASK-231: the low-line MODIFIER composition (impaired-awareness, alcohol,
+    // exercise, weather, compose-via-max) is no longer this function's job -- it's
+    // done once, upstream, by effectiveLowThresholdProvider (same policy as the
+    // coaching path) and handed in as `effectiveLow`. That composition is pinned at
+    // its source in effective_low_threshold_test.dart; duplicating it here again
+    // would just assert this function passes through whatever it's given, which is
+    // true by construction and proves nothing about the wiring (see
+    // alert_effective_low_wiring_test.dart for the actual end-to-end proof). What's
+    // still this function's own job: picking the high/urgent-low band via the
+    // post-meal window, and passing the given low line straight through.
     EffectiveThresholds resolve({
       AlertThresholds thresholds = const AlertThresholds(),
       List<CarbEntry> carbs = const [],
-      UserProfile profile = const UserProfile(),
-      Iterable<Annotation> annotations = const [],
-      ExercisePlan? exercise,
-      double? tempC,
+      EffectiveLowThreshold effectiveLow = defaultEffectiveLow,
     }) =>
         resolveEffectiveThresholds(
           thresholds: thresholds,
           now: now,
           carbs: carbs,
-          profile: profile,
-          recentAnnotations: annotations,
-          exercise: exercise,
-          ambientTempC: tempC,
+          effectiveLow: effectiveLow,
         );
 
     test('defaults pass through unmodified', () {
@@ -113,45 +125,12 @@ void main() {
       expect(t.urgentLowMgdl, 55);
     });
 
-    test('impaired-awareness risk raises the low line (capped)', () {
+    test('the given effectiveLow flows straight through as lowMgdl/lowReasons', () {
       final t = resolve(
-          profile: const UserProfile(birthYear: 1950, diagnosisYear: 1990));
-      expect(t.lowMgdl, 78); // +5 (age) +3 (duration), capped at +8
-    });
-
-    test('a recent alcohol annotation raises the low line to 80', () {
-      final t = resolve(annotations: [
-        Annotation(
-          id: 'a1',
-          kind: AnnotationKind.alcohol,
-          start: now.subtract(const Duration(hours: 2)),
-          end: now.subtract(const Duration(hours: 1)),
-        ),
-      ]);
-      expect(t.lowMgdl, 80);
-    });
-
-    test('an active aerobic session raises the low line by 20', () {
-      final t = resolve(
-          exercise: ExercisePlan(
-        startAt: now.subtract(const Duration(minutes: 30)),
-        durationMinutes: 60,
-        type: WorkoutType.aerobic,
-      ));
-      expect(t.lowMgdl, 90);
-    });
-
-    test('very hot weather raises the low line by 8', () {
-      expect(resolve(tempC: 35).lowMgdl, 78);
-      expect(resolve(tempC: 21).lowMgdl, 70);
-    });
-
-    test('modifiers compose via max, not stacking', () {
-      final t = resolve(
-        profile: const UserProfile(birthYear: 1950, diagnosisYear: 1990),
-        tempC: 35,
-      );
-      expect(t.lowMgdl, 78); // max(70+8, 70+8), not 70+16
+          effectiveLow:
+              const EffectiveLowThreshold(mgdl: 78, reasons: ['impaired-awareness risk (+8)']));
+      expect(t.lowMgdl, 78);
+      expect(t.lowReasons, ['impaired-awareness risk (+8)']);
     });
 
     test('a carb entry in the last 2h selects the post-meal band', () {

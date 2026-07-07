@@ -93,6 +93,11 @@ void main() {
       livePredictionStateProvider.overrideWithValue(urgentLowState()),
       calibratedForecastsProvider.overrideWithValue(urgentForecast),
       rescueCarbAdviceProvider.overrideWithValue(null),
+      // TASK-231: effectiveLowThresholdProvider (now read directly by onSnapshot)
+      // otherwise pulls in recentAnnotationsProvider -> the real
+      // dayHistoryControllerProvider, which outlives a single onSnapshot() call and
+      // trips over container.dispose().
+      recentAnnotationsProvider.overrideWith((ref) async => const []),
     ]);
     addTearDown(controller.dispose);
     addTearDown(container.dispose);

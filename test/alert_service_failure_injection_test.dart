@@ -69,10 +69,12 @@ void main() {
       livePredictionStateProvider
           .overrideWithValue(includeGlucoseState ? urgentLowState() : null),
       calibratedForecastsProvider.overrideWithValue(forecasts),
-      // rescueCarbAdviceProvider (unused by these tests) otherwise pulls in
+      // rescueCarbAdviceProvider (unused by these tests) and effectiveLowThresholdProvider
+      // (TASK-231: now read directly by onSnapshot) both otherwise pull in
       // recentAnnotationsProvider -> the real dayHistoryControllerProvider, which
       // outlives a single onSnapshot() call and trips over container.dispose().
       rescueCarbAdviceProvider.overrideWithValue(null),
+      recentAnnotationsProvider.overrideWith((ref) async => const []),
     ]);
     addTearDown(container.dispose);
     return (container: container, notifier: notifier, repo: repo);

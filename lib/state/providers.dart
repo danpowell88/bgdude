@@ -780,8 +780,7 @@ final recentAnnotationsProvider = FutureProvider<List<Annotation>>((ref) async {
 final effectiveLowThresholdProvider = Provider<EffectiveLowThreshold>((ref) {
   final now = DateTime.now();
   final day = ref.watch(dayDataProvider);
-  final postMeal = day.carbs.any((c) =>
-      !c.time.isAfter(now) && now.difference(c.time) <= const Duration(hours: 2));
+  final postMeal = isPostMealWindow(day.carbs, now);
   final band =
       ref.watch(alertThresholdsProvider).resolve(at: now, postMeal: postMeal);
   return EffectiveLowThreshold.compute(
@@ -1823,9 +1822,12 @@ class AlertService {
     var forecasts = const <HorizonForecast>[];
     DayData? day;
     UserProfile? profile;
-    Iterable<Annotation> recentAnnotations = const <Annotation>[];
+    // TASK-231: the composed low line, from the SAME provider the coaching path
+    // (pre-bolus guard, rescue-carb advice) uses -- the alert cycle used to
+    // independently re-derive this from its own fresh annotations/exercise/weather
+    // reads, which could silently diverge from the coaching path's line.
+    EffectiveLowThreshold? effectiveLow;
     ExercisePlan? exercise;
-    double? ambientTempC;
     RescueCarbAdvice? rescue;
     double? siteAgeHours;
     var illnessActive = false;
@@ -1834,12 +1836,8 @@ class AlertService {
       forecasts = _ref.read(calibratedForecastsProvider); // shared (TASK-122)
       day = _ref.read(dayDataProvider);
       profile = _ref.read(userProfileProvider);
-      const alcohol = AlcoholWatch();
-      recentAnnotations = await _ref
-          .read(historyRepositoryProvider)
-          .annotations(now.subtract(alcohol.window), now);
+      effectiveLow = _ref.read(effectiveLowThresholdProvider);
       exercise = _ref.read(exercisePlanProvider);
-      ambientTempC = _ref.read(weatherProvider).valueOrNull?.tempC;
       rescue = _ref.read(rescueCarbAdviceProvider);
       final siteMin =
           _ref.read(deviceStateProvider).age(DeviceKind.site, now)?.inMinutes;
@@ -1860,9 +1858,8 @@ class AlertService {
       thresholds: _ref.read(alertThresholdsProvider),
       day: day,
       profile: profile,
-      recentAnnotations: recentAnnotations,
+      effectiveLow: effectiveLow,
       exercise: exercise,
-      ambientTempC: ambientTempC,
       rescue: rescue,
       siteAgeHours: siteAgeHours,
       illnessActive: illnessActive,

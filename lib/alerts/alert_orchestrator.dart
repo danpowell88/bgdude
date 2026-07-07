@@ -13,7 +13,6 @@ import '../analytics/rescue_carbs.dart';
 import '../core/samples.dart';
 import '../core/sleep_window.dart';
 import '../core/units.dart';
-import '../feedback/annotations.dart';
 import '../insights/alert_monitor.dart';
 import '../insights/alert_thresholds.dart';
 import '../insights/anomaly_detector.dart';
@@ -104,34 +103,25 @@ class EffectiveThresholds {
 }
 
 /// Start from the user's own alert thresholds (per-time-of-day band, with a carb entry
-/// in the last 2h selecting the post-meal row), then compose the low line through
-/// [EffectiveLowThreshold.compute] — the single policy shared with the pre-bolus guard
-/// and rescue-carb advice (TASK-147).
+/// in the last 2h selecting the post-meal row) for the high/urgent-low lines; the low
+/// line itself is [effectiveLow] — already composed by [EffectiveLowThreshold.compute]
+/// in the provider wrapper (TASK-231) so the alert cycle and the coaching path (pre-bolus
+/// guard, rescue-carb advice, TASK-147) can never independently diverge on it. The
+/// post-meal window check itself is also shared (see [isPostMealWindow]) so the two
+/// paths can't pick a different band row either.
 EffectiveThresholds resolveEffectiveThresholds({
   required AlertThresholds thresholds,
   required DateTime now,
   required List<CarbEntry> carbs,
-  required UserProfile profile,
-  required Iterable<Annotation> recentAnnotations,
-  ExercisePlan? exercise,
-  double? ambientTempC,
+  required EffectiveLowThreshold effectiveLow,
 }) {
-  final postMeal = carbs.any((c) =>
-      !c.time.isAfter(now) && now.difference(c.time) <= const Duration(hours: 2));
+  final postMeal = isPostMealWindow(carbs, now);
   final band = thresholds.resolve(at: now, postMeal: postMeal);
-  final low = EffectiveLowThreshold.compute(
-    base: band.lowMgdl,
-    profile: profile,
-    annotations: recentAnnotations,
-    exercisePlan: exercise,
-    tempC: ambientTempC,
-    now: now,
-  );
   return EffectiveThresholds(
-    lowMgdl: low.mgdl,
+    lowMgdl: effectiveLow.mgdl,
     highMgdl: band.highMgdl,
     urgentLowMgdl: band.urgentLowMgdl,
-    lowReasons: low.reasons,
+    lowReasons: effectiveLow.reasons,
   );
 }
 
@@ -150,9 +140,8 @@ class AlertCycleInput {
     this.thresholds = const AlertThresholds(),
     this.day,
     this.profile,
-    this.recentAnnotations = const [],
+    this.effectiveLow,
     this.exercise,
-    this.ambientTempC,
     this.rescue,
     this.siteAgeHours,
     this.illnessActive = false,
@@ -177,10 +166,11 @@ class AlertCycleInput {
   final DayData? day;
   final UserProfile? profile;
 
-  /// Annotations within the alcohol-watch window ending at [now].
-  final Iterable<Annotation> recentAnnotations;
+  /// The composed low line (TASK-231) — from `effectiveLowThresholdProvider`, the same
+  /// value the coaching path (pre-bolus guard, rescue-carb advice) uses. Null only when
+  /// [state] is also null (no live prediction this cycle, see [_glucoseCycle]'s guard).
+  final EffectiveLowThreshold? effectiveLow;
   final ExercisePlan? exercise;
-  final double? ambientTempC;
   final RescueCarbAdvice? rescue;
   final double? siteAgeHours;
   final bool illnessActive;
@@ -296,7 +286,10 @@ class AlertOrchestrator {
     final state = input.state;
     final day = input.day;
     final profile = input.profile;
-    if (state == null || day == null || profile == null) return;
+    final effectiveLow = input.effectiveLow;
+    if (state == null || day == null || profile == null || effectiveLow == null) {
+      return;
+    }
     final now = input.now;
     final forecasts = input.forecasts;
     final exercise = input.exercise;
@@ -308,10 +301,7 @@ class AlertOrchestrator {
       thresholds: input.thresholds,
       now: now,
       carbs: day.carbs,
-      profile: profile,
-      recentAnnotations: input.recentAnnotations,
-      exercise: exercise,
-      ambientTempC: input.ambientTempC,
+      effectiveLow: effectiveLow,
     );
 
     // Evaluate without an internal cooldown — repeat/opt-out is governed by prefs in
