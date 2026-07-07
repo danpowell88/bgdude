@@ -111,9 +111,8 @@ class PumpCommHandler(
         // stalls. Default to JPAKE (6-digit) unless we already hold a derived secret from a
         // prior JPAKE pairing (re-auth uses that). This affects only the auth handshake,
         // not the read-only guarantee.
-        if (PumpState.getJpakeDerivedSecretCached().isNullOrEmpty()) {
-            PumpState.pairingCodeType = X2PairingCodeType.SHORT_6CHAR
-        }
+        PairingDecision.initialScheme(PumpState.getJpakeDerivedSecretCached())
+            ?.let { PumpState.pairingCodeType = it }
         val handler = TandemBluetoothHandler.getInstance(context, this)
         bluetoothHandler = handler
         emitState(ConnectionStage.SCANNING)
@@ -201,9 +200,10 @@ class PumpCommHandler(
         // pair() must still be called to drive the JPAKE handshake. Only the legacy 16-char
         // challenge-response path carries a non-null challenge. Gating on challenge != null
         // (the old behaviour) meant JPAKE pumps could never finish pairing.
+        val request = PairingDecision.pairRequest(pendingChallenge, code)
         Log.i(TAG, "submitPairingCode: type=$type challenge=" +
-            if (pendingChallenge == null) "null(JPAKE)" else "present")
-        pair(p, pendingChallenge, code)
+            if (request.challenge == null) "null(JPAKE)" else "present")
+        if (request.invokePair) pair(p, request.challenge, request.code)
     }
 
     fun unpair() {
@@ -303,11 +303,7 @@ class PumpCommHandler(
             return@safe
         }
 
-        val type = if (PumpState.pairingCodeType == X2PairingCodeType.LONG_16CHAR) {
-            PairingCodeType.LONG_16CHAR
-        } else {
-            PairingCodeType.SHORT_6CHAR
-        }
+        val type = PairingDecision.promptType(PumpState.pairingCodeType)
         emitState(ConnectionStage.AWAITING_PAIRING_CODE)
         listener.onPairingCodeRequired(type)
     }
