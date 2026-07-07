@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-07 16:00'
-updated_date: '2026-07-07 16:00'
+updated_date: '2026-07-07 16:27'
 labels:
   - dosing-math
 milestone: m-8
@@ -42,6 +42,12 @@ author: Claude
 created: 2026-07-07 16:00
 ---
 Source: discovered while implementing TASK-197 (illness/medication mode auto-expiry) -- grepped the whole repo for lastDeactivationAnnotation and found only the two write sites in providers.dart, no reader anywhere.
+---
+
+author: Claude
+created: 2026-07-07 16:27
+---
+Recent-code review 2026-07-08 (TASK-197): note that restart_recovery_test.dart:163 asserts expect(lastDeactivationAnnotation, isNotNull), which only proves the field was set, not that the annotation reached the history repository. AC number 2 here already targets the real fix; flagging that the existing assertion is mild false confidence and should be replaced/augmented by the repository-presence assertion, not kept alongside it as if it were coverage.
 ---
 <!-- COMMENTS:END -->
 
