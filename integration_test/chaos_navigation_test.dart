@@ -32,6 +32,10 @@ const _seed = 20260706;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // TASK-220: KvStore is a process-global static, and this file runs a single
+  // long-lived chaos walk per test rather than many short ones, but the reset still
+  // guards against state leaking in FROM an earlier file in the same test process.
+  setUp(setUpDemoHarness);
 
   testWidgets('chaos: $_chaosSteps random actions leave zero uncaught exceptions',
       (tester) async {

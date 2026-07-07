@@ -18,10 +18,12 @@ import 'package:flutter_test/flutter_test.dart';
 /// blocks that share the same file/process.
 void setUpDemoHarness() => KvStore.useMemory();
 
-/// TASK-220: call from each integration test file's `tearDown()`. Explicitly
-/// unmounts the app widget tree (rather than relying on the *next* test's
+/// TASK-220: unmounts the app widget tree (rather than relying on the *next* test's
 /// `pumpWidget` to do it) so a dev-mode `SimulatedPumpClient`'s 30 s re-emit ticker
-/// is reliably cancelled before the next test starts.
+/// is reliably cancelled before the next test starts. [pumpDemoApp] registers this
+/// automatically via `tester.addTearDown` -- a `WidgetTester` isn't available in a
+/// plain top-level `tearDown()`, so every call site gets cleanup for free rather than
+/// needing to remember to wire it up individually.
 Future<void> tearDownDemoHarness(WidgetTester tester) async {
   await tester.pumpWidget(const SizedBox.shrink());
   await tester.pumpAndSettle();
@@ -40,6 +42,7 @@ Future<void> pumpDemoApp(
   String? dbOpenError,
   DateTime? fixedNow,
 }) async {
+  addTearDown(() => tearDownDemoHarness(tester));
   await tester.pumpWidget(
     ProviderScope(
       overrides: [

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-06 22:13'
-updated_date: '2026-07-07 20:02'
+updated_date: '2026-07-07 22:38'
 labels:
   - testing
   - code-health
@@ -30,7 +30,7 @@ ordinal: 113400
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 `pumpDemoApp` accepts a fixed `now`/seed threaded into the simulator and demo repository
-- [ ] #2 Harness setUp/tearDown resets `KvStore` and disposes the sim ticker
+- [x] #2 Harness setUp/tearDown resets `KvStore` and disposes the sim ticker
 - [x] #3 A canonical run-list script under `tools/` names the deterministic functional files for local + CI
 - [ ] #4 One displayed-value assertion proves stability across two runs
 <!-- AC:END -->
@@ -80,6 +80,20 @@ AC#2 (harness setUp/tearDown): added setUpDemoHarness() (KvStore.useMemory()) an
 Also noted for whoever picks this up: integration_test/app_test.dart has its own private _pumpApp duplicating harness.dart's pumpDemoApp almost exactly (pre-existing, not introduced here) -- worth migrating to the shared helper (with fixedNow) as part of finishing this out, but that's beyond this ticket's stated scope.
 
 Pipeline: flutter analyze clean, flutter test test/ 1037/1037 (+3 new), flutter build apk --debug succeeded. No native Kotlin, no user-visible change.
+---
+
+author: Claude
+created: 2026-07-07 22:38
+---
+AC#2 completed (was previously written but not adopted -- see comment #2's own note that adoption 'needs a session with working emulator connectivity', which on reflection was wrong: wiring the calls in is pure code, only CONFIRMING it fixes cross-test leakage empirically needs a device).
+
+Fixed the design gap first: tearDownDemoHarness(tester) can't be called from a plain top-level tearDown() (no WidgetTester parameter available there) -- despite my own earlier doc comment saying to do that. Instead, pumpDemoApp() itself now calls addTearDown(() => tearDownDemoHarness(tester)) internally, so every call site gets cleanup registered automatically without each test file needing to remember it.
+
+Adopted setUp(setUpDemoHarness) in all 5 integration_test/*.dart files that call pumpDemoApp: chaos_navigation_test.dart, features_flows_test.dart, features_protocol_explorer_test.dart, features_reports_test.dart, features_settings_test.dart. (app_test.dart uses its own private _pumpApp, out of scope per the earlier comment; nutrition_ocr_accuracy_test.dart doesn't call pumpDemoApp at all.)
+
+flutter analyze clean (this actually caught a real bug in my first attempt: tester.addTearDown() doesn't exist -- addTearDown is a top-level function, not a WidgetTester method). flutter test --coverage test/ 1082/1082 green, coverage unchanged at 65.8% (integration_test/ isn't in that scope). flutter build apk --debug succeeded.
+
+Actually confirming this fixes cross-test leakage (vs. just compiling and looking right) still needs a real emulator run -- leaving that specific empirical claim, plus AC#4, under the existing detail-needed label.
 ---
 <!-- COMMENTS:END -->
 

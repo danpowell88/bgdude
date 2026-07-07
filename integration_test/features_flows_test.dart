@@ -13,6 +13,9 @@ import 'harness.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // TASK-220: KvStore is a process-global static -- without this, an earlier test's
+  // app flags/prefs (in this file or another run in the same process) leak in.
+  setUp(setUpDemoHarness);
 
   testWidgets('Today → Explain this reading opens the explainer', (tester) async {
     await pumpDemoApp(tester);

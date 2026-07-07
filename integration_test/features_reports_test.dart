@@ -28,6 +28,9 @@ Future<void> _openReport(WidgetTester tester, String title) async {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // TASK-220: KvStore is a process-global static -- without this, an earlier test's
+  // app flags/prefs (in this file or another run in the same process) leak in.
+  setUp(setUpDemoHarness);
 
   testWidgets('reports hub opens each of the seven reports', (tester) async {
     await pumpDemoApp(tester);
