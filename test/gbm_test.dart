@@ -126,5 +126,48 @@ void main() {
       expect(m.predict([1.0, 2.0]), closeTo(5.0, 1e-9));
       expect(m.predict([99.0, -99.0]), closeTo(5.0, 1e-9));
     });
+
+    test(
+        'minLeafWeight blocks a split whose child passes on raw row count '
+        'alone under heavy weight imbalance (TASK-135)', () {
+      // Two clusters, 5 rows each, separated by a single feature threshold — the
+      // ONLY candidate split available. Left cluster's rows carry a near-zero
+      // weight (0.001); right cluster's carry full weight (1.0). Left weight sum
+      // is 0.005 — under the old int-count guard (minSamplesLeaf=5), 5 rows on
+      // each side would have passed the floor and produced a real split; the
+      // weighted floor correctly rejects it since 0.005 << 5.0.
+      final x = [
+        for (var i = 0; i < 5; i++) [1.0 + i * 0.01],
+        for (var i = 0; i < 5; i++) [100.0 + i * 0.01],
+      ];
+      final y = [
+        for (var i = 0; i < 5; i++) 10.0,
+        for (var i = 0; i < 5; i++) -10.0,
+      ];
+      final w = [
+        for (var i = 0; i < 5; i++) 0.001,
+        for (var i = 0; i < 5; i++) 1.0,
+      ];
+
+      final guarded = GbmRegressor(
+          maxDepth: 3, nEstimators: 1, learningRate: 1.0, minLeafWeight: 5.0)
+        ..fit(x, y, sampleWeights: w);
+      // No split clears the weighted floor -> a single root leaf -> identical
+      // prediction regardless of which cluster the input comes from.
+      expect(guarded.predict([1.0]), closeTo(guarded.predict([100.0]), 1e-9));
+      // That shared prediction is the overall weighted mean of y (~-9.98), not
+      // either cluster's own mean (10 or -10) — proof it's one leaf, not luck.
+      expect(guarded.predict([1.0]), closeTo(-9.98, 0.1));
+
+      // Control: with the floor lowered to allow it, the same data DOES split,
+      // and the two clusters predict very differently — confirms the guarded
+      // case above is actually exercising the floor, not some unrelated reason
+      // the tree stayed flat.
+      final unguarded = GbmRegressor(
+          maxDepth: 3, nEstimators: 1, learningRate: 1.0, minLeafWeight: 0.001)
+        ..fit(x, y, sampleWeights: w);
+      expect((unguarded.predict([1.0]) - unguarded.predict([100.0])).abs(),
+          greaterThan(15.0));
+    });
   });
 }

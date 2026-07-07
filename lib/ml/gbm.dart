@@ -110,7 +110,7 @@ class GbmRegressor {
     this.maxDepth = 3,
     this.nEstimators = 50,
     this.learningRate = 0.1,
-    this.minSamplesLeaf = 5,
+    this.minLeafWeight = 5.0,
   })  : _base = 0.0,
         _trees = [];
 
@@ -118,7 +118,7 @@ class GbmRegressor {
     required this.maxDepth,
     required this.nEstimators,
     required this.learningRate,
-    required this.minSamplesLeaf,
+    required this.minLeafWeight,
     required double base,
     required List<RegressionTree> trees,
   })  : _base = base,
@@ -128,8 +128,13 @@ class GbmRegressor {
   final int nEstimators;
   final double learningRate;
 
-  /// Minimum weighted "row count" (number of samples) allowed in a leaf.
-  final int minSamplesLeaf;
+  /// Minimum SUM OF SAMPLE WEIGHTS required in each child after a split (TASK-135;
+  /// formerly `minSamplesLeaf`, an int gated on raw row count — under recency
+  /// weighting a child could pass that floor while its rows carried almost no
+  /// effective weight, producing a high-variance leaf value from what was really a
+  /// near-empty split). With uniform weight 1.0 per row this behaves identically to
+  /// the old row-count floor.
+  final double minLeafWeight;
 
   /// Initial constant prediction (weighted mean of the targets).
   double _base;
@@ -279,27 +284,23 @@ class GbmRegressor {
 
       var leftW = 0.0;
       var leftWy = 0.0;
-      var leftCount = 0;
 
       for (var k = 0; k < sorted.length - 1; k++) {
         final r = sorted[k];
         leftW += w[r];
         leftWy += w[r] * target[r];
-        leftCount++;
 
         final vCur = x[r][f];
         final vNext = x[sorted[k + 1]][f];
         // Only split between distinct feature values.
         if (vCur == vNext) continue;
 
-        final rightCount = rows.length - leftCount;
-        if (leftCount < minSamplesLeaf || rightCount < minSamplesLeaf) {
-          continue;
-        }
-
         final rightW = parentW - leftW;
         final rightWy = parentWy - leftWy;
+        // minLeafWeight guards the floor; leftW/rightW > 0 is still asserted
+        // explicitly so a caller-supplied minLeafWeight of 0 can't divide by zero.
         if (leftW <= 0 || rightW <= 0) continue;
+        if (leftW < minLeafWeight || rightW < minLeafWeight) continue;
 
         // Weighted SSE reduction ∝ leftWy²/leftW + rightWy²/rightW − parentWy²/parentW.
         final gain = (leftWy * leftWy) / leftW +
@@ -338,7 +339,7 @@ class GbmRegressor {
         'maxDepth': maxDepth,
         'nEstimators': nEstimators,
         'learningRate': learningRate,
-        'minSamplesLeaf': minSamplesLeaf,
+        'minLeafWeight': minLeafWeight,
         'base': _base,
         'trees': _trees.map((t) => t.toJson()).toList(),
       };
@@ -347,12 +348,16 @@ class GbmRegressor {
   /// indices in range and (when [featureCount] is given) every split feature within
   /// the expected vector length — throwing [ModelFormatException] so the store can
   /// fail safe at load time instead of a RangeError on the live forecast path.
+  ///
+  /// TASK-135: `minLeafWeight` replaced the old int `minSamplesLeaf` key — gated
+  /// behind [ResidualGbmModel.schemaVersion] bumping, so an old-format blob is
+  /// rejected by that outer check before ever reaching this parse.
   static GbmRegressor fromJson(Map<String, dynamic> j, {int? featureCount}) {
     final model = GbmRegressor._(
       maxDepth: (j['maxDepth'] as num).toInt(),
       nEstimators: (j['nEstimators'] as num).toInt(),
       learningRate: (j['learningRate'] as num).toDouble(),
-      minSamplesLeaf: (j['minSamplesLeaf'] as num).toInt(),
+      minLeafWeight: (j['minLeafWeight'] as num).toDouble(),
       base: (j['base'] as num).toDouble(),
       trees: (j['trees'] as List)
           .map((e) => RegressionTree.fromJson(e as Map<String, dynamic>))

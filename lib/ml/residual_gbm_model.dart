@@ -52,8 +52,12 @@ class ResidualGbmModel implements ResidualModel {
   }
 
   /// Bump when THIS serialization shape changes (independent of the feature
-  /// layout, which [ForecastFeatures.version] tracks).
-  static const int schemaVersion = 1;
+  /// layout, which [ForecastFeatures.version] tracks). Bumped to 2 by TASK-135:
+  /// GbmRegressor's `minSamplesLeaf` (int) became `minLeafWeight` (double), an
+  /// incompatible key rename — this forces any older blob through the version
+  /// mismatch branch below (fail safe → retrain) instead of a cast failure in
+  /// GbmRegressor.fromJson.
+  static const int schemaVersion = 2;
 
   /// TASK-128: both versions are embedded IN the blob so the model and its
   /// layout version can never desync across two KvStore keys.
@@ -110,7 +114,7 @@ class ResidualGbmTrainer {
     this.maxDepth = 3,
     this.nEstimators = 50,
     this.learningRate = 0.1,
-    this.minSamplesLeaf = 5,
+    this.minLeafWeight = 5.0,
     this.minHoldoutForSigma = 20,
   });
 
@@ -120,7 +124,7 @@ class ResidualGbmTrainer {
   final int maxDepth;
   final int nEstimators;
   final double learningRate;
-  final int minSamplesLeaf;
+  final double minLeafWeight;
 
   /// Below this many held-out rows for a horizon, sigma falls back to training RMSE.
   final int minHoldoutForSigma;
@@ -149,7 +153,7 @@ class ResidualGbmTrainer {
         maxDepth: maxDepth,
         nEstimators: nEstimators,
         learningRate: learningRate,
-        minSamplesLeaf: minSamplesLeaf,
+        minLeafWeight: minLeafWeight,
       )..fit(x, y, sampleWeights: w);
 
       models[horizon] = gbm;
