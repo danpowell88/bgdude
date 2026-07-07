@@ -112,10 +112,24 @@ abstract class PersistedStateNotifier<T> extends StateNotifier<T> {
   }
 
   /// Set the value and persist it. Latches a local write so a still-in-flight restore can
-  /// never clobber it.
-  Future<void> persist(T value) async {
+  /// never clobber it. Returns true once the write actually lands; on failure (TASK-198)
+  /// it logs the error, reverts [state] to the last successfully-persisted value — so the
+  /// rest of the app immediately stops using a value that isn't actually saved and would
+  /// otherwise silently revert out from under the user on the next restart — and returns
+  /// false so the caller can surface the failure instead of assuming it succeeded.
+  Future<bool> persist(T value) async {
+    final previous = state;
     _hasLocalWrite = true;
     state = value;
-    await store(value);
+    try {
+      await store(value);
+      return true;
+    } catch (e) {
+      appLog.error('persistence',
+          '$runtimeType persist failed — reverting to the last saved value',
+          error: e);
+      state = previous;
+      return false;
+    }
   }
 }

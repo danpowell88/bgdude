@@ -452,7 +452,10 @@ class TherapyNotifier extends PersistedStateNotifier<TherapySettings> {
   Future<void> store(TherapySettings v) =>
       KvStore.setString(_key, jsonEncode(v.toJson()));
 
-  Future<void> save(TherapySettings settings) => persist(settings);
+  /// Returns true once the save actually lands (TASK-198) — false means the write
+  /// failed and [state] has been reverted to the last saved value; the caller
+  /// (therapy_settings_screen.dart) must surface this rather than assume success.
+  Future<bool> save(TherapySettings settings) => persist(settings);
 }
 
 /// Today's sensitivity context (from the sensitivity model; neutral until trained).
@@ -990,8 +993,16 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
   }
 
   Future<void> _persist() async {
-    await KvStore.setString(_prefsKey, _controller.mode.encode());
-    state = _controller.mode;
+    // TASK-198: not caller-observable (activate/deactivate/etc. call this
+    // unawaited), but a failed write must not disappear silently — this mode
+    // feeds dosing math, so a write that fails and later reverts on restart
+    // deserves at least a loud log even without a UI in front of it.
+    try {
+      await KvStore.setString(_prefsKey, _controller.mode.encode());
+      state = _controller.mode;
+    } catch (e) {
+      appLog.error('persistence', 'IllnessMode persist failed', error: e);
+    }
   }
 
   void activate({double? boost, String? notes}) {
@@ -1080,8 +1091,15 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
     if (restored != null) state = restored;
   }
 
-  Future<void> _persist() async =>
-      KvStore.setString(_key, jsonEncode(state.toJson()));
+  Future<void> _persist() async {
+    // TASK-198: this mode feeds dosing math too — same rationale as illness mode's
+    // _persist above.
+    try {
+      await KvStore.setString(_key, jsonEncode(state.toJson()));
+    } catch (e) {
+      appLog.error('persistence', 'MedicationMode persist failed', error: e);
+    }
+  }
 
   Future<void> start(MedicationIntensity intensity, {String name = 'Steroid'}) async {
     final now = DateTime.now();
@@ -1379,10 +1397,16 @@ class MealLibraryNotifier extends StateNotifier<MealLibrary> {
   }
 
   Future<void> _persist() async {
-    await KvStore.setStringList(
-      _prefsKey,
-      [for (final m in state.meals) jsonEncode(m.toJson())],
-    );
+    // TASK-198: add/learnFromOutcome call this unawaited -- log rather than let a
+    // failed write disappear silently.
+    try {
+      await KvStore.setStringList(
+        _prefsKey,
+        [for (final m in state.meals) jsonEncode(m.toJson())],
+      );
+    } catch (e) {
+      appLog.error('persistence', 'MealLibrary persist failed', error: e);
+    }
   }
 
   void add(SavedMeal meal) {

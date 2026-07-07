@@ -44,6 +44,7 @@ class TherapySettingsScreen extends ConsumerWidget {
                     ? IconButton(
                         icon: const Icon(Icons.delete_outline),
                         onPressed: () => _save(
+                            context,
                             ref,
                             settings,
                             [...segments]..remove(s)),
@@ -63,8 +64,25 @@ class TherapySettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _save(WidgetRef ref, TherapySettings base, List<TherapySegment> segs) {
-    ref.read(therapySettingsProvider.notifier).save(base.copyWith(segments: segs));
+  /// Saves and surfaces a failure (TASK-198): the therapy profile feeds every dose
+  /// suggestion, so a save that silently fails (locked storage, disk pressure) and
+  /// then reverts on the next restart must not go unnoticed. On failure, [persist]
+  /// has already reverted the in-memory state to the last saved value — this just
+  /// tells the user, who can retry from the still-fully-available list/edit screen.
+  Future<void> _save(BuildContext context, WidgetRef ref, TherapySettings base,
+      List<TherapySegment> segs) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await ref
+        .read(therapySettingsProvider.notifier)
+        .save(base.copyWith(segments: segs));
+    if (!ok) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text(
+            'Could not save therapy settings — your change was not applied. '
+            'Please try again.'),
+        duration: Duration(seconds: 8),
+      ));
+    }
   }
 
   Future<void> _edit(
@@ -84,7 +102,8 @@ class TherapySettingsScreen extends ConsumerWidget {
         if (s != existing) s,
       result,
     ];
-    _save(ref, base, segs);
+    if (!context.mounted) return;
+    await _save(context, ref, base, segs);
   }
 
   static String _time(int minuteOfDay) {

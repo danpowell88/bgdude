@@ -17,6 +17,25 @@ class _IntNotifier extends PersistedStateNotifier<int> {
   Future<void> store(int v) => KvStore.setString(_key, '$v');
 }
 
+/// TASK-198 AC#4: a store() that always fails, to exercise persist()'s failure path.
+class _ThrowingIntNotifier extends PersistedStateNotifier<int> {
+  _ThrowingIntNotifier() : super(0);
+  static const _key = 'test_int_throwing';
+  bool shouldThrow = true;
+
+  @override
+  Future<int?> load() async {
+    final raw = await KvStore.getString(_key);
+    return raw == null ? null : int.tryParse(raw);
+  }
+
+  @override
+  Future<void> store(int v) async {
+    if (shouldThrow) throw StateError('simulated write failure');
+    await KvStore.setString(_key, '$v');
+  }
+}
+
 void main() {
   setUp(KvStore.useMemory);
 
@@ -50,5 +69,42 @@ void main() {
     final n = _IntNotifier();
     await n.restored;
     expect(n.state, 0);
+  });
+
+  group('persist() failure handling (TASK-198)', () {
+    test('a throwing store() causes persist() to return false', () async {
+      final n = _ThrowingIntNotifier();
+      await n.restored;
+      final ok = await n.persist(42);
+      expect(ok, isFalse);
+    });
+
+    test('state is reverted to the last saved value, not treated as persisted',
+        () async {
+      final n = _ThrowingIntNotifier();
+      await n.restored;
+      expect(n.state, 0); // last known-good value
+
+      await n.persist(42);
+      // The failed write must NOT leave the in-memory state looking saved —
+      // otherwise the rest of the app keeps using a value that will silently
+      // revert on the next restart (the exact bug TASK-198 fixes).
+      expect(n.state, 0);
+      expect(await KvStore.getString(_ThrowingIntNotifier._key), isNull);
+    });
+
+    test('a later successful persist still works after an earlier failure',
+        () async {
+      final n = _ThrowingIntNotifier();
+      await n.restored;
+      await n.persist(42);
+      expect(n.state, 0);
+
+      n.shouldThrow = false;
+      final ok = await n.persist(7);
+      expect(ok, isTrue);
+      expect(n.state, 7);
+      expect(await KvStore.getString(_ThrowingIntNotifier._key), '7');
+    });
   });
 }
