@@ -2,6 +2,8 @@ package com.bgdude.app.pump
 
 import android.bluetooth.le.ScanResult
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.jwoglom.pumpx2.pump.PumpState
 import com.jwoglom.pumpx2.pump.TandemError
@@ -114,6 +116,27 @@ class PumpCommHandler(
     /** The challenge from onWaitingForPairingCode, needed to complete pairing. */
     private var pendingChallenge: AbstractCentralChallengeResponse? = null
 
+    /**
+     * TASK-33 (AC#5): bounds how long a scan / pairing-code wait can run before giving up.
+     * Bound to the main looper explicitly (not a bare `Handler()`) so posting is safe
+     * regardless of which thread calls [start]/[onWaitingForPairingCode] — see TASK-267's
+     * Looper.prepare() pitfall for why an implicit current-thread Handler is unsafe here.
+     */
+    private val timeoutHandler = Handler(Looper.getMainLooper())
+    private var pendingTimeout: Runnable? = null
+
+    private fun scheduleTimeout(timeoutMs: Long, onExpire: () -> Unit) {
+        cancelTimeout()
+        val runnable = Runnable { onExpire() }
+        pendingTimeout = runnable
+        timeoutHandler.postDelayed(runnable, timeoutMs)
+    }
+
+    private fun cancelTimeout() {
+        pendingTimeout?.let(timeoutHandler::removeCallbacks)
+        pendingTimeout = null
+    }
+
     /** Accumulates the latest values as responses stream in. Mutated only on the BLE
      *  callback thread, but read from the platform thread via [snapshotJson], so all writes
      *  and that read are guarded by [snapshotLock] to hand out a consistent snapshot
@@ -145,6 +168,20 @@ class PumpCommHandler(
         bluetoothHandler = handler
         emitState(ConnectionStage.SCANNING)
         handler.startScan()
+        // TASK-33 (AC#5): a pump left out of range must not scan forever with no feedback.
+        scheduleTimeout(PairingWindowPolicy.SCAN_TIMEOUT_MS) { onScanTimedOut() }
+    }
+
+    private fun onScanTimedOut() {
+        Log.w(TAG, "Scan timed out — no pump discovered")
+        stopBluetooth()
+        emitState(ConnectionStage.ERROR, "No pump found nearby — try again")
+    }
+
+    private fun onPairingCodeTimedOut() {
+        Log.w(TAG, "Pairing code window expired — no code submitted in time")
+        stopBluetooth()
+        emitState(ConnectionStage.ERROR, "Pairing code entry timed out — try again")
     }
 
     fun stop() {
@@ -176,6 +213,7 @@ class PumpCommHandler(
      * one whose receiver is already unregistered and whose callbacks route to a dead listener.
      */
     private fun stopBluetooth() {
+        cancelTimeout()
         val handler = synchronized(bluetoothLock) {
             val h = bluetoothHandler
             bluetoothHandler = null
@@ -260,6 +298,10 @@ class PumpCommHandler(
 
     fun submitPairingCode(code: String, type: PairingCodeType) {
         val p = peripheral ?: return
+        // TASK-33 (AC#5): the user acted within the window -- whatever happens next
+        // (success, onInvalidPairingCode, onPumpCriticalError) reaches its own terminal
+        // state, so the entry-timeout no longer applies.
+        cancelTimeout()
         PumpState.setPairingCode(context, code)
         // JPAKE (6-digit) pumps supply no CentralChallenge, so pendingChallenge is null —
         // pair() must still be called to drive the JPAKE handshake. Only the legacy 16-char
@@ -358,6 +400,9 @@ class PumpCommHandler(
         peripheral: BluetoothPeripheral,
         centralChallengeResponse: AbstractCentralChallengeResponse?,
     ) = safe("onWaitingForPairingCode") {
+        // A pump was found -- the scan timeout no longer applies (whatever happens next
+        // is bonding/pairing, governed by its own timeout below where relevant).
+        cancelTimeout()
         this.peripheral = peripheral
         this.pendingChallenge = centralChallengeResponse
 
@@ -372,6 +417,9 @@ class PumpCommHandler(
         val type = PairingDecision.promptType(PumpState.pairingCodeType)
         emitState(ConnectionStage.AWAITING_PAIRING_CODE)
         listener.onPairingCodeRequired(type)
+        // TASK-33 (AC#5): a user who opens the pairing dialog and never finishes must not
+        // leave the service waiting forever.
+        scheduleTimeout(PairingWindowPolicy.PAIRING_CODE_TIMEOUT_MS) { onPairingCodeTimedOut() }
     }
 
     override fun onInitialPumpConnection(peripheral: BluetoothPeripheral) =
@@ -383,6 +431,8 @@ class PumpCommHandler(
 
     override fun onPumpConnected(peripheral: BluetoothPeripheral) =
         safe("onPumpConnected") {
+            // TASK-33 (AC#5): reached the success terminal state -- no timeout applies.
+            cancelTimeout()
             this.peripheral = peripheral
             emitState(ConnectionStage.CONNECTED)
             // Base class auto-sends ApiVersion/PumpVersion/TimeSinceReset; then get status.
@@ -437,6 +487,8 @@ class PumpCommHandler(
         peripheral: BluetoothPeripheral,
         response: AbstractPumpChallengeResponse?,
     ) = safe("onInvalidPairingCode") {
+        // TASK-33 (AC#5): reached a terminal (error) state -- no timeout applies.
+        cancelTimeout()
         pendingChallenge = null
         emitState(ConnectionStage.ERROR, "Invalid pairing code")
     }
@@ -455,6 +507,8 @@ class PumpCommHandler(
     // AC#2 (TASK-189): the critical-error path itself must never throw.
     override fun onPumpCriticalError(peripheral: BluetoothPeripheral, error: TandemError) =
         safe("onPumpCriticalError") {
+            // TASK-33 (AC#5): reached a terminal (error) state -- no timeout applies.
+            cancelTimeout()
             listener.onCriticalError(error.name)
             emitState(ConnectionStage.ERROR, error.name)
         }

@@ -21,36 +21,85 @@ class PumpScreen extends ConsumerWidget {
     final totals = ref.watch(insulinTodayProvider);
     final devices = ref.watch(deviceStateProvider);
     final events = ref.watch(pumpEventsProvider);
+    final connection = ref.watch(pumpConnectionProvider).valueOrNull;
     final now = DateTime.now();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pump')),
-      body: snap == null
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Text('No pump data yet. Connect your pump or turn on dev '
-                    'mode to explore with a simulated t:slim X2.'),
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (snap.activeAlarms.isNotEmpty || snap.activeAlerts.isNotEmpty)
-                  _AlertsCard(
-                      alarms: snap.activeAlarms, alerts: snap.activeAlerts),
-                _StatusCard(snap: snap, unit: unit),
-                _InsulinTodayCard(totals: totals),
-                _ReservoirCard(snap: snap),
-                _SiteCard(devices: devices, now: now),
-                _DeviceCard(snap: snap),
-                events.when(
-                  data: (list) => _EventsCard(events: list),
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
-                ),
-              ],
-            ),
+      body: Column(
+        children: [
+          if (connection != null) _ConnectionBanner(connection: connection),
+          Expanded(
+            child: snap == null
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Text(
+                          'No pump data yet. Connect your pump or turn on dev '
+                          'mode to explore with a simulated t:slim X2.'),
+                    ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      if (snap.activeAlarms.isNotEmpty ||
+                          snap.activeAlerts.isNotEmpty)
+                        _AlertsCard(
+                            alarms: snap.activeAlarms,
+                            alerts: snap.activeAlerts),
+                      _StatusCard(snap: snap, unit: unit),
+                      _InsulinTodayCard(totals: totals),
+                      _ReservoirCard(snap: snap),
+                      _SiteCard(devices: devices, now: now),
+                      _DeviceCard(snap: snap),
+                      events.when(
+                        data: (list) => _EventsCard(events: list),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// TASK-33 (AC#2): the pairing dialog's SnackBar for a critical error is transient — a
+/// user who dismisses it, or who wasn't looking at the screen when it appeared (e.g. a
+/// scan/pairing-window timeout firing while they're elsewhere in the app), has no way to
+/// tell the pump is disconnected/errored short of noticing stale readings. This banner
+/// stays up for as long as [connection] reports `error`/`disconnected`, independent of
+/// the transient snackbar, and offers a one-tap retry.
+class _ConnectionBanner extends ConsumerWidget {
+  const _ConnectionBanner({required this.connection});
+  final PumpConnection connection;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final String message;
+    switch (connection.stage) {
+      case PumpConnectionStage.error:
+        message = connection.error ?? 'Pump connection error';
+      case PumpConnectionStage.disconnected:
+        message = 'Pump disconnected';
+      default:
+        return const SizedBox.shrink();
+    }
+    return MaterialBanner(
+      backgroundColor: Theme.of(context).colorScheme.errorContainer,
+      leading: Icon(Icons.bluetooth_disabled,
+          color: Theme.of(context).colorScheme.onErrorContainer),
+      content: Text(message,
+          style: TextStyle(
+              color: Theme.of(context).colorScheme.onErrorContainer)),
+      actions: [
+        TextButton(
+          onPressed: () => ref.read(pumpClientProvider).startScan(),
+          child: const Text('Retry'),
+        ),
+      ],
     );
   }
 }

@@ -1,9 +1,11 @@
 ---
 id: TASK-218
 title: 'CI: cache Gradle dependencies'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-06 21:32'
+updated_date: '2026-07-07 21:38'
 labels:
   - infra
   - cleanup
@@ -42,6 +44,16 @@ ordinal: 113200
 - Effort: S–M
 - Where: .github/workflows/ci.yml
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 21:38
+---
+Started: add gradle/actions/setup-gradle@v4 to .github/workflows/ci.yml (before the JDK-consuming steps) to cache ~/.gradle/caches + wrapper distribution, keyed on gradle files -- both the debug-APK build (flutter build apk, which invokes gradlew under android/) and the native unit-test step hit this. Will record before/after run durations on this task once both a cold and a warm CI run complete.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
