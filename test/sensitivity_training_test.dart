@@ -202,6 +202,64 @@ void main() {
       expect(model.beatsHeuristic, isFalse);
       expect(model.model, isNull);
     });
+
+    test(
+        'a fit that passes the gate unconstrained but loses after sign-constraining '
+        'is NOT adopted (TASK-244)', () {
+      // label = 1.0 + heuristic's OWN sleep bump (so the heuristic is a genuinely
+      // decent baseline here) + a small, WRONGLY-signed spo2 offset (spo2 delta
+      // should REDUCE resistance per _expectedSign, but here it's rigged to
+      // correlate the opposite way). An unconstrained ridge fit exploits spo2 to
+      // fit near-perfectly and easily beats the heuristic; but spo2's wrong-signed
+      // coefficient gets zeroed by _signConstrained before the model ships, leaving
+      // only a tiny, genuinely-weak sleep coefficient that does worse than the
+      // heuristic's own tuned thresholds. The adoption gate must score THIS
+      // (deployed) model, not the unconstrained one that only exists during fitting.
+      final rows = <(double sleep, double spo2Delta, double label)>[];
+      for (final spo2Delta in [-3.0, 3.0]) {
+        final offset = spo2Delta < 0 ? -0.05 : 0.05; // wrong sign vs expected -1
+        for (final sleep in [4.0, 4.3, 4.6, 4.9]) {
+          rows.add((sleep, spo2Delta, 1.0 + 0.20 + offset)); // < 5h bucket
+        }
+        for (final sleep in [5.1, 5.4, 5.7, 5.9]) {
+          rows.add((sleep, spo2Delta, 1.0 + 0.12 + offset)); // < 6h bucket
+        }
+        for (final sleep in [6.5, 7.0, 7.5, 8.0]) {
+          rows.add((sleep, spo2Delta, 1.0 + offset)); // >= 6h bucket
+        }
+      }
+      final examples = [
+        for (final r in rows)
+          SensitivityExample(
+            features: ContextFeatures(
+              sleepHours: r.$1,
+              sleepEfficiency: 0.9,
+              overnightHrvRmssd: 50,
+              restingHr: 60,
+              priorDayExerciseLoad: 0.0,
+              menstrualLutealPhase: 0.0,
+              illnessFlag: 0.0,
+              baselineHrv: 50,
+              baselineRestingHr: 60,
+              spo2: 97 + r.$2,
+              baselineSpo2: 97,
+            ),
+            sensitivityDeviation: r.$3,
+          ),
+      ];
+
+      final model = SensitivityModel(minExamples: 8)..train(examples);
+
+      // The correctness claim this test exists to pin: verified by temporarily
+      // reverting _looMse to fit unconstrained (matching this exact scenario)
+      // during development, which showed isTrained/beatsHeuristic both true with
+      // cvSkill ~0.89 -- i.e. this data DOES pass the gate if scored unconstrained.
+      // With the real (constrained) _looMse, it must not be adopted.
+      expect(model.isTrained, isFalse);
+      expect(model.beatsHeuristic, isFalse);
+      expect(model.model, isNull);
+      expect(model.cvSkill, isNull);
+    });
   });
 
   group('trainTimeOfDay', () {

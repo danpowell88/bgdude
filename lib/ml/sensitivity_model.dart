@@ -208,9 +208,14 @@ class SensitivityModel {
   /// (TASK-21 AC#2); otherwise callers fall back to the heuristic (see
   /// `effectiveSensitivityProvider`, which already does this whenever [model] is
   /// null). A model that IS adopted has any wrong-signed coefficient zeroed
-  /// (TASK-21 AC#1) — applied post-fit, not inside the CV search, since
-  /// constraining every LOO fold would be far more expensive for no real benefit at
-  /// this data scale.
+  /// (TASK-21 AC#1). TASK-244: [_looMse] applies that SAME sign constraint to every
+  /// LOO fold's fit before scoring it, so the adoption gate and [cvSkill] measure the
+  /// model that's actually deployed — constraining is a cheap O(features) step per
+  /// fold (negligible next to the O(n³) ridge solve itself), so an earlier "too
+  /// expensive to constrain every fold" rationale for skipping it was mistaken:
+  /// scoring the unconstrained fit while shipping the constrained one meant a fit
+  /// could clear the beats-heuristic bar, then have coefficients zeroed post-hoc,
+  /// silently deploying a different (and possibly worse-than-heuristic) model.
   void train(List<SensitivityExample> examples) {
     if (examples.length < minExamples) {
       model = null;
@@ -263,7 +268,9 @@ class SensitivityModel {
     beatsHeuristic = true;
   }
 
-  /// Weighted leave-one-out mean squared error for one lambda.
+  /// Weighted leave-one-out mean squared error for one lambda. TASK-244: each fold's
+  /// fit is sign-constrained the same way [train] constrains the model it deploys —
+  /// this must score the model that will actually ship, not the unconstrained fit.
   static double _looMse(
     List<List<double>> x,
     List<double> y,
@@ -281,8 +288,8 @@ class SensitivityModel {
         yTrain.add(y[j]);
         wTrain.add(w[j]);
       }
-      final fitted =
-          RidgeRegression(lambda: lambda).fit(xTrain, yTrain, sampleWeights: wTrain);
+      final fitted = _signConstrained(
+          RidgeRegression(lambda: lambda).fit(xTrain, yTrain, sampleWeights: wTrain));
       final err = y[i] - fitted.predict(x[i]);
       se += w[i] * err * err;
       sw += w[i];
