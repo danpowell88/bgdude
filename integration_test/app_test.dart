@@ -319,8 +319,13 @@ void main() {
     expect(find.text('Clarke error grid'), findsOneWidget);
 
     // §4-6.4 / TASK-38: the read-only diagnostics log opens from Advanced.
+    // TASK-234: scrollUntilVisible stops when the tile's EDGE enters the
+    // viewport, so the tap's center hit-test could miss and the screen never
+    // opened. ensureVisible brings the whole tile on-screen first.
     await tester.scrollUntilVisible(find.text('Diagnostics log'), 200,
         scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(find.text('Diagnostics log'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Diagnostics log'));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(AppBar, 'Diagnostics log'), findsOneWidget);
