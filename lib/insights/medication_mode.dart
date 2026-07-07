@@ -5,8 +5,6 @@
 /// account for it. Advisory only.
 library;
 
-import 'dart:math' as math;
-
 import '../analytics/therapy_settings.dart';
 
 enum MedicationIntensity { mild, moderate, high }
@@ -39,23 +37,14 @@ class MedicationMode {
   final MedicationIntensity intensity;
   final String name;
 
-  static const _minOverlayConfidence = 0.7;
-
-  /// Apply the resistance boost to [base] while active (clamped to the SensitivityContext
-  /// band). No-op when inactive.
+  /// Apply the resistance boost to [base] while active (TASK-146: delegates to
+  /// [SensitivityContext.withResistanceOverlay] for the shared clamp/confidence
+  /// -floor/dedup math — the same overlay illness mode uses). No-op when inactive.
   SensitivityContext overlay(SensitivityContext base) {
     if (!active) return base;
-    final boosted = (base.resistanceMultiplier * intensity.resistanceBoost)
-        .clamp(0.5, 1.6)
-        .toDouble();
-    const reason = 'medication';
-    return SensitivityContext(
-      resistanceMultiplier: boosted,
-      confidence: math.max(base.confidence, _minOverlayConfidence),
-      reasons: [
-        ...base.reasons,
-        if (!base.reasons.contains(reason)) reason,
-      ],
+    return base.withResistanceOverlay(
+      boost: intensity.resistanceBoost,
+      reason: 'medication',
     );
   }
 

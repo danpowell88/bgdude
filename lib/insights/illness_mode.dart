@@ -14,7 +14,6 @@
 library;
 
 import 'dart:convert';
-import 'dart:math' as math;
 
 import '../analytics/therapy_settings.dart';
 import '../feedback/annotations.dart';
@@ -122,11 +121,6 @@ class IllnessModeController {
 
   IllnessMode mode;
 
-  /// While the overlay is active the advisor should not treat the adjustment as a
-  /// weak signal: illness → resistance is well-established, so confidence is floored
-  /// here even when the learned model is still cold.
-  static const double minOverlayConfidence = 0.7;
-
   /// Switch illness mode on (or update its boost/notes if already on).
   void activate({
     required DateTime now,
@@ -182,22 +176,17 @@ class IllnessModeController {
 
   void updateNotes(String notes) => mode = mode.copyWith(notes: notes);
 
-  /// The sensitivity context the rest of the app should use while sick: the base
-  /// resistance multiplier scaled by the boost (clamped to the plausible band the
-  /// [SensitivityContext] contract allows), confidence floored at
-  /// [minOverlayConfidence], and 'illness' added to the human-readable drivers.
+  /// The sensitivity context the rest of the app should use while sick (TASK-146):
+  /// delegates to [SensitivityContext.withResistanceOverlay] for the shared
+  /// clamp/confidence-floor/dedup math. The advisor should not treat this
+  /// adjustment as a weak signal — illness → resistance is well-established — so
+  /// this relies on the helper's default confidence floor even when the learned
+  /// model is still cold.
   SensitivityContext overlay(SensitivityContext base) {
     if (!mode.active) return base;
-    final boosted = (base.resistanceMultiplier * mode.expectedResistanceBoost)
-        .clamp(0.5, 1.6)
-        .toDouble();
-    return SensitivityContext(
-      resistanceMultiplier: boosted,
-      confidence: math.max(base.confidence, minOverlayConfidence),
-      reasons: [
-        ...base.reasons,
-        if (!base.reasons.contains('illness')) 'illness',
-      ],
+    return base.withResistanceOverlay(
+      boost: mode.expectedResistanceBoost,
+      reason: 'illness',
     );
   }
 

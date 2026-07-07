@@ -5,6 +5,8 @@
 /// All glucose values are mg/dL internally.
 library;
 
+import 'dart:math' as math;
+
 /// A time-of-day segment with its own targets/ratios (pumps store 1..N of these).
 class TherapySegment {
   const TherapySegment({
@@ -143,7 +145,19 @@ class SensitivityContext {
     this.resistanceMultiplier = 1.0,
     this.confidence = 0.0,
     this.reasons = const [],
-  }) : assert(resistanceMultiplier >= 0.5 && resistanceMultiplier <= 1.6);
+  }) : assert(resistanceMultiplier >= kOverlayResistanceFloor &&
+            resistanceMultiplier <= kOverlayResistanceCeiling);
+
+  /// Plausible band for [resistanceMultiplier] — shared with
+  /// [withResistanceOverlay]'s clamp so both the class invariant and every
+  /// overlay (illness, medication, ...) enforce the exact same bounds (TASK-146).
+  static const double kOverlayResistanceFloor = 0.5;
+  static const double kOverlayResistanceCeiling = 1.6;
+
+  /// Default confidence floor applied by [withResistanceOverlay] — a transient
+  /// clinical overlay (illness, medication) should never be treated as LESS
+  /// certain than this, even if the base context's own confidence was lower.
+  static const double kDefaultMinOverlayConfidence = 0.7;
 
   /// Multiply the base insulin requirement by this. Applied to ISF as a *divisor*
   /// (more resistance => smaller effective ISF => bigger correction) and to CR as a
@@ -162,5 +176,29 @@ class SensitivityContext {
   double get effectiveMultiplier {
     // Blend toward 1.0 by confidence so a low-confidence signal barely moves dosing.
     return 1.0 + (resistanceMultiplier - 1.0) * confidence.clamp(0.0, 1.0);
+  }
+
+  /// Shared clinical-overlay math (TASK-146): apply a resistance [boost] on top
+  /// of this context's own multiplier — clamped to [kOverlayResistanceFloor]..
+  /// [kOverlayResistanceCeiling] — floor confidence at [minConfidence], and add
+  /// [reason] to the driver list (deduped). Illness mode and medication mode both
+  /// delegate to this instead of keeping their own copies of the clamp/floor/dedup
+  /// logic and constants, which had drifted into two separately-defined 0.7s.
+  SensitivityContext withResistanceOverlay({
+    required double boost,
+    required String reason,
+    double minConfidence = kDefaultMinOverlayConfidence,
+  }) {
+    final boosted = (resistanceMultiplier * boost)
+        .clamp(kOverlayResistanceFloor, kOverlayResistanceCeiling)
+        .toDouble();
+    return SensitivityContext(
+      resistanceMultiplier: boosted,
+      confidence: math.max(confidence, minConfidence),
+      reasons: [
+        ...reasons,
+        if (!reasons.contains(reason)) reason,
+      ],
+    );
   }
 }
