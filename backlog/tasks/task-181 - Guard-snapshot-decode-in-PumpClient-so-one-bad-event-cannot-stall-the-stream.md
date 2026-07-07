@@ -1,10 +1,11 @@
 ---
 id: TASK-181
 title: Guard snapshot decode in PumpClient so one bad event cannot stall the stream
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-06 09:18'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 07:46'
 labels:
   - code-health
   - pump
@@ -44,6 +45,16 @@ ordinal: 108200
 - Where: `lib/pump/pump_client.dart`
 - Related: TASK-120 (versioning reduces the cause; this handles it)
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 07:46
+---
+Started: guard the snapshot decode in the event stream (log + skip, stay subscribed); malformed-then-good event test.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->

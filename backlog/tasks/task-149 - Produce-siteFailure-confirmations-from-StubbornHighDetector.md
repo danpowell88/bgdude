@@ -1,10 +1,11 @@
 ---
 id: TASK-149
 title: Produce siteFailure confirmations from StubbornHighDetector
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 08:42'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 04:26'
 labels:
   - code-health
   - insights
@@ -24,9 +25,9 @@ ordinal: 107000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A site-failure branch in `ConfirmationService.scan` is fed by `StubbornHighDetector`, deduped against existing siteFailure annotations with a stable per-day id
-- [ ] #2 Confirming writes the annotation
-- [ ] #3 A unit test covers the branch
+- [x] #1 A site-failure branch in `ConfirmationService.scan` is fed by `StubbornHighDetector`, deduped against existing siteFailure annotations with a stable per-day id
+- [x] #2 Confirming writes the annotation
+- [x] #3 A unit test covers the branch
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -47,13 +48,35 @@ ordinal: 107000
 - Where: `lib/feedback/confirmation_service.dart`, `lib/insights/care_detectors.dart`
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 04:23
+---
+Started: site-failure branch in ConfirmationService.scan fed by StubbornHighDetector.likelySiteIssue with a stable per-day id, deduped against existing siteFailure annotations; confirm path already maps to AnnotationKind.siteFailure; unit test added.
+---
+
+author: Claude
+created: 2026-07-07 04:26
+---
+Done.
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+scan() gained a siteAgeHours param (provider feeds it from deviceStateProvider); a StubbornHighAlert with likelySiteIssue queues ConfirmationType.siteFailure with a day-stable start (same id across rescans), deduped via _coveredBy against AnnotationKind.siteFailure. Confirming already writes the annotation through suggestedKind/confirmPending. Fixed 0.7 confidence documented as rule-based. 3 tests + guide sentence. Verified: analyze clean, 725 tests green, APK builds.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

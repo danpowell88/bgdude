@@ -1,10 +1,11 @@
 ---
 id: TASK-173
 title: 'MutableSnapshotTest: parse-based round-trip assertions'
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 09:16'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 07:30'
 labels:
   - code-health
   - native
@@ -25,9 +26,9 @@ ordinal: 107800
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Tests round-trip the serialized output through a real JSON parser and assert on decoded fields
-- [ ] #2 One negative test asserts an unset field key is absent after decode
-- [ ] #3 Gradle tests green
+- [x] #1 Tests round-trip the serialized output through a real JSON parser and assert on decoded fields
+- [x] #2 One negative test asserts an unset field key is absent after decode
+- [x] #3 Gradle tests green
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -47,13 +48,35 @@ ordinal: 107800
 - Related: TASK-120 (schema versioning + golden fixture)
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 07:28
+---
+Started: rewrite MutableSnapshotTest to decode via org.json (already on the test classpath) asserting decoded values; negative unset-key test; escaping test.
+---
+
+author: Claude
+created: 2026-07-07 07:30
+---
+Done.
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+MutableSnapshotTest rewritten: a decode() helper parses toJson() with org.json JSONObject (throws on malformed output — the validity assertion itself), all assertions on decoded values incl. the schemaVersion field; negative test asserts unset fields are absent as keys via obj.has(); the quote-escaping test round-trips to the raw value; array/last-field-combination cases decode. gradlew :app:testDebugUnitTest green, APK builds, analyze clean (Dart suite untouched). Commit in log.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

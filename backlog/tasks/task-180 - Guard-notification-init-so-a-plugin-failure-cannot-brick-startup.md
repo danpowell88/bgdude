@@ -1,10 +1,11 @@
 ---
 id: TASK-180
 title: Guard notification init so a plugin failure cannot brick startup
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 09:18'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 07:45'
 labels:
   - code-health
   - alerts
@@ -24,8 +25,8 @@ ordinal: 108100
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Each init/schedule call is individually guarded and logged; the app always reaches `runApp`
-- [ ] #2 Test: an init that throws still boots the app shell
+- [x] #1 Each init/schedule call is individually guarded and logged; the app always reaches `runApp`
+- [x] #2 Test: an init that throws still boots the app shell
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -45,13 +46,35 @@ ordinal: 108100
 - Related: TASK-38
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 07:42
+---
+Started: extract a guarded initNotifications(service) helper used by main(); each call individually try/caught + logged; throwing-init test asserts the boot path continues.
+---
+
+author: Claude
+created: 2026-07-07 07:45
+---
+Done.
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+lib/insights/notification_bootstrap.dart: bootstrapNotifications guards init/scheduleDailySummary/scheduleWeeklyReport/registerBackgroundSummary individually with logged failures and always completes; main() now calls it (runApp follows unconditionally — completing normally IS the boot guarantee, which the test pins). Tests: throwing init -> later steps + background registration still run + logged; all-steps-throwing -> 4 logged errors, no propagation. Verified: analyze clean, 739 tests green, APK builds.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

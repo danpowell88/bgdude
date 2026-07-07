@@ -1,10 +1,11 @@
 ---
 id: TASK-131
 title: Local-time contract for time-of-day features (UTC/DST skew)
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 08:38'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 03:58'
 labels:
   - code-health
   - ml
@@ -25,9 +26,9 @@ ordinal: 106300
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A documented and asserted contract (local wall-clock) exists at the ml boundary, converted once at ingest
-- [ ] #2 A debug assertion catches feature times that are UTC
-- [ ] #3 Tests cover a DST boundary and a UTC-vs-local sample
+- [x] #1 A documented and asserted contract (local wall-clock) exists at the ml boundary, converted once at ingest
+- [x] #2 A debug assertion catches feature times that are UTC
+- [x] #3 Tests cover a DST boundary and a UTC-vs-local sample
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -48,13 +49,35 @@ ordinal: 106300
 - Where: `lib/ml/forecast_features.dart`, `lib/ml/time_of_day_sensitivity.dart`, `lib/ml/autotune.dart`, `lib/integrations/nightscout.dart`
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 03:54
+---
+Started: document + assert the local wall-clock contract at the ml boundary (debug assert on .isUtc), convert Nightscout timestamps toLocal() once at ingest, tests for UTC-vs-local and DST-boundary bucketing.
+---
+
+author: Claude
+created: 2026-07-07 03:58
+---
+Done.
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Contract: local wall-clock everywhere past ingest. CgmSample's constructor converts a UTC time toLocal() once (documented as THE ingest point; instant preserved); ForecastFeatures.build and TherapySettings.segmentAt carry debug asserts that reject UTC times; the TOD bucket math is documented wall-clock. Tests: UTC ingest normalizes (same instant), local passes through, the ml-boundary assert fires on UTC, and hour features are identical for the same wall time across the Sydney 2026 DST change (fixed local buckets are the documented intent — dawn phenomenon is a wall-clock effect). No Nightscout ingest path exists yet (TASK-61); when it lands, parsed times flow through CgmSample and are covered. Verified: analyze clean, 713 tests green, APK builds. Commit in log.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

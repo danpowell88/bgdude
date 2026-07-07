@@ -1,10 +1,11 @@
 ---
 id: TASK-145
 title: Fix weekly-digest notification collision and category routing
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 08:41'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 04:20'
 labels:
   - code-health
   - alerts
@@ -25,10 +26,10 @@ ordinal: 106800
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The digest is routed through `NotificationCategory.reportDigest`
-- [ ] #2 It uses a distinct id (e.g. 1003)
-- [ ] #3 A test asserts distinct ids across daily summary, weekly digest, weekly-report nudge
-- [ ] #4 Prefs toggles gate what they claim
+- [x] #1 The digest is routed through `NotificationCategory.reportDigest`
+- [x] #2 It uses a distinct id (e.g. 1003)
+- [x] #3 A test asserts distinct ids across daily summary, weekly digest, weekly-report nudge
+- [x] #4 Prefs toggles gate what they claim
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -48,13 +49,35 @@ ordinal: 106800
 - Where: `lib/insights/notifications.dart`
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 04:17
+---
+Started: route the weekly digest through reportDigest with a distinct id 1003; add id-uniqueness test; prefs then gate what they claim (show() already gates by category).
+---
+
+author: Claude
+created: 2026-07-07 04:20
+---
+Done.
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+showWeeklyDigest routes through NotificationCategory.reportDigest with distinct id 1003 (weeklyDigestId); ids for daily summary (1000), morning summary (1001), weekly-report nudge (1002) and digest (1003) are named constants with a uniqueness test. Prefs now gate what they claim: show() gates by the routed category, so the reportDigest toggle controls both the nudge and the digest, and morningSummary controls only the summaries. Verified: analyze clean, 721 tests green, APK builds.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

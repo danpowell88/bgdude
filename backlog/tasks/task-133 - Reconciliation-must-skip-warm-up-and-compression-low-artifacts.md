@@ -1,10 +1,11 @@
 ---
 id: TASK-133
 title: Reconciliation must skip warm-up and compression-low artifacts
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 08:39'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 04:05'
 labels:
   - code-health
   - ml
@@ -25,9 +26,9 @@ ordinal: 106500
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Warm-up, compression-low and `mgdl <= 0` rows are filtered before nearest-actual selection
-- [ ] #2 Reconciliation is skipped when no valid rows remain
-- [ ] #3 A test asserts a compression-low nadir is not chosen
+- [x] #1 Warm-up, compression-low and `mgdl <= 0` rows are filtered before nearest-actual selection
+- [x] #2 Reconciliation is skipped when no valid rows remain
+- [x] #3 A test asserts a compression-low nadir is not chosen
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -48,13 +49,35 @@ ordinal: 106500
 - Related: TASK-92
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 04:02
+---
+Started: filter warm-up/compression-low/nonpositive rows before nearest-actual selection in reconcilePredictions (both repo impls), skip when none valid, compression-low-nadir test.
+---
+
+author: Claude
+created: 2026-07-07 04:05
+---
+Done.
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Both DriftHistoryRepository and InMemoryHistoryRepository filter sensorWarmup/compressionLow/mgdl<=0 rows before nearest-actual selection; a window with only artifacts leaves the prediction unscored (better unscored than wrong). Tests: compression-low nadir exactly on target loses to the real reading 4 min away; artifact-only window updates nothing. Verified: analyze clean, 717 tests green, APK builds.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->
