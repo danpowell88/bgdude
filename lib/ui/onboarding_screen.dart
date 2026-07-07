@@ -6,6 +6,7 @@ import '../core/units.dart';
 import '../onboarding/onboarding_gate.dart';
 import '../profile/user_profile.dart';
 import '../state/app_flags.dart';
+import '../state/ble_permissions.dart';
 import '../state/providers.dart';
 import 'pairing_dialog.dart';
 import 'profile_form.dart';
@@ -132,7 +133,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       // permissions only matter when actually using hardware.
       await [Permission.notification].request();
       if (!demoOnly) {
-        await [Permission.bluetoothConnect, Permission.bluetoothScan].request();
+        // TASK-226: SDK-gated (locationWhenInUse below API 31, the split Bluetooth
+        // permissions at 31+) -- a denial here just means the pairing scan below
+        // will show its own rationale, so the result isn't checked yet.
+        await requestBlePermissions();
         // TASK-183: continuous monitoring — ask once for the battery-optimization
         // exemption so Doze doesn't throttle BLE delivery and the overnight
         // summary backstop. Android shows the system consent dialog.
@@ -151,17 +155,26 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   /// Begin scanning for a pump. The code prompt is handled by [PumpPairingListener].
   Future<void> _startPairing() async {
     setState(() => _pairing = true);
+    final messenger = ScaffoldMessenger.of(context);
     // Leaving demo (if it was picked) makes pumpClientProvider the real bridge.
     if (ref.read(devModeProvider)) {
       ref.read(devModeProvider.notifier).state = false;
       await (await AppFlags.load()).setDevMode(false);
     }
     if (mounted) setState(() => _demoChosen = false);
-    await [
-      Permission.bluetoothConnect,
-      Permission.bluetoothScan,
-      Permission.notification,
-    ].request();
+    await Permission.notification.request();
+    // TASK-226: SDK-gated -- locationWhenInUse below API 31 (split bluetoothScan/
+    // bluetoothConnect don't exist there and BLE scanning legally needs fine
+    // location), the split permissions at 31+.
+    final ble = await requestBlePermissions();
+    if (!ble.granted) {
+      if (mounted) {
+        setState(() => _pairing = false);
+        messenger.showSnackBar(
+            SnackBar(content: Text(blePermissionDeniedMessage(ble.requirement))));
+      }
+      return;
+    }
     try {
       await ref.read(pumpClientProvider).startScan();
     } catch (_) {}

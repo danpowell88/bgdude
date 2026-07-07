@@ -51,6 +51,10 @@ dependencies:
   # Runtime permission requests (Bluetooth, notifications)
   permission_handler: ^11.3.1
 
+  # Android API level check (TASK-226): below API 31, BLE scanning needs runtime
+  # ACCESS_FINE_LOCATION rather than the split bluetoothScan/bluetoothConnect perms.
+  device_info_plus: ^12.4.0
+
   # Dart-side BLE for the standard Bluetooth Glucose Service (0x1808) — importing
   # fingersticks from a paired meter (e.g. Accu-Chek Guide Me). Separate from the pump's
   # native (blessed) bridge: a different device, on-demand sync rather than streaming.

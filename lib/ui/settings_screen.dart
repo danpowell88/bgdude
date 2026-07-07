@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/units.dart';
 import '../integrations/nightscout.dart';
 import '../state/app_flags.dart';
+import '../state/ble_permissions.dart';
 import '../state/providers.dart';
 import 'app_routes.dart';
 
@@ -302,7 +303,18 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Re-pair pump'),
             subtitle: const Text('Start a fresh scan / pairing'),
             enabled: !devMode,
-            onTap: () => ref.read(pumpClientProvider).startScan(),
+            onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              // TASK-226: a permission revoked since onboarding (or never granted on
+              // this Android version) must re-prompt, not silently fail to scan.
+              final ble = await requestBlePermissions();
+              if (!ble.granted) {
+                messenger.showSnackBar(SnackBar(
+                    content: Text(blePermissionDeniedMessage(ble.requirement))));
+                return;
+              }
+              await ref.read(pumpClientProvider).startScan();
+            },
           ),
           ListTile(
             leading: const Icon(Icons.link_off),
