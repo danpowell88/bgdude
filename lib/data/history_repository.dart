@@ -13,6 +13,7 @@ import 'package:drift/drift.dart';
 
 import '../core/samples.dart';
 import '../feedback/annotations.dart';
+import '../logging/app_log.dart';
 import 'database.dart';
 import 'health_sync.dart';
 
@@ -289,18 +290,33 @@ class DriftHistoryRepository implements HistoryRepository {
           ..where((t) => t.time.isBetweenValues(from, to))
           ..orderBy([(t) => OrderingTerm(expression: t.time)]))
         .get();
-    return [
+    final out = <HealthSample>[];
+    for (final r in rows) {
       // Rows whose type this build doesn't know (newer schema) are skipped
       // rather than guessed (TASK-118).
-      for (final r in rows)
-        if (HealthMetric.fromDbString(r.type) case final HealthMetric metric)
-          HealthSample(
-            time: r.time,
-            type: metric,
-            value: r.value,
-            meta: (jsonDecode(r.meta) as Map).cast<String, Object?>(),
-          ),
-    ];
+      final metric = HealthMetric.fromDbString(r.type);
+      if (metric == null) continue;
+      out.add(HealthSample(
+        time: r.time,
+        type: metric,
+        value: r.value,
+        // TASK-207: empty/non-JSON meta on one row must not abort the whole
+        // range read — every other row's context (context builder, reports,
+        // training features) would silently vanish along with it.
+        meta: _decodeMeta(r.meta),
+      ));
+    }
+    return out;
+  }
+
+  static Map<String, Object?> _decodeMeta(String raw) {
+    try {
+      return (jsonDecode(raw) as Map).cast<String, Object?>();
+    } catch (e) {
+      appLog.error('persistence', 'corrupt health-sample meta — defaulting to {}',
+          error: e);
+      return const {};
+    }
   }
 
   @override
