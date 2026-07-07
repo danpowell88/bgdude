@@ -16,6 +16,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.bgdude.app.CrashLogger
+import com.bgdude.app.widget.WidgetNativePush
 import com.bgdude.app.garmin.GarminIntegration
 
 /**
@@ -58,6 +59,9 @@ class PumpService : Service(), PumpCommHandler.Listener {
         createChannel()
         commHandler = PumpCommHandler(applicationContext, this)
         GarminIntegration.init(applicationContext)
+        // TASK-177: periodic widget re-render so staleness grey-out is enforced
+        // natively, without a live Dart isolate.
+        WidgetNativePush.scheduleStalenessRenders(applicationContext)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -109,6 +113,9 @@ class PumpService : Service(), PumpCommHandler.Listener {
         val json = snapshot.toJson()
         callbacks?.onSnapshot(json)
         GarminIntegration.onSnapshot(json)
+        // TASK-177: keep the home-screen widget honest even if the Flutter engine
+        // is dead — push straight from the native snapshot.
+        WidgetNativePush.push(applicationContext, snapshot)
         maybeFireUrgentLowBackstop(snapshot.cgmMgdl)
     }
 

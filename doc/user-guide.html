@@ -165,7 +165,7 @@
     <li>If the reading is <b>missing or older than 15 minutes</b> it greys out and reads "Stale · Xm ago" (or "no data"), so a frozen number never looks current.</li>
     <li><b>Tap</b> the widget to open the app.</li>
   </ul>
-  <div class="note">The widget updates whenever a new CGM reading arrives while the app/service is running, and refreshes the "ago" text on its own — the times and grey-out stay honest even between readings and after a launcher restart.</div>
+  <div class="note">The widget updates whenever a new CGM reading arrives — pushed directly from the pump service, so it keeps working even if Android has killed the app itself — and a periodic native refresh keeps the "ago" text and grey-out honest between readings, after a launcher restart, and when the app is dead.</div>
 </section>
 
 <section id="garmin">
