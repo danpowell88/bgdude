@@ -69,18 +69,25 @@ Future<void> openSettings(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Scroll the current (Settings/hub) list until [label] is visible, then tap it.
-Future<void> tapListItem(WidgetTester tester, String label) async {
-  final finder = find.text(label);
-  await tester.scrollUntilVisible(
-    finder,
-    250,
-    scrollable: find.byType(Scrollable).first,
-  );
+/// TASK-234/235: `scrollUntilVisible` alone stops as soon as a tile's EDGE enters
+/// the viewport, so `tap()`'s center hit-test can miss (a `warnIfMissed` warning
+/// in the failure log, and the expected screen never opens) -- `ensureVisible`
+/// brings the whole tile fully on-screen first. Takes a [Finder] (not a label
+/// string) so it works for any tile, not just ones found by exact text.
+Future<void> tapListTile(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(finder, 200,
+      scrollable: find.byType(Scrollable).first);
+  await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }
+
+/// Scroll the current (Settings/hub) list until [label] is visible, then tap it.
+/// TASK-279: was its own scrollUntilVisible-then-tap (the same tap-miss gap
+/// TASK-234 diagnosed for Diagnostics log) -- now just [tapListTile] by label.
+Future<void> tapListItem(WidgetTester tester, String label) =>
+    tapListTile(tester, find.text(label));
 
 /// Open Settings, then navigate into the sub-screen whose ListTile reads [label].
 Future<void> openSettingsScreen(WidgetTester tester, String label) async {

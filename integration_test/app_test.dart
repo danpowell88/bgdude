@@ -13,6 +13,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'harness.dart' show tapListTile;
+
 Future<void> _pumpApp(
   WidgetTester tester, {
   bool onboarded = true,
@@ -104,11 +106,9 @@ void main() {
     await tester.scrollUntilVisible(find.text('Forecast accuracy'), 200,
         scrollable: find.byType(Scrollable).first);
     expect(find.text('Forecast accuracy'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Nightscout'), 200,
-        scrollable: find.byType(Scrollable).first);
-    expect(find.text('Nightscout'), findsOneWidget);
-    await tester.tap(find.text('Nightscout'));
-    await tester.pumpAndSettle();
+    // TASK-235: routes through the shared tapListTile helper (TASK-234's
+    // ensureVisible fix, generalised) rather than a same-window scroll+tap.
+    await tapListTile(tester, find.text('Nightscout'));
     expect(find.text('Upload to Nightscout'), findsOneWidget);
   });
 
@@ -297,10 +297,8 @@ void main() {
     await _pumpApp(tester);
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Therapy profile'), 200,
-        scrollable: find.byType(Scrollable).first);
-    await tester.tap(find.text('Therapy profile'));
-    await tester.pumpAndSettle();
+    // TASK-235: routes through the shared tapListTile helper.
+    await tapListTile(tester, find.text('Therapy profile'));
     expect(find.text('Add segment'), findsOneWidget);
     expect(find.textContaining('Basal'), findsWidgets);
   });
@@ -310,24 +308,14 @@ void main() {
     await _pumpApp(tester);
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Model internals'), 200,
-        scrollable: find.byType(Scrollable).first);
-    await tester.tap(find.text('Model internals'));
-    await tester.pumpAndSettle();
+    // TASK-235: routes through the shared tapListTile helper.
+    await tapListTile(tester, find.text('Model internals'));
     expect(find.text('Effective sensitivity'), findsOneWidget);
     expect(find.text('Forecaster'), findsOneWidget);
     expect(find.text('Clarke error grid'), findsOneWidget);
 
     // §4-6.4 / TASK-38: the read-only diagnostics log opens from Advanced.
-    // TASK-234: scrollUntilVisible stops when the tile's EDGE enters the
-    // viewport, so the tap's center hit-test could miss and the screen never
-    // opened. ensureVisible brings the whole tile on-screen first.
-    await tester.scrollUntilVisible(find.text('Diagnostics log'), 200,
-        scrollable: find.byType(Scrollable).first);
-    await tester.ensureVisible(find.text('Diagnostics log'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Diagnostics log'));
-    await tester.pumpAndSettle();
+    await tapListTile(tester, find.text('Diagnostics log'));
     expect(find.widgetWithText(AppBar, 'Diagnostics log'), findsOneWidget);
   });
 }
