@@ -353,6 +353,10 @@ class GlucosePredictor {
         bg += s.controlIq.stepDelta(bg, stepMinutes);
       }
 
+      // TASK-190: a NaN fails both comparisons below (any NaN comparison is false),
+      // so it would otherwise slip through the floor/ceiling clamps unchanged and
+      // reach the forecast chart as a broken point.
+      if (bg.isNaN || bg.isInfinite) bg = s.currentMgdl;
       if (bg < 39) bg = 39; // CGM floor
       if (bg > 400) bg = 400; // CGM ceiling
       points.add((time: t, mgdl: bg));

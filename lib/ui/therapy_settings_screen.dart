@@ -165,11 +165,22 @@ class _SegmentDialogState extends State<_SegmentDialog> {
         FilledButton(
           onPressed: () {
             final hour = (int.tryParse(_hour.text) ?? 0).clamp(0, 23);
+            final isf = _toMgdl(_isf.text);
+            final carbRatio = double.tryParse(_cr.text) ?? 10;
+            // TASK-190: ISF/CR feed straight divisors in the bolus/predictor math — a
+            // zero here doesn't fail loudly, it turns into a NaN/Infinity dose or chart
+            // point downstream, so reject it right at the input boundary.
+            if (isf <= 0 || carbRatio <= 0) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content:
+                      Text('ISF and carb ratio must both be greater than zero.')));
+              return;
+            }
             Navigator.of(context).pop(TherapySegment(
               startMinuteOfDay: hour * 60,
               basalUnitsPerHour: double.tryParse(_basal.text) ?? 0,
-              isf: _toMgdl(_isf.text),
-              carbRatio: double.tryParse(_cr.text) ?? 10,
+              isf: isf,
+              carbRatio: carbRatio,
               targetMgdl: _toMgdl(_target.text),
             ));
           },

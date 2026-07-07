@@ -30,6 +30,45 @@ void main() {
         context: ctx,
       );
 
+  group('TASK-190: zero ISF/CR never produces a NaN/Infinity dose', () {
+    final zeroSettings = TherapySettings(
+      segments: const [
+        TherapySegment(
+          startMinuteOfDay: 0,
+          isf: 0,
+          carbRatio: 0,
+          targetMgdl: 100,
+          basalUnitsPerHour: 0.8,
+        ),
+      ],
+      maxBolusUnits: 15,
+    );
+    PredictionState zeroState({required double bg, double carbs = 0}) =>
+        PredictionState(
+          now: now,
+          currentMgdl: bg,
+          recentRocMgdlPerMin: 0,
+          boluses: const [],
+          basal: const [],
+          carbs: const [],
+          settings: zeroSettings,
+          context: SensitivityContext.neutral,
+        );
+
+    test('zero ISF: correction is finite, not Infinity', () {
+      final advice = BolusAdvisor().advise(zeroState(bg: 200));
+      expect(advice.correctionUnits.isFinite, isTrue);
+      expect(advice.recommendedUnits.isFinite, isTrue);
+    });
+
+    test('zero carb ratio: meal dose is finite, not Infinity', () {
+      final advice =
+          BolusAdvisor().advise(zeroState(bg: 100, carbs: 40), carbsGrams: 40);
+      expect(advice.mealUnits.isFinite, isTrue);
+      expect(advice.recommendedUnits.isFinite, isTrue);
+    });
+  });
+
   test('pure correction matches hand calc: (200-100)/50 = 2U, no IOB', () {
     final advice = BolusAdvisor().advise(state(bg: 200));
     expect(advice.correctionUnits, closeTo(2.0, 0.05));

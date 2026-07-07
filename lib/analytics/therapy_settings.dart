@@ -39,11 +39,18 @@ class TherapySegment {
 
   factory TherapySegment.fromJson(Map<String, dynamic> j) => TherapySegment(
         startMinuteOfDay: (j['startMinuteOfDay'] as num).toInt(),
-        isf: (j['isf'] as num).toDouble(),
-        carbRatio: (j['carbRatio'] as num).toDouble(),
+        // TASK-190: isf/carbRatio are divisors throughout the bolus/predictor math; a
+        // zero or negative value restored from a corrupt/old blob doesn't fail loudly,
+        // it turns into a NaN/Infinity dose or chart point downstream. Fall back to the
+        // same clinical defaults as TherapySettings.placeholder() rather than trusting
+        // the stored value blindly.
+        isf: _positiveOr((j['isf'] as num).toDouble(), 54),
+        carbRatio: _positiveOr((j['carbRatio'] as num).toDouble(), 9),
         targetMgdl: (j['targetMgdl'] as num).toDouble(),
         basalUnitsPerHour: (j['basalUnitsPerHour'] as num).toDouble(),
       );
+
+  static double _positiveOr(double v, double fallback) => v > 0 ? v : fallback;
 }
 
 class TherapySettings {

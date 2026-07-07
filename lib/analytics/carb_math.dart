@@ -11,6 +11,7 @@
 library;
 
 import '../core/samples.dart';
+import '../core/units.dart';
 
 class CarbModel {
   const CarbModel({this.minAbsorptionMinutes = 30});
@@ -72,6 +73,9 @@ class CarbModel {
 
 /// Carb Sensitivity Factor: mg/dL rise per gram of carb = ISF / CR.
 double carbSensitivityFactor({required double isf, required double carbRatio}) {
-  assert(carbRatio > 0);
-  return isf / carbRatio;
+  // TASK-190: carbRatio is guarded at the input boundary (therapy_settings_screen,
+  // TherapySegment.fromJson), but an assert alone is stripped in release/profile
+  // builds — safeDivide keeps a stray zero from turning into an Infinity CSF that
+  // then poisons a whole forecast line via `rate * csf` (0 * Infinity = NaN).
+  return safeDivide(isf, carbRatio);
 }

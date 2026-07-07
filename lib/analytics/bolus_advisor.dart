@@ -337,14 +337,18 @@ class BolusAdvisor {
     var confidence = _baseConfidence(state.context);
 
     // --- Meal component ---
-    final mealUnits = carbsGrams > 0 ? carbsGrams / effectiveCr : 0.0;
+    // TASK-190: effectiveCr is guarded at the input boundary (therapy_settings_screen,
+    // TherapySegment.fromJson) so it shouldn't be 0 here, but safeDivide keeps a zero/
+    // negative CR from ever turning into an Infinity dose that reaches the UI.
+    final mealUnits = carbsGrams > 0 ? safeDivide(carbsGrams, effectiveCr) : 0.0;
 
     // --- Fat/protein (FPU) extended component ---
     final exactMacros = fatGrams > 0 || proteinGrams > 0;
     final fpu = exactMacros
         ? (fatGrams * _fatKcalPerG + proteinGrams * _proteinKcalPerG) / _kcalPerFpu
         : fatProteinLevel.fpu;
-    var fpuUnits = fpu > 0 ? (fpu * _carbEquivPerFpu) / effectiveCr : 0.0;
+    var fpuUnits =
+        fpu > 0 ? safeDivide(fpu * _carbEquivPerFpu, effectiveCr) : 0.0;
     fpuUnits = _floorToIncrement(fpuUnits);
     final fpuExtendHours = fpu > 0 ? pankowskaExtendHours(fpu) : 0;
 
@@ -361,7 +365,7 @@ class BolusAdvisor {
     } else if (currentlyLow) {
       confidence = AdviceConfidence.moderate;
     } else {
-      final rawCorrection = (state.currentMgdl - seg.targetMgdl) / isf;
+      final rawCorrection = safeDivide(state.currentMgdl - seg.targetMgdl, isf);
       correctionAfterIob = rawCorrection - iob;
       if (correctionAfterIob < 0) {
         iobCoveredCorrection = true;
@@ -408,6 +412,10 @@ class BolusAdvisor {
       confidence = _downgrade(confidence);
     }
     if (total < 0) total = 0;
+    // TASK-190: NaN/Infinity fail the `> cap`/`< 0` checks above silently (any NaN
+    // comparison is false), so they'd otherwise reach the UI as a literal "NaN U" or
+    // "Infinity U" dose — this is the last line of defense.
+    if (total.isNaN || total.isInfinite) total = 0;
     total = _floorToIncrement(total);
 
     final shownMeal = mealUnits > total ? total : mealUnits;

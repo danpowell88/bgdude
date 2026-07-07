@@ -11,6 +11,13 @@ library;
 /// round at the display boundary.
 const double kMgdlPerMmol = 18.0182;
 
+/// A division guaranteed finite: returns [fallback] (default 0) instead of NaN/±Infinity
+/// when [denominator] is 0. Comparisons with NaN are always false, so a NaN silently skips
+/// clamps/caps downstream instead of being caught by them — guard at the division itself
+/// rather than after (TASK-190).
+double safeDivide(double numerator, double denominator, {double fallback = 0}) =>
+    denominator == 0 ? fallback : numerator / denominator;
+
 enum GlucoseUnit {
   mgdl,
   mmol;
