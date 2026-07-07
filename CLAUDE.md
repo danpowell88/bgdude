@@ -141,7 +141,7 @@ green, and **it must never be left red**. `flutter analyze` + `flutter test` pas
    `integration_test/` suite needs an emulator and is separate).
    **Line coverage must not drop.** After the run, compute the percentage the way CI
    does — sum `LH:`/`LF:` over `coverage/lcov.info`, excluding `lib/data/database.g.dart`
-   — and confirm it is at or above the floor in `ci.yml` (floor 60%; actual ~65% on
+   — and confirm it is at or above the floor in `ci.yml` (floor 65%; actual ~67.4% on
    2026-07-08). Coverage is a **ratchet, per ticket**: any new testable code ships with
    its tests in the *same* change, so the number never regresses; if your change lowers
    it, add tests until it recovers before committing; if it raises the sustained level,
