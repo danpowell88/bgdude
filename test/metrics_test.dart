@@ -100,6 +100,39 @@ void main() {
       final m = const MetricsCalculator().compute(samples);
       expect(m.sufficient, isFalse);
     });
+
+    test('a CGM gap lowers active fraction/sufficiency but never corrupts TIR '
+        '(TASK-94 AC#1)', () {
+      final start = DateTime(2026, 6, 1);
+      // 12 real days of readings spread across a 19-day span (an 8-day sensor
+      // gap in the middle) — every reading in range.
+      final samples = <CgmSample>[
+        for (var day = 0; day < 10; day++)
+          for (var i = 0; i < 288; i++)
+            CgmSample(
+                time: start
+                    .add(Duration(days: day))
+                    .add(Duration(minutes: 5 * i)),
+                mgdl: 100),
+        for (var day = 18; day < 20; day++)
+          for (var i = 0; i < 288; i++)
+            CgmSample(
+                time: start
+                    .add(Duration(days: day))
+                    .add(Duration(minutes: 5 * i)),
+                mgdl: 100),
+      ];
+      final m = const MetricsCalculator().compute(samples);
+
+      // The gap shows up as reduced coverage, not a skewed ratio: every present
+      // reading is in range, so TIR stays exactly 1.0 regardless of the gap.
+      expect(m.timeInRange, 1.0);
+      expect(m.activeFraction, lessThan(0.70),
+          reason: 'the 8-day gap should push active time below the 70% floor');
+      expect(m.sufficient, isFalse,
+          reason: 'low active fraction must flag the window as insufficient, '
+              'not silently report a clean TIR');
+    });
   });
 
   group('Clarke error grid', () {
