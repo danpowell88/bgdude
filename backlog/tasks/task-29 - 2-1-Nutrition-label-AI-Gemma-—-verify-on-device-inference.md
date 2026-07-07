@@ -1,16 +1,17 @@
 ---
 id: TASK-29
 title: Nutrition-label AI (Gemma) — verify on-device inference
-status: In Progress
+status: To Do
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-07 13:00'
 labels:
   - roadmap
   - panel-scanner
   - "\U0001F50C hardware"
   - "\U0001F9E0 llm"
+  - detail-needed
 milestone: m-4
 dependencies: []
 priority: medium
@@ -55,3 +56,19 @@ ordinal: 500100
 - Flags: 🔌 hardware 🧠 llm
 - Roadmap status: partial
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 12:58
+---
+detail-needed (2026-07-07, hardware gate): AC#1 (verify inference on a real device with a real model) and AC#3/#4's real-world validation explicitly need 'on-device (hardware): prepare a build + run on the real device'. No physical Android phone with the model downloaded is available in this environment to run flutter_gemma inference against. Also genuinely blocked per its own Depends-on note: 'section 5 items 1-3' (LLM dosing-safety/anti-hallucination guards) must land first — worth checking whether TASK-84/85/86 (the section-5 items) are done before this can even start meaningfully. Left In Progress; this is real, scoped work waiting on both a prerequisite check and hardware access.
+---
+
+author: Claude
+created: 2026-07-07 12:59
+---
+Follow-up: checked the section-5 prerequisite (TASK-84 dosing-safety validation, TASK-85 OCR anti-hallucination guard, TASK-86 confidence-comparison fix) — all three are Done. So the only remaining blocker is the hardware/on-device inference verification itself (AC#1), not an unmet prerequisite.
+---
+<!-- COMMENTS:END -->

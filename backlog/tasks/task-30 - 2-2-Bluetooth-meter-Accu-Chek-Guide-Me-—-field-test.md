@@ -1,15 +1,16 @@
 ---
 id: TASK-30
 title: Bluetooth meter (Accu-Chek Guide Me) — field test
-status: In Progress
+status: To Do
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-07 13:00'
 labels:
   - roadmap
   - meter
   - "\U0001F50C hardware"
+  - detail-needed
 milestone: m-4
 dependencies:
   - TASK-9
@@ -54,3 +55,13 @@ ordinal: 500200
 - Flags: 🔌 hardware
 - Roadmap status: partial
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 12:59
+---
+detail-needed (2026-07-07, hardware gate): every AC (#1 pairing+sync field-tested, #2 bonding/re-discovery edges, #3 fingerstick/CGM dedupe verified against real data, #4 background sync) explicitly needs 'on-device (hardware): prepare a build + run on the real device' against a physical Accu-Chek Guide Me meter. No physical meter is available in this environment; the decoder/sync protocol/pairing screen are already built and unit-tested per the ticket's own background note. Left In Progress — real, scoped work waiting on hardware access, not a design gap.
+---
+<!-- COMMENTS:END -->

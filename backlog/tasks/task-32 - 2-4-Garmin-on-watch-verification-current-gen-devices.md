@@ -1,11 +1,11 @@
 ---
 id: TASK-32
 title: Garmin on-watch verification + current-gen devices
-status: In Progress
+status: To Do
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-07 12:55'
+updated_date: '2026-07-07 13:00'
 labels:
   - roadmap
   - garmin

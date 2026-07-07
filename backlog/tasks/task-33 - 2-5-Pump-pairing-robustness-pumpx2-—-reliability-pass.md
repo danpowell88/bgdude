@@ -5,11 +5,12 @@ status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-07 12:58'
 labels:
   - roadmap
   - pump
   - "\U0001F50C hardware"
+  - detail-needed
 milestone: m-4
 dependencies:
   - TASK-12
@@ -57,3 +58,13 @@ ordinal: 500000
 - Flags: 🔌 hardware
 - Roadmap status: partial (JPAKE pairing verified)
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 12:58
+---
+detail-needed (2026-07-07, hardware gate): every remaining AC (#1 pairing retries/reconnect, #2 error surfacing, #3 t:connect mutual-exclusion, #4 long-run stability, #5 reconnect-window tightening) explicitly requires 'on-device (hardware): prepare a build + run on the real device' per the ticket's own plan — none of it is a desk-verifiable software gap. No physical Tandem t:slim X2 pump is available in this environment. Left In Progress (roadmap status already 'partial — JPAKE pairing verified' from a prior real-hardware session) rather than Done, since the actual reliability work hasn't happened yet, or detail-needed-and-abandoned, since it's real, scoped, ready-to-run work waiting on hardware access.
+---
+<!-- COMMENTS:END -->
