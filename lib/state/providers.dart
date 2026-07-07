@@ -101,6 +101,7 @@ import '../timeline/day_event.dart';
 import '../timeline/event_builder.dart';
 import '../widget/home_widget_service.dart';
 import 'day_data.dart';
+import 'startup_jobs.dart';
 import 'day_history_controller.dart';
 
 export 'day_data.dart';
@@ -1666,52 +1667,45 @@ class AppJobs {
   AppJobs(this._ref);
   final Ref _ref;
 
-  Future<void> runStartup() async {
-    // Each job is independent and best-effort — one failing must not abort the rest — but a
-    // failure is now recorded so a job that silently never runs is diagnosable (TASK-38).
-    Future<void> job(String name, Future<void> Function() run) async {
-      try {
-        await run();
-      } catch (e) {
-        appLog.error('startup', 'job "$name" failed', error: e);
-      }
-    }
-
-    // TASK-24: push the current display unit to the Garmin watch once at launch (the live
-    // listener only fires on subsequent changes).
-    await job('garminUnit', () async =>
-        _ref.read(pumpClientProvider).setGarminUnit(_ref.read(glucoseUnitProvider)));
-    if (!_ref.read(devModeProvider)) {
-      await job('syncHealth', syncHealth);
-    }
-    await job('refreshForecastHealthSampler', refreshForecastHealthSampler);
-    await job('runMealOutcomeLoop', runMealOutcomeLoop);
-    await job('reconcilePredictions', () async {
-      await _ref.read(historyRepositoryProvider).reconcilePredictions(DateTime.now());
-      await updateRecentForecastError();
-    });
-    // TASK-62: keep the DB lean — prune stale predictions/health (CGM + insulin kept).
-    await job('pruneOldData',
-        () => _ref.read(historyRepositoryProvider).pruneOldData(DateTime.now()));
-    await job('maybeShowMorningSummary', maybeShowMorningSummary);
-    await job('checkDeviceReminders', checkDeviceReminders);
-    if (!_ref.read(devModeProvider)) {
-      await job('backfillHistory', backfillHistory);
-    }
-    await job('checkIllnessSuggestion', checkIllnessSuggestion);
-    // The forecaster GBM is persisted, so retraining it on *every* launch is wasted
-    // heat — once a day is plenty. (Sensitivity models are held in memory only, so
-    // they still train each startup; their heavy lifting runs off the UI isolate.)
-    await job('trainForecaster', () async {
-      if (await _forecasterTrainingDue()) {
-        final outcome = await trainForecaster();
-        if (outcome.trained) {
-          await KvStore.setString(
-              _forecasterTrainStampKey, DateTime.now().toIso8601String());
+  /// Ordered startup pipeline (TASK-123): every job is best-effort and logged;
+  /// the aggregated [StartupReport] lands in the diagnostics log. Ordering below
+  /// is EXPLICIT — health sync feeds the sampler; reconciliation runs before
+  /// pruning and training.
+  Future<StartupReport> runStartup() {
+    final demo = _ref.read(devModeProvider);
+    return runStartupJobs([
+      // TASK-24: push the current display unit to the Garmin watch once at launch
+      // (the live listener only fires on subsequent changes).
+      StartupJob('garminUnit', () async =>
+          _ref.read(pumpClientProvider).setGarminUnit(_ref.read(glucoseUnitProvider))),
+      StartupJob('syncHealth', syncHealth, enabled: !demo),
+      StartupJob('refreshForecastHealthSampler', refreshForecastHealthSampler),
+      StartupJob('runMealOutcomeLoop', runMealOutcomeLoop),
+      StartupJob('reconcilePredictions', () async {
+        await _ref.read(historyRepositoryProvider).reconcilePredictions(DateTime.now());
+        await updateRecentForecastError();
+      }),
+      // TASK-62: keep the DB lean — prune stale predictions/health (CGM + insulin kept).
+      StartupJob('pruneOldData',
+          () => _ref.read(historyRepositoryProvider).pruneOldData(DateTime.now())),
+      StartupJob('maybeShowMorningSummary', maybeShowMorningSummary),
+      StartupJob('checkDeviceReminders', checkDeviceReminders),
+      StartupJob('backfillHistory', backfillHistory, enabled: !demo),
+      StartupJob('checkIllnessSuggestion', checkIllnessSuggestion),
+      // The forecaster GBM is persisted, so retraining it on *every* launch is wasted
+      // heat — once a day is plenty. (Sensitivity models are held in memory only, so
+      // they still train each startup; their heavy lifting runs off the UI isolate.)
+      StartupJob('trainForecaster', () async {
+        if (await _forecasterTrainingDue()) {
+          final outcome = await trainForecaster();
+          if (outcome.trained) {
+            await KvStore.setString(
+                _forecasterTrainStampKey, DateTime.now().toIso8601String());
+          }
         }
-      }
-    });
-    await job('trainSensitivity', trainSensitivity);
+      }),
+      StartupJob('trainSensitivity', trainSensitivity),
+    ]);
   }
 
   static const _forecasterTrainStampKey = 'forecaster_last_trained_at';
