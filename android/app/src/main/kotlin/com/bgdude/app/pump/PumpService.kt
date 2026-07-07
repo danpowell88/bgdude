@@ -15,6 +15,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.bgdude.app.CrashLogger
 import com.bgdude.app.garmin.GarminIntegration
 
 /**
@@ -51,6 +52,9 @@ class PumpService : Service(), PumpCommHandler.Listener {
 
     override fun onCreate() {
         super.onCreate()
+        // TASK-187: the service can outlive the activity — make sure the process has
+        // the crash handler regardless of which component started first.
+        CrashLogger.install(applicationContext)
         createChannel()
         commHandler = PumpCommHandler(applicationContext, this)
         GarminIntegration.init(applicationContext)

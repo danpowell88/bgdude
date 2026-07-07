@@ -15,6 +15,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        CrashLogger.install(applicationContext) // TASK-187: idempotent, process-wide
         pumpBridge = PumpBridge(applicationContext, flutterEngine)
         pumpBridge.attach()
     }
