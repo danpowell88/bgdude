@@ -4,7 +4,7 @@ title: Golden/screenshot tests
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-07 14:36'
 labels:
   - roadmap
   - testing
@@ -55,5 +55,11 @@ author: Claude
 created: 2026-07-06 05:24
 ---
 detail-needed (2026-07-06, goal triage): Golden/screenshot tests need a decision on which screens + baseline images captured on a chosen device/CI, then wired in.
+---
+
+author: Claude
+created: 2026-07-07 14:36
+---
+detail-needed (2026-07-08): blocked on the same environment limitation just found on TASK-195 — flutter test/drive against the emulator fails with a VM-service WebSocketChannelException in this session (confirmed pre-existing via an existing, previously-passing integration test, not specific to any one test file; ruled out sandbox restrictions and a stale adb server). Golden-image generation needs flutter drive -d <device>, so this is fully blocked until a session with a reachable emulator VM-service port. See memory integration-test-emulator-limitation.
 ---
 <!-- COMMENTS:END -->
