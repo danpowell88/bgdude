@@ -84,7 +84,8 @@ class GlucoseReportScreen extends ConsumerWidget {
           Expanded(
             child: async.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Could not build report: $e')),
+              error: (e, _) =>
+                  Center(child: Text('Could not build report: $e')),
               data: (bundle) => bundle.report.hasData
                   ? _ReportBody(report: bundle.report, unit: unit)
                   : const _NoData(),
@@ -137,7 +138,8 @@ class _ReportBody extends StatelessWidget {
         const SizedBox(height: 8),
         SizedBox(height: 220, child: _AgpChart(report: report, unit: unit)),
         const SizedBox(height: 8),
-        Text('Median with 25–75% (dark) and 5–95% (light) bands; green = target.',
+        Text(
+            'Median with 25–75% (dark) and 5–95% (light) bands; green = target.',
             style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 20),
         _Episodes(report: report, unit: unit),
@@ -163,10 +165,22 @@ class _MetricsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        StatTile(variant: StatVariant.metric, label: 'Mean', value: '${Mgdl(m.meanMgdl).display(unit)} ${unit.label}'),
-        StatTile(variant: StatVariant.metric, label: 'GMI', value: '${m.gmi.toStringAsFixed(1)}%'),
-        StatTile(variant: StatVariant.metric, label: 'CV', value: '${m.cvPercent.toStringAsFixed(0)}%'),
-        StatTile(variant: StatVariant.metric, label: 'TIR', value: '${(m.timeInRange * 100).round()}%'),
+        StatTile(
+            variant: StatVariant.metric,
+            label: 'Mean',
+            value: '${Mgdl(m.meanMgdl).display(unit)} ${unit.label}'),
+        StatTile(
+            variant: StatVariant.metric,
+            label: 'GMI',
+            value: '${m.gmi.toStringAsFixed(1)}%'),
+        StatTile(
+            variant: StatVariant.metric,
+            label: 'CV',
+            value: '${m.cvPercent.toStringAsFixed(0)}%'),
+        StatTile(
+            variant: StatVariant.metric,
+            label: 'TIR',
+            value: '${(m.timeInRange * 100).round()}%'),
       ],
     );
   }
@@ -188,9 +202,18 @@ class _RiskCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                StatTile(variant: StatVariant.metric, label: 'GRI', value: m.gri.round().toString()),
-                StatTile(variant: StatVariant.metric, label: 'LBGI', value: m.lbgi.toStringAsFixed(1)),
-                StatTile(variant: StatVariant.metric, label: 'HBGI', value: m.hbgi.toStringAsFixed(1)),
+                StatTile(
+                    variant: StatVariant.metric,
+                    label: 'GRI',
+                    value: m.gri.round().toString()),
+                StatTile(
+                    variant: StatVariant.metric,
+                    label: 'LBGI',
+                    value: m.lbgi.toStringAsFixed(1)),
+                StatTile(
+                    variant: StatVariant.metric,
+                    label: 'HBGI',
+                    value: m.hbgi.toStringAsFixed(1)),
               ],
             ),
             const SizedBox(height: 6),
@@ -265,7 +288,8 @@ class _AgpChart extends StatelessWidget {
       return const Center(child: Text('Not enough data for an AGP curve.'));
     }
     double x(int minuteOfDay) => minuteOfDay / 60.0;
-    LineChartBarData line(double Function(AgpBucket b) sel, {double width = 0}) =>
+    LineChartBarData line(double Function(AgpBucket b) sel,
+            {double width = 0}) =>
         LineChartBarData(
           spots: [for (final b in agp) FlSpot(x(b.minuteOfDay), _d(sel(b)))],
           isCurved: true,
@@ -320,9 +344,13 @@ class _AgpChart extends StatelessWidget {
         lineBarsData: bars,
         betweenBarsData: [
           BetweenBarsData(
-              fromIndex: 0, toIndex: 1, color: cs.primary.withValues(alpha: 0.12)),
+              fromIndex: 0,
+              toIndex: 1,
+              color: cs.primary.withValues(alpha: 0.12)),
           BetweenBarsData(
-              fromIndex: 2, toIndex: 3, color: cs.primary.withValues(alpha: 0.25)),
+              fromIndex: 2,
+              toIndex: 3,
+              color: cs.primary.withValues(alpha: 0.25)),
         ],
       ),
     );
@@ -342,7 +370,8 @@ class _Episodes extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Episodes', style: Theme.of(context).textTheme.titleMedium),
-        Text('${report.lowEpisodes.length} low · ${report.highEpisodes.length} high',
+        Text(
+            '${report.lowEpisodes.length} low · ${report.highEpisodes.length} high',
             style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 8),
         if (all.isEmpty)
@@ -364,7 +393,6 @@ class _Episodes extends StatelessWidget {
       ],
     );
   }
-
 }
 
 class _Banner extends StatelessWidget {
@@ -398,51 +426,57 @@ class _ClinicPrepSheet extends StatelessWidget {
       expand: false,
       initialChildSize: 0.7,
       maxChildSize: 0.95,
-      builder: (context, controller) => ListView(
-        controller: controller,
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        children: [
-          Text('Clinic-visit prep', style: text.titleLarge),
-          Text(prep.rangeLabel, style: text.labelMedium),
-          const SizedBox(height: 12),
-          Text('Summary', style: text.titleSmall),
-          const SizedBox(height: 4),
-          Text(prep.summary),
-          const SizedBox(height: 16),
-          Text('Questions to ask', style: text.titleSmall),
-          const SizedBox(height: 4),
-          for (final q in prep.questions)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('•  '),
-                  Expanded(child: Text(q)),
-                ],
+      // TASK-228: edge-to-edge means the bottom system inset (gesture nav bar) is
+      // separate from the sheet's own fixed padding -- without SafeArea the last
+      // items (Share PDF button, disclaimer text) could sit under the gesture bar.
+      builder: (context, controller) => SafeArea(
+        child: ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          children: [
+            Text('Clinic-visit prep', style: text.titleLarge),
+            Text(prep.rangeLabel, style: text.labelMedium),
+            const SizedBox(height: 12),
+            Text('Summary', style: text.titleSmall),
+            const SizedBox(height: 4),
+            Text(prep.summary),
+            const SizedBox(height: 16),
+            Text('Questions to ask', style: text.titleSmall),
+            const SizedBox(height: 4),
+            for (final q in prep.questions)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('•  '),
+                    Expanded(child: Text(q)),
+                  ],
+                ),
               ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              icon: const Icon(Icons.ios_share),
+              label: const Text('Share PDF'),
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  await const ReportExporter()
+                      .shareClinicPrep(prep, generatedAt);
+                } catch (e) {
+                  messenger.showSnackBar(
+                      SnackBar(content: Text('Share failed: $e')));
+                }
+              },
             ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            icon: const Icon(Icons.ios_share),
-            label: const Text('Share PDF'),
-            onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              try {
-                await const ReportExporter().shareClinicPrep(prep, generatedAt);
-              } catch (e) {
-                messenger.showSnackBar(
-                    SnackBar(content: Text('Share failed: $e')));
-              }
-            },
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Template-generated from your data — a conversation starter, not clinical '
-            'advice. Targets referenced are the ADA/ATTD consensus.',
-            style: text.bodySmall,
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'Template-generated from your data — a conversation starter, not clinical '
+              'advice. Targets referenced are the ADA/ATTD consensus.',
+              style: text.bodySmall,
+            ),
+          ],
+        ),
       ),
     );
   }

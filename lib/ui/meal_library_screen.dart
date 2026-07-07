@@ -38,54 +38,54 @@ class _MealLibraryScreenState extends ConsumerState<MealLibraryScreen> {
     );
 
     final content = Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: SearchBar(
-              hintText: 'Search meals…',
-              leading: const Icon(Icons.search),
-              onChanged: (q) => setState(() => _query = q),
-            ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: SearchBar(
+            hintText: 'Search meals…',
+            leading: const Icon(Icons.search),
+            onChanged: (q) => setState(() => _query = q),
           ),
-          Expanded(
-            child: meals.isEmpty
-                ? Center(
-                    child: Text(
-                      _query.isEmpty
-                          ? 'No meals yet — add the ones you eat often and the '
-                              'app will learn how each one treats you.'
-                          : 'No meals match "$_query".',
-                      textAlign: TextAlign.center,
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(8),
-                    itemCount: meals.length,
-                    itemBuilder: (context, i) {
-                      final meal = meals[i];
-                      return Card(
-                        child: ListTile(
-                          leading: Text(meal.emoji,
-                              style: const TextStyle(fontSize: 28)),
-                          title: Text(meal.name),
-                          subtitle: Text(
-                            '${meal.carbsGrams.toStringAsFixed(0)} g · '
-                            'peak ~+${meal.peakOffsetMinutes} min · '
-                            '${meal.outcomes.length} logged',
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => MealDetailScreen(mealId: meal.id),
-                            ),
+        ),
+        Expanded(
+          child: meals.isEmpty
+              ? Center(
+                  child: Text(
+                    _query.isEmpty
+                        ? 'No meals yet — add the ones you eat often and the '
+                            'app will learn how each one treats you.'
+                        : 'No meals match "$_query".',
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: meals.length,
+                  itemBuilder: (context, i) {
+                    final meal = meals[i];
+                    return Card(
+                      child: ListTile(
+                        leading: Text(meal.emoji,
+                            style: const TextStyle(fontSize: 28)),
+                        title: Text(meal.name),
+                        subtitle: Text(
+                          '${meal.carbsGrams.toStringAsFixed(0)} g · '
+                          'peak ~+${meal.peakOffsetMinutes} min · '
+                          '${meal.outcomes.length} logged',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => MealDetailScreen(mealId: meal.id),
                           ),
                         ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      );
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
 
     if (widget.embedded) {
       return Stack(
@@ -165,7 +165,9 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
 
   /// Show the one-time notice before the first online (Open Food Facts) lookup.
   Future<bool> _confirmOnlineLookup() async {
-    if (!ref.read(barcodeLookupEnabledProvider)) return true; // offline-only, no notice
+    if (!ref.read(barcodeLookupEnabledProvider)) {
+      return true; // offline-only, no notice
+    }
     const key = 'off_notice_shown';
     if (await ref.read(oneTimeNoticesProvider).shown(key)) return true;
     if (!mounted) return true;
@@ -235,8 +237,7 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
       imageQuality: 90,
     );
     if (shot == null || !mounted) return;
-    messenger.showSnackBar(
-        const SnackBar(content: Text('Reading the label…')));
+    messenger.showSnackBar(const SnackBar(content: Text('Reading the label…')));
     try {
       final result = await ref.read(panelScanServiceProvider).scan(shot.path);
       if (!mounted) return;
@@ -247,7 +248,8 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
                 'manually.')));
         return;
       }
-      final name = _name.text.trim().isEmpty ? 'Scanned label' : _name.text.trim();
+      final name =
+          _name.text.trim().isEmpty ? 'Scanned label' : _name.text.trim();
       _prefill(result.panel!.toFoodItem(name: name));
       messenger.showSnackBar(SnackBar(
           content: Text(result.usedLlm
@@ -255,8 +257,7 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
               : 'Read from the label — check the values below.')));
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
-          SnackBar(content: Text('Label scan failed: $e')));
+      messenger.showSnackBar(SnackBar(content: Text('Label scan failed: $e')));
     }
   }
 
@@ -265,131 +266,138 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
     final carbs = double.tryParse(_carbs.text);
     final valid = _name.text.trim().isNotEmpty && carbs != null && carbs > 0;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('New meal', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Scan barcode'),
-                  onPressed: _scan,
+    // TASK-228: edge-to-edge (enforced from Android 15, and this app already targets
+    // SDK 37) means the bottom system inset (gesture nav bar) is separate from
+    // viewInsets.bottom (keyboard) -- without SafeArea the submit button below could
+    // sit under the gesture bar.
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('New meal', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('Scan barcode'),
+                    onPressed: _scan,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.search),
-                  label: const Text('Search foods'),
-                  onPressed: _search,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.search),
+                    label: const Text('Search foods'),
+                    onPressed: _search,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.document_scanner_outlined),
-            label: const Text('Scan nutrition label'),
-            onPressed: _scanLabel,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const Key('meal-name-field'),
-            controller: _name,
-            decoration: const InputDecoration(
-                labelText: 'Name', border: OutlineInputBorder()),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const Key('meal-carbs-field'),
-            controller: _carbs,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-                labelText: 'Carbs (g)', border: OutlineInputBorder()),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  key: const Key('meal-fat-field'),
-                  controller: _fat,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                      labelText: 'Fat (g)',
-                      helperText: 'optional',
-                      border: OutlineInputBorder()),
-                  onChanged: (_) => setState(_refreshFatProteinHeavy),
+              ],
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.document_scanner_outlined),
+              label: const Text('Scan nutrition label'),
+              onPressed: _scanLabel,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('meal-name-field'),
+              controller: _name,
+              decoration: const InputDecoration(
+                  labelText: 'Name', border: OutlineInputBorder()),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('meal-carbs-field'),
+              controller: _carbs,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                  labelText: 'Carbs (g)', border: OutlineInputBorder()),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const Key('meal-fat-field'),
+                    controller: _fat,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                        labelText: 'Fat (g)',
+                        helperText: 'optional',
+                        border: OutlineInputBorder()),
+                    onChanged: (_) => setState(_refreshFatProteinHeavy),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  key: const Key('meal-protein-field'),
-                  controller: _protein,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                      labelText: 'Protein (g)',
-                      helperText: 'optional',
-                      border: OutlineInputBorder()),
-                  onChanged: (_) => setState(_refreshFatProteinHeavy),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    key: const Key('meal-protein-field'),
+                    controller: _protein,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                        labelText: 'Protein (g)',
+                        helperText: 'optional',
+                        border: OutlineInputBorder()),
+                    onChanged: (_) => setState(_refreshFatProteinHeavy),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          DropdownMenu<MealCategory>(
-            initialSelection: _category,
-            label: const Text('Category'),
-            expandedInsets: EdgeInsets.zero,
-            dropdownMenuEntries: [
-              for (final c in MealCategory.values)
-                DropdownMenuEntry(
-                    value: c, label: '${c.defaultEmoji}  ${c.label}'),
-            ],
-            onSelected: (c) =>
-                setState(() => _category = c ?? MealCategory.other),
-          ),
-          SwitchListTile(
-            title: const Text('Fat/protein heavy'),
-            subtitle: const Text('Pizza-style late absorption'),
-            value: _fatProteinHeavy,
-            onChanged: (v) => setState(() => _fatProteinHeavy = v),
-          ),
-          const SizedBox(height: 8),
-          FilledButton(
-            onPressed: valid
-                ? () => Navigator.of(context).pop(
-                      SavedMeal(
-                        id: newMealId(),
-                        name: _name.text.trim(),
-                        emoji: _category.defaultEmoji,
-                        category: _category,
-                        carbsGrams: carbs,
-                        fatGrams: double.tryParse(_fat.text) ?? 0,
-                        proteinGrams: double.tryParse(_protein.text) ?? 0,
-                        fatProteinHeavy: _fatProteinHeavy,
-                      ),
-                    )
-                : null,
-            child: const Text('Save meal'),
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            DropdownMenu<MealCategory>(
+              initialSelection: _category,
+              label: const Text('Category'),
+              expandedInsets: EdgeInsets.zero,
+              dropdownMenuEntries: [
+                for (final c in MealCategory.values)
+                  DropdownMenuEntry(
+                      value: c, label: '${c.defaultEmoji}  ${c.label}'),
+              ],
+              onSelected: (c) =>
+                  setState(() => _category = c ?? MealCategory.other),
+            ),
+            SwitchListTile(
+              title: const Text('Fat/protein heavy'),
+              subtitle: const Text('Pizza-style late absorption'),
+              value: _fatProteinHeavy,
+              onChanged: (v) => setState(() => _fatProteinHeavy = v),
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: valid
+                  ? () => Navigator.of(context).pop(
+                        SavedMeal(
+                          id: newMealId(),
+                          name: _name.text.trim(),
+                          emoji: _category.defaultEmoji,
+                          category: _category,
+                          carbsGrams: carbs,
+                          fatGrams: double.tryParse(_fat.text) ?? 0,
+                          proteinGrams: double.tryParse(_protein.text) ?? 0,
+                          fatProteinHeavy: _fatProteinHeavy,
+                        ),
+                      )
+                  : null,
+              child: const Text('Save meal'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -444,8 +452,8 @@ class _FoodSearchDialogState extends State<_FoodSearchDialog> {
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: 'e.g. white rice',
-                suffixIcon: IconButton(
-                    icon: const Icon(Icons.search), onPressed: _run),
+                suffixIcon:
+                    IconButton(icon: const Icon(Icons.search), onPressed: _run),
               ),
               onSubmitted: (_) => _run(),
             ),
