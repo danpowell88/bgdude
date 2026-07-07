@@ -7,6 +7,7 @@ status: To Do
 assignee:
   - Claude
 created_date: '2026-07-07 14:29'
+updated_date: '2026-07-07 15:26'
 labels: []
 milestone: m-8
 dependencies: []
@@ -25,6 +26,7 @@ openHistoryRepository runs select 1 then a full PRAGMA quick_check synchronously
 - [ ] #1 Full quick_check does not run on every healthy launch (gate to periodic or only after an unclean shutdown)
 - [ ] #2 A fast cheap open check still detects the failure modes the recovery flow needs
 - [ ] #3 Salvage export cleans up its temp file and does not load the whole DB into memory unbounded
+- [ ] #4 Retired .bak-<epoch> DB backups from a reset are pruned (do not accumulate copies of the encrypted DB on repeated resets)
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -33,6 +35,16 @@ openHistoryRepository runs select 1 then a full PRAGMA quick_check synchronously
 - Source: recent-code review 2026-07-08 (follow-up to TASK-192)
 - Files: lib/data/db_open_diagnosis.dart, lib/ui/db_recovery_screen.dart
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 15:26
+---
+Adding AC from recent-code review 2026-07-08: TASK-249 fix replaced deleteDatabaseFile with retireDatabaseFile which renames the DB + sidecars to .bak-<epoch>. Confirmed-correct as a no-data-loss fix, but the .bak copies are never cleaned up, so repeated manual resets accumulate full copies of the (large) encrypted DB. Low severity (reset is rare + double-confirmed); folding here rather than a separate ticket since this ticket already owns recovery-flow housekeeping.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
