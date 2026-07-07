@@ -284,9 +284,54 @@ class UserProfileNotifier extends PersistedStateNotifier<UserProfile> {
   Future<void> save(UserProfile profile) => persist(profile);
 }
 
-/// An announced exercise session (null when none). In-memory/transient — exercise is a
-/// short-lived state. Raises the low-alert threshold while it's in effect.
-final exercisePlanProvider = StateProvider<ExercisePlan?>((ref) => null);
+/// An announced exercise session (null when none). Persisted (TASK-200): process
+/// death mid-workout must not silently drop the raised low-alert threshold and
+/// predicted-high suppression the user configured — during/after exercise is
+/// exactly the highest hypo-risk window for T1D, so losing the raised threshold on
+/// a crash makes low alerts fire LATER than intended, a safety regression rather
+/// than a harmless reset.
+final exercisePlanProvider =
+    StateNotifierProvider<ExercisePlanNotifier, ExercisePlan?>(
+        (ref) => ExercisePlanNotifier());
+
+class ExercisePlanNotifier extends PersistedStateNotifier<ExercisePlan?> {
+  ExercisePlanNotifier() : super(null);
+  static const _key = 'exercise_plan_v1';
+
+  @override
+  Future<ExercisePlan?> load() async {
+    final raw = await KvStore.getString(_key);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final plan =
+          ExercisePlan.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      // AC#2: don't resurrect a plan whose effect window already passed while
+      // the app was closed.
+      return DateTime.now().isAfter(plan.effectEnd) ? null : plan;
+    } catch (e) {
+      await quarantineCorruptValue(_key, raw, e);
+      return null;
+    }
+  }
+
+  @override
+  Future<void> store(ExercisePlan? v) =>
+      KvStore.setString(_key, v == null ? '' : jsonEncode(v.toJson()));
+
+  Future<void> set(ExercisePlan plan) => persist(plan);
+  Future<void> clear() => persist(null);
+
+  /// Clears the plan once its effect window has passed (TASK-200) — called at
+  /// startup and on a periodic tick ([AppJobs.checkModeExpiry] /
+  /// [ModeExpiryWatchdogService]), mirroring illness/medication mode's
+  /// auto-expiry (TASK-197).
+  Future<void> clearIfExpired(DateTime now) async {
+    final plan = state;
+    if (plan != null && now.isAfter(plan.effectEnd)) {
+      await persist(null);
+    }
+  }
+}
 
 /// User-customisable low/high glucose alert thresholds, persisted encrypted.
 final alertThresholdsProvider =
@@ -1593,10 +1638,12 @@ class StaleDataWatchdogService {
   void dispose() => _timer?.cancel();
 }
 
-/// Illness/medication mode auto-expiry watchdog (TASK-197): [AppJobs.checkModeExpiry]
-/// covers app launch, but the app can stay open for days between restarts — a
-/// periodic timer, independent of any pump activity, re-checks so a forgotten mode
-/// can't inflate dosing for the entire time the app happens to stay running.
+/// Illness/medication/exercise mode auto-expiry watchdog (TASK-197, extended by
+/// TASK-200 to cover the exercise plan): [AppJobs.checkModeExpiry] covers app
+/// launch, but the app can stay open for days between restarts — a periodic
+/// timer, independent of any pump activity, re-checks so a forgotten mode can't
+/// keep affecting dosing/alerts for the entire time the app happens to stay
+/// running.
 final modeExpiryWatchdogProvider = Provider<ModeExpiryWatchdogService>((ref) {
   final service = ModeExpiryWatchdogService(ref);
   ref.onDispose(service.dispose);
@@ -1942,6 +1989,7 @@ class AppJobs {
     final now = DateTime.now();
     _ref.read(illnessModeProvider.notifier).deactivateIfExpired(now);
     await _ref.read(medicationModeProvider.notifier).deactivateIfExpired(now);
+    await _ref.read(exercisePlanProvider.notifier).clearIfExpired(now);
   }
 
   /// Run the illness detector on recent data; if it looks illness-like and the mode
@@ -2239,7 +2287,7 @@ class AppJobs {
   /// Announce an upcoming/active exercise session: arm the raised low-alert threshold and
   /// (for aerobic) a heads-up about the raised during/after/overnight low risk.
   Future<void> announceExercise(ExercisePlan plan) async {
-    _ref.read(exercisePlanProvider.notifier).state = plan;
+    await _ref.read(exercisePlanProvider.notifier).set(plan);
     if (plan.type.raisesHypoRisk) {
       try {
         await _ref.read(notificationServiceProvider).show(
@@ -2253,8 +2301,8 @@ class AppJobs {
   }
 
   /// Clear an announced exercise session.
-  void endExercise() =>
-      _ref.read(exercisePlanProvider.notifier).state = null;
+  Future<void> endExercise() =>
+      _ref.read(exercisePlanProvider.notifier).clear();
 
   /// Record a sensor/site change and reset its age.
   Future<void> recordDeviceChange(DeviceKind kind) =>

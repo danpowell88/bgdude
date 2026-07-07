@@ -9,9 +9,11 @@ import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/feedback/annotations.dart';
 import 'package:bgdude/feedback/pending_confirmation.dart';
+import 'package:bgdude/insights/exercise_mode.dart';
 import 'package:bgdude/insights/illness_mode.dart';
 import 'package:bgdude/insights/medication_mode.dart';
 import 'package:bgdude/insights/notification_prefs.dart';
+import 'package:bgdude/insights/workout_classifier.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -91,7 +93,8 @@ void main() {
     });
   });
 
-  group('Illness mode survives a restart, exercise mode does not (TASK-194 AC#2)', () {
+  group('Illness and exercise mode both survive a restart (TASK-194 AC#2, '
+      'TASK-200)', () {
     test('illness mode is still active after restart', () async {
       final sim = RestartSimulation();
       final c1 = sim.buildContainer();
@@ -112,22 +115,63 @@ void main() {
       expect(c2.read(illnessModeProvider).active, isTrue);
     });
 
-    test('exercise mode does NOT survive restart (by design, not an oversight)', () {
-      // exercisePlanProvider is explicitly documented as "In-memory/transient —
-      // exercise is a short-lived state" (providers.dart:287-289) and has no
-      // KvStore write anywhere. This conflicts with this ticket's own AC#2 wording
-      // ("active modes (exercise/illness) survive") — flagged back on the task
-      // rather than silently changed; a short workout announcement disappearing
-      // after a rare crash is a much smaller problem than illness mode's multi-day
-      // sensitivity adjustment doing the same; changing it needs a product call.
+    test(
+        'an in-window exercise plan survives a restart (TASK-200 — previously '
+        'documented as deliberately NOT persisted; that was wrong: losing the '
+        'raised low-alert threshold mid-workout makes alerts fire LATER exactly '
+        'during the highest hypo-risk window, not a safe default)', () async {
       final sim = RestartSimulation();
       final c1 = sim.buildContainer();
-      c1.read(exercisePlanProvider.notifier).state = null; // baseline: no plan
+      // ExercisePlanNotifier.load()/affectsAt() compare against the wall clock
+      // (TASK-39 hasn't injected a clock yet), so this anchors to real "now".
+      final now = DateTime.now(); // now-ok: see comment above
+      final plan = ExercisePlan(
+          startAt: now, durationMinutes: 45, type: WorkoutType.aerobic);
+      await c1.read(exercisePlanProvider.notifier).set(plan);
       c1.dispose();
 
       final c2 = sim.buildContainer();
       addTearDown(c2.dispose);
+      c2.read(exercisePlanProvider.notifier);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      final restored = c2.read(exercisePlanProvider);
+      expect(restored, isNotNull);
+      expect(restored!.affectsAt(now), isTrue);
+    });
+
+    test('a plan whose effect window already passed is not restored', () async {
+      final sim = RestartSimulation();
+      final c1 = sim.buildContainer();
+      final longPast = DateTime(2020, 1, 1);
+      final expired = ExercisePlan(
+          startAt: longPast, durationMinutes: 30, type: WorkoutType.resistance);
+      await c1.read(exercisePlanProvider.notifier).set(expired);
+      c1.dispose();
+
+      final c2 = sim.buildContainer();
+      addTearDown(c2.dispose);
+      c2.read(exercisePlanProvider.notifier);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
       expect(c2.read(exercisePlanProvider), isNull);
+    });
+
+    test(
+        'AppJobs.checkModeExpiry clears a plan whose window passed WITHOUT a '
+        'restart', () async {
+      final sim = RestartSimulation();
+      final c = sim.buildContainer();
+      addTearDown(c.dispose);
+      final longPast = DateTime(2020, 1, 1);
+      final expired = ExercisePlan(
+          startAt: longPast, durationMinutes: 30, type: WorkoutType.resistance);
+      await c.read(exercisePlanProvider.notifier).set(expired);
+      expect(c.read(exercisePlanProvider), isNotNull);
+
+      await c.read(appJobsProvider).checkModeExpiry();
+
+      expect(c.read(exercisePlanProvider), isNull);
     });
   });
 
