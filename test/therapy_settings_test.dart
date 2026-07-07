@@ -37,4 +37,30 @@ void main() {
       expect(s.carbRatio, greaterThan(0));
     });
   });
+
+  group('TherapySettings.fromJson (TASK-191)', () {
+    test('an empty segments list from a corrupted blob falls back to the placeholder, '
+        'not left empty', () {
+      final settings = TherapySettings.fromJson(const {'segments': []});
+      expect(settings.segments, isNotEmpty);
+      // segmentAt() must not throw (sorted.first on an empty list is the exact bug).
+      expect(() => settings.segmentAt(DateTime(2026, 7, 4, 8)), returnsNormally);
+    });
+
+    test('a normal segments list round-trips unchanged', () {
+      final settings = TherapySettings.fromJson(const {
+        'segments': [
+          {
+            'startMinuteOfDay': 0,
+            'isf': 50,
+            'carbRatio': 10,
+            'targetMgdl': 100,
+            'basalUnitsPerHour': 0.8,
+          },
+        ],
+      });
+      expect(settings.segments, hasLength(1));
+      expect(settings.segments.single.isf, 50);
+    });
+  });
 }

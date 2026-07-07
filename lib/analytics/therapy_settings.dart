@@ -104,15 +104,21 @@ class TherapySettings {
         'peak': insulinPeakMinutes,
       };
 
-  factory TherapySettings.fromJson(Map<String, dynamic> j) => TherapySettings(
-        segments: [
-          for (final s in (j['segments'] as List))
-            TherapySegment.fromJson((s as Map).cast<String, dynamic>()),
-        ],
-        durationOfInsulinActionMinutes: (j['dia'] as num?)?.toInt() ?? 360,
-        maxBolusUnits: (j['maxBolus'] as num?)?.toDouble() ?? 25,
-        insulinPeakMinutes: (j['peak'] as num?)?.toInt() ?? 75,
-      );
+  factory TherapySettings.fromJson(Map<String, dynamic> j) {
+    final parsed = [
+      for (final s in (j['segments'] as List))
+        TherapySegment.fromJson((s as Map).cast<String, dynamic>()),
+    ];
+    return TherapySettings(
+      // TASK-191: segmentAt() assumes at least one entry (sorted.first, no guard); a
+      // structurally-valid-but-empty "segments": [] from a corrupted/tampered blob would
+      // otherwise decode without error and crash every subsequent segmentAt call.
+      segments: parsed.isEmpty ? placeholder().segments : parsed,
+      durationOfInsulinActionMinutes: (j['dia'] as num?)?.toInt() ?? 360,
+      maxBolusUnits: (j['maxBolus'] as num?)?.toDouble() ?? 25,
+      insulinPeakMinutes: (j['peak'] as num?)?.toInt() ?? 75,
+    );
+  }
 
   /// A sensible default profile for bootstrapping before the user configures theirs.
   /// These are illustrative only — the onboarding/settings flow imports the real IDP.
