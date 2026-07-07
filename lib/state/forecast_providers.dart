@@ -7,6 +7,7 @@ library;
 
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../analytics/therapy_settings.dart';
@@ -21,15 +22,32 @@ import '../ml/model_registry.dart';
 /// Holds the active residual model and runs training. Watched by `forecasterProvider`.
 class ForecasterModelController extends StateNotifier<ResidualModel> {
   ForecasterModelController() : super(const NoResidualModel()) {
-    _restore();
+    restored = _restore();
   }
 
   final PromotionGate _gate = const PromotionGate();
   TrainingOutcome lastOutcome = const TrainingOutcome(trained: false, promoted: false);
 
+  /// Completes when the initial restore has finished. `train()` awaits it so the
+  /// A/B always runs against the REAL persisted incumbent (TASK-129) — training
+  /// before the restore landed used to see NoResidualModel and could overwrite a
+  /// good on-disk model with an untested candidate.
+  late final Future<void> restored;
+
+  /// Latched once training promotes a model, so a slow restore can never clobber
+  /// newer in-memory state with the stale on-disk one.
+  bool _hasNewerLocalModel = false;
+
   Future<void> _restore() async {
-    state = await ForecasterModelStore.load();
+    final loaded = await ForecasterModelStore.load();
+    if (_hasNewerLocalModel) return;
+    state = loaded;
   }
+
+  /// Test seam for the restore guard: marks the in-memory model as newer, as a
+  /// promotion does, so tests can prove a late restore never clobbers it.
+  @visibleForTesting
+  void debugMarkNewerLocalModel() => _hasNewerLocalModel = true;
 
   /// Train from history, gate the candidate, and promote + persist if it wins.
   Future<TrainingOutcome> train({
@@ -42,6 +60,9 @@ class ForecasterModelController extends StateNotifier<ResidualModel> {
     required DateTime asOf,
     HealthFeatureSampler? health,
   }) async {
+    // TASK-129: never race the initial restore — the incumbent below must be the
+    // real persisted model, not the NoResidualModel placeholder.
+    await restored;
     // The in-memory state is version-consistent with the current feature layout
     // (the store discards mismatched versions at load), so it can be scored on the
     // freshly built held-out features. Capture it locally so the isolate closure
@@ -78,6 +99,7 @@ class ForecasterModelController extends StateNotifier<ResidualModel> {
     final promoted = gate.pass && improvesBaseline && improvesIncumbent;
 
     if (promoted) {
+      _hasNewerLocalModel = true;
       await ForecasterModelStore.save(result.model);
       state = result.model;
     }

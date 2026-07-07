@@ -86,5 +86,52 @@ void main() {
       expect(outcome.reasons,
           contains('no RMSE improvement over the active model'));
     });
+
+    test(
+        'training IMMEDIATELY after construction still A/Bs the on-disk '
+        'incumbent (TASK-129)', () async {
+      final incumbent = ForecasterTrainer().train(
+        cgm: day.cgm,
+        boluses: day.boluses,
+        basal: day.basal,
+        carbs: day.carbs,
+        settings: day.settings,
+        annotations: const [],
+        asOf: day.end,
+      );
+      await ForecasterModelStore.save(incumbent!.model);
+
+      // No pumpEventQueue: train() races the constructor-launched restore. It
+      // must await the restore internally, so the persisted incumbent is seen.
+      final controller = ForecasterModelController();
+      final outcome = await trainController(controller);
+      expect(outcome.incumbentRmse, isNotNull,
+          reason: 'the A/B must run against the persisted incumbent');
+      expect(outcome.promoted, isFalse); // identical retrain never ships
+      expect(controller.state.isTrained, isTrue,
+          reason: 'the restored incumbent stays live');
+    });
+
+    test('a late restore never clobbers a newer in-memory model (TASK-129)',
+        () async {
+      // A trained model sits on disk, but by the time the restore lands the
+      // controller has already promoted something newer (simulated via the
+      // test seam) — the stale on-disk model must NOT be applied.
+      final incumbent = ForecasterTrainer().train(
+        cgm: day.cgm,
+        boluses: day.boluses,
+        basal: day.basal,
+        carbs: day.carbs,
+        settings: day.settings,
+        annotations: const [],
+        asOf: day.end,
+      );
+      await ForecasterModelStore.save(incumbent!.model);
+
+      final controller = ForecasterModelController()..debugMarkNewerLocalModel();
+      await controller.restored;
+      expect(controller.state, isA<NoResidualModel>(),
+          reason: 'the restore must be discarded once a local model is newer');
+    });
   });
 }
