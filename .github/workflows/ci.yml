@@ -40,6 +40,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # 2b. Cache Gradle dependencies + wrapper (TASK-218). `flutter build apk` and
+      #     `./gradlew :app:testDebugUnitTest` below both invoke Gradle under android/;
+      #     without this, every run re-resolves AGP/Kotlin/JitPack deps and re-downloads
+      #     the wrapper distribution from scratch. Keys off gradle/build files, so a
+      #     dependency-only change reuses the cache and only a wrapper/lockfile change
+      #     busts it.
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
       # 3. Install Flutter. Pin to the stable channel version used locally
       #    (3.44.4). If this exact version ever becomes unavailable, drop the
       #    `flutter-version` line and rely on `channel: stable` alone.
