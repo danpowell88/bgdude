@@ -4,8 +4,32 @@
 /// not a clinical report.
 library;
 
+import '../analytics/band_coverage.dart';
 import '../data/history_repository.dart';
 import 'model_registry.dart';
+
+/// A [ModelEvaluation] plus the two honesty checks on the predicted band itself
+/// (TASK-17): how often the actual reading landed inside `[lower, upper]`
+/// (coverage) and whether the band is centred (bias). Kept separate from
+/// [ModelEvaluation] itself so the model-promotion gate (which scores pairs with
+/// no band data) is untouched.
+class BandEvaluation {
+  const BandEvaluation({
+    required this.eval,
+    required this.coverageFraction,
+    required this.biasMgdl,
+  });
+
+  final ModelEvaluation eval;
+
+  /// Fraction of scored predictions whose actual reading fell in `[lower, upper]`.
+  /// A well-calibrated band should catch roughly its nominal confidence level.
+  final double coverageFraction;
+
+  /// Mean signed error, predicted − actual, mg/dL. Positive = the model runs
+  /// high; negative = runs low; 0 is perfectly centred.
+  final double biasMgdl;
+}
 
 class AccuracyReport {
   const AccuracyReport({
@@ -15,8 +39,8 @@ class AccuracyReport {
     required this.pending,
   });
 
-  final Map<int, ModelEvaluation> byHorizon;
-  final ModelEvaluation? overall;
+  final Map<int, BandEvaluation> byHorizon;
+  final BandEvaluation? overall;
   final int scored;
   final int pending;
 
@@ -26,30 +50,45 @@ class AccuracyReport {
 class AccuracyAnalyzer {
   const AccuracyAnalyzer();
 
+  BandEvaluation _evaluate(List<StoredPrediction> scoredForGroup) {
+    final pairs = [
+      for (final p in scoredForGroup)
+        (reference: p.actualMgdl!.value, predicted: p.predictedMgdl.value),
+    ];
+    final coverage = computeBandCoverage([
+      for (final p in scoredForGroup)
+        (
+          actual: p.actualMgdl!.value,
+          lower: p.lowerMgdl.value,
+          upper: p.upperMgdl.value
+        ),
+    ]);
+    final bias = pairs.isEmpty
+        ? 0.0
+        : pairs.map((p) => p.predicted - p.reference).reduce((a, b) => a + b) /
+            pairs.length;
+    return BandEvaluation(
+      eval: const ModelEvaluator().evaluate(pairs),
+      coverageFraction: coverage.fraction,
+      biasMgdl: bias,
+    );
+  }
+
   AccuracyReport analyze(List<StoredPrediction> predictions) {
     final scored = [for (final p in predictions) if (p.actualMgdl != null) p];
     final pending = predictions.length - scored.length;
 
-    const evaluator = ModelEvaluator();
-    final byHorizon = <int, ModelEvaluation>{};
+    final byHorizon = <int, BandEvaluation>{};
     final horizons = {for (final p in scored) p.horizonMinutes};
     for (final h in horizons) {
-      final pairs = [
-        for (final p in scored)
-          if (p.horizonMinutes == h)
-            (reference: p.actualMgdl!, predicted: p.predictedMgdl),
-      ];
-      if (pairs.isNotEmpty) byHorizon[h] = evaluator.evaluate(pairs);
+      final group = [for (final p in scored) if (p.horizonMinutes == h) p];
+      if (group.isNotEmpty) byHorizon[h] = _evaluate(group);
     }
 
-    final allPairs = [
-      for (final p in scored)
-        (reference: p.actualMgdl!, predicted: p.predictedMgdl),
-    ];
     return AccuracyReport(
       byHorizon: Map.fromEntries(
           byHorizon.entries.toList()..sort((a, b) => a.key.compareTo(b.key))),
-      overall: allPairs.isEmpty ? null : evaluator.evaluate(allPairs),
+      overall: scored.isEmpty ? null : _evaluate(scored),
       scored: scored.length,
       pending: pending,
     );

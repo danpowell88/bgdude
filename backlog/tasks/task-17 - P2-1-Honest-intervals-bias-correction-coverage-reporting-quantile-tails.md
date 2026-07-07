@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 10:57'
 labels:
   - roadmap
   - ml
@@ -27,8 +27,8 @@ ordinal: 103300
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Per-horizon coverage reported
-- [ ] #2 Mean signed error (bias) reported
+- [x] #1 Per-horizon coverage reported
+- [x] #2 Mean signed error (bias) reported
 - [ ] #3 Quantile tails implemented
 <!-- AC:END -->
 
@@ -50,3 +50,13 @@ ordinal: 103300
 - Effort: M
 - Roadmap status: partial
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 10:57
+---
+Implemented AC#1 (per-horizon coverage) and AC#2 (bias/mean signed error). New BandEvaluation type in accuracy_report.dart wraps ModelEvaluation with coverageFraction (via the existing computeBandCoverage helper, band_coverage.dart/TASK-56) and biasMgdl (mean of predicted-actual) — kept separate from ModelEvaluation itself so the model-promotion gate and forecaster_training.dart (which score pairs with no band data) are untouched. ModelAccuracyScreen's per-horizon cards now show both. doc/user-guide.html updated. AC#3 (quantile tails) still depends on TASK-46, which is unstarted — left In Progress rather than Done. Tests: test/core_loop_test.dart extended with exact expected coverage (19/20, one point outside the band) and bias (-2.0 mg/dL) on synthetic predictions. Pipeline green: analyze clean, 758 tests passed, apk debug build succeeds.
+---
+<!-- COMMENTS:END -->

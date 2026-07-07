@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../ml/accuracy_report.dart';
-import '../ml/model_registry.dart';
 import '../state/providers.dart';
 
 /// Reconciles matured predictions and scores them per horizon, so you can see how the
@@ -63,7 +62,7 @@ class ModelAccuracyScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   for (final entry in r.byHorizon.entries)
                     _HorizonAccuracyCard(
-                        horizon: entry.key, eval: entry.value),
+                        horizon: entry.key, band: entry.value),
                   const SizedBox(height: 12),
                   Text(
                     'Clarke A+B is the clinically-safe fraction; a retrained model must '
@@ -80,12 +79,13 @@ class ModelAccuracyScreen extends ConsumerWidget {
 }
 
 class _HorizonAccuracyCard extends StatelessWidget {
-  const _HorizonAccuracyCard({required this.horizon, required this.eval});
+  const _HorizonAccuracyCard({required this.horizon, required this.band});
   final int horizon;
-  final ModelEvaluation eval;
+  final BandEvaluation band;
 
   @override
   Widget build(BuildContext context) {
+    final eval = band.eval;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -104,6 +104,10 @@ class _HorizonAccuracyCard extends StatelessWidget {
                 eval.hypoSensitivity == null
                     ? '— (no lows in window)'
                     : '${(eval.hypoSensitivity! * 100).toStringAsFixed(0)}%'),
+            _stat(context, 'Band coverage',
+                '${(band.coverageFraction * 100).toStringAsFixed(0)}%'),
+            _stat(context, 'Bias',
+                '${band.biasMgdl >= 0 ? '+' : ''}${band.biasMgdl.toStringAsFixed(1)} mg/dL'),
             _stat(context, 'Samples', '${eval.sampleCount}'),
           ],
         ),

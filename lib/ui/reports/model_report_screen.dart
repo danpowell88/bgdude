@@ -61,7 +61,7 @@ class _Body extends StatelessWidget {
         Text('Accuracy by horizon',
             style: Theme.of(context).textTheme.titleMedium),
         for (final h in horizons)
-          _HorizonCard(minutes: h, eval: report.accuracy.byHorizon[h]!),
+          _HorizonCard(minutes: h, eval: report.accuracy.byHorizon[h]!.eval),
         const SizedBox(height: 16),
         Text('Clarke error grid', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
