@@ -8,6 +8,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'app.dart';
 import 'core/local_timezone.dart';
 import 'data/database.dart';
+import 'data/db_open_diagnosis.dart';
 import 'data/history_repository.dart';
 import 'data/kv_store.dart';
 import 'data/secure_key.dart';
@@ -53,14 +54,25 @@ Future<void> _run() async {
 
   // Open the encrypted store and build the history repository. If SQLCipher can't
   // initialise (e.g. an unsupported host), fall back to in-memory so the app still
-  // runs rather than crashing on launch.
+  // runs rather than crashing on launch. TASK-192: diagnose WHY (wrong key/corrupt
+  // header vs deeper data corruption vs a plain I/O problem) so the recovery screen
+  // can offer the right next step instead of one generic message.
   HistoryRepository repository;
+  DbOpenDiagnosis? dbOpenDiagnosis;
+  AppDatabase? openDb;
   String? dbOpenError; // P1-6: surfaced to the UI instead of a silent fallback.
   try {
     final keys = await SecureKeyStore.open();
-    final db = AppDatabase(openEncryptedDatabase(keys.getOrCreatePassphrase()));
-    repository = DriftHistoryRepository(db);
-    KvStore.init(db); // encrypted key-value store for app state
+    final result = await openHistoryRepository(keys.getOrCreatePassphrase());
+    repository = result.repository;
+    dbOpenDiagnosis = result.diagnosis;
+    openDb = result.db;
+    if (openDb != null) KvStore.init(openDb); // encrypted key-value store for app state
+    if (dbOpenDiagnosis != null) {
+      debugPrint('DB open diagnosis: $dbOpenDiagnosis — running in-memory '
+          '(data will NOT persist)');
+      dbOpenError = _dbOpenErrorMessage(dbOpenDiagnosis);
+    }
   } catch (e, st) {
     // Don't crash on launch, but don't pretend it's fine either: run in-memory and tell
     // the user their history isn't being saved.
@@ -89,8 +101,29 @@ Future<void> _run() async {
         devModeProvider.overrideWith((ref) => devMode),
         persistentHistoryRepositoryProvider.overrideWithValue(repository),
         dbOpenErrorProvider.overrideWithValue(dbOpenError),
+        dbOpenDiagnosisProvider.overrideWithValue(dbOpenDiagnosis),
+        dbOpenSalvageDbProvider.overrideWithValue(
+            dbOpenDiagnosis == DbOpenDiagnosis.corruptedData ? openDb : null),
       ],
       child: const BgDudeApp(),
     ),
   );
 }
+
+/// User-facing framing per TASK-192 diagnosis — distinct enough that the recovery
+/// screen's retry/salvage/reset choices make sense given what's actually wrong.
+String _dbOpenErrorMessage(DbOpenDiagnosis diagnosis) => switch (diagnosis) {
+      DbOpenDiagnosis.keyOrHeaderCorrupt =>
+        'Storage couldn\'t be unlocked — the saved key no longer matches (e.g. after '
+            'restoring a backup) or the file is damaged. The app is running without '
+            'saving; open Settings to reset storage.',
+      DbOpenDiagnosis.corruptedData =>
+        'Storage opened but a data-integrity check failed. The app is running without '
+            'saving; open Settings to export what\'s still readable and reset storage.',
+      DbOpenDiagnosis.ioError =>
+        'Storage failed to open — the app is running without saving. Restart the app; '
+            'if it keeps happening, check available storage space.',
+      DbOpenDiagnosis.unknown =>
+        'Storage failed to open — the app is running without saving. Your data will '
+            'not persist. Restart the app; if it keeps happening, reinstall.',
+    };

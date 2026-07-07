@@ -242,18 +242,37 @@ class AppDatabase extends _$AppDatabase {
       into(cgmReadings).insertOnConflictUpdate(row);
 }
 
+/// The encrypted database's standard on-disk location.
+Future<File> defaultDatabaseFile() async => File(p.join(
+    (await getApplicationDocumentsDirectory()).path, 'bgdude_encrypted.db'));
+
+/// TASK-192: deletes the encrypted database file so the next open starts fresh — the
+/// destructive "reset storage" recovery action. The stored passphrase is left as-is;
+/// a fresh empty file re-encrypts under the same key next launch, which is simpler
+/// than also rotating the key and has the same net effect (no readable old data).
+Future<void> deleteDatabaseFile() async {
+  final file = await defaultDatabaseFile();
+  if (await file.exists()) await file.delete();
+  // WAL/journal sidecar files, if present.
+  for (final suffix in ['-wal', '-shm', '-journal']) {
+    final side = File('${file.path}$suffix');
+    if (await side.exists()) await side.delete();
+  }
+}
+
 /// Opens the encrypted database. The passphrase is stored in the platform keystore via
-/// flutter_secure_storage (see `data/secure_key.dart`) — never hard-coded.
-LazyDatabase openEncryptedDatabase(String passphrase) {
+/// flutter_secure_storage (see `data/secure_key.dart`) — never hard-coded. [file]
+/// overrides the on-disk location (TASK-192 tests: point at a fixture file instead of
+/// the real app documents directory); production callers never pass it.
+LazyDatabase openEncryptedDatabase(String passphrase, {File? file}) {
   return LazyDatabase(() async {
     // Ensure the app uses the SQLCipher-enabled sqlite3, not the system one.
     open.overrideForAll(openCipherOnAndroid);
 
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, 'bgdude_encrypted.db'));
+    final dbFile = file ?? await defaultDatabaseFile();
 
     return NativeDatabase.createInBackground(
-      file,
+      dbFile,
       isolateSetup: () async {
         open.overrideForAll(openCipherOnAndroid);
       },

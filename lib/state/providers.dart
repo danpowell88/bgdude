@@ -56,6 +56,8 @@ import '../integrations/glucose_meter_transport_fbp.dart';
 import '../integrations/nightscout.dart';
 import '../logging/app_log.dart';
 import '../logging/device_changes.dart';
+import '../data/database.dart';
+import '../data/db_open_diagnosis.dart';
 import '../data/health_sync.dart';
 import '../data/history_repository.dart';
 import '../data/kv_store.dart';
@@ -347,6 +349,16 @@ final devModeProvider = StateProvider<bool>((ref) => false);
 /// P1-6: non-null with a message when the encrypted database failed to open and the app
 /// fell back to an in-memory store (data not persisting). Overridden in `main()`.
 final dbOpenErrorProvider = Provider<String?>((ref) => null);
+
+/// TASK-192: WHY the open failed (wrong key/corrupt header vs deeper data corruption vs
+/// a plain I/O problem), so the recovery screen can offer the right next step. Null
+/// when the database opened fine. Overridden in `main()`.
+final dbOpenDiagnosisProvider = Provider<DbOpenDiagnosis?>((ref) => null);
+
+/// TASK-192: the still-open, keyed connection when the diagnosis is
+/// [DbOpenDiagnosis.corruptedData] — lets the recovery screen attempt a salvage
+/// export of whatever tables are still readable. Null otherwise. Overridden in `main()`.
+final dbOpenSalvageDbProvider = Provider<AppDatabase?>((ref) => null);
 
 /// The active pump data source — real native bridge, or the simulator in dev mode.
 /// Recreated when [devModeProvider] flips so switching modes takes effect live.

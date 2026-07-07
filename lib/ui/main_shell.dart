@@ -5,6 +5,7 @@ import '../state/app_flags.dart';
 import '../state/persisted_state_notifier.dart';
 import '../state/providers.dart';
 import 'bolus_advisor_screen.dart';
+import 'db_recovery_screen.dart';
 import 'home_screen.dart';
 import 'insights_screen.dart';
 import 'meal_library_screen.dart';
@@ -90,8 +91,10 @@ class _MainShellState extends ConsumerState<MainShell>
       valueListenable: CorruptStateNotices.notices,
       builder: (context, notices, _) {
         final banners = [
-          if (dbError != null) (message: dbError, dismissible: false),
-          for (final n in notices) (message: n, dismissible: true),
+          if (dbError != null)
+            (message: dbError, dismissible: false, isDbError: true),
+          for (final n in notices)
+            (message: n, dismissible: true, isDbError: false),
         ];
         if (banners.isEmpty) return tab;
         final cs = Theme.of(context).colorScheme;
@@ -100,26 +103,36 @@ class _MainShellState extends ConsumerState<MainShell>
             for (final b in banners)
               Material(
                 color: cs.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Row(
-                    children: [
-                      Icon(Icons.warning_amber_rounded,
-                          color: cs.onErrorContainer),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(b.message,
-                            style: TextStyle(color: cs.onErrorContainer)),
-                      ),
-                      if (b.dismissible)
-                        IconButton(
-                          icon: Icon(Icons.close,
-                              size: 18, color: cs.onErrorContainer),
-                          tooltip: 'Dismiss',
-                          onPressed: () =>
-                              CorruptStateNotices.dismiss(b.message),
+                child: InkWell(
+                  // TASK-192: tap the storage banner to reach the recovery screen
+                  // (retry / salvage export / reset).
+                  onTap: b.isDbError
+                      ? () => Navigator.of(context).push(MaterialPageRoute<void>(
+                          builder: (_) => const DbRecoveryScreen()))
+                      : null,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            color: cs.onErrorContainer),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(b.message,
+                              style: TextStyle(color: cs.onErrorContainer)),
                         ),
-                    ],
+                        if (b.isDbError)
+                          Icon(Icons.chevron_right, color: cs.onErrorContainer),
+                        if (b.dismissible)
+                          IconButton(
+                            icon: Icon(Icons.close,
+                                size: 18, color: cs.onErrorContainer),
+                            tooltip: 'Dismiss',
+                            onPressed: () =>
+                                CorruptStateNotices.dismiss(b.message),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
