@@ -49,9 +49,29 @@ void main() {
         scrollable: find.byType(Scrollable).first);
     expect(whatIf, findsOneWidget);
     expect(find.byType(Slider), findsWidgets);
-    // Nudge the carbs slider — the projection recomputes without error.
-    await tester.drag(find.byType(Slider).first, const Offset(40, 0));
+
+    // TASK-167: raising carbs must move the projection UP, not merely re-render.
+    double? endingMgdl() {
+      for (final t in tester.widgetList<Text>(find.byType(Text))) {
+        final m = RegExp(r'ending ([\d.]+)').firstMatch(t.data ?? '');
+        if (m != null) return double.parse(m.group(1)!);
+      }
+      return null;
+    }
+
+    // A big carb-only nudge so the direction is unambiguous.
+    await tester.drag(find.byType(Slider).first, const Offset(60, 0));
     await tester.pumpAndSettle();
+    final withSomeCarbs = endingMgdl();
+    expect(withSomeCarbs, isNotNull,
+        reason: 'the what-if projection line should be visible');
+
+    await tester.drag(find.byType(Slider).first, const Offset(120, 0));
+    await tester.pumpAndSettle();
+    final withMoreCarbs = endingMgdl();
+    expect(withMoreCarbs, isNotNull);
+    expect(withMoreCarbs!, greaterThan(withSomeCarbs!),
+        reason: 'more carbs must raise the projected ending glucose');
   });
 
   testWidgets('Exit demo from the header leaves demo mode', (tester) async {

@@ -143,6 +143,17 @@ void main() {
     expect(find.text('+30m'), findsOneWidget);
     expect(find.text('+60m'), findsOneWidget);
     expect(find.text('+120m'), findsOneWidget);
+    // TASK-167: the horizons must render NUMBERS in a plausible glucose range,
+    // not placeholders — a units bug would render garbage that still had labels.
+    final numericTexts = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((t) => t.data ?? '')
+        .where((s) => RegExp(r'^\d{1,2}\.\d$').hasMatch(s))
+        .map(double.parse)
+        .where((v) => v >= 2.0 && v <= 30.0) // plausible mmol/L
+        .toList();
+    expect(numericTexts.length, greaterThanOrEqualTo(3),
+        reason: 'each horizon should show a plausible mmol value');
     expect(find.text('Scenario lines'), findsOneWidget);
     // The sensitivity card sits at the bottom of a long lazy ListView — scroll to it.
     await tester.scrollUntilVisible(
@@ -199,6 +210,14 @@ void main() {
     await tester.tap(find.text('Bolus'));
     await tester.pumpAndSettle();
 
+    // TASK-167: the displayed dose must equal the ENGINE-computed value for the
+    // live state, not merely render labels. Capture the state around the tap so
+    // a snapshot landing mid-flow can't flake the comparison.
+    final container = ProviderScope.containerOf(
+        tester.element(find.text('Calculate suggestion')));
+    final advisor = container.read(bolusAdvisorProvider);
+    final before = container.read(livePredictionStateProvider);
+
     await tester.enterText(find.byType(TextField).first, '45');
     await tester.tap(find.text('Calculate suggestion'));
     await tester.pumpAndSettle();
@@ -206,6 +225,22 @@ void main() {
     // With a live simulated reading the advisor produces working + a suggestion.
     expect(find.text('Working'), findsOneWidget);
     expect(find.text('Suggested'), findsOneWidget);
+
+    final after = container.read(livePredictionStateProvider);
+    final expected = <String>{
+      if (before != null)
+        advisor.advise(before, carbsGrams: 45).recommendedUnits.toStringAsFixed(2),
+      if (after != null)
+        advisor.advise(after, carbsGrams: 45).recommendedUnits.toStringAsFixed(2),
+    };
+    expect(expected, isNotEmpty, reason: 'demo mode must have a live state');
+    final shown = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((t) => t.data ?? '')
+        .where((s) => RegExp(r'^\d+\.\d{2}$').hasMatch(s))
+        .toSet();
+    expect(shown.intersection(expected), isNotEmpty,
+        reason: 'displayed dose $shown must match engine value $expected');
   });
 
   testWidgets('meals tab: add a meal and open its detail with the coach',
