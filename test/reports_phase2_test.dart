@@ -34,6 +34,29 @@ void main() {
       expect(report.basalFraction, greaterThan(0.8)); // basal-dominant
     });
 
+    test('TASK-148: Control-IQ auto-boluses are NOT manual corrections', () {
+      final report = const InsulinReportBuilder().build(
+        boluses: [
+          BolusEvent(time: DateTime(2026, 7, 4, 8), units: 5, carbsGrams: 40),
+          BolusEvent(time: DateTime(2026, 7, 4, 15), units: 2), // manual corr.
+          BolusEvent(
+              time: DateTime(2026, 7, 4, 16), units: 0.4, isAutomatic: true),
+          BolusEvent(
+              time: DateTime(2026, 7, 4, 17), units: 0.3, isAutomatic: true),
+          BolusEvent(
+              time: DateTime(2026, 7, 5, 3), units: 0.5, isAutomatic: true),
+        ],
+        basal: const [],
+        range: range,
+        now: DateTime(2026, 7, 6, 8),
+      );
+      expect(report.bolusCount, 5);
+      expect(report.mealBolusCount, 1);
+      expect(report.correctionBolusCount, 1,
+          reason: 'loop microboluses must not count as user behaviour');
+      expect(report.autoBolusCount, 3);
+    });
+
     test('empty history → no data', () {
       final report = const InsulinReportBuilder().build(
         boluses: const [],

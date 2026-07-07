@@ -27,6 +27,7 @@ class InsulinReport {
     required this.bolusCount,
     required this.mealBolusCount,
     required this.correctionBolusCount,
+    required this.autoBolusCount,
     required this.avgBolusUnits,
     required this.bolusesPerDay,
     required this.activeDays,
@@ -43,7 +44,13 @@ class InsulinReport {
 
   final int bolusCount;
   final int mealBolusCount;
+
+  /// MANUAL corrections only (TASK-148) — Control-IQ auto-boluses are counted
+  /// separately in [autoBolusCount], not as user behaviour.
   final int correctionBolusCount;
+
+  /// Control-IQ automatic (micro)boluses in range.
+  final int autoBolusCount;
   final double avgBolusUnits;
   final double bolusesPerDay;
 
@@ -88,8 +95,11 @@ class InsulinReportBuilder {
     final inRange = boluses
         .where((b) => range.contains(b.time) && b.units > 0)
         .toList();
-    final meal = inRange.where((b) => b.carbsGrams > 0).length;
-    final correction = inRange.length - meal;
+    // TASK-148: partition meal / manual-correction / automatic. Counting loop
+    // microboluses as manual corrections misstated user behaviour.
+    final auto = inRange.where((b) => b.isAutomatic).length;
+    final meal = inRange.where((b) => !b.isAutomatic && b.carbsGrams > 0).length;
+    final correction = inRange.length - auto - meal;
     final avgUnits = inRange.isEmpty
         ? 0.0
         : inRange.map((b) => b.units).reduce((a, b) => a + b) / inRange.length;
@@ -105,6 +115,7 @@ class InsulinReportBuilder {
       bolusCount: inRange.length,
       mealBolusCount: meal,
       correctionBolusCount: correction,
+      autoBolusCount: auto,
       avgBolusUnits: avgUnits,
       bolusesPerDay: activeDays == 0 ? 0 : inRange.length / activeDays,
       activeDays: activeDays,
