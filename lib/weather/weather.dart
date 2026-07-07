@@ -79,11 +79,18 @@ class WeatherService {
     return parseCurrent(res.body, now: now);
   }
 
+  /// TASK-208: Open-Meteo's shape is stable today, but a hard `as Map` cast on a
+  /// malformed/unexpected body would throw a [TypeError] straight out of a parser
+  /// with no caller-side guard — an is-Map check degrades to "no result" instead.
   static GeoLocation? parseGeocode(String body) {
-    final json = jsonDecode(body) as Map<String, dynamic>;
+    final decoded = jsonDecode(body);
+    if (decoded is! Map) return null;
+    final json = decoded.cast<String, dynamic>();
     final results = (json['results'] as List?) ?? const [];
     if (results.isEmpty) return null;
-    final r = (results.first as Map).cast<String, dynamic>();
+    final first = results.first;
+    if (first is! Map) return null;
+    final r = first.cast<String, dynamic>();
     final lat = (r['latitude'] as num?)?.toDouble();
     final lon = (r['longitude'] as num?)?.toDouble();
     if (lat == null || lon == null) return null;
@@ -95,8 +102,11 @@ class WeatherService {
   }
 
   static Weather? parseCurrent(String body, {DateTime? now}) {
-    final json = jsonDecode(body) as Map<String, dynamic>;
-    final cur = (json['current'] as Map?)?.cast<String, dynamic>();
+    final decoded = jsonDecode(body);
+    if (decoded is! Map) return null;
+    final json = decoded.cast<String, dynamic>();
+    final curRaw = json['current'];
+    final cur = curRaw is Map ? curRaw.cast<String, dynamic>() : null;
     final temp = (cur?['temperature_2m'] as num?)?.toDouble();
     if (temp == null) return null;
     return Weather(

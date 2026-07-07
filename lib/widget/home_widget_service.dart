@@ -15,6 +15,7 @@ import 'dart:async';
 import 'package:home_widget/home_widget.dart';
 
 import '../core/units.dart';
+import '../logging/app_log.dart';
 import '../pump/pump_snapshot.dart';
 import 'bg_widget_format.dart';
 import 'widget_keys.dart';
@@ -58,15 +59,23 @@ class HomeWidgetService {
       readingAge: age,
     );
 
-    await Future.wait([
-      HomeWidget.saveWidgetData<String>(_keyBgText, data.bgText),
-      HomeWidget.saveWidgetData<String>(_keyTrend, data.trendArrow),
-      HomeWidget.saveWidgetData<String>(_keyUnit, data.unitLabel),
-      HomeWidget.saveWidgetData<String>(_keyIob, data.iobText),
-      HomeWidget.saveWidgetData<String>(_keyRange, data.range.token),
-      HomeWidget.saveWidgetData<int>(
-          _keyCgmEpochMs, cgmTime?.millisecondsSinceEpoch),
-    ]);
+    try {
+      await Future.wait([
+        HomeWidget.saveWidgetData<String>(_keyBgText, data.bgText),
+        HomeWidget.saveWidgetData<String>(_keyTrend, data.trendArrow),
+        HomeWidget.saveWidgetData<String>(_keyUnit, data.unitLabel),
+        HomeWidget.saveWidgetData<String>(_keyIob, data.iobText),
+        HomeWidget.saveWidgetData<String>(_keyRange, data.range.token),
+        HomeWidget.saveWidgetData<int>(
+            _keyCgmEpochMs, cgmTime?.millisecondsSinceEpoch),
+      ]);
+    } catch (e) {
+      // TASK-208: a MissingPluginException (e.g. right after an engine restart, before
+      // the plugin re-registers) must not escape onto the per-reading pump-snapshot
+      // listener or the once-a-minute staleness ticker.
+      appLog.error('home_widget', 'saveWidgetData failed', error: e);
+      return;
+    }
     await _renderWidget();
   }
 
@@ -101,6 +110,11 @@ class HomeWidgetService {
     _ticker = null;
   }
 
-  Future<void> _renderWidget() =>
-      HomeWidget.updateWidget(qualifiedAndroidName: _qualifiedProviderName);
+  Future<void> _renderWidget() async {
+    try {
+      await HomeWidget.updateWidget(qualifiedAndroidName: _qualifiedProviderName);
+    } catch (e) {
+      appLog.error('home_widget', 'updateWidget failed', error: e);
+    }
+  }
 }

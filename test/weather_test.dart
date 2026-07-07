@@ -33,6 +33,26 @@ void main() {
     test('current without temperature → null', () {
       expect(WeatherService.parseCurrent('{"current":{}}'), isNull);
     });
+
+    // TASK-208(d): the parsers used to hard-cast `jsonDecode(body) as Map` / `results.first
+    // as Map` — a shape change (or a non-JSON-object error body) would throw a TypeError
+    // straight out of the parser instead of degrading to "no result".
+    test('geocode with a non-object body (e.g. a bare JSON array) → null, not a throw',
+        () {
+      expect(WeatherService.parseGeocode('[]'), isNull);
+    });
+
+    test('geocode whose results entries are not objects → null, not a throw', () {
+      expect(WeatherService.parseGeocode('{"results":["Sydney"]}'), isNull);
+    });
+
+    test('current with a non-object body → null, not a throw', () {
+      expect(WeatherService.parseCurrent('null'), isNull);
+    });
+
+    test('current whose "current" field is not an object → null, not a throw', () {
+      expect(WeatherService.parseCurrent('{"current":"unexpected"}'), isNull);
+    });
   });
 
   group('WeatherRiskModifier', () {

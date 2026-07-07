@@ -260,10 +260,15 @@ class SettingsScreen extends ConsumerWidget {
             enabled: !devMode,
             onTap: () async {
               final messenger = ScaffoldMessenger.of(context);
-              await ref.read(healthSyncServiceProvider).requestPermissions();
-              final n = await ref.read(appJobsProvider).syncHealth();
-              messenger.showSnackBar(
-                  SnackBar(content: Text('Synced $n health samples.')));
+              try {
+                await ref.read(healthSyncServiceProvider).requestPermissions();
+                final n = await ref.read(appJobsProvider).syncHealth();
+                messenger.showSnackBar(
+                    SnackBar(content: Text('Synced $n health samples.')));
+              } catch (e) {
+                messenger.showSnackBar(SnackBar(
+                    content: Text('Health sync failed: $e')));
+              }
             },
           ),
           ListTile(

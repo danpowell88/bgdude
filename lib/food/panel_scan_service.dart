@@ -4,6 +4,7 @@
 /// layouts/languages it can't handle.
 library;
 
+import '../logging/app_log.dart';
 import 'nutrition_panel.dart';
 import 'nutrition_panel_parser.dart';
 import 'panel_llm.dart';
@@ -49,7 +50,17 @@ class PanelScanService {
   static const double _llmThreshold = 0.7;
 
   Future<PanelScanResult> scan(String imagePath) async {
-    final text = await ocr.readText(imagePath);
+    final String text;
+    try {
+      // TASK-208: guarded at the source rather than relying on the sole caller's
+      // try/catch — a PlatformException from ML Kit (e.g. a corrupt photo file, or a
+      // MissingPluginException right after an engine restart) must degrade to "no
+      // result" here, not depend on whoever calls scan() to have wrapped it.
+      text = await ocr.readText(imagePath);
+    } catch (e) {
+      appLog.error('panel_scan', 'OCR failed', error: e);
+      return const PanelScanResult(ocrText: '');
+    }
     if (text.trim().isEmpty) return PanelScanResult(ocrText: text);
 
     final deterministic = _parser.parse(text);

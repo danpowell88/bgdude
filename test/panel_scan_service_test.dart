@@ -11,6 +11,12 @@ class _FakeOcr implements PanelOcr {
   Future<String> readText(String imagePath) async => text;
 }
 
+class _ThrowingOcr implements PanelOcr {
+  @override
+  Future<String> readText(String imagePath) async =>
+      throw Exception('ML Kit: corrupt image');
+}
+
 class _FakeLlm implements PanelLlmExtractor {
   _FakeLlm(this._panel);
   final PanelNutrition? _panel;
@@ -84,5 +90,15 @@ void main() {
     final svc = PanelScanService(ocr: _FakeOcr('   '));
     final r = await svc.scan('x.jpg');
     expect(r.hasResult, isFalse);
+  });
+
+  // TASK-208(e): ocr.readText() used to run outside scan()'s try block — safe only
+  // because the sole caller (meal_library_screen.dart) happens to wrap the whole call.
+  // Guarding at the source means PanelScanService is safe regardless of the caller.
+  test('a throwing OCR degrades to "no result" instead of propagating', () async {
+    final svc = PanelScanService(ocr: _ThrowingOcr());
+    final r = await svc.scan('x.jpg');
+    expect(r.hasResult, isFalse);
+    expect(r.ocrText, isEmpty);
   });
 }

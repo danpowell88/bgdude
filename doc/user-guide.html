@@ -492,7 +492,7 @@
     <li><b>Demo mode</b> — when active (chosen during onboarding), a status row here lets you <b>Exit</b> back to your real pump. There's no switch to turn it on; that only happens in onboarding.</li>
     <li><b>Keep running in background</b> — Android's battery saver can delay readings and alerts while the phone sleeps; this row asks Android to exempt bgdude (one-time system dialog, also offered during onboarding) and shows whether it's granted. Recommended for reliable overnight monitoring.</li>
     <li><b>Glucose units</b> — mmol/L (Australian default) or mg/dL. You pick this during onboarding; change it here any time and the whole app follows.</li>
-    <li><b>Sync health data now</b> — pull sleep, HRV, resting/continuous HR, steps and workouts from Health Connect.</li>
+    <li><b>Sync health data now</b> — pull sleep, HRV, resting/continuous HR, steps and workouts from Health Connect. If Health Connect can't be reached, a snackbar says so instead of the sync silently failing.</li>
     <li><b>Barcode food lookup</b> — the online food-lookup switch (see <a href="#meals">Meals</a>).</li>
     <li><b>Nutrition-label AI</b> — optionally download a small on-device model (Gemma, ~0.5&nbsp;GB) that helps the <a href="#meals">label scanner</a> read unusual or foreign-language panels. Paste a Gemma&nbsp;3&nbsp;1B <code>.task</code> model URL (Gemma is licence-gated, so it isn't bundled) with an access token if the host needs one; it downloads once and runs entirely on your phone. Everything works without it — the deterministic parser is the always-on path.</li>
     <li><b>Re-pair / Unpair pump</b> — start a fresh scan or drop the pairing.</li>

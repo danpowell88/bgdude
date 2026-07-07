@@ -1,5 +1,6 @@
 import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/core/units.dart';
+import 'package:bgdude/logging/app_log.dart';
 import 'package:bgdude/pump/pump_snapshot.dart';
 import 'package:bgdude/widget/home_widget_service.dart';
 import 'package:flutter/services.dart';
@@ -118,5 +119,47 @@ void main() {
     expect(saved['bg_range'], 'unknown');
     expect(saved.containsKey('cgm_epoch_ms'), isTrue);
     expect(saved['cgm_epoch_ms'], isNull);
+  });
+
+  group('TASK-208(b): plugin failures degrade to a logged skip', () {
+    setUp(appLog.clear);
+
+    test('a MissingPluginException from saveWidgetData is logged, not thrown',
+        () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        methods.add(call.method);
+        throw MissingPluginException('no implementation for ${call.method}');
+      });
+
+      // Must not throw even though every plugin call fails.
+      await service().pushUpdate(snapshot(), GlucoseUnit.mmol);
+
+      expect(saved, isEmpty);
+      // All 6 saveWidgetData calls are made eagerly before Future.wait awaits them, so
+      // every one fires (and fails) even though the first rejection is what propagates;
+      // the render call is the one thing skipped.
+      expect(methods, List.filled(6, 'saveWidgetData'));
+      final logged = appLog.entries
+          .where((e) => e.level == LogLevel.error && e.tag == 'home_widget');
+      expect(logged, isNotEmpty);
+    });
+
+    test('the once-a-minute staleness ticker survives a MissingPluginException',
+        () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        throw MissingPluginException('engine restarted');
+      });
+
+      final svc = service();
+      // refreshStaleness() with no snapshot only calls _renderWidget().
+      await svc.refreshStaleness();
+
+      final logged = appLog.entries
+          .where((e) => e.level == LogLevel.error && e.tag == 'home_widget');
+      expect(logged, hasLength(1));
+      expect(logged.single.message, 'updateWidget failed');
+    });
   });
 }

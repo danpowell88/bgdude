@@ -57,8 +57,10 @@ class BgDudeApp extends ConsumerWidget {
     });
     ref.listen(glucoseUnitProvider, (_, unit) {
       ref.read(homeWidgetServiceProvider).setUnit(unit);
-      // TASK-24: keep the Garmin watch on the user's chosen unit.
-      ref.read(pumpClientProvider).setGarminUnit(unit);
+      // TASK-24/208: keep the Garmin watch on the user's chosen unit. Fire-and-forget —
+      // PumpClient._invoke rethrows PlatformException, so this must be logged, not awaited.
+      unawaitedLogged(ref.read(pumpClientProvider).setGarminUnit(unit), 'garmin',
+          'setGarminUnit failed');
     });
     // Alert if the pump stays disconnected.
     ref.listen(pumpConnectionProvider, (_, next) async {
