@@ -3,9 +3,11 @@ id: TASK-232
 title: >-
   Pin the empty-CGM kernel guard + degenerate-input tests for all kernel
   consumers
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-07 04:50'
+updated_date: '2026-07-07 23:23'
 labels:
   - code-health
   - testing
@@ -26,8 +28,8 @@ ordinal: 113230
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 MealDetector tests: empty CGM, single sample, all-gap trace — no throw, empty result
-- [ ] #2 A shared degenerate-input test covers all four kernel consumers
+- [x] #1 MealDetector tests: empty CGM, single sample, all-gap trace — no throw, empty result
+- [x] #2 A shared degenerate-input test covers all four kernel consumers
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -47,12 +49,42 @@ ordinal: 113230
 - Related: TASK-137 (introduced), a76487e (the unpinned fix)
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 23:18
+---
+Started: add empty/single-sample/all-gap degenerate-input tests for MealDetector and a shared table-driven group covering all 4 AttributionKernel consumers (MealDetector, CompressionLowDetector, Autotune, TOD analyzer).
+---
+
+author: Claude
+created: 2026-07-07 23:23
+---
+Both ACs done in test/event_detectors_test.dart.
+
+AC#1: added 3 MealDetector cases (empty CGM, single sample, all-gap trace) directly pinning the exact bug class from commit a76487e (sorted.first.time accessed before the kernel's own i=1 loop, unguarded on an empty list).
+
+AC#2: added a table-driven 'degenerate CGM input across all 4 kernel consumers' group (12 tests = 4 consumers x 3 degenerate cases) covering MealDetector, CompressionLowDetector, Autotune.analyseDay and TimeOfDaySensitivityAnalyzer.analyseDay. Traced each consumer's own loop shape first (not just assumed the kernel's safety was enough): AttributionKernel.steps()'s  is empty/single-sample-safe by construction (0 or 1 never satisfies i<length), and CompressionLowDetector's own  is too -- MealDetector was the ONLY one with an unguarded pre-loop .first access outside the kernel's loop, matching the ticket's own tracing. Autotune/TOD analyzer were already safe but had nothing pinning that before this sweep.
+
+Rigor check: commented out the sorted.isEmpty guard, reran -- both the direct MealDetector test and the table-driven group's MealDetector/empty case failed with the exact predicted 'StateError: No element'; every other consumer's degenerate case stayed green (confirming they don't depend on this guard). Reverted; git diff clean.
+
+Pipeline: build_runner build, flutter analyze clean, flutter test --coverage test/ 1150/1150 green, coverage 67.5% (floor-compliant), flutter build apk --debug succeeded. No native Kotlin, no user-visible change.
+---
+
+author: Claude
+created: 2026-07-07 23:23
+---
+Correction to the previous comment: two inline code snippets were eaten by shell backtick expansion. For the record: AttributionKernel.steps() uses for (i = 1; i < length; i++), and CompressionLowDetector uses for (i = 2; i < length - 2; i++) -- both are empty/single-sample-safe by construction, as stated.
+---
+<!-- COMMENTS:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
 - [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
 - [ ] #6 doc/user-guide.html updated when the change is user-visible
 - [ ] #7 Integration test added or extended when a screen/flow changed
