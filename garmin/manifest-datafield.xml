@@ -50,6 +50,19 @@
             <iq:product id="vivoactive4"/>
             <iq:product id="vivoactive4s"/>
             <iq:product id="vivoactive5"/>
+            <iq:product id="vivoactive6"/>
+            <!-- TASK-32: current-gen devices, verified against the installed Connect IQ
+                 SDK's own device catalog (sdkmanager-config.ini), not guessed. -->
+            <iq:product id="fenix843mm"/>
+            <iq:product id="fenix847mm"/>
+            <iq:product id="fenix8pro47mm"/>
+            <iq:product id="fenix8solar47mm"/>
+            <iq:product id="fenix8solar51mm"/>
+            <iq:product id="fr165"/>
+            <iq:product id="fr165m"/>
+            <iq:product id="fr970"/>
+            <iq:product id="venu441mm"/>
+            <iq:product id="venu445mm"/>
         </iq:products>
 
         <iq:permissions>

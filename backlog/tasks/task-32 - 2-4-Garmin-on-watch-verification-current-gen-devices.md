@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-07 12:55'
 labels:
   - roadmap
   - garmin
@@ -28,7 +28,7 @@ ordinal: 500400
 <!-- AC:BEGIN -->
 - [ ] #1 Installed + verified on a paired watch
 - [ ] #2 Phone→watch push + background service confirmed
-- [ ] #3 Current-gen devices added to manifests
+- [x] #3 Current-gen devices added to manifests
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -51,3 +51,13 @@ ordinal: 500400
 - Flags: 🔌 hardware
 - Roadmap status: partial
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 12:55
+---
+AC#3 done: added fenix8 (843mm/847mm/pro47mm/solar47mm/solar51mm), fr165/fr165m, fr970, and venu441mm/venu445mm (Venu 4) + vivoactive6 to all 3 manifests (manifest.xml, manifest-datafield.xml, manifest-watchface.xml) — same set in each, matching the existing pattern. Verified the exact product IDs against the installed Connect IQ SDK's own device catalog (sdkmanager-config.ini's full list of every device ID the SDK manager has ever seen), not guessed or web-search-summarized. Compiled the widget for fr970 (a locally-simulator-downloaded device) with a throwaway local dev key to confirm the manifest changes don't break the build — BUILD SUCCESSFUL. The compiler warns 'invalid device id' for my new IDs, but it does the SAME for many pre-existing IDs already in the manifest (venu, fenix6, fr255, etc.) — that's just this machine's SDK not having every device's simulator package downloaded, not a real problem with the IDs (confirmed: the IDs I verified via the SDK's device catalog, like fenix8-variants and fr970, aren't in that warning list once their simulator package IS present locally). AC#1 (installed + verified on a paired watch) and AC#2 (phone->watch push + background service confirmed) remain hardware-gated — no physical Garmin watch available in this environment.
+---
+<!-- COMMENTS:END -->
