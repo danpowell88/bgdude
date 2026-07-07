@@ -31,8 +31,8 @@ void main() {
       );
 
   group('TASK-190: zero ISF/CR never produces a NaN/Infinity dose', () {
-    final zeroSettings = TherapySettings(
-      segments: const [
+    const zeroSettings = TherapySettings(
+      segments: [
         TherapySegment(
           startMinuteOfDay: 0,
           isf: 0,

@@ -7,17 +7,22 @@ library;
 import '../analytics/band_coverage.dart';
 import '../data/history_repository.dart';
 import 'model_registry.dart';
+import 'parkes_error_grid.dart';
 
 /// A [ModelEvaluation] plus the two honesty checks on the predicted band itself
 /// (TASK-17): how often the actual reading landed inside `[lower, upper]`
 /// (coverage) and whether the band is centred (bias). Kept separate from
 /// [ModelEvaluation] itself so the model-promotion gate (which scores pairs with
-/// no band data) is untouched.
+/// no band data) is untouched. Also carries the Parkes (Consensus) grid's A+B/
+/// dangerous fractions alongside the Clarke ones already in [eval] (TASK-26) —
+/// purely an additional diagnostic; the promotion gate stays pinned to Clarke.
 class BandEvaluation {
   const BandEvaluation({
     required this.eval,
     required this.coverageFraction,
     required this.biasMgdl,
+    required this.parkesAbFraction,
+    required this.parkesDangerousFraction,
   });
 
   final ModelEvaluation eval;
@@ -29,6 +34,12 @@ class BandEvaluation {
   /// Mean signed error, predicted − actual, mg/dL. Positive = the model runs
   /// high; negative = runs low; 0 is perfectly centred.
   final double biasMgdl;
+
+  /// Parkes (Consensus) grid clinically-safe fraction (zones A+B).
+  final double parkesAbFraction;
+
+  /// Parkes (Consensus) grid dangerous fraction (zones D+E).
+  final double parkesDangerousFraction;
 }
 
 class AccuracyReport {
@@ -67,10 +78,13 @@ class AccuracyAnalyzer {
         ? 0.0
         : pairs.map((p) => p.predicted - p.reference).reduce((a, b) => a + b) /
             pairs.length;
+    final parkes = const ParkesErrorGrid().evaluate(pairs);
     return BandEvaluation(
       eval: const ModelEvaluator().evaluate(pairs),
       coverageFraction: coverage.fraction,
       biasMgdl: bias,
+      parkesAbFraction: parkes.abFraction,
+      parkesDangerousFraction: parkes.dangerousFraction,
     );
   }
 

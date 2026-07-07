@@ -98,6 +98,8 @@ class _HorizonAccuracyCard extends StatelessWidget {
             _stat(context, 'RMSE', '${eval.rmseMgdl.toStringAsFixed(1)} mg/dL'),
             _stat(context, 'Clarke A+B',
                 '${(eval.abFraction * 100).toStringAsFixed(1)}%'),
+            _stat(context, 'Parkes (Consensus) A+B',
+                '${(band.parkesAbFraction * 100).toStringAsFixed(1)}%'),
             _stat(
                 context,
                 'Hypo sensitivity',

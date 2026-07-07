@@ -1,11 +1,11 @@
 ---
 id: TASK-26
 title: 'Clarke grid: optional Parkes/consensus grid'
-status: In Progress
+status: Done
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-07 12:39'
 labels:
   - roadmap
   - ml
@@ -25,9 +25,9 @@ ordinal: 109300
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Parkes/consensus grid zones implemented
-- [ ] #2 Per-zone reference tests (as done for Clarke)
-- [ ] #3 ModelAccuracyScreen uses/offers the chosen grid
+- [x] #1 Parkes/consensus grid zones implemented
+- [x] #2 Per-zone reference tests (as done for Clarke)
+- [x] #3 ModelAccuracyScreen uses/offers the chosen grid
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -47,3 +47,13 @@ ordinal: 109300
 - Effort: M
 - Roadmap status: partial
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 12:39
+---
+Done. Verified boundary coordinates against a reliable, citable source rather than guessing at a clinical grid — the published papers' own tables rendered inconsistently through automated extraction, so I pulled the exact Type 1 diabetes zone polygons from the peer-reviewed 'ega' CRAN package's getParkesZones (github.com/cran/ega, R source), which itself cites Parkes et al. 2000 (Diabetes Care) and Pfützner et al. 2013 (JDST). New lib/ml/parkes_error_grid.dart: point-in-polygon classification (ray-casting) over the same B/C/D/E polygons as that reference implementation, extended to a fixed 1000 mg/dL bound (well past any real CGM/meter reading) instead of a data-dependent plot limit. AC#2: 6 reference tests in test/parkes_error_grid_test.dart, each hand-verified against the polygon geometry (one initial test point turned out to sit in an overlapping B+C+D region and had to be relocated once the implementation correctly resolved it to the more-severe D — a good sign the check-order-overwrite logic, matching the reference implementation exactly, is working). AC#3: BandEvaluation (accuracy_report.dart) now also carries parkesAbFraction/parkesDangerousFraction computed from the same pairs as the Clarke eval, and ModelAccuracyScreen shows both A+B figures side by side per horizon — the model-promotion gate is untouched and stays pinned to Clarke. doc/user-guide.html updated. Pipeline green: analyze clean, 771 tests passed, apk debug build succeeds.
+---
+<!-- COMMENTS:END -->
