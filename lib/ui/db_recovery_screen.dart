@@ -27,17 +27,23 @@ class _DbRecoveryScreenState extends ConsumerState<DbRecoveryScreen> {
         DbOpenDiagnosis.keyOrHeaderCorrupt => 'Storage key mismatch or damage',
         DbOpenDiagnosis.corruptedData => 'Storage data damage',
         DbOpenDiagnosis.ioError => 'Storage couldn\'t be opened',
+        DbOpenDiagnosis.keyReadFailure => 'Storage key temporarily unreadable',
         DbOpenDiagnosis.unknown => 'Storage problem',
       };
 
   String _explain(DbOpenDiagnosis d) => switch (d) {
+        // TASK-249: no longer claims the data is unsalvageable — a key mismatch
+        // (vs. genuine header corruption) is exactly the recoverable case this
+        // ambiguity can hide, and "reset" now preserves the file rather than
+        // erasing it either way.
         DbOpenDiagnosis.keyOrHeaderCorrupt =>
           'The saved key no longer matches the stored file, or the file itself is '
               'damaged beyond the point where it can even be identified as a '
               'database — this can happen after restoring a backup under a '
               'different key, or from file corruption. There\'s no way to '
-              'distinguish the two from here, and no data can be salvaged either '
-              'way — a reset is the only path forward.',
+              'distinguish the two from here. If you reset, the existing file is '
+              'renamed aside rather than deleted, in case it turns out to be '
+              'recoverable later.',
         DbOpenDiagnosis.corruptedData =>
           'The storage key checked out fine, but a deeper integrity check found '
               'damage. Some tables may still be intact — try exporting what\'s '
@@ -46,6 +52,11 @@ class _DbRecoveryScreenState extends ConsumerState<DbRecoveryScreen> {
           'This looks like a filesystem problem (permissions, low storage) rather '
               'than damaged data — retrying may just work once the underlying '
               'issue clears.',
+        DbOpenDiagnosis.keyReadFailure =>
+          'The database file itself was never touched — only reading the saved key '
+              'from secure storage failed, which is often a transient problem (for '
+              'example right after an OS update). Try again first; only reset if '
+              'retrying keeps failing.',
         DbOpenDiagnosis.unknown =>
           'Storage failed to open for an unrecognised reason.',
       };
@@ -93,8 +104,10 @@ class _DbRecoveryScreenState extends ConsumerState<DbRecoveryScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Reset storage?'),
         content: const Text(
-            'This permanently deletes every locally-stored reading, dose, meal, and '
-            'learned model. There is no undo.'),
+            'This makes every locally-stored reading, dose, meal, and learned model '
+            'inaccessible to the app — a fresh, empty store is created in its place. '
+            'The old file is kept renamed on disk rather than deleted, but there is '
+            'no in-app undo.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -130,7 +143,11 @@ class _DbRecoveryScreenState extends ConsumerState<DbRecoveryScreen> {
 
     setState(() => _busy = true);
     try {
-      await deleteDatabaseFile();
+      await retireDatabaseFile();
+      // TASK-249: only an explicit, twice-confirmed reset is allowed to clear the
+      // read-failure marker — this is the one path where generating a brand new
+      // key on the next open is actually what the user wants.
+      await SecureKeyStore.forgetForReset();
       if (mounted) {
         _showResult('Storage reset — restart the app to start fresh.');
       }

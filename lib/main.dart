@@ -78,9 +78,17 @@ Future<void> _run() async {
     // the user their history isn't being saved.
     debugPrint('DB open failed — running in-memory (data will NOT persist): $e\n$st');
     repository = InMemoryHistoryRepository();
-    dbOpenError =
-        'Storage failed to open — the app is running without saving. Your data will '
-        'not persist. Restart the app; if it keeps happening, reinstall.';
+    if (e is SecureKeyReadFailure) {
+      // TASK-249: the DB file itself was never touched — only the key read failed.
+      // Give this its own diagnosis so the recovery screen doesn't funnel a likely
+      // transient failure straight into "reset and lose everything".
+      dbOpenDiagnosis = DbOpenDiagnosis.keyReadFailure;
+      dbOpenError = _dbOpenErrorMessage(dbOpenDiagnosis);
+    } else {
+      dbOpenError =
+          'Storage failed to open — the app is running without saving. Your data will '
+          'not persist. Restart the app; if it keeps happening, reinstall.';
+    }
   }
 
   final notifications = NotificationService();
@@ -123,6 +131,10 @@ String _dbOpenErrorMessage(DbOpenDiagnosis diagnosis) => switch (diagnosis) {
       DbOpenDiagnosis.ioError =>
         'Storage failed to open — the app is running without saving. Restart the app; '
             'if it keeps happening, check available storage space.',
+      DbOpenDiagnosis.keyReadFailure =>
+        'Storage\'s saved key couldn\'t be read — often temporary (e.g. right after '
+            'an OS update). The database file itself is untouched. The app is '
+            'running without saving; open Settings and retry.',
       DbOpenDiagnosis.unknown =>
         'Storage failed to open — the app is running without saving. Your data will '
             'not persist. Restart the app; if it keeps happening, reinstall.',

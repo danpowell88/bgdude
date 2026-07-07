@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:bgdude/data/database.dart';
 import 'package:bgdude/data/db_open_diagnosis.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 /// TASK-192: classifyDbOpenFailure is unit-tested directly against synthetic
 /// exceptions shaped exactly like what SQLCipher/sqlite3 actually raise (same result
@@ -64,7 +67,53 @@ void main() {
       expect(DbOpenDiagnosis.corruptedData.salvageable, isTrue);
       expect(DbOpenDiagnosis.keyOrHeaderCorrupt.salvageable, isFalse);
       expect(DbOpenDiagnosis.ioError.salvageable, isFalse);
+      expect(DbOpenDiagnosis.keyReadFailure.salvageable, isFalse);
       expect(DbOpenDiagnosis.unknown.salvageable, isFalse);
+    });
+  });
+
+  group('retireDatabaseFile (TASK-249)', () {
+    late Directory dir;
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('bgdude_retire_test');
+    });
+
+    tearDown(() async {
+      if (await dir.exists()) await dir.delete(recursive: true);
+    });
+
+    test('a wrong-key open against an intact file never results in file deletion',
+        () async {
+      final dbFile = File(p.join(dir.path, 'bgdude_encrypted.db'));
+      await dbFile.writeAsBytes([1, 2, 3, 4]); // stand-in for real encrypted bytes
+      final wal = File('${dbFile.path}-wal')..writeAsBytesSync([5]);
+      final shm = File('${dbFile.path}-shm')..writeAsBytesSync([6]);
+
+      await retireDatabaseFile(file: dbFile);
+
+      // The original paths no longer exist...
+      expect(await dbFile.exists(), isFalse);
+      expect(await wal.exists(), isFalse);
+      expect(await shm.exists(), isFalse);
+
+      // ...but the bytes are still on disk somewhere under a .bak-<stamp> name, not
+      // deleted — this is the actual data-loss guard (AC#4).
+      final survivors = dir.listSync().whereType<File>().toList();
+      expect(survivors, isNotEmpty);
+      final mainBackup =
+          survivors.singleWhere((f) => p.basename(f.path).startsWith('bgdude_encrypted.db.bak-'));
+      expect(await mainBackup.readAsBytes(), [1, 2, 3, 4]);
+      expect(
+          survivors.any((f) => p.basename(f.path).contains('-wal.bak-')), isTrue);
+      expect(
+          survivors.any((f) => p.basename(f.path).contains('-shm.bak-')), isTrue);
+    });
+
+    test('a missing file is a no-op, not an error', () async {
+      final dbFile = File(p.join(dir.path, 'does_not_exist.db'));
+      await retireDatabaseFile(file: dbFile); // must not throw
+      expect(dir.listSync(), isEmpty);
     });
   });
 

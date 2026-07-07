@@ -35,4 +35,61 @@ void main() {
     final again = await SecureKeyStore.open();
     expect(again.getOrCreatePassphrase(), legacy);
   });
+
+  group('SecureKeyReadFailure (TASK-249)', () {
+    test('a null secure read after a key already existed throws instead of '
+        'silently generating a new key', () async {
+      final first = await SecureKeyStore.open();
+      final originalPass = first.getOrCreatePassphrase();
+
+      // Simulate the secure store losing its value (Keystore invalidation etc.)
+      // while the plain marker survives — exactly the ambiguous case this guards.
+      FlutterSecureStorage.setMockInitialValues({});
+
+      await expectLater(SecureKeyStore.open(), throwsA(isA<SecureKeyReadFailure>()));
+
+      // And confirm it really would have generated a *different* key had it not
+      // thrown, so this isn't accidentally testing a no-op.
+      FlutterSecureStorage.setMockInitialValues(
+          {'db_passphrase_v1': originalPass});
+      final recovered = await SecureKeyStore.open();
+      expect(recovered.getOrCreatePassphrase(), originalPass);
+    });
+
+    test('a genuinely first run (no marker) still generates a key normally', () async {
+      final store = await SecureKeyStore.open();
+      expect(store.getOrCreatePassphrase(), isNotEmpty);
+    });
+
+    test('forgetForReset clears the marker so open() generates fresh instead of '
+        'throwing', () async {
+      final first = await SecureKeyStore.open();
+      FlutterSecureStorage.setMockInitialValues({}); // simulate lost key
+
+      await SecureKeyStore.forgetForReset();
+
+      final afterReset = await SecureKeyStore.open();
+      expect(afterReset.getOrCreatePassphrase(), isNotEmpty);
+      expect(afterReset.getOrCreatePassphrase(),
+          isNot(first.getOrCreatePassphrase()));
+    });
+
+    test('the marker is backfilled for a key generated before the marker existed',
+        () async {
+      // An install from before this fix: a key exists in secure storage but the
+      // marker was never set (SharedPreferences starts empty).
+      const existingKey = 'pre-existing-key-abc';
+      FlutterSecureStorage.setMockInitialValues(
+          {'db_passphrase_v1': existingKey});
+
+      final store = await SecureKeyStore.open();
+      expect(store.getOrCreatePassphrase(), existingKey);
+
+      // Now simulate a transient read failure on a LATER launch — the marker
+      // should have been backfilled by the read above, so this throws rather
+      // than silently minting a new key.
+      FlutterSecureStorage.setMockInitialValues({});
+      await expectLater(SecureKeyStore.open(), throwsA(isA<SecureKeyReadFailure>()));
+    });
+  });
 }

@@ -246,17 +246,23 @@ class AppDatabase extends _$AppDatabase {
 Future<File> defaultDatabaseFile() async => File(p.join(
     (await getApplicationDocumentsDirectory()).path, 'bgdude_encrypted.db'));
 
-/// TASK-192: deletes the encrypted database file so the next open starts fresh — the
-/// destructive "reset storage" recovery action. The stored passphrase is left as-is;
-/// a fresh empty file re-encrypts under the same key next launch, which is simpler
-/// than also rotating the key and has the same net effect (no readable old data).
-Future<void> deleteDatabaseFile() async {
-  final file = await defaultDatabaseFile();
-  if (await file.exists()) await file.delete();
-  // WAL/journal sidecar files, if present.
+/// TASK-192/249: retires the encrypted database file so the next open starts fresh —
+/// the destructive "reset storage" recovery action. Renames (never deletes) the file
+/// and its WAL/shm/journal sidecars to a timestamped `.bak-<epoch>` path alongside
+/// the original, rather than erasing them: a `keyOrHeaderCorrupt` verdict can't tell
+/// a truly-corrupt file apart from a recoverable key mismatch, so destroying the
+/// only copy of someone's glucose/insulin history on that guess isn't acceptable.
+/// The stored passphrase is left as-is; a fresh empty file re-encrypts under the
+/// same key next launch (callers doing a genuine key reset also clear the key via
+/// `SecureKeyStore.forgetForReset`). [file] overrides the on-disk location for
+/// tests, matching `openEncryptedDatabase`; production callers never pass it.
+Future<void> retireDatabaseFile({File? file}) async {
+  file ??= await defaultDatabaseFile();
+  final stamp = DateTime.now().millisecondsSinceEpoch;
+  if (await file.exists()) await file.rename('${file.path}.bak-$stamp');
   for (final suffix in ['-wal', '-shm', '-journal']) {
     final side = File('${file.path}$suffix');
-    if (await side.exists()) await side.delete();
+    if (await side.exists()) await side.rename('${side.path}.bak-$stamp');
   }
 }
 

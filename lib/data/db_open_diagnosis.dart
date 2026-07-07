@@ -34,7 +34,13 @@ enum DbOpenDiagnosis {
   ioError,
 
   /// Didn't match a recognised pattern.
-  unknown;
+  unknown,
+
+  /// `SecureKeyStore.open()` couldn't read the passphrase from secure storage, but a
+  /// plain marker confirms one was generated before (TASK-249) — this looks like a
+  /// transient Keystore failure (OS update, device restore, biometric change), not
+  /// file corruption. The encrypted DB file itself was never even touched.
+  keyReadFailure;
 
   /// Whether any of the app's own data might still be readable via SQL — true only
   /// for [corruptedData], where the key/header were already confirmed fine and some
