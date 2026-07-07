@@ -9,6 +9,8 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
+import '../logging/app_log.dart';
+
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 
@@ -87,9 +89,17 @@ class PumpClient implements PumpSource {
       case 'snapshot':
         final json = map['json'] as String?;
         if (json != null) {
-          final decoded = jsonDecode(json) as Map<String, dynamic>;
-          _lastSnapshot = PumpSnapshot.fromJson(decoded);
-          _snapshots.add(_lastSnapshot!);
+          // TASK-181: one malformed event must cost ONE reading, not the live
+          // stream — an uncaught throw here was a zone error and a recurring
+          // shape quietly stopped updates.
+          try {
+            final decoded = jsonDecode(json) as Map<String, dynamic>;
+            _lastSnapshot = PumpSnapshot.fromJson(decoded);
+            _snapshots.add(_lastSnapshot!);
+          } catch (e) {
+            appLog.error('pump', 'snapshot decode failed — event skipped',
+                error: e);
+          }
         }
       case 'pairingCode':
         _pairingRequests.add(map['type'] as String? ?? 'SHORT_6CHAR');

@@ -133,6 +133,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       await [Permission.notification].request();
       if (!demoOnly) {
         await [Permission.bluetoothConnect, Permission.bluetoothScan].request();
+        // TASK-183: continuous monitoring — ask once for the battery-optimization
+        // exemption so Doze doesn't throttle BLE delivery and the overnight
+        // summary backstop. Android shows the system consent dialog.
+        await Permission.ignoreBatteryOptimizations.request();
         try {
           await ref.read(healthSyncServiceProvider).requestPermissions();
         } catch (_) {}

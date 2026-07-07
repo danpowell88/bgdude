@@ -138,7 +138,7 @@ class NotificationService {
       scheduled,
       _details(NotificationCategory.morningSummary,
           _prefs.of(NotificationCategory.morningSummary)),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: summaryScheduleMode,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
@@ -157,16 +157,33 @@ class NotificationService {
       scheduled,
       _details(NotificationCategory.reportDigest,
           _prefs.of(NotificationCategory.reportDigest)),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: summaryScheduleMode,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
     );
   }
 
+  /// Summaries/nudges tolerate Doze slack — they stay inexact (TASK-182).
+  static const AndroidScheduleMode summaryScheduleMode =
+      AndroidScheduleMode.inexactAllowWhileIdle;
+
+  /// The pre-bolus timer's mode: EXACT when the exact-alarm permission is
+  /// granted, else the inexact fallback (Android 14 denies SCHEDULE_EXACT_ALARM
+  /// by default for new installs). Pure so tests pin the mode per path.
+  static AndroidScheduleMode preBolusScheduleMode({required bool canExact}) =>
+      canExact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle;
+
   /// Schedule a one-shot pre-bolus timer that survives the app being backgrounded.
+  /// TASK-182: in Doze an inexact alarm can fire 30–40 min late — a pre-bolus
+  /// timer that fires after the meal is useless, so this one path asks for
+  /// exact-alarm semantics (gated on the runtime permission).
   Future<void> schedulePreBolusTimer(Duration lead, String mealName) async {
     final when = tz.TZDateTime.now(tz.local).add(lead);
+    final canExact =
+        await _android?.canScheduleExactNotifications() ?? false;
     await _plugin.zonedSchedule(
       3000,
       'Time to eat',
@@ -174,7 +191,7 @@ class NotificationService {
       when,
       _details(NotificationCategory.preBolusTimer,
           _prefs.of(NotificationCategory.preBolusTimer)),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: preBolusScheduleMode(canExact: canExact),
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
     );

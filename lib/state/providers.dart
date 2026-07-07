@@ -133,6 +133,17 @@ class NotificationPrefsNotifier extends PersistedStateNotifier<NotificationPrefs
   Future<void> setQuietHours(QuietHours q) => persist(state.withQuietHours(q));
 }
 
+/// TASK-41: thin facade so `lib/ui` never imports `KvStore` (storage) directly. Backs
+/// simple one-time-notice flags (e.g. "have I shown this dialog before").
+class OneTimeNotices {
+  const OneTimeNotices();
+  Future<bool> shown(String key) async => (await KvStore.getBool(key)) == true;
+  Future<void> markShown(String key) => KvStore.setBool(key, true);
+}
+
+final oneTimeNoticesProvider =
+    Provider<OneTimeNotices>((ref) => const OneTimeNotices());
+
 /// Whether barcode/food lookup may query Open Food Facts (an outbound request). On by
 /// default; when off, only the bundled offline Australian food set is used. Persisted.
 final barcodeLookupEnabledProvider =
@@ -388,6 +399,24 @@ final pumpTherapyProfileProvider = StreamProvider<String>((ref) {
 final pumpProbeEventProvider = StreamProvider<ProbeEvent>((ref) {
   return ref.watch(pumpClientProvider).probeEvents;
 });
+
+/// TASK-41: thin facade so `lib/ui` (the Protocol Explorer screen) never imports the
+/// `PumpSource` interface directly — it only ever sees this plain controller.
+class ProtocolProbeController {
+  ProtocolProbeController(this._ref);
+  final Ref _ref;
+
+  /// Turn the probe firehose on/off (only while the explorer screen is open).
+  void setCapture(bool enabled) =>
+      _ref.read(pumpClientProvider).setProbeCapture(enabled);
+
+  /// Fire one read-only `currentStatus` request by pumpx2 class name.
+  Future<String?> send(String className, {int? arg1, int? arg2}) =>
+      _ref.read(pumpClientProvider).sendProbe(className, arg1: arg1, arg2: arg2);
+}
+
+final protocolProbeControllerProvider =
+    Provider<ProtocolProbeController>((ref) => ProtocolProbeController(ref));
 
 /// The user's therapy settings (their pump IDP: basal schedule, ISF, CR, targets),
 /// persisted. Feeds the what-if engine, bolus advisor, and predictions.

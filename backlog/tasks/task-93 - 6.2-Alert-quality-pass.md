@@ -4,7 +4,7 @@ title: Alert quality pass
 status: To Do
 assignee: []
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 19:08'
+updated_date: '2026-07-07 09:29'
 labels:
   - roadmap
   - alerts
@@ -65,5 +65,11 @@ author: Claude
 created: 2026-07-06 19:08
 ---
 AC#3 (exercise-mode alert-suppression) + AC#4 (decision-core tests) delivered (commit above): AlertMonitor.evaluate gains suppressPredictedHigh, wired to the active exercise plan; lows/urgent-lows are never suppressed; matrix tests added. AC#2 (smarter dedup) is PARTLY in place — the alert loop already gates each kind on a cooldown and the 'currentMgdl > lowMgdl' guard avoids re-alerting the same dip; a fuller 'don't re-alert until the value recovers and dips again' needs a small state machine (per-excursion tracking) — bounded but wants a design nod on the recovery threshold. AC#1 (snooze + acknowledge) is a real stateful feature needing notification action buttons + persisted per-alert snooze state + UI — best done as a focused unit (and it's a UX decision how long snooze lasts per category). Flagged for that focused pass.
+---
+
+author: Claude
+created: 2026-07-07 09:29
+---
+detail-needed (2026-07-07, re-triaged): re-checked — TASK-37 stages 1-2 (pure decision core + native backstop) ARE landed, so that blocker is resolved. AC#3/#4 (exercise-suppression) already shipped in lib/insights/alert_monitor.dart (suppressPredictedHigh param) with matrix tests. What remains, AC#1 (snooze+ack) and AC#2 (smarter dedup), needs a product decision before implementation: is snooze a notification action button (needs native Android intent handling) or an in-app control; does acknowledging a low suppress only that instance or all future alerts of that kind until glucose recovers above threshold; what's the default snooze duration. Leaving detail-needed pending that call rather than guessing at UX for a safety-relevant alert.
 ---
 <!-- COMMENTS:END -->

@@ -1,10 +1,11 @@
 ---
 id: TASK-41
 title: Architecture guard test (+ read-only-pump check)
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 10:43'
 labels:
   - roadmap
   - architecture
@@ -27,9 +28,9 @@ ordinal: 100200
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 architecture_test.dart walks lib/ui/** imports and fails on interface/store/service imports
-- [ ] #2 Existing violations fixed (meal_library_screen, protocol_explorer_screen)
-- [ ] #3 Build fails if any Kotlin imports request.control
+- [x] #1 architecture_test.dart walks lib/ui/** imports and fails on interface/store/service imports
+- [x] #2 Existing violations fixed (meal_library_screen, protocol_explorer_screen)
+- [x] #3 Build fails if any Kotlin imports request.control
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -59,5 +60,11 @@ author: Claude
 created: 2026-07-06 05:24
 ---
 detail-needed (2026-07-06, goal triage): The guard test itself is easy, but fixing the existing violation protocol_explorer_screen→PumpSource (an interface import) needs a provider-routing redesign of the probe API — want the approach confirmed so the read-only Explorer keeps working.
+---
+
+author: Claude
+created: 2026-07-07 10:43
+---
+Done: test/architecture_test.dart walks lib/ui/**.dart source for imports against a denylist of interface/service/storage files (pump_source.dart, pump_client.dart, simulated_pump_client.dart, kv_store.dart, database.dart, history_repository.dart, notifications.dart) and separately scans android Kotlin sources for any import of com.jwoglom.pumpx2...request.control.* (verified that's the real pumpx2 write/control package via javap on the cached jar). Each guard has a sanity test proving it actually flags a bad import. Fixed both existing violations: protocol_explorer_screen.dart imported PumpSource directly — added a ProtocolProbeController facade in providers.dart (setCapture/send) so the screen only ever sees a plain controller; meal_library_screen.dart called KvStore.getBool/setBool directly for the one-time online-lookup notice — added a OneTimeNotices facade in providers.dart. Pipeline green: analyze clean, 750 tests passed (5 new architecture_test.dart tests), apk debug build succeeds.
 ---
 <!-- COMMENTS:END -->

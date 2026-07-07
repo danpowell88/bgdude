@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../data/kv_store.dart';
 import '../food/food_item.dart';
 import '../meals/meal_library.dart';
 import '../state/providers.dart';
@@ -168,7 +167,7 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
   Future<bool> _confirmOnlineLookup() async {
     if (!ref.read(barcodeLookupEnabledProvider)) return true; // offline-only, no notice
     const key = 'off_notice_shown';
-    if ((await KvStore.getBool(key)) == true) return true;
+    if (await ref.read(oneTimeNoticesProvider).shown(key)) return true;
     if (!mounted) return true;
     final ok = await showDialog<bool>(
       context: context,
@@ -188,7 +187,7 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
         ],
       ),
     );
-    if (ok == true) await KvStore.setBool(key, true);
+    if (ok == true) await ref.read(oneTimeNoticesProvider).markShown(key);
     return ok ?? false;
   }
 

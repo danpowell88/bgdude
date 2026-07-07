@@ -146,16 +146,77 @@ class SensitivityModel {
   /// The lambda the CV grid search settled on. Null until trained.
   double? chosenLambda;
 
+  /// TASK-21: true once a fit has beaten [heuristicSensitivity] on held-out skill
+  /// (see [train]). False whenever [model] is null, whether because there wasn't
+  /// enough data or because the fit lost to the heuristic.
+  bool beatsHeuristic = false;
+
   bool get isTrained => model != null;
+
+  /// Expected coefficient sign per feature (physiologically motivated — see the
+  /// evidence base in this file's doc comment), in [ContextFeatures.toVector] order.
+  /// `-1` = should reduce resistance (raise sensitivity), `1` = should increase it.
+  /// A fitted coefficient with the wrong sign is noise the small, correlated
+  /// feature set picked up, not a real effect — [_signConstrained] zeroes it.
+  static const List<int> _expectedSign = [
+    -1, // sleep hours: more sleep -> less resistance
+    -1, // sleep efficiency: more efficient sleep -> less resistance
+    -1, // HRV vs baseline: higher (better) HRV -> less resistance
+    1, // resting HR vs baseline: elevated HR -> more resistance
+    -1, // prior-day exercise: more exercise -> less resistance
+    1, // luteal phase -> more resistance
+    1, // illness -> more resistance
+    1, // respiratory rate vs baseline: elevated -> more resistance
+    -1, // SpO2 delta: higher SpO2 -> less resistance
+    1, // body-temp delta: higher temp -> more resistance
+    -1, // active energy vs baseline: more activity -> less resistance
+  ];
+
+  static RidgeModel _signConstrained(RidgeModel m) {
+    final constrained = [
+      for (var i = 0; i < m.weights.length; i++)
+        _expectedSign[i] != 0 && m.weights[i] * _expectedSign[i] < 0
+            ? 0.0
+            : m.weights[i],
+    ];
+    return RidgeModel(
+      weights: constrained,
+      bias: m.bias,
+      featureMeans: m.featureMeans,
+      featureStds: m.featureStds,
+    );
+  }
+
+  /// Weighted in-sample MSE of the model-free heuristic — the bar a learned model
+  /// must clear to be adopted (TASK-21 AC#2). The heuristic isn't fit to this data,
+  /// so unlike the ridge model's LOO MSE this needs no held-out split.
+  static double _heuristicMse(List<SensitivityExample> examples) {
+    var se = 0.0, sw = 0.0;
+    for (final e in examples) {
+      final pred = heuristicSensitivity(e.features).resistanceMultiplier;
+      final err = e.sensitivityDeviation - pred;
+      se += e.weight * err * err;
+      sw += e.weight;
+    }
+    return sw > 0 ? se / sw : double.infinity;
+  }
 
   /// Fit from history. The ridge penalty is chosen by weighted leave-one-out CV over
   /// [lambdaGrid] (the datasets here are ~a few dozen rows, so this is cheap), and the
-  /// resulting out-of-sample skill drives [contextFor]'s confidence.
+  /// resulting out-of-sample skill drives [contextFor]'s confidence. The fitted model
+  /// is only adopted if it beats [heuristicSensitivity] on this same skill measure
+  /// (TASK-21 AC#2); otherwise callers fall back to the heuristic (see
+  /// `effectiveSensitivityProvider`, which already does this whenever [model] is
+  /// null). A model that IS adopted has any wrong-signed coefficient zeroed
+  /// (TASK-21 AC#1) — applied post-fit, not inside the CV search, since
+  /// constraining every LOO fold would be far more expensive for no real benefit at
+  /// this data scale.
   void train(List<SensitivityExample> examples) {
     if (examples.length < minExamples) {
       model = null;
       cvSkill = null;
       chosenLambda = null;
+      beatsHeuristic = false;
       return;
     }
     final x = examples.map((e) => e.features.toVector()).toList();
@@ -170,6 +231,16 @@ class SensitivityModel {
         bestMse = mse;
         bestLambda = lambda;
       }
+    }
+
+    if (bestMse >= _heuristicMse(examples)) {
+      // The learned model doesn't beat the simple heuristic on held-out skill —
+      // decline to adopt it rather than risk trusting a confidently-wrong fit.
+      model = null;
+      cvSkill = null;
+      chosenLambda = null;
+      beatsHeuristic = false;
+      return;
     }
 
     // Skill baseline: predicting the weighted mean scores 0.
@@ -187,7 +258,9 @@ class SensitivityModel {
 
     cvSkill = varY <= 0 ? 0.0 : (1 - bestMse / varY).clamp(0.0, 1.0).toDouble();
     chosenLambda = bestLambda;
-    model = RidgeRegression(lambda: bestLambda).fit(x, y, sampleWeights: w);
+    model = _signConstrained(
+        RidgeRegression(lambda: bestLambda).fit(x, y, sampleWeights: w));
+    beatsHeuristic = true;
   }
 
   /// Weighted leave-one-out mean squared error for one lambda.

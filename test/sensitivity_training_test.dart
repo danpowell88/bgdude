@@ -148,6 +148,62 @@ void main() {
     });
   });
 
+  group('SensitivityModel guardrails (TASK-21)', () {
+    test('a coefficient confounded to the wrong physiological sign is clamped to 0',
+        () {
+      // Illness is deliberately confounded with long sleep here (co-occurs on the
+      // same days), so an unconstrained fit would want to give it the SAME
+      // (negative/sensitising) sign as sleep's real effect — the opposite of the
+      // expected direction (illness should only ever raise resistance).
+      final examples = [
+        for (var i = 0; i < 12; i++)
+          SensitivityExample(
+            features: ContextFeatures(
+              sleepHours: i.isEven ? 4.5 : 8.0,
+              sleepEfficiency: 0.9,
+              overnightHrvRmssd: 50,
+              restingHr: 60,
+              priorDayExerciseLoad: 0.0,
+              menstrualLutealPhase: 0.0,
+              illnessFlag: i.isEven ? 0.0 : 1.0,
+              baselineHrv: 50,
+              baselineRestingHr: 60,
+            ),
+            sensitivityDeviation: i.isEven ? 1.3 : 0.8,
+          ),
+      ];
+
+      final model = SensitivityModel(minExamples: 8)..train(examples);
+      expect(model.isTrained, isTrue,
+          reason: 'sleep alone gives it plenty of real signal to beat the heuristic');
+      const illnessIndex = 6; // ContextFeatures.featureNames order
+      expect(model.model!.weights[illnessIndex], 0.0,
+          reason: 'illness fit the wrong (sensitising) sign here and must be clamped');
+    });
+
+    test('the heuristic wins (model declined) when a linear fit cannot match it',
+        () {
+      // Labels are exactly the heuristic's own step-function output across sleep
+      // durations spanning its thresholds — a straight-line ridge fit structurally
+      // can't reproduce three distinct plateaus, so it can't beat the heuristic's
+      // ~zero error against its own labels.
+      final hours = [4.0, 4.5, 4.9, 5.0, 5.4, 5.9, 6.0, 6.4, 7.0, 7.5, 8.0, 9.0];
+      final examples = [
+        for (final h in hours)
+          SensitivityExample(
+            features: _context(h),
+            sensitivityDeviation:
+                heuristicSensitivity(_context(h)).resistanceMultiplier,
+          ),
+      ];
+
+      final model = SensitivityModel(minExamples: 8)..train(examples);
+      expect(model.isTrained, isFalse);
+      expect(model.beatsHeuristic, isFalse);
+      expect(model.model, isNull);
+    });
+  });
+
   group('trainTimeOfDay', () {
     test('returns a profile from >= analyzer minDays of history', () {
       final profile = service.trainTimeOfDay(_usableDays(24));

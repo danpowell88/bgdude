@@ -5,6 +5,7 @@
 library;
 
 import 'package:bgdude/insights/notifications.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -68,6 +69,20 @@ void main() {
           NotificationService.nextWeeklyInstant(now, DateTime.monday, 8);
       expect(at.weekday, DateTime.monday);
       expect(at.day, 13);
+    });
+  });
+
+  group('schedule modes per path (TASK-182)', () {
+    test('the pre-bolus timer is EXACT when permitted, inexact otherwise', () {
+      expect(NotificationService.preBolusScheduleMode(canExact: true),
+          AndroidScheduleMode.exactAllowWhileIdle);
+      expect(NotificationService.preBolusScheduleMode(canExact: false),
+          AndroidScheduleMode.inexactAllowWhileIdle);
+    });
+
+    test('summaries and nudges stay inexact (Doze slack is fine there)', () {
+      expect(NotificationService.summaryScheduleMode,
+          AndroidScheduleMode.inexactAllowWhileIdle);
     });
   });
 }

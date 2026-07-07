@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/time_format.dart';
 import '../pump/probe_event.dart';
 import '../pump/pump_snapshot.dart';
-import '../pump/pump_source.dart';
 import '../state/providers.dart';
 
 /// Protocol Explorer — a read-only, on-device console for probing the t:slim X2 BLE
@@ -32,15 +31,15 @@ class _ProtocolExplorerScreenState
   ProviderSubscription<AsyncValue<ProbeEvent>>? _sub;
 
   /// Captured in initState so dispose() doesn't touch `ref` after the element unmounts.
-  late final PumpSource _source;
+  late final ProtocolProbeController _probe;
 
   @override
   void initState() {
     super.initState();
-    _source = ref.read(pumpClientProvider);
+    _probe = ref.read(protocolProbeControllerProvider);
     // Turn the native firehose on while this screen is open, and mirror every captured
     // message into the log.
-    _source.setProbeCapture(true);
+    _probe.setCapture(true);
     _sub = ref.listenManual(pumpProbeEventProvider, (prev, next) {
       final e = next.valueOrNull;
       if (e != null && mounted) setState(() => _log.insert(0, e));
@@ -50,14 +49,13 @@ class _ProtocolExplorerScreenState
   @override
   void dispose() {
     _sub?.close();
-    // Best-effort: stop the firehose when leaving (uses the cached source, not `ref`).
-    _source.setProbeCapture(false);
+    // Best-effort: stop the firehose when leaving (uses the cached controller, not `ref`).
+    _probe.setCapture(false);
     super.dispose();
   }
 
   Future<void> _send(ProbeRequest req, {int? arg1, int? arg2}) async {
-    final result =
-        await _source.sendProbe(req.className, arg1: arg1, arg2: arg2);
+    final result = await _probe.send(req.className, arg1: arg1, arg2: arg2);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       duration: const Duration(seconds: 2),
@@ -79,7 +77,7 @@ class _ProtocolExplorerScreenState
     );
     for (final req in reads) {
       if (!mounted) break;
-      await _source.sendProbe(req.className);
+      await _probe.send(req.className);
       // Small gap so responses interleave in order and we don't flood the BLE queue.
       await Future<void>.delayed(const Duration(milliseconds: 250));
     }

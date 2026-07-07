@@ -387,7 +387,7 @@
     <tr><th>Alert</th><th>Fires when</th><th>Default</th></tr>
     <tr><td><b>Morning summary</b></td><td>A daily briefing at <b>07:00</b> — overnight time-in-range plus prescriptive notes. A background job posts it even on days you don't open the app.</td><td>Normal</td></tr>
     <tr><td><b>Weekly report</b></td><td>A weekly nudge (Mon 08:00) that your report is ready to review.</td><td>Low</td></tr>
-    <tr><td><b>Pre-bolus timer</b></td><td>The pre-bolus countdown you started for a meal is up — time to eat. Survives the app being backgrounded.</td><td>High</td></tr>
+    <tr><td><b>Pre-bolus timer</b></td><td>The pre-bolus countdown you started for a meal is up — time to eat. Survives the app being backgrounded, and fires <b>exactly on time</b> when Android's “Alarms &amp; reminders” permission is allowed (otherwise it may drift a few minutes in deep sleep).</td><td>High</td></tr>
   </table>
   <div class="note">These are all <b>additive</b> to your CGM/pump alarms, never a replacement — and the app is read-only, so a notification is a prompt to act, never an automatic dose.</div>
   <div class="note"><b>Reliability limitation.</b> The forecast-based alerts above are decided inside the app. If Android kills bgdude to reclaim memory while the screen is off, those richer alerts can be delayed or missed until it next runs — <b>always keep your CGM/pump's own alarms on</b>. As a safety net, a <b>dumb urgent-low backstop</b> runs in the background pump service and will notify you if a live reading is critically low (≤ 55 mg/dL) even when the app itself has been killed. A full always-on background alerting engine is planned.</div>
@@ -487,6 +487,7 @@
   <p>Everything not on a tab lives in Settings. Beyond the screens above:</p>
   <ul class="tight">
     <li><b>Demo mode</b> — when active (chosen during onboarding), a status row here lets you <b>Exit</b> back to your real pump. There's no switch to turn it on; that only happens in onboarding.</li>
+    <li><b>Keep running in background</b> — Android's battery saver can delay readings and alerts while the phone sleeps; this row asks Android to exempt bgdude (one-time system dialog, also offered during onboarding) and shows whether it's granted. Recommended for reliable overnight monitoring.</li>
     <li><b>Glucose units</b> — mmol/L (Australian default) or mg/dL. You pick this during onboarding; change it here any time and the whole app follows.</li>
     <li><b>Sync health data now</b> — pull sleep, HRV, resting/continuous HR, steps and workouts from Health Connect.</li>
     <li><b>Barcode food lookup</b> — the online food-lookup switch (see <a href="#meals">Meals</a>).</li>

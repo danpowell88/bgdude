@@ -1,3 +1,4 @@
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -210,6 +211,7 @@ class SettingsScreen extends ConsumerWidget {
                   builder: (_) => const MedicationModeScreen()),
             ),
           ),
+          const _BatteryExemptionTile(), // TASK-183
           ListTile(
             leading: const Icon(Icons.bloodtype_outlined),
             title: const Text('Pump'),
@@ -382,6 +384,55 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+/// TASK-183: battery-optimization exemption. App Standby/Doze throttles BLE
+/// callback delivery and defers the WorkManager summary backstop on an idle
+/// phone; a continuous glucose monitor needs the exemption. Shows the current
+/// state (no nagging) and only asks when tapped.
+class _BatteryExemptionTile extends StatefulWidget {
+  const _BatteryExemptionTile();
+
+  @override
+  State<_BatteryExemptionTile> createState() => _BatteryExemptionTileState();
+}
+
+class _BatteryExemptionTileState extends State<_BatteryExemptionTile> {
+  bool? _granted;
+
+  @override
+  void initState() {
+    super.initState();
+    Permission.ignoreBatteryOptimizations.isGranted.then((g) {
+      if (mounted) setState(() => _granted = g);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final granted = _granted;
+    return ListTile(
+      leading: Icon(
+        granted == true
+            ? Icons.battery_charging_full
+            : Icons.battery_alert_outlined,
+        color: granted == false ? Theme.of(context).colorScheme.error : null,
+      ),
+      title: const Text('Keep running in background'),
+      subtitle: Text(granted == true
+          ? 'Battery optimisation exemption granted — monitoring won\'t be throttled.'
+          : 'Android\'s battery saver can delay readings and alerts while the phone '
+              'sleeps. Tap to allow bgdude to keep monitoring.'),
+      onTap: granted == true
+          ? null
+          : () async {
+              final status =
+                  await Permission.ignoreBatteryOptimizations.request();
+              if (mounted) setState(() => _granted = status.isGranted);
+            },
     );
   }
 }

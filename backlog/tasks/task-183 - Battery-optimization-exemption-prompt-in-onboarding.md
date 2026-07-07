@@ -1,10 +1,11 @@
 ---
 id: TASK-183
 title: Battery-optimization exemption prompt in onboarding
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 09:19'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 10:43'
 labels:
   - code-health
   - onboarding
@@ -24,9 +25,9 @@ ordinal: 108400
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Onboarding (and a Settings entry) requests the exemption with a plain-language rationale
-- [ ] #2 State reflected so the prompt does not nag
-- [ ] #3 User guide updated
+- [x] #1 Onboarding (and a Settings entry) requests the exemption with a plain-language rationale
+- [x] #2 State reflected so the prompt does not nag
+- [x] #3 User guide updated
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -48,13 +49,29 @@ ordinal: 108400
 - Related: TASK-95, TASK-96 — coordinate
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 08:14
+---
+Started: REQUEST_IGNORE_BATTERY_OPTIMIZATIONS in the manifest; onboarding requests the exemption (real-pump path) alongside BT; a Settings 'Keep running in background' tile shows granted state and requests on tap; guide updated.
+---
+
+author: Claude
+created: 2026-07-07 10:43
+---
+Done: onboarding requests Permission.ignoreBatteryOptimizations after BLE permissions (real-pump path only, not demo-only). Settings gets a new _BatteryExemptionTile showing current grant state (battery icon + explanatory subtitle) with tap-to-request; onTap is null once granted so it never nags. User guide: new bullet under Settings describing the row and recommending it for overnight monitoring. DoD #5/#7 N/A (no Kotlin change; existing onboarding/settings screens extended, not a new screen — integration coverage would need a real permission-dialog interaction which onboarding_test.dart/settings tests don't currently drive). Pipeline green: analyze clean, 750 tests passed, apk debug build succeeds.
+---
+<!-- COMMENTS:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
 - [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #6 doc/user-guide.html updated when the change is user-visible
 - [ ] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

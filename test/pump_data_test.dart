@@ -164,4 +164,49 @@ void main() {
           .setMockMethodCallHandler(channel, null);
     });
   });
+
+  group('snapshot decode guard (TASK-181)', () {
+    testWidgets('a malformed event is skipped and the next good one processes',
+        (tester) async {
+      const events = EventChannel('bgdude/pump_events');
+      final client = PumpClient(events: events);
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(events, MockStreamHandler.inline(
+        onListen: (arguments, sink) {
+          // 1. Malformed JSON — used to throw an uncaught zone error and, for a
+          //    recurring shape, quietly stop live updates.
+          sink.success(<Object?, Object?>{'kind': 'snapshot', 'json': '{broken'});
+          // 2. Wrong shape (valid JSON, not an object the parser accepts).
+          sink.success(<Object?, Object?>{'kind': 'snapshot', 'json': '[1,2]'});
+          // 3. A good snapshot MUST still come through on the same subscription.
+          sink.success(<Object?, Object?>{
+            'kind': 'snapshot',
+            'json': '{"schemaVersion":1,"timestampEpochMs":1751800000000,'
+                '"cgmMgdl":120,"cgmTimestampEpochMs":1751799900000}',
+          });
+          // Deliberately no sink.endOfStream() call: closing the mock's sink here
+          // wedges the subsequent teardown (setMockStreamHandler(events, null) /
+          // client.dispose()) indefinitely in this test harness — reproduced with
+          // a bare, unrelated broadcast StreamController too, so it's a
+          // flutter_test-environment quirk, not a PumpClient bug. Not calling it
+          // doesn't weaken the assertions below.
+        },
+      ));
+      addTearDown(() => TestDefaultBinaryMessengerBinding
+          .instance.defaultBinaryMessenger
+          .setMockStreamHandler(events, null));
+
+      final received = <PumpSnapshot>[];
+      final sub = client.snapshots.listen(received.add);
+      addTearDown(sub.cancel);
+      client.start();
+      await tester.pump();
+      await tester.pump();
+
+      expect(received, hasLength(1),
+          reason: 'the two malformed events are skipped, the good one lands');
+      expect(received.single.cgmMgdl, 120);
+    });
+  });
 }

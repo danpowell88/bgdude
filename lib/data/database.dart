@@ -219,6 +219,14 @@ class AppDatabase extends _$AppDatabase {
         beforeOpen: (details) async {
           await customStatement('PRAGMA journal_mode=WAL');
           await customStatement('PRAGMA foreign_keys=ON');
+          // TASK-185: the WorkManager summary backstop (read-only, see
+          // background_summary.dart) opens its own connection to the same WAL
+          // file concurrently with the main isolate's writer; without a busy
+          // timeout a reader that lands mid-checkpoint gets SQLITE_BUSY
+          // immediately instead of waiting the brief contention out. This does
+          // NOT make a second concurrent *writer* safe — drift's own multi-
+          // instance warning still applies to that (see db_concurrency_test.dart).
+          await customStatement('PRAGMA busy_timeout=5000');
         },
       );
 
