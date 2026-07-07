@@ -3,6 +3,7 @@
 /// side.
 library;
 
+import '../analytics/predictor.dart';
 import '../core/samples.dart';
 
 /// The Control-IQ user mode reported by the pump. Control-IQ steers glucose toward a
@@ -210,5 +211,30 @@ class PumpSnapshot {
     if (mgdl == null || cgmTime == null) return null;
     return CgmSample(
         time: cgmTime!, mgdl: mgdl.toDouble(), trend: cgmTrend ?? GlucoseTrend.unknown);
+  }
+
+  /// Map this snapshot's Control-IQ status onto the closed-loop model the
+  /// predictor/advisor use (TASK-126). Delegates to [mapControlIqState] (a static
+  /// so callers holding just the three raw fields — e.g. a `.select()`-destructured
+  /// record, to avoid rebuilding on unrelated snapshot changes — can call it too).
+  ControlIqState get controlIqState => mapControlIqState(
+      enabled: closedLoopEnabled, active: controlIqActive, mode: controlIqMode);
+
+  /// Off unless the loop is actually enabled. `enabled` (closedLoopEnabled) is
+  /// preferred; `active` (controlIqActive) is the fallback for older firmware that
+  /// doesn't report the former.
+  static ControlIqState mapControlIqState({
+    required bool? enabled,
+    required bool? active,
+    required ControlIqMode? mode,
+  }) {
+    final on = enabled ?? active ?? false;
+    if (!on) return ControlIqState.off;
+    return switch (mode) {
+      ControlIqMode.sleep => ControlIqState.sleep,
+      ControlIqMode.exercise => ControlIqState.exercise,
+      // Standard, or unknown-but-active firmware → treat as Standard.
+      _ => ControlIqState.standard,
+    };
   }
 }

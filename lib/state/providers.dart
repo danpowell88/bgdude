@@ -1301,29 +1301,12 @@ final livePredictionStateProvider = Provider<PredictionState?>((ref) {
     context: ref.watch(effectiveSensitivityProvider),
     healthFeatures:
         healthSampler?.featuresAt(latest.time) ?? HealthFeatureSampler.zeros,
-    controlIq: _controlIqStateFrom(
+    controlIq: PumpSnapshot.mapControlIqState(
         enabled: snap?.closedLoopEnabled,
         active: snap?.controlIqActive,
         mode: snap?.controlIqMode),
   );
 });
-
-/// Map the live pump snapshot's Control-IQ status onto the closed-loop model the
-/// predictor/advisor use. Off unless the loop is actually enabled.
-ControlIqState _controlIqStateFrom({
-  required bool? enabled,
-  required bool? active,
-  required ControlIqMode? mode,
-}) {
-  final on = enabled ?? active ?? false;
-  if (!on) return ControlIqState.off;
-  return switch (mode) {
-    ControlIqMode.sleep => ControlIqState.sleep,
-    ControlIqMode.exercise => ControlIqState.exercise,
-    // Standard, or unknown-but-active firmware → treat as Standard.
-    _ => ControlIqState.standard,
-  };
-}
 
 /// Saved-meal library with shared_preferences persistence (the drift `SavedMeals`
 /// table is the eventual home once the encrypted DB is wired through the app).

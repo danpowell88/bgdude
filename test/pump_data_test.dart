@@ -1,4 +1,5 @@
 import 'package:bgdude/analytics/insulin_totals.dart';
+import 'package:bgdude/analytics/predictor.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/data/kv_store.dart';
@@ -79,6 +80,61 @@ void main() {
       final s = PumpSnapshot.fromJson({'timestampEpochMs': 1_700_000_000_000});
       expect(s.activeAlarms, isEmpty);
       expect(s.activeAlerts, isEmpty);
+    });
+  });
+
+  group('PumpSnapshot.controlIqState (TASK-126)', () {
+    PumpSnapshot snapshot({bool? closedLoopEnabled, bool? controlIqActive,
+        ControlIqMode mode = ControlIqMode.unknown}) =>
+        PumpSnapshot(
+          time: DateTime(2026, 7, 8),
+          closedLoopEnabled: closedLoopEnabled,
+          controlIqActive: controlIqActive,
+          controlIqMode: mode,
+        );
+
+    test('off when neither closedLoopEnabled nor controlIqActive is true', () {
+      expect(snapshot().controlIqState, ControlIqState.off);
+      expect(snapshot(closedLoopEnabled: false, controlIqActive: false).controlIqState,
+          ControlIqState.off);
+    });
+
+    test('closedLoopEnabled true with sleep mode maps to sleep', () {
+      expect(
+          snapshot(closedLoopEnabled: true, mode: ControlIqMode.sleep)
+              .controlIqState,
+          ControlIqState.sleep);
+    });
+
+    test('closedLoopEnabled true with exercise mode maps to exercise', () {
+      expect(
+          snapshot(closedLoopEnabled: true, mode: ControlIqMode.exercise)
+              .controlIqState,
+          ControlIqState.exercise);
+    });
+
+    test('closedLoopEnabled true with standard/unknown mode maps to standard', () {
+      expect(
+          snapshot(closedLoopEnabled: true, mode: ControlIqMode.standard)
+              .controlIqState,
+          ControlIqState.standard);
+      expect(
+          snapshot(closedLoopEnabled: true, mode: ControlIqMode.unknown)
+              .controlIqState,
+          ControlIqState.standard);
+    });
+
+    test('controlIqActive is the fallback on older firmware without closedLoopEnabled', () {
+      expect(
+          snapshot(controlIqActive: true, mode: ControlIqMode.exercise)
+              .controlIqState,
+          ControlIqState.exercise);
+    });
+
+    test('closedLoopEnabled false wins over a stale controlIqActive true', () {
+      expect(
+          snapshot(closedLoopEnabled: false, controlIqActive: true).controlIqState,
+          ControlIqState.off);
     });
   });
 
