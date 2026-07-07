@@ -238,6 +238,14 @@ class AgpBucket {
   final double p75;
   final double p95;
   final int count;
+
+  /// TASK-160: with fewer than this many readings the outer percentile bands are
+  /// dominated by single readings and shouldn't be presented as a distribution.
+  static const int minCountForBands = 5;
+
+  /// Whether this bucket has too few readings for its bands to mean much —
+  /// consumers should de-emphasise or skip sparse buckets.
+  bool get sparse => count < minCountForBands;
 }
 
 class AgpCalculator {
@@ -272,6 +280,9 @@ class AgpCalculator {
     return result;
   }
 
+  /// Linear-interpolation percentile, type 7 in the Hyndman–Fan taxonomy (the
+  /// R/NumPy default): rank = p*(n-1), interpolating between the neighbouring
+  /// order statistics. E.g. [10,20,30,40] p25 → rank 0.75 → 17.5 (TASK-160).
   static double _percentile(List<double> sorted, double p) {
     if (sorted.isEmpty) return 0;
     if (sorted.length == 1) return sorted.first;

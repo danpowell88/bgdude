@@ -45,7 +45,12 @@ void main() {
       expect(b.sum, closeTo(1.0, 1e-9));
     });
 
-    test('gri is derived from the same bands', () {
+    test('gri pins to a hand-calculated literal, not re-derived weights', () {
+      // TASK-160: the old expectation re-derived the Klonoff weights from the
+      // production code, proving nothing. Hand calculation:
+      //   VLow 3% -> 3.0*3 = 9;  Low 5% -> 2.4*5 = 12;
+      //   VHigh 7% -> 1.6*7 = 11.2;  High 15% -> 0.8*15 = 12.
+      //   GRI = 9 + 12 + 11.2 + 12 = 44.2
       final m = _metrics(
         timeInRange: 0.70,
         timeBelow70: 0.08,
@@ -53,13 +58,7 @@ void main() {
         timeAbove180: 0.22,
         timeAbove250: 0.07,
       );
-      final b = m.bands;
-      final expected = (3.0 * b.veryLow * 100 +
-              2.4 * b.low * 100 +
-              1.6 * b.veryHigh * 100 +
-              0.8 * b.high * 100)
-          .clamp(0.0, 100.0);
-      expect(m.gri, closeTo(expected, 1e-9));
+      expect(m.gri, closeTo(44.2, 1e-9));
     });
   });
 
@@ -128,6 +127,25 @@ void main() {
       expect(grid.classify(250, 320), ClarkeZone.b);
     });
 
+    test('pins the published boundary segments (TASK-160)', () {
+      // Upper-C ceiling: pred >= ref+110 applies only while ref <= 290.
+      expect(grid.classify(290, 400), ClarkeZone.c);
+      expect(grid.classify(291, 401), ClarkeZone.b);
+      // Zone-D onset for missed highs: ref >= 240 with an in-range prediction.
+      expect(grid.classify(240, 100), ClarkeZone.d);
+      expect(grid.classify(239, 100), ClarkeZone.b);
+      // Lower-C segment (pred <= (7/5)*ref - 182 within ref 130..180):
+      // at ref=170 the boundary is pred = 56 (straddled here rather than hit
+      // exactly — 7/5 is not exactly representable in binary floating point).
+      expect(grid.classify(170, 55.9), ClarkeZone.c);
+      expect(grid.classify(170, 56.1), ClarkeZone.b);
+      // Exact +/-20% zone-A edges.
+      expect(grid.classify(100, 120), ClarkeZone.a);
+      expect(grid.classify(100, 121), ClarkeZone.b);
+      expect(grid.classify(100, 80), ClarkeZone.a);
+      expect(grid.classify(100, 79), ClarkeZone.b);
+    });
+
     test('zone C: over-correction regions', () {
       // Upper C: predicted ≥ reference + 110 for in-range reference.
       expect(grid.classify(150, 270), ClarkeZone.c);
@@ -176,6 +194,62 @@ void main() {
       ]);
       expect(stats.falseAlarmRate, isNull);
       expect(stats.sensitivity, 1.0);
+    });
+  });
+
+  group('CV boundary and AGP percentile pins (TASK-160)', () {
+    List<CgmSample> alternating(double lo, double hi, {int count = 40}) => [
+          for (var i = 0; i < count; i++)
+            CgmSample(
+                time: DateTime(2026, 7, 4).add(Duration(minutes: 5 * i)),
+                mgdl: i.isEven ? lo : hi),
+        ];
+
+    test('an alternating 100/200 trace pins CV to 33.3%', () {
+      // mean 150, population SD 50 -> CV = 50/150 = 33.33%.
+      final m = const MetricsCalculator().compute(alternating(100, 200));
+      expect(m.cvPercent, closeTo(33.333, 0.01));
+      expect(m.variabilityHigh, isFalse);
+    });
+
+    test('variabilityHigh flips exactly at the consensus CV 36%', () {
+      // 64.1/135.9: mean 100, SD 35.9 -> CV 35.9% (stable).
+      final below = const MetricsCalculator().compute(alternating(64.1, 135.9));
+      expect(below.cvPercent, closeTo(35.9, 0.01));
+      expect(below.variabilityHigh, isFalse);
+      // 64/136: mean 100, SD 36 -> CV 36.0% (labile).
+      final at = const MetricsCalculator().compute(alternating(64, 136));
+      expect(at.cvPercent, closeTo(36.0, 0.01));
+      expect(at.variabilityHigh, isTrue);
+    });
+
+    test('AGP percentile is type-7: [10,20,30,40] p25 = 17.5', () {
+      // Four readings in one hour bucket; p25 rank = 0.25*(4-1) = 0.75
+      // -> 10 + 0.75*(20-10) = 17.5. Median rank 1.5 -> 25.
+      final t0 = DateTime(2026, 7, 4, 9, 0);
+      final samples = [
+        for (final (i, v) in const [10.0, 20.0, 30.0, 40.0].indexed)
+          CgmSample(time: t0.add(Duration(minutes: 5 * i)), mgdl: v),
+      ];
+      final buckets = const AgpCalculator().compute(samples);
+      expect(buckets, hasLength(1));
+      expect(buckets.single.p25, closeTo(17.5, 1e-9));
+      expect(buckets.single.median, closeTo(25.0, 1e-9));
+      expect(buckets.single.p75, closeTo(32.5, 1e-9));
+    });
+
+    test('a thin AGP bucket is flagged sparse', () {
+      final t0 = DateTime(2026, 7, 4, 9, 0);
+      final thin = const AgpCalculator().compute([
+        for (var i = 0; i < AgpBucket.minCountForBands - 1; i++)
+          CgmSample(time: t0.add(Duration(minutes: i)), mgdl: 100),
+      ]);
+      expect(thin.single.sparse, isTrue);
+      final dense = const AgpCalculator().compute([
+        for (var i = 0; i < AgpBucket.minCountForBands; i++)
+          CgmSample(time: t0.add(Duration(minutes: i)), mgdl: 100),
+      ]);
+      expect(dense.single.sparse, isFalse);
     });
   });
 }

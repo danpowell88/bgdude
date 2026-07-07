@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:bgdude/analytics/metrics.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,14 +6,6 @@ List<CgmSample> _at(double mgdl, int count) => [
       for (var i = 0; i < count; i++)
         CgmSample(time: DateTime(2026, 7, 4, 0, i * 5), mgdl: mgdl),
     ];
-
-/// Reference LBGI/HBGI contribution of a single reading (Kovatchev).
-double _risk(double bg, {required bool low}) {
-  final f = 1.509 * (math.pow(math.log(bg), 1.084) - 5.381);
-  if (low && f < 0) return 10 * f * f;
-  if (!low && f > 0) return 10 * f * f;
-  return 0;
-}
 
 void main() {
   const calc = MetricsCalculator();
@@ -41,17 +31,41 @@ void main() {
       final cgm = [..._at(45, 5), ..._at(120, 45)];
       expect(calc.compute(cgm).gri, closeTo(30, 1e-6));
     });
+
+    test('a mixed trace pins GRI to a hand-calculated literal (TASK-160)', () {
+      // 100 readings: 5 at 50 (<54), 5 at 60 (54-69), 60 at 120 (in range),
+      // 20 at 200 (181-250), 10 at 300 (>250).
+      // GRI = 3.0*5 + 2.4*5 + 1.6*10 + 0.8*20 = 15 + 12 + 16 + 16 = 59.
+      final cgm = [
+        ..._at(50, 5),
+        ..._at(60, 5),
+        ..._at(120, 60),
+        ..._at(200, 20),
+        ..._at(300, 10),
+      ];
+      expect(calc.compute(cgm).gri, closeTo(59.0, 1e-6));
+    });
   });
 
   group('LBGI / HBGI', () {
-    test('match the Kovatchev formula for a steady low and high', () {
+    // TASK-160: hand-computed, MODEL-INDEPENDENT anchors (the old test copied the
+    // production expression verbatim and compared it to itself, so a constant
+    // regression like 1.084 -> 1.026 passed). Derivations:
+    //   f(bg) = 1.509*(ln(bg)^1.084 - 5.381); risk = 10*f^2 on the matching side.
+    //   f(112.5) = 1.509*(ln(112.5)^1.084 - 5.381) = -0.000288  (the zero point)
+    //   LBGI at steady 50: ln(50)=3.9120, 3.9120^1.084=4.38375,
+    //     f = 1.509*(4.38375-5.381) = -1.50493, 10*f^2 = 22.5004
+    test('steady BG 50 pins LBGI to the hand-computed 22.5', () {
       final low = calc.compute(_at(50, 40));
-      expect(low.lbgi, closeTo(_risk(50, low: true), 1e-6));
+      expect(low.lbgi, closeTo(22.5004, 0.01));
       expect(low.hbgi, 0);
+    });
 
-      final high = calc.compute(_at(300, 40));
-      expect(high.hbgi, closeTo(_risk(300, low: false), 1e-6));
-      expect(high.lbgi, 0);
+    test('the Kovatchev risk function is zero at BG 112.5', () {
+      // Both indices vanish when every reading sits on the risk-neutral point.
+      final m = calc.compute(_at(112.5, 40));
+      expect(m.lbgi, closeTo(0, 1e-4));
+      expect(m.hbgi, closeTo(0, 1e-4));
     });
 
     test('an in-range trace has near-zero indices', () {
