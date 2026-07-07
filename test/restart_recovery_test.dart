@@ -2,9 +2,15 @@
 /// death is a deliberate choice rather than whatever the code happens to do.
 library;
 
+import 'dart:convert';
+
 import 'package:bgdude/alerts/alert_orchestrator.dart';
 import 'package:bgdude/core/samples.dart';
+import 'package:bgdude/data/kv_store.dart';
+import 'package:bgdude/feedback/annotations.dart';
 import 'package:bgdude/feedback/pending_confirmation.dart';
+import 'package:bgdude/insights/illness_mode.dart';
+import 'package:bgdude/insights/medication_mode.dart';
 import 'package:bgdude/insights/notification_prefs.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -122,6 +128,88 @@ void main() {
       final c2 = sim.buildContainer();
       addTearDown(c2.dispose);
       expect(c2.read(exercisePlanProvider), isNull);
+    });
+  });
+
+  group('Illness/medication mode auto-expiry across a restart (TASK-197 AC#4)', () {
+    test(
+        'an illness mode activated with a since-elapsed expiry is deactivated at '
+        'startup, and the annotation is emitted', () async {
+      final sim = RestartSimulation();
+      // Simulate a mode that was activated a while ago and expired before this
+      // "launch" -- the KvStore write stands in for a real activation days earlier.
+      final past = DateTime(2026, 6, 1, 8);
+      final expired = IllnessMode(
+        active: true,
+        startedAt: past,
+        expiresAt: past.add(const Duration(days: 7)),
+        notes: 'flu',
+      );
+      await KvStore.setString('illness_mode_v1', expired.encode());
+
+      final c = sim.buildContainer();
+      addTearDown(c.dispose);
+      // Force construction (so the unawaited _restore() actually starts) before
+      // waiting for it to land -- Riverpod builds a provider's value lazily on
+      // first read.
+      final notifier = c.read(illnessModeProvider.notifier);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(c.read(illnessModeProvider).active, isTrue,
+          reason: 'restored active, not yet expiry-checked');
+
+      await c.read(appJobsProvider).checkModeExpiry();
+
+      expect(c.read(illnessModeProvider).active, isFalse);
+      expect(notifier.lastDeactivationAnnotation, isNotNull);
+      expect(
+          notifier.lastDeactivationAnnotation!.kind, AnnotationKind.illness);
+    });
+
+    test(
+        'a medication course activated with a since-elapsed expiry is '
+        'deactivated at startup', () async {
+      final sim = RestartSimulation();
+      final past = DateTime(2026, 6, 1, 8);
+      final expired = MedicationMode(
+        active: true,
+        startedAt: past,
+        expiresAt: past.add(const Duration(days: 14)),
+        intensity: MedicationIntensity.high,
+      );
+      await KvStore.setString(
+          'medication_mode_v1', jsonEncode(expired.toJson()));
+
+      final c = sim.buildContainer();
+      addTearDown(c.dispose);
+      c.read(medicationModeProvider.notifier);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(c.read(medicationModeProvider).active, isTrue);
+
+      await c.read(appJobsProvider).checkModeExpiry();
+
+      expect(c.read(medicationModeProvider).active, isFalse);
+    });
+
+    test('a mode that has NOT yet expired survives the startup check', () async {
+      final sim = RestartSimulation();
+      final recent = DateTime.now() // now-ok: checkModeExpiry reads the wall clock
+          .subtract(const Duration(hours: 2));
+      final stillActive = IllnessMode(
+        active: true,
+        startedAt: recent,
+        expiresAt: recent.add(const Duration(days: 7)),
+      );
+      await KvStore.setString('illness_mode_v1', stillActive.encode());
+
+      final c = sim.buildContainer();
+      addTearDown(c.dispose);
+      c.read(illnessModeProvider.notifier);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      await c.read(appJobsProvider).checkModeExpiry();
+
+      expect(c.read(illnessModeProvider).active, isTrue,
+          reason: 'expiresAt is 6 days in the future -- must not be touched');
     });
   });
 

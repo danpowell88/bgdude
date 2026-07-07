@@ -999,6 +999,9 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
       now: DateTime.now(),
       expectedResistanceBoost: boost,
       notes: notes,
+      // TASK-197: without this, illness mode never expires on its own — a
+      // forgotten activation keeps multiplying resistance into dosing indefinitely.
+      expectedDuration: IllnessMode.defaultExpectedDuration,
     );
     unawaited(_persist());
   }
@@ -1006,6 +1009,19 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
   void deactivate() {
     lastDeactivationAnnotation = _controller.deactivate(DateTime.now());
     unawaited(_persist());
+  }
+
+  /// Deactivates if the auto-expiry has passed (TASK-197), persisting the
+  /// annotation exactly like a manual deactivation. Called at startup
+  /// ([AppJobs.checkModeExpiry]) and on a periodic tick
+  /// ([ModeExpiryWatchdogService]) so a forgotten illness mode can't keep
+  /// inflating dosing across a restart or an open-ended session.
+  void deactivateIfExpired(DateTime now) {
+    final annotation = _controller.deactivateIfExpired(now);
+    if (annotation != null) {
+      lastDeactivationAnnotation = annotation;
+      unawaited(_persist());
+    }
   }
 
   void updateBoost(double boost) {
@@ -1068,13 +1084,30 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
       KvStore.setString(_key, jsonEncode(state.toJson()));
 
   Future<void> start(MedicationIntensity intensity, {String name = 'Steroid'}) async {
+    final now = DateTime.now();
     state = MedicationMode(
-        active: true, startedAt: DateTime.now(), intensity: intensity, name: name);
+      active: true,
+      startedAt: now,
+      // TASK-197: without this, medication mode never expires on its own.
+      expiresAt: now.add(MedicationMode.defaultExpectedDuration),
+      intensity: intensity,
+      name: name,
+    );
     await _persist();
   }
 
   Future<void> stop() async {
-    state = state.copyWith(active: false, startedAt: null);
+    state = state.copyWith(active: false, startedAt: null, expiresAt: null);
+    await _persist();
+  }
+
+  /// Deactivates if the auto-expiry has passed (TASK-197). Called at startup
+  /// ([AppJobs.checkModeExpiry]) and on a periodic tick
+  /// ([ModeExpiryWatchdogService]) so a forgotten medication course can't keep
+  /// inflating dosing across a restart or an open-ended session.
+  Future<void> deactivateIfExpired(DateTime now) async {
+    if (!state.isExpired(now)) return;
+    state = state.copyWith(active: false, startedAt: null, expiresAt: null);
     await _persist();
   }
 
@@ -1536,6 +1569,29 @@ class StaleDataWatchdogService {
   void dispose() => _timer?.cancel();
 }
 
+/// Illness/medication mode auto-expiry watchdog (TASK-197): [AppJobs.checkModeExpiry]
+/// covers app launch, but the app can stay open for days between restarts — a
+/// periodic timer, independent of any pump activity, re-checks so a forgotten mode
+/// can't inflate dosing for the entire time the app happens to stay running.
+final modeExpiryWatchdogProvider = Provider<ModeExpiryWatchdogService>((ref) {
+  final service = ModeExpiryWatchdogService(ref);
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+class ModeExpiryWatchdogService {
+  ModeExpiryWatchdogService(this._ref) {
+    _timer = Timer.periodic(const Duration(minutes: 30), (_) => _check());
+  }
+
+  final Ref _ref;
+  Timer? _timer;
+
+  Future<void> _check() => _ref.read(appJobsProvider).checkModeExpiry();
+
+  void dispose() => _timer?.cancel();
+}
+
 /// Fires real-time predicted-low/high nudges and logs predictions for accuracy
 /// scoring. Driven from the app root on each pump snapshot.
 final alertServiceProvider = Provider<AlertService>((ref) => AlertService(ref));
@@ -1707,6 +1763,10 @@ class AppJobs {
       // (the live listener only fires on subsequent changes).
       StartupJob('garminUnit', () async =>
           _ref.read(pumpClientProvider).setGarminUnit(_ref.read(glucoseUnitProvider))),
+      // TASK-197: runs early so a just-expired illness mode is already off by the
+      // time checkIllnessSuggestion below reads its (gated on "not already active")
+      // state.
+      StartupJob('checkModeExpiry', checkModeExpiry),
       StartupJob('syncHealth', syncHealth, enabled: !demo),
       StartupJob('refreshForecastHealthSampler', refreshForecastHealthSampler),
       StartupJob('runMealOutcomeLoop', runMealOutcomeLoop),
@@ -1848,6 +1908,16 @@ class AppJobs {
             model.contextFor(todayCtx, trainingDays: days.length);
       }
     }
+  }
+
+  /// Deactivates illness/medication mode if their auto-expiry has passed
+  /// (TASK-197) — a forgotten mode must not keep inflating dosing indefinitely.
+  /// Also run on a periodic tick by [ModeExpiryWatchdogService], since the app can
+  /// stay open for days between launches.
+  Future<void> checkModeExpiry() async {
+    final now = DateTime.now();
+    _ref.read(illnessModeProvider.notifier).deactivateIfExpired(now);
+    await _ref.read(medicationModeProvider.notifier).deactivateIfExpired(now);
   }
 
   /// Run the illness detector on recent data; if it looks illness-like and the mode

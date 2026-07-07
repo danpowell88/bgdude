@@ -38,6 +38,7 @@ void main() {
       final mode = MedicationMode(
           active: true,
           startedAt: DateTime(2026, 7, 4),
+          expiresAt: DateTime(2026, 7, 18),
           intensity: MedicationIntensity.high,
           name: 'Prednisolone');
       final r = MedicationMode.fromJson(mode.toJson());
@@ -45,6 +46,32 @@ void main() {
       expect(r.intensity, MedicationIntensity.high);
       expect(r.name, 'Prednisolone');
       expect(r.startedAt, DateTime(2026, 7, 4));
+      expect(r.expiresAt, DateTime(2026, 7, 18));
+    });
+  });
+
+  group('MedicationMode.isExpired (TASK-197)', () {
+    test('is false while inactive, even past the expiry instant', () {
+      final mode = MedicationMode(
+          active: false, expiresAt: DateTime(2026, 7, 4));
+      expect(mode.isExpired(DateTime(2026, 7, 5)), isFalse);
+    });
+
+    test('is false with no expiry set (active until manually stopped)', () {
+      const mode = MedicationMode(active: true);
+      expect(mode.isExpired(DateTime(2099)), isFalse);
+    });
+
+    test('is false before the expiry instant, true after', () {
+      final mode =
+          MedicationMode(active: true, expiresAt: DateTime(2026, 7, 4, 12));
+      expect(mode.isExpired(DateTime(2026, 7, 4, 11)), isFalse);
+      expect(mode.isExpired(DateTime(2026, 7, 4, 13)), isTrue);
+    });
+
+    test('default course length is on the order of weeks, not indefinite', () {
+      expect(MedicationMode.defaultExpectedDuration.inDays,
+          greaterThanOrEqualTo(7));
     });
   });
 }

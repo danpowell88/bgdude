@@ -39,6 +39,12 @@ class IllnessMode {
   /// Typical sick-day resistance increase (~20%) — the starting point, not gospel.
   static const double defaultBoost = 1.2;
 
+  /// Auto-expiry applied when activating with no explicit duration (TASK-197): a
+  /// sick-day episode is typically a matter of days, not weeks, so 7 days is a
+  /// generous default that still guards against a forgotten mode silently
+  /// inflating dosing indefinitely.
+  static const Duration defaultExpectedDuration = Duration(days: 7);
+
   final bool active;
 
   /// When the mode was switched on (null while inactive).

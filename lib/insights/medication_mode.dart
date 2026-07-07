@@ -28,14 +28,27 @@ class MedicationMode {
   const MedicationMode({
     this.active = false,
     this.startedAt,
+    this.expiresAt,
     this.intensity = MedicationIntensity.moderate,
     this.name = 'Steroid',
   });
 
   final bool active;
   final DateTime? startedAt;
+
+  /// Optional auto-expiry so a forgotten course doesn't inflate dosing
+  /// indefinitely (TASK-197). Null = active until manually stopped (e.g. a value
+  /// restored from before this field existed).
+  final DateTime? expiresAt;
   final MedicationIntensity intensity;
   final String name;
+
+  /// Default course length applied when none is specified — steroid courses/
+  /// tapers are typically on the order of one to two weeks.
+  static const Duration defaultExpectedDuration = Duration(days: 14);
+
+  bool isExpired(DateTime now) =>
+      active && expiresAt != null && now.isAfter(expiresAt!);
 
   /// Apply the resistance boost to [base] while active (TASK-146: delegates to
   /// [SensitivityContext.withResistanceOverlay] for the shared clamp/confidence
@@ -51,6 +64,7 @@ class MedicationMode {
   MedicationMode copyWith({
     bool? active,
     Object? startedAt = _sentinel,
+    Object? expiresAt = _sentinel,
     MedicationIntensity? intensity,
     String? name,
   }) =>
@@ -58,6 +72,8 @@ class MedicationMode {
         active: active ?? this.active,
         startedAt:
             startedAt == _sentinel ? this.startedAt : startedAt as DateTime?,
+        expiresAt:
+            expiresAt == _sentinel ? this.expiresAt : expiresAt as DateTime?,
         intensity: intensity ?? this.intensity,
         name: name ?? this.name,
       );
@@ -65,6 +81,7 @@ class MedicationMode {
   Map<String, dynamic> toJson() => {
         'active': active,
         if (startedAt != null) 'startedAt': startedAt!.toIso8601String(),
+        if (expiresAt != null) 'expiresAt': expiresAt!.toIso8601String(),
         'intensity': intensity.name,
         'name': name,
       };
@@ -74,6 +91,9 @@ class MedicationMode {
         startedAt: j['startedAt'] == null
             ? null
             : DateTime.parse(j['startedAt'] as String),
+        expiresAt: j['expiresAt'] == null
+            ? null
+            : DateTime.parse(j['expiresAt'] as String),
         intensity: MedicationIntensity.values.asNameMap()[j['intensity']] ??
             MedicationIntensity.moderate,
         name: j['name'] as String? ?? 'Steroid',

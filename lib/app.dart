@@ -16,6 +16,11 @@ class BgDudeApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // TASK-197: starts the illness/medication auto-expiry periodic timer. Read
+    // unconditionally (not gated on pump activity, unlike the stale-data watchdog
+    // below) — a forgotten mode must expire even with no pump connected. Riverpod
+    // caches the provider, so this is a no-op after the first build.
+    ref.read(modeExpiryWatchdogProvider);
     // Mirror every pump snapshot onto the home-screen widget (and re-push when the
     // display unit changes).
     ref.listen(pumpSnapshotProvider, (_, next) {
