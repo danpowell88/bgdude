@@ -8,6 +8,7 @@ import android.content.SharedPreferences
 import android.widget.RemoteViews
 import com.bgdude.app.MainActivity
 import com.bgdude.app.R
+import com.bgdude.app.pump.SafeCallbacks
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
 
@@ -27,19 +28,27 @@ import es.antonborri.home_widget.HomeWidgetProvider
 class BgWidgetProvider : HomeWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        // TASK-177: the staleness alarm / native push re-render path.
-        if (intent.action == WidgetNativePush.ACTION_REFRESH) {
-            val manager = AppWidgetManager.getInstance(context)
-            val ids = manager.getAppWidgetIds(
-                ComponentName(context, BgWidgetProvider::class.java))
-            if (ids.isNotEmpty()) {
-                val data = context.getSharedPreferences(
-                    WidgetNativePush.PREFS_NAME, Context.MODE_PRIVATE)
-                onUpdate(context, manager, ids, data)
+        // TASK-196: BgWidgetProvider has no android:process isolation, so it shares
+        // PumpService's process — an uncaught exception escaping onReceive kills the
+        // BLE link and the native urgent-low backstop along with the widget. This is
+        // the outermost backstop; render()/updateAppWidget() below are also guarded
+        // individually for better diagnostics, but this catches anything else too
+        // (e.g. a future throw in the superclass's own onReceive/onUpdate).
+        SafeCallbacks.run("BgWidgetProvider.onReceive") {
+            // TASK-177: the staleness alarm / native push re-render path.
+            if (intent.action == WidgetNativePush.ACTION_REFRESH) {
+                val manager = AppWidgetManager.getInstance(context)
+                val ids = manager.getAppWidgetIds(
+                    ComponentName(context, BgWidgetProvider::class.java))
+                if (ids.isNotEmpty()) {
+                    val data = context.getSharedPreferences(
+                        WidgetNativePush.PREFS_NAME, Context.MODE_PRIVATE)
+                    onUpdate(context, manager, ids, data)
+                }
+            } else {
+                super.onReceive(context, intent)
             }
-            return
         }
-        super.onReceive(context, intent)
     }
 
     override fun onUpdate(
@@ -48,11 +57,40 @@ class BgWidgetProvider : HomeWidgetProvider() {
         appWidgetIds: IntArray,
         widgetData: SharedPreferences,
     ) {
-        val views = render(context, widgetData)
+        val views = renderSafely(context, widgetData)
         for (widgetId in appWidgetIds) {
-            appWidgetManager.updateAppWidget(widgetId, views)
+            // A per-widget updateAppWidget() call is its own throw vector
+            // (TransactionTooLarge, resource failures) independent of what render()
+            // produced — guarded per-id so one bad widget instance can't block the
+            // others from updating.
+            SafeCallbacks.run("BgWidgetProvider.updateAppWidget") {
+                appWidgetManager.updateAppWidget(widgetId, views)
+            }
         }
     }
+
+    /**
+     * Renders the widget, guarded (TASK-196/AC#1): a bad-typed prefs value
+     * (`SharedPreferences.getString` throws `ClassCastException` if a non-String was
+     * ever stored under that key), a `RemoteViews`/launch-intent construction
+     * failure, or anything else in [render] falls back to a minimal static display
+     * instead of propagating — better a stale-looking "--" than a dead pump service.
+     */
+    private fun renderSafely(context: Context, data: SharedPreferences): RemoteViews =
+        SafeCallbacks.run("BgWidgetProvider.render", safeFallbackViews(context)) {
+            render(context, data)
+        }
+
+    /** A minimal RemoteViews built from fixed strings only — no prefs, no dynamic
+     * data — so it cannot hit the same failure modes [render] guards against. */
+    private fun safeFallbackViews(context: Context): RemoteViews =
+        RemoteViews(context.packageName, R.layout.bg_widget).apply {
+            setTextViewText(R.id.bg_value, "--")
+            setTextViewText(R.id.bg_trend, "")
+            setTextViewText(R.id.bg_unit, "")
+            setTextViewText(R.id.iob_text, "IOB --")
+            setTextViewText(R.id.updated_text, "")
+        }
 
     private fun render(context: Context, data: SharedPreferences): RemoteViews {
         val bgText = data.getString(WidgetKeys.BG_TEXT, null) ?: "--"
