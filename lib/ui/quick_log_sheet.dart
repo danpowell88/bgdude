@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../feedback/annotations.dart';
 import '../logging/device_changes.dart';
 import '../state/providers.dart';
+import '../state/quick_log_service.dart';
 
 /// One-tap logging for the things the models care about: carbs, an actual bolus,
 /// exercise, alcohol, stress, and sensor/site changes. Everything here is persisted and
@@ -85,7 +86,6 @@ class QuickLogSheet extends ConsumerWidget {
   Future<void> _illness(
       BuildContext context, WidgetRef ref, void Function(String) toast) async {
     final mode = ref.read(illnessModeProvider);
-    final notifier = ref.read(illnessModeProvider.notifier);
     if (mode.active) {
       final end = await showDialog<bool>(
         context: context,
@@ -105,12 +105,14 @@ class QuickLogSheet extends ConsumerWidget {
         ),
       );
       if (end == true) {
-        notifier.deactivate();
+        ref.read(quickLogServiceProvider).endIllness();
         toast('Illness mode ended.');
       }
       return;
     }
-    final boost = await showDialog<double>(
+    // The widget only picks the option; the severity→boost policy lives in
+    // QuickLogService (TASK-124).
+    final severity = await showDialog<IllnessSeverity>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Feeling unwell?'),
@@ -118,20 +120,15 @@ class QuickLogSheet extends ConsumerWidget {
             'Sick days usually raise insulin needs. Pick how rough you feel — the models '
             'expect more resistance while it\'s on, and today gets tagged for training.'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(1.1),
-              child: const Text('Mild')),
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(1.2),
-              child: const Text('Moderate')),
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(1.35),
-              child: const Text('Severe')),
+          for (final s in IllnessSeverity.values)
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(s),
+                child: Text(s.label)),
         ],
       ),
     );
-    if (boost != null) {
-      notifier.activate(boost: boost);
+    if (severity != null) {
+      ref.read(quickLogServiceProvider).startIllness(severity);
       toast('Illness mode on — check ketones if high with normal IOB.');
     }
   }
@@ -139,26 +136,21 @@ class QuickLogSheet extends ConsumerWidget {
   /// Log a wellbeing note (great/ok/low) as context.
   Future<void> _mood(
       BuildContext context, WidgetRef ref, void Function(String) toast) async {
-    final level = await showDialog<String>(
+    final level = await showDialog<MoodLevel>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('How are you feeling?'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop('Good'),
-              child: const Text('🙂 Good')),
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop('OK'),
-              child: const Text('😐 OK')),
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop('Low'),
-              child: const Text('😟 Low')),
+          for (final m in MoodLevel.values)
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(m),
+                child: Text(m.label)),
         ],
       ),
     );
     if (level != null) {
-      await ref.read(appJobsProvider).logContext(AnnotationKind.mood, note: level);
-      toast('Logged mood: $level.');
+      await ref.read(quickLogServiceProvider).logMood(level);
+      toast('Logged mood: ${level.note}.');
     }
   }
 
