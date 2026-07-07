@@ -11,6 +11,7 @@ library;
 import 'dart:math' as math;
 
 import '../feedback/retraining.dart';
+import 'forecast_features.dart';
 import 'forecaster.dart';
 import 'gbm.dart';
 
@@ -50,7 +51,15 @@ class ResidualGbmModel implements ResidualModel {
     return (residual: residual, sigma: sigma);
   }
 
+  /// Bump when THIS serialization shape changes (independent of the feature
+  /// layout, which [ForecastFeatures.version] tracks).
+  static const int schemaVersion = 1;
+
+  /// TASK-128: both versions are embedded IN the blob so the model and its
+  /// layout version can never desync across two KvStore keys.
   Map<String, dynamic> toJson() => {
+        'schema': schemaVersion,
+        'featureVersion': ForecastFeatures.version,
         'models': {
           for (final e in _models.entries) '${e.key}': e.value.toJson(),
         },
@@ -59,17 +68,36 @@ class ResidualGbmModel implements ResidualModel {
         },
       };
 
-  static ResidualGbmModel fromJson(Map<String, dynamic> j) {
+  /// Decode a persisted model. A version mismatch (stale feature layout or an
+  /// older/newer schema) yields [NoResidualModel] — fail safe, retrain fresh.
+  /// Structural corruption (bad horizon keys, out-of-range tree indices/features)
+  /// throws [ModelFormatException] for the store to catch.
+  static ResidualModel fromJson(Map<String, dynamic> j) {
+    final schema = (j['schema'] as num?)?.toInt();
+    final featureVersion = (j['featureVersion'] as num?)?.toInt();
+    if (schema != schemaVersion || featureVersion != ForecastFeatures.version) {
+      return const NoResidualModel();
+    }
     final models = <int, GbmRegressor>{};
     final rawModels = (j['models'] as Map?) ?? const {};
     for (final e in rawModels.entries) {
-      models[int.parse(e.key as String)] =
-          GbmRegressor.fromJson(e.value as Map<String, dynamic>);
+      final horizon = int.tryParse('${e.key}');
+      if (horizon == null) {
+        throw ModelFormatException('non-integer horizon key "${e.key}"');
+      }
+      models[horizon] = GbmRegressor.fromJson(
+        e.value as Map<String, dynamic>,
+        featureCount: ForecastFeatures.names.length,
+      );
     }
     final sigmas = <int, double>{};
     final rawSigmas = (j['sigmas'] as Map?) ?? const {};
     for (final e in rawSigmas.entries) {
-      sigmas[int.parse(e.key as String)] = (e.value as num).toDouble();
+      final horizon = int.tryParse('${e.key}');
+      if (horizon == null) {
+        throw ModelFormatException('non-integer sigma key "${e.key}"');
+      }
+      sigmas[horizon] = (e.value as num).toDouble();
     }
     return ResidualGbmModel(models: models, sigmas: sigmas);
   }

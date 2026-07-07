@@ -15,6 +15,13 @@ library;
 
 import 'dart:math' as math;
 
+/// Thrown when a persisted model blob fails structural validation (TASK-128) —
+/// out-of-range child indices or feature slots would otherwise decode fine and
+/// crash with a RangeError at predict time on the live forecast path.
+class ModelFormatException extends FormatException {
+  const ModelFormatException(super.message);
+}
+
 /// A single node in a CART regression tree. Internal nodes carry a split
 /// (feature/threshold + child indices); leaves carry a constant [value].
 class TreeNode {
@@ -336,16 +343,47 @@ class GbmRegressor {
         'trees': _trees.map((t) => t.toJson()).toList(),
       };
 
-  static GbmRegressor fromJson(Map<String, dynamic> j) => GbmRegressor._(
-        maxDepth: (j['maxDepth'] as num).toInt(),
-        nEstimators: (j['nEstimators'] as num).toInt(),
-        learningRate: (j['learningRate'] as num).toDouble(),
-        minSamplesLeaf: (j['minSamplesLeaf'] as num).toInt(),
-        base: (j['base'] as num).toDouble(),
-        trees: (j['trees'] as List)
-            .map((e) => RegressionTree.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+  /// Decode a persisted model. TASK-128: the structure is VALIDATED here — child
+  /// indices in range and (when [featureCount] is given) every split feature within
+  /// the expected vector length — throwing [ModelFormatException] so the store can
+  /// fail safe at load time instead of a RangeError on the live forecast path.
+  static GbmRegressor fromJson(Map<String, dynamic> j, {int? featureCount}) {
+    final model = GbmRegressor._(
+      maxDepth: (j['maxDepth'] as num).toInt(),
+      nEstimators: (j['nEstimators'] as num).toInt(),
+      learningRate: (j['learningRate'] as num).toDouble(),
+      minSamplesLeaf: (j['minSamplesLeaf'] as num).toInt(),
+      base: (j['base'] as num).toDouble(),
+      trees: (j['trees'] as List)
+          .map((e) => RegressionTree.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+    model._validateStructure(featureCount);
+    return model;
+  }
+
+  void _validateStructure(int? featureCount) {
+    for (var t = 0; t < _trees.length; t++) {
+      final nodes = _trees[t].nodes;
+      for (var i = 0; i < nodes.length; i++) {
+        final n = nodes[i];
+        if (n.isLeaf) continue;
+        if (n.left < 0 ||
+            n.left >= nodes.length ||
+            n.right < 0 ||
+            n.right >= nodes.length) {
+          throw ModelFormatException(
+              'tree $t node $i: child index out of range '
+              '(left=${n.left}, right=${n.right}, nodes=${nodes.length})');
+        }
+        if (featureCount != null && n.feature >= featureCount) {
+          throw ModelFormatException(
+              'tree $t node $i: split feature ${n.feature} out of range for '
+              'featureCount $featureCount');
+        }
+      }
+    }
+  }
 
   /// Weighted RMSE of the model on a dataset (used to estimate residual sigma).
   double weightedRmse(

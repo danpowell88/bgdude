@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:bgdude/feedback/retraining.dart';
+import 'package:bgdude/ml/forecast_features.dart';
+import 'package:bgdude/ml/forecaster.dart';
+import 'package:bgdude/ml/gbm.dart';
 import 'package:bgdude/ml/residual_gbm_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -143,7 +146,8 @@ void main() {
           const ResidualGbmTrainer().train({30: samples, 60: samples});
 
       final restored = ResidualGbmModel.fromJson(
-          jsonDecode(jsonEncode(model.toJson())) as Map<String, dynamic>);
+              jsonDecode(jsonEncode(model.toJson())) as Map<String, dynamic>)
+          as ResidualGbmModel;
 
       expect(restored.isTrained, isTrue);
       expect(restored.trainedHorizons.toSet(), model.trainedHorizons.toSet());
@@ -160,6 +164,71 @@ void main() {
           expect(b.sigma, a.sigma);
         }
       }
+    });
+  });
+
+  group('persistence hardening (TASK-128)', () {
+    Map<String, dynamic> trainedBlob() {
+      final samples = _samples((x0, x1) => 8 * x0 * x0 - 4 * x1);
+      final model = const ResidualGbmTrainer().train({30: samples});
+      return jsonDecode(jsonEncode(model.toJson())) as Map<String, dynamic>;
+    }
+
+    test('toJson embeds schema + feature versions', () {
+      final j = trainedBlob();
+      expect(j['schema'], ResidualGbmModel.schemaVersion);
+      expect(j['featureVersion'], ForecastFeatures.version);
+    });
+
+    test('a stale feature version decodes to NoResidualModel (fail safe)', () {
+      final j = trainedBlob()..['featureVersion'] = ForecastFeatures.version - 1;
+      expect(ResidualGbmModel.fromJson(j), isA<NoResidualModel>());
+    });
+
+    test('an unknown schema decodes to NoResidualModel', () {
+      final j = trainedBlob()..['schema'] = 99;
+      expect(ResidualGbmModel.fromJson(j), isA<NoResidualModel>());
+    });
+
+    test('a corrupted child index throws ModelFormatException at LOAD time', () {
+      final j = trainedBlob();
+      final tree = ((((j['models'] as Map).values.first
+              as Map)['trees'] as List)
+          .first as Map)['nodes'] as List;
+      // Find an internal node and point its left child out of range.
+      final internal = tree
+          .cast<Map<String, dynamic>>()
+          .firstWhere((n) => (n['f'] as num) >= 0);
+      internal['l'] = 9999;
+      expect(() => ResidualGbmModel.fromJson(j),
+          throwsA(isA<ModelFormatException>()));
+    });
+
+    test('a split feature beyond the layout width throws at LOAD time', () {
+      // The persisted model claims a split on a feature slot the live vector
+      // (ForecastFeatures.names.length wide) does not have — the old code only
+      // failed at predict time with a RangeError on the forecast path.
+      final j = trainedBlob();
+      final tree = ((((j['models'] as Map).values.first
+              as Map)['trees'] as List)
+          .first as Map)['nodes'] as List;
+      final internal = tree
+          .cast<Map<String, dynamic>>()
+          .firstWhere((n) => (n['f'] as num) >= 0);
+      internal['f'] = ForecastFeatures.names.length; // one past the end
+      expect(() => ResidualGbmModel.fromJson(j),
+          throwsA(isA<ModelFormatException>()));
+    });
+
+    test('a non-integer horizon key throws ModelFormatException', () {
+      final j = trainedBlob();
+      final models = j['models'] as Map;
+      final blob = models.values.first;
+      models
+        ..clear()
+        ..['not-a-number'] = blob;
+      expect(() => ResidualGbmModel.fromJson(j),
+          throwsA(isA<ModelFormatException>()));
     });
   });
 }

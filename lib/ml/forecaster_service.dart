@@ -10,6 +10,7 @@ library;
 import 'dart:convert';
 
 import '../data/kv_store.dart';
+import '../logging/app_log.dart';
 import 'forecast_features.dart';
 import 'forecaster.dart';
 import 'residual_gbm_model.dart';
@@ -40,28 +41,65 @@ class TrainingOutcome {
       TrainingOutcome(trained: false, promoted: false, reasons: ['not enough data']);
 }
 
-/// Loads/saves the active residual model as JSON in shared_preferences, versioned by
-/// the feature layout so a layout change discards stale models.
+/// Loads/saves the active residual model as ONE JSON record (TASK-128): the schema
+/// and feature-layout versions live inside the blob, so version and model can never
+/// desync, and a structurally corrupt blob fails safe to [NoResidualModel] at load
+/// time instead of a RangeError at predict time.
 class ForecasterModelStore {
-  static const _key = 'residual_model_v2';
-  static const _versionKey = 'residual_model_feature_version';
+  static const _key = 'residual_model_v3';
+
+  // Pre-TASK-128 layout: model blob + feature version in separate keys.
+  static const _legacyKey = 'residual_model_v2';
+  static const _legacyVersionKey = 'residual_model_feature_version';
+
+  /// Past this serialized size, log a warning — the blob lives in the KV store
+  /// and should stay bounded.
+  static const int softCapBytes = 200 * 1024;
 
   static Future<ResidualModel> load() async {
-    final version = await KvStore.getDouble(_versionKey);
+    final raw = await KvStore.getString(_key);
+    if (raw == null) return _loadLegacy();
+    try {
+      return ResidualGbmModel.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (e) {
+      appLog.error('ml', 'persisted model failed validation — discarding',
+          error: e);
+      return const NoResidualModel();
+    }
+  }
+
+  /// One-time migration read of the old two-key layout so an existing trained
+  /// incumbent survives the upgrade (re-saved in the new single-record format).
+  static Future<ResidualModel> _loadLegacy() async {
+    final version = await KvStore.getDouble(_legacyVersionKey);
     if (version?.toInt() != ForecastFeatures.version) {
       return const NoResidualModel();
     }
-    final raw = await KvStore.getString(_key);
+    final raw = await KvStore.getString(_legacyKey);
     if (raw == null) return const NoResidualModel();
     try {
-      return ResidualGbmModel.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    } catch (_) {
+      final patched = (jsonDecode(raw) as Map<String, dynamic>)
+        ..['schema'] = ResidualGbmModel.schemaVersion
+        ..['featureVersion'] = ForecastFeatures.version;
+      final model = ResidualGbmModel.fromJson(patched);
+      if (model is ResidualGbmModel) await save(model);
+      return model;
+    } catch (e) {
+      appLog.error('ml', 'legacy persisted model failed validation — discarding',
+          error: e);
       return const NoResidualModel();
     }
   }
 
   static Future<void> save(ResidualGbmModel model) async {
-    await KvStore.setString(_key, jsonEncode(model.toJson()));
-    await KvStore.setDouble(_versionKey, ForecastFeatures.version.toDouble());
+    final raw = jsonEncode(model.toJson());
+    final kb = (raw.length / 1024).toStringAsFixed(0);
+    if (raw.length > softCapBytes) {
+      appLog.warn('ml',
+          'model blob ${kb}KB exceeds the ${softCapBytes ~/ 1024}KB soft cap');
+    } else {
+      appLog.info('ml', 'model blob saved (${kb}KB)');
+    }
+    await KvStore.setString(_key, raw);
   }
 }
