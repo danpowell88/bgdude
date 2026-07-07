@@ -102,7 +102,7 @@
       <span class="badge">Flutter · Android 17 (API 37)</span>
       <span class="badge">pumpx2 (read-only)</span>
       <span class="badge">on-device ML</span>
-      <span class="badge">243 Dart tests + native suite</span>
+      <span class="badge">1,000+ Dart tests + native suite</span>
     </div>
   </div>
 </header>
@@ -152,14 +152,15 @@
       </ul>
     </div>
     <div class="card">
-      <h3 style="margin-top:0">Dev mode</h3>
+      <h3 style="margin-top:0">Demo mode</h3>
       <p style="margin:.2em 0">Every screenshot and the video below were produced with the built-in
-      <b>simulated t:slim&nbsp;X2 + Dexcom</b> (Settings → Dev mode), which generates a physiologically
-      consistent day using the app's own insulin/carb math — so the whole app is usable and demoable
-      without hardware.</p>
+      <b>simulated t:slim&nbsp;X2 + Dexcom</b> — chosen during onboarding (there's no separate switch;
+      Settings shows a status row + one-tap Exit while it's running), which generates ~2 weeks of
+      physiologically consistent history using the app's own insulin/carb math — so the whole app,
+      including its multi-day reports, is usable and demoable without hardware.</p>
       <div class="kpis">
-        <div class="kpi"><b>3</b><br>meals + boluses</div>
-        <div class="kpi"><b>24h</b><br>CGM history</div>
+        <div class="kpi"><b>14d</b><br>seeded history</div>
+        <div class="kpi"><b>~3</b><br>meals/day</div>
         <div class="kpi"><b>4</b><br>tabs</div>
       </div>
     </div>
@@ -172,7 +173,7 @@
 
 <section id="tour">
   <h2>Video tour</h2>
-  <p class="lead">A short walkthrough of the main surfaces, recorded on the Android&nbsp;17 emulator in dev mode.</p>
+  <p class="lead">A short walkthrough of the main surfaces, recorded on the Android&nbsp;17 emulator in demo mode.</p>
   <video controls muted playsinline preload="metadata" src="media/walkthrough.mp4"></video>
   <p class="cap">media/walkthrough.mp4 — regenerate with <code>tools/gen_docs.ps1 -Video</code>.</p>
 </section>
@@ -237,8 +238,11 @@
         physiological baseline plus a learned per-horizon GBM residual once trained.</li>
         <li><b>Scenario lines</b> — IOB-only, with-carbs (COB), unannounced-meal (UAM) and no-basal
         (zero-temp), so you see the spread rather than one confident number.</li>
-        <li><b>Sensitivity readiness</b> — today's resistance multiplier and its drivers.</li>
-        <li><b>Activity-aware</b> — recent steps and post-workout sensitivity from Google&nbsp;Fit /
+        <li><b>Sensitivity readiness</b> — today's resistance multiplier and its drivers (sleep, HRV,
+        illness, exercise, medication…).</li>
+        <li><b>Band trust chip</b> — once enough predictions have been scored, a live "Band NN%" readout
+        shows how often your actual reading has landed inside the forecast band over the last 7 days.</li>
+        <li><b>Activity-aware</b> — recent steps and post-workout sensitivity from
         Health&nbsp;Connect feed the learned residual, consistently at training and inference.</li>
         <li><b>Overnight / near-term risk</b> read-out with a suggested action.</li>
         <li><b>What-if explorer</b> — sliders for carbs and insulin project the trajectory.</li>
@@ -289,6 +293,9 @@
   several lead times and recommends the longest safe wait to lower the peak — falling back to "eat first"
   when you're low or dropping fast. "Log this meal" feeds the outcome-learning loop; a timer nudges you
   when the pre-bolus window is up.</p>
+  <p><b>Adding a meal</b> — scan a product's barcode (Open Food Facts) or a nutrition label with the camera
+  to fill in carbs/fat/protein automatically; an optional on-device Gemma model helps the label scanner read
+  unusual or foreign-language panels, but the deterministic parser is the always-on path with or without it.</p>
 </section>
 
 <section id="bolus">
@@ -455,6 +462,16 @@
       longer for aerobic), get a pre-exercise snack suggestion from live BG/IOB, and arm the overnight-low
       watch.</p>
     </div>
+    <div class="card"><h3 style="margin-top:0">Medication / steroid mode</h3>
+      <p>Flag a course of steroids (or similar insulin-need-raising medication) with a start/expected-end
+      date; a resistance overlay feeds the sensitivity model and forecasts while it's active, and it
+      auto-expires with a reminder.</p>
+    </div>
+    <div class="card"><h3 style="margin-top:0">Weather (opt-in)</h3>
+      <p>Ambient-temperature context from Open-Meteo (only city/coordinates leave the device): heat speeds
+      insulin absorption and raises low risk, cold has a paradoxical risk — at either extreme, low alerts
+      lead a little earlier.</p>
+    </div>
   </div>
   <div class="feature" style="margin-top:20px">
     <div class="shot"><div class="phone" style="width:260px"><img src="screenshots/19-profile.png" alt="Profile"></div>
@@ -475,10 +492,14 @@
       <p>Optional Nightscout upload (entries, treatments, device status) configured in Settings, and an
       Android home-screen widget mirroring current BG/trend/IOB.</p>
     </div>
+    <div class="card"><h3 style="margin-top:0">Bluetooth glucose meter</h3>
+      <p>Import fingerstick readings from any meter speaking the standard Bluetooth Glucose Service — e.g.
+      the Accu-Chek Guide / Guide&nbsp;Me — stored as calibration-type readings, kept distinct from CGM.</p>
+    </div>
   </div>
   <div class="shot" style="margin-top:20px; justify-self:start">
     <div class="phone" style="width:280px"><img src="screenshots/10-settings.png" alt="Settings"></div>
-    <div class="cap">Settings — dev mode, units, therapy, accuracy, health sync, Nightscout</div>
+    <div class="cap">Settings — demo status, units, therapy, accuracy, health sync, Nightscout</div>
   </div>
 </section>
 
@@ -509,8 +530,9 @@
       <ul class="tight">
         <li><b>Therapy</b> — the learned daily sensitivity trend (Autotune) vs your settings, the
         time-of-day profile, and the basal suggestions.</li>
-        <li><b>Correlations</b> — daily glucose outcomes vs confirmed sleep, exercise, HRV and resting HR,
-        with a minimum-days gate so weak or thin associations aren't shown.</li>
+        <li><b>Correlations</b> — daily glucose outcomes vs confirmed sleep, exercise, HRV, resting HR,
+        ambient temperature (if weather is on), mood (once tagged on enough days), plus a menstrual-cycle
+        panel — each with a minimum-days gate so weak or thin associations aren't shown.</li>
       </ul>
     </div>
     <div class="card"><h3 style="margin-top:0">Journal &amp; model</h3>
@@ -571,6 +593,8 @@
         firmware.</li>
         <li><b>Insulin today</b> (TDD) derived from our own history; infusion-site age.</li>
         <li><b>Active alarms/alerts</b> from the pump, surfaced as notifications and on-screen.</li>
+        <li><b>Safety limits</b> — the pump's own configured max bolus and max basal rate; the advisor
+        never suggests more than your pump's max bolus.</li>
       </ul>
     </div>
     <div class="card"><h3 style="margin-top:0">History decode</h3>
@@ -594,12 +618,19 @@
     <li>The advisor <b>shows its working</b> and leans conservative near lows; it never replaces CGM/pump alarms.</li>
     <li>A retrained model is promoted only after passing an <b>error-grid safety gate</b>.</li>
     <li>Personal-use tool; not a medical device. Pairing with pumpx2 unpairs the official t:connect app.</li>
+    <li><b>Alert delivery depends on Android keeping the app/foreground service alive.</b> Battery savers can
+    delay readings and alerts while the phone sleeps — grant the battery-optimization exemption (offered
+    during onboarding, and in <em>Settings</em>) for reliable overnight monitoring. See the guide's
+    <a href="user-guide.html#notifications">notifications section</a> for the full reliability picture.</li>
+    <li><b>Garmin privacy.</b> Enabling the Garmin watch integration routes your BG/IOB through Garmin
+    Connect, which may sync it to Garmin's own cloud under Garmin's privacy policy — everything else stays
+    on-device. See the guide's <a href="user-guide.html#garmin">Garmin section</a>.</li>
   </ul>
 </section>
 
 <section id="regen">
   <h2>Regenerating this documentation</h2>
-  <p class="lead">All media is produced by driving the app in dev mode on an Android device/emulator — no manual
+  <p class="lead">All media is produced by driving the app in demo mode on an Android device/emulator — no manual
   captures. Re-run any time the UI changes.</p>
   <pre># screenshots only (→ doc/screenshots/*.png)
 powershell -File tools/gen_docs.ps1
@@ -616,7 +647,7 @@ tools/gen_docs.sh --video</pre>
 </section>
 
 <footer>
-  <div>bgdude — personal Tandem t:slim&nbsp;X2 companion. Documentation generated from the app running in dev mode
+  <div>bgdude — personal Tandem t:slim&nbsp;X2 companion. Documentation generated from the app running in demo mode
   on Android&nbsp;17 (API&nbsp;37). Informational only; not a medical device.</div>
 </footer>
 
