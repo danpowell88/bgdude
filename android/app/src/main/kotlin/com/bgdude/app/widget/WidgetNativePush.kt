@@ -60,6 +60,14 @@ object WidgetNativePush {
         )
     }
 
+    /** TASK-236: whether at least one instance of the widget is currently placed. */
+    fun hasWidgetInstances(context: Context): Boolean {
+        val manager = AppWidgetManager.getInstance(context)
+        return manager
+            .getAppWidgetIds(ComponentName(context, BgWidgetProvider::class.java))
+            .isNotEmpty()
+    }
+
     fun scheduleStalenessRenders(context: Context) {
         val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarm.setInexactRepeating(
@@ -68,6 +76,19 @@ object WidgetNativePush {
             RENDER_INTERVAL_MS,
             renderIntent(context),
         )
+    }
+
+    /**
+     * TASK-236: [PumpService.onCreate] calls this (not [scheduleStalenessRenders]
+     * directly) so the alarm is re-armed reliably on every service start/reboot --
+     * matching the reliability [scheduleStalenessRenders] was originally added for
+     * (TASK-177: staleness grey-out survives engine death) -- but only when a widget
+     * instance actually exists to benefit from it. [BgWidgetProvider.onEnabled] also
+     * arms directly, covering a widget added while the service is already running and
+     * won't restart soon.
+     */
+    fun scheduleStalenessRendersIfWidgetsExist(context: Context) {
+        if (hasWidgetInstances(context)) scheduleStalenessRenders(context)
     }
 
     fun cancelStalenessRenders(context: Context) {

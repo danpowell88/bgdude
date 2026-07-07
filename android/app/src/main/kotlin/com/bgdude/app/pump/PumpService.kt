@@ -62,8 +62,10 @@ class PumpService : Service(), PumpCommHandler.Listener {
         commHandler = PumpCommHandler(applicationContext, this)
         GarminIntegration.init(applicationContext)
         // TASK-177: periodic widget re-render so staleness grey-out is enforced
-        // natively, without a live Dart isolate.
-        WidgetNativePush.scheduleStalenessRenders(applicationContext)
+        // natively, without a live Dart isolate. TASK-236: gated on a widget instance
+        // actually existing (BgWidgetProvider.onEnabled/onDisabled own the alarm the
+        // rest of the time; this re-arms it reliably across service restarts/reboot).
+        WidgetNativePush.scheduleStalenessRendersIfWidgetsExist(applicationContext)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -144,7 +146,14 @@ class PumpService : Service(), PumpCommHandler.Listener {
     }
     fun submitPairingCode(code: String, type: PairingCodeType) =
         commHandler?.submitPairingCode(code, type)
-    fun unpair() = commHandler?.unpair()
+    fun unpair() {
+        commHandler?.unpair()
+        // TASK-236: no more pump data is coming -- the periodic staleness re-render
+        // alarm has nothing left to do until a future re-pair (PumpService.onCreate /
+        // BgWidgetProvider.onEnabled re-arm it, if a widget still exists, on the next
+        // service start or widget placement).
+        WidgetNativePush.cancelStalenessRenders(applicationContext)
+    }
     fun snapshotJson(): String = commHandler?.snapshotJson() ?: "{}"
 
     // --- PumpCommHandler.Listener → forward to bridge + refresh notification ---

@@ -27,6 +27,26 @@ import es.antonborri.home_widget.HomeWidgetProvider
  */
 class BgWidgetProvider : HomeWidgetProvider() {
 
+    /** TASK-236: the FIRST widget instance being placed -- arm the staleness alarm
+     *  ([WidgetNativePush.scheduleStalenessRenders] previously ran unconditionally
+     *  from [com.bgdude.app.pump.PumpService.onCreate], with no matching cancel, so
+     *  it outlived every widget removal). */
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        SafeCallbacks.run("BgWidgetProvider.onEnabled") {
+            WidgetNativePush.scheduleStalenessRenders(context)
+        }
+    }
+
+    /** TASK-236: the LAST widget instance being removed -- nothing left to keep
+     *  waking up for. */
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        SafeCallbacks.run("BgWidgetProvider.onDisabled") {
+            WidgetNativePush.cancelStalenessRenders(context)
+        }
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         // TASK-196: BgWidgetProvider has no android:process isolation, so it shares
         // PumpService's process — an uncaught exception escaping onReceive kills the
