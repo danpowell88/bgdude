@@ -13,7 +13,15 @@ import 'nutrition_panel.dart';
 import 'panel_llm.dart';
 
 class GemmaPanelExtractor implements PanelLlmExtractor {
-  const GemmaPanelExtractor();
+  const GemmaPanelExtractor({this.onModelLoadFailed});
+
+  /// Called when the model itself fails to LOAD (as opposed to a later inference
+  /// failure, timeout, or OOM on an otherwise-good model) — TASK-204: this
+  /// specifically signals the installed file is likely corrupt/truncated, so the
+  /// caller (panelModelProvider, which has the state this class doesn't) can
+  /// clear the installed flag instead of silently re-attempting a broken file on
+  /// every single scan.
+  final void Function(Object error)? onModelLoadFailed;
 
   @override
   bool get available => true;
@@ -23,10 +31,15 @@ class GemmaPanelExtractor implements PanelLlmExtractor {
     InferenceModel? model;
     InferenceModelSession? session;
     try {
-      model = await FlutterGemma.getActiveModel(
-        maxTokens: 2048,
-        preferredBackend: PreferredBackend.cpu,
-      );
+      try {
+        model = await FlutterGemma.getActiveModel(
+          maxTokens: 2048,
+          preferredBackend: PreferredBackend.cpu,
+        );
+      } catch (e) {
+        onModelLoadFailed?.call(e);
+        rethrow;
+      }
       // Low temperature: we want the label's numbers, not prose.
       session = await model.createSession(temperature: 0.0, topK: 1);
       await session

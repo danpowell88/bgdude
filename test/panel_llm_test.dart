@@ -1,4 +1,5 @@
 import 'package:bgdude/food/panel_llm.dart';
+import 'package:bgdude/food/panel_llm_gemma.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -87,5 +88,25 @@ void main() {
   test('5-2: grounding is skipped when there is no OCR text to check', () {
     final p = parsePanelLlmJson('{"carbs":{"per_100g":64}}', rawText: '')!;
     expect(p.carbs.per100g, 64);
+  });
+
+  group('GemmaPanelExtractor (TASK-204)', () {
+    test(
+        'a model-load failure calls onModelLoadFailed and still returns null '
+        '(falls back to the deterministic parser)', () async {
+      // FlutterGemma.getActiveModel() has no native LiteRT runtime to load on this
+      // desktop test host, so it always throws here -- exactly the same failure
+      // shape as a genuinely corrupt/truncated model file failing to load on a
+      // real device, which is what this callback exists to catch.
+      Object? capturedError;
+      final extractor = GemmaPanelExtractor(
+        onModelLoadFailed: (e) => capturedError = e,
+      );
+
+      final result = await extractor.extract('Total carbohydrate 40 g');
+
+      expect(result, isNull);
+      expect(capturedError, isNotNull);
+    });
   });
 }

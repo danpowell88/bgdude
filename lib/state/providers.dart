@@ -183,7 +183,16 @@ final panelOcrProvider = Provider<PanelOcr>((ref) => MlKitPanelOcr());
 /// deterministic parser is the sole path.
 final panelLlmProvider = Provider<PanelLlmExtractor>((ref) =>
     ref.watch(panelModelProvider).installed
-        ? const GemmaPanelExtractor()
+        ? GemmaPanelExtractor(
+            onModelLoadFailed: (e) {
+              // TASK-204 AC#2: a load failure on a supposedly-installed model
+              // means the file is bad -- stop claiming it's installed and stop
+              // retrying it on every future scan.
+              appLog.error('panel_llm', 'model failed to load — clearing installed state',
+                  error: e);
+              unawaited(ref.read(panelModelProvider.notifier).markLoadFailed());
+            },
+          )
         : const NoopPanelLlm());
 
 /// State of the downloadable nutrition-panel LLM model.
@@ -215,15 +224,35 @@ final panelModelProvider =
         (ref) => PanelModelController(ref));
 
 class PanelModelController extends StateNotifier<PanelModelStatus> {
-  PanelModelController(this._ref) : super(const PanelModelStatus(installed: false)) {
+  PanelModelController(this._ref, {PanelModelManager? manager})
+      : _mgr = manager ?? const PanelModelManager(),
+        super(const PanelModelStatus(installed: false)) {
     _restore();
   }
 
   final Ref _ref;
   static const _urlKey = 'panel_llm_url_v1';
-  final _mgr = const PanelModelManager();
+
+  /// TASK-204: set to the target URL right before a download starts, cleared once
+  /// it concludes (success OR failure) either way. If this is still set at the
+  /// NEXT restore, the previous session died mid-download — the on-disk file is
+  /// presumed partial/truncated (flutter_gemma's own isModelInstalled is a bare
+  /// file-existence check, so a partial file could otherwise pass it and only
+  /// fail much later, at actual inference time).
+  static const _inFlightKey = 'panel_llm_downloading_v1';
+
+  final PanelModelManager _mgr;
 
   Future<void> _restore() async {
+    final inFlight = await KvStore.getString(_inFlightKey);
+    if (inFlight != null && inFlight.isNotEmpty) {
+      // A download was interrupted (process death, crash) — never let a partial
+      // file masquerade as installed; clean it up before trusting anything.
+      try {
+        await _mgr.delete(inFlight);
+      } catch (_) {}
+      await KvStore.setString(_inFlightKey, '');
+    }
     final url = await KvStore.getString(_urlKey);
     if (url == null || url.isEmpty) return;
     final ok = await _mgr.isInstalled(url);
@@ -238,6 +267,15 @@ class PanelModelController extends StateNotifier<PanelModelStatus> {
   Future<void> _download(String url, {String? token}) async {
     state = PanelModelStatus(
         installed: false, url: url, downloading: true, progress: 0);
+    // TASK-204: clear any stale partial file under this URL BEFORE starting --
+    // flutter_gemma's own installModel() skips the download if its internal
+    // isModelInstalled() sees a same-named file already present, which would
+    // silently "complete" instantly over a leftover truncated file from an
+    // earlier crashed attempt.
+    try {
+      await _mgr.delete(url);
+    } catch (_) {}
+    await KvStore.setString(_inFlightKey, url);
     try {
       await _mgr.download(
         url: url,
@@ -254,7 +292,29 @@ class PanelModelController extends StateNotifier<PanelModelStatus> {
       if (mounted) {
         state = PanelModelStatus(installed: false, url: url, downloading: false);
       }
+      // The download didn't conclude cleanly -- don't leave a partial file
+      // lying around for a future isModelInstalled() check to be fooled by.
+      try {
+        await _mgr.delete(url);
+      } catch (_) {}
       rethrow;
+    } finally {
+      await KvStore.setString(_inFlightKey, '');
+    }
+  }
+
+  /// Clears the installed state (and deletes the file) when the model failed to
+  /// actually LOAD for inference (TASK-204 AC#2), as opposed to a transient
+  /// inference-time failure (timeout, OOM) on an otherwise-good file — distinct
+  /// from a normal uninstall, this runs automatically the first time a load
+  /// failure is observed, so a broken file isn't silently retried on every scan.
+  Future<void> markLoadFailed() async {
+    final url = state.url;
+    if (mounted) state = PanelModelStatus(installed: false, url: url);
+    if (url != null) {
+      try {
+        await _mgr.delete(url);
+      } catch (_) {}
     }
   }
 
