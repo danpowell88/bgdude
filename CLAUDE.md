@@ -80,6 +80,15 @@ backlog task edit 42 --comment "Started: <approach in one line>" --comment-autho
   would want to know.
 - When you **finish**: check off the acceptance criteria (`--check-ac <n>`), set
   `-s Done`, and add a closing comment summarising what changed (files, tests, commit hash).
+- When you **cannot make further progress** — a dependency, a missing decision or answer, or
+  an environment limitation (e.g. no reachable emulator) blocks you — **do not leave the task
+  `In Progress`**. Set `-s Blocked`, add a comment naming the blocker and exactly what would
+  unblock it, and if another task is the blocker record it in the `dependencies` field
+  (`--dep task-N`). Move it back to `In Progress` only when you actually resume it, or to
+  `To Do` if you are handing it off unstarted. **`In Progress` must mean actively being worked
+  right now** — never a parked, waiting, or half-done task. Before ending a work session,
+  sweep your `In Progress` tasks and re-status any you are not still actively progressing
+  (`Done` if finished, `Blocked` if stuck, `To Do` if not really started).
 
 ### `detail-needed` label
 If a task lacks the information needed to implement it properly (unclear requirement,
@@ -89,9 +98,11 @@ missing decision, unknown validation data, ambiguous acceptance criterion), **do
 backlog task edit 42 --add-label detail-needed --comment "detail-needed: <the specific questions>" --comment-author "Claude"
 ```
 
-State the concrete questions in the comment, leave the task in its current status, and move
-on. (`needs-exploration` is the related pre-existing label for tasks that were known to be
-under-scoped at creation; `detail-needed` is for gaps you discover.)
+State the concrete questions in the comment. If the task was `In Progress`, move it to
+`-s Blocked` (an information gap you cannot resolve yourself is a blocker); otherwise leave it
+in `To Do`. Either way it must not stay `In Progress`. Then move on. (`needs-exploration` is
+the related pre-existing label for tasks that were known to be under-scoped at creation;
+`detail-needed` is for gaps you discover.)
 
 ### Formatting task content (important — renders as markdown)
 Task sections (Description, Plan, Notes, comments) are rendered as **markdown** in the
