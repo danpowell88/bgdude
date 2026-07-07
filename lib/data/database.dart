@@ -20,6 +20,31 @@ import 'meal_tables.dart';
 
 part 'database.g.dart';
 
+/// Thrown when the on-disk database's schema version is NEWER than this build's
+/// [AppDatabase.schemaVersion] (TASK-199) — an older APK opening a database a newer
+/// build already migrated (e.g. a sideload rollback). Drift's `onUpgrade` runs for
+/// both upgrades AND downgrades (there is no separate `onDowngrade` in this drift
+/// version), so without an explicit guard a downgrade would silently fall through
+/// every `if (from < N)` migration step, do nothing, and let drift stamp
+/// `user_version` down to this build's (older) schemaVersion anyway — corrupting the
+/// version marker against a schema this code has never seen and doesn't understand.
+class DatabaseDowngradeException implements Exception {
+  const DatabaseDowngradeException({required this.from, required this.to});
+
+  /// The on-disk schema version (newer than this build).
+  final int from;
+
+  /// This build's [AppDatabase.schemaVersion] (older than what's on disk).
+  final int to;
+
+  @override
+  String toString() =>
+      'DatabaseDowngradeException: the database is at schema version $from, but '
+      'this app build only understands up to version $to — it was likely created '
+      'by a newer version of the app. Update the app to use this data; installing '
+      'an older build over it is not supported.';
+}
+
 @DataClassName('CgmRow')
 class CgmReadings extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -189,6 +214,9 @@ class AppDatabase extends _$AppDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
+          // TASK-199: see DatabaseDowngradeException's doc comment — this MUST be
+          // the first check, before any `if (from < N)` migration step runs.
+          if (from > to) throw DatabaseDowngradeException(from: from, to: to);
           if (from < 2) await m.createTable(appKv);
           if (from < 3) {
             // TASK-9: distinguish sensor readings from finger-prick / calibration ones.

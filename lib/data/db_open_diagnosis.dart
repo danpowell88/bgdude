@@ -40,12 +40,24 @@ enum DbOpenDiagnosis {
   /// plain marker confirms one was generated before (TASK-249) — this looks like a
   /// transient Keystore failure (OS update, device restore, biometric change), not
   /// file corruption. The encrypted DB file itself was never even touched.
-  keyReadFailure;
+  keyReadFailure,
+
+  /// The on-disk schema is NEWER than this build understands (TASK-199) — this
+  /// build is older than the data (e.g. a sideload rollback after a newer version
+  /// already migrated the file). The data is not corrupt; it needs a newer app
+  /// build, not a reset.
+  schemaNewerThanApp;
 
   /// Whether any of the app's own data might still be readable via SQL — true only
   /// for [corruptedData], where the key/header were already confirmed fine and some
   /// tables may still be intact even though quick_check found damage elsewhere.
   bool get salvageable => this == DbOpenDiagnosis.corruptedData;
+
+  /// Whether the destructive "reset storage" recovery action makes sense to offer
+  /// at all (TASK-199). False only for [schemaNewerThanApp]: the file isn't
+  /// corrupt, so resetting would destroy genuinely intact, newer data for no
+  /// reason — the actual fix is installing a newer app build, not a reset.
+  bool get resetIsSensible => this != DbOpenDiagnosis.schemaNewerThanApp;
 }
 
 /// SQLite result codes relevant here (sqlite.org/rescode.html).
@@ -61,6 +73,7 @@ const _sqliteNotADb = 26;
 /// before this error occurred (i.e. this error came from a later, deeper check like
 /// `PRAGMA quick_check`, not the very first post-key query).
 DbOpenDiagnosis classifyDbOpenFailure(Object error, {required bool keyConfirmed}) {
+  if (error is DatabaseDowngradeException) return DbOpenDiagnosis.schemaNewerThanApp;
   if (error is FileSystemException) return DbOpenDiagnosis.ioError;
   if (error is SqliteException) {
     final code = error.resultCode;

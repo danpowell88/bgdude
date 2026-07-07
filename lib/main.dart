@@ -135,6 +135,10 @@ String _dbOpenErrorMessage(DbOpenDiagnosis diagnosis) => switch (diagnosis) {
         'Storage\'s saved key couldn\'t be read — often temporary (e.g. right after '
             'an OS update). The database file itself is untouched. The app is '
             'running without saving; open Settings and retry.',
+      DbOpenDiagnosis.schemaNewerThanApp =>
+        'This app build is OLDER than your existing data (likely from sideloading '
+            'an older version). Nothing is damaged; reinstall the newer version to '
+            'get back to it. The app is running without saving in the meantime.',
       DbOpenDiagnosis.unknown =>
         'Storage failed to open — the app is running without saving. Your data will '
             'not persist. Restart the app; if it keeps happening, reinstall.',

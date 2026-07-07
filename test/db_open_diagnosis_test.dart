@@ -5,6 +5,7 @@ import 'package:bgdude/data/db_open_diagnosis.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:sqlite3/sqlite3.dart' as sqlite3;
 
 /// TASK-192: classifyDbOpenFailure is unit-tested directly against synthetic
 /// exceptions shaped exactly like what SQLCipher/sqlite3 actually raise (same result
@@ -60,6 +61,19 @@ void main() {
       expect(classifyDbOpenFailure(StateError('huh'), keyConfirmed: false),
           DbOpenDiagnosis.unknown);
     });
+
+    test('a DatabaseDowngradeException is schemaNewerThanApp (TASK-199)', () {
+      expect(
+          classifyDbOpenFailure(const DatabaseDowngradeException(from: 5, to: 4),
+              keyConfirmed: false),
+          DbOpenDiagnosis.schemaNewerThanApp);
+      // Regardless of keyConfirmed -- this check happens before the key/header
+      // is even relevant.
+      expect(
+          classifyDbOpenFailure(const DatabaseDowngradeException(from: 5, to: 4),
+              keyConfirmed: true),
+          DbOpenDiagnosis.schemaNewerThanApp);
+    });
   });
 
   group('DbOpenDiagnosis.salvageable (TASK-192)', () {
@@ -68,7 +82,19 @@ void main() {
       expect(DbOpenDiagnosis.keyOrHeaderCorrupt.salvageable, isFalse);
       expect(DbOpenDiagnosis.ioError.salvageable, isFalse);
       expect(DbOpenDiagnosis.keyReadFailure.salvageable, isFalse);
+      expect(DbOpenDiagnosis.schemaNewerThanApp.salvageable, isFalse);
       expect(DbOpenDiagnosis.unknown.salvageable, isFalse);
+    });
+  });
+
+  group('DbOpenDiagnosis.resetIsSensible (TASK-199)', () {
+    test('false only for schemaNewerThanApp -- the data there is not corrupt', () {
+      expect(DbOpenDiagnosis.schemaNewerThanApp.resetIsSensible, isFalse);
+      expect(DbOpenDiagnosis.keyOrHeaderCorrupt.resetIsSensible, isTrue);
+      expect(DbOpenDiagnosis.corruptedData.resetIsSensible, isTrue);
+      expect(DbOpenDiagnosis.ioError.resetIsSensible, isTrue);
+      expect(DbOpenDiagnosis.keyReadFailure.resetIsSensible, isTrue);
+      expect(DbOpenDiagnosis.unknown.resetIsSensible, isTrue);
     });
   });
 
@@ -114,6 +140,57 @@ void main() {
       final dbFile = File(p.join(dir.path, 'does_not_exist.db'));
       await retireDatabaseFile(file: dbFile); // must not throw
       expect(dir.listSync(), isEmpty);
+    });
+  });
+
+  group('database downgrade guard (TASK-199)', () {
+    late Directory dir;
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('bgdude_downgrade_test');
+    });
+
+    tearDown(() async {
+      if (await dir.exists()) await dir.delete(recursive: true);
+    });
+
+    test(
+        'opening a file stamped user_version=5 under schemaVersion 4 throws '
+        'DatabaseDowngradeException, and the file is left untouched', () async {
+      final dbFile = File(p.join(dir.path, 'downgrade.db'));
+      // Stand in for "this file was already migrated by a newer app build": a
+      // plain (unencrypted -- SQLCipher can't open on this desktop test host)
+      // sqlite3 file stamped past this build's schemaVersion, written with a
+      // raw sqlite3 connection BEFORE drift ever touches it.
+      final raw = sqlite3.sqlite3.open(dbFile.path);
+      raw.execute('PRAGMA user_version = 5;');
+      raw.dispose();
+
+      final appDb = AppDatabase(NativeDatabase(dbFile));
+      await expectLater(
+        appDb.customSelect('select 1').get(),
+        throwsA(isA<DatabaseDowngradeException>()
+            .having((e) => e.from, 'from', 5)
+            .having((e) => e.to, 'to', appDb.schemaVersion)),
+      );
+      await appDb.close();
+
+      // No corruption: user_version is still exactly what it was -- drift must
+      // not have silently stamped it down to this build's schemaVersion despite
+      // the throw, and no tables were created (onCreate never runs for an
+      // existing, non-zero user_version).
+      final verify = sqlite3.sqlite3.open(dbFile.path);
+      final version =
+          verify.select('PRAGMA user_version;').first.values.first as int;
+      expect(version, 5);
+      final tables = verify
+          .select("SELECT name FROM sqlite_master WHERE type = 'table';")
+          .map((r) => r.values.first as String)
+          .toList();
+      expect(tables, isEmpty,
+          reason: 'the downgrade guard is the FIRST statement in onUpgrade -- '
+              'no migration/creation step should have run before it threw');
+      verify.dispose();
     });
   });
 

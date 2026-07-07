@@ -28,6 +28,7 @@ class _DbRecoveryScreenState extends ConsumerState<DbRecoveryScreen> {
         DbOpenDiagnosis.corruptedData => 'Storage data damage',
         DbOpenDiagnosis.ioError => 'Storage couldn\'t be opened',
         DbOpenDiagnosis.keyReadFailure => 'Storage key temporarily unreadable',
+        DbOpenDiagnosis.schemaNewerThanApp => 'App is older than your data',
         DbOpenDiagnosis.unknown => 'Storage problem',
       };
 
@@ -57,6 +58,13 @@ class _DbRecoveryScreenState extends ConsumerState<DbRecoveryScreen> {
               'from secure storage failed, which is often a transient problem (for '
               'example right after an OS update). Try again first; only reset if '
               'retrying keeps failing.',
+        DbOpenDiagnosis.schemaNewerThanApp =>
+          'Your stored data was created by a newer version of bgdude than the one '
+              'currently installed (for example after sideloading an older build). '
+              'Nothing is damaged — install the version you were using before to '
+              'get back to your data. Resetting storage here would permanently '
+              'delete data that is otherwise perfectly intact, so it is not '
+              'offered on this screen.',
         DbOpenDiagnosis.unknown =>
           'Storage failed to open for an unrecognised reason.',
       };
@@ -193,14 +201,18 @@ class _DbRecoveryScreenState extends ConsumerState<DbRecoveryScreen> {
                     label: const Text('Export what\'s still readable'),
                   ),
                 ],
-                const SizedBox(height: 24),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.error),
-                  onPressed: _busy ? null : _resetStorage,
-                  icon: const Icon(Icons.delete_forever_outlined),
-                  label: const Text('Reset storage (destructive)'),
-                ),
+                // TASK-199: never offered for schemaNewerThanApp — the data isn't
+                // corrupt, so this would only destroy intact, newer data.
+                if (diagnosis.resetIsSensible) ...[
+                  const SizedBox(height: 24),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error),
+                    onPressed: _busy ? null : _resetStorage,
+                    icon: const Icon(Icons.delete_forever_outlined),
+                    label: const Text('Reset storage (destructive)'),
+                  ),
+                ],
                 if (_busy) ...[
                   const SizedBox(height: 16),
                   const Center(child: CircularProgressIndicator()),
