@@ -1,11 +1,11 @@
 ---
 id: TASK-31
 title: Garmin complication — implement the real publisher
-status: In Progress
+status: Blocked
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-07 22:02'
+updated_date: '2026-07-07 22:40'
 labels:
   - roadmap
   - garmin
@@ -71,5 +71,11 @@ Confirmed workable: Complications.updateComplication(index, data) where data is 
 BLOCKING new finding: bin/projectInfo.xml's permissionMap shows ComplicationPublisher is valid ONLY for appType="watch-app" and "audio-content-provider-app" -- NOT "widget", which is what garmin/manifest.xml's BgDudeApp actually is. COMPLICATIONS.md's own claim ('Publishing is only valid for app/widget product types') is wrong on this specific point. This means AC#1/#2 can't be added to the existing widget at all -- publishing a complication requires standing up a BRAND NEW Connect IQ product with type="watch-app" (its own UUID, its own manifest/jungle, its own visible entry view since watch-apps aren't headless like widgets, its own phone-message wiring duplicating BgDudeApp's, and a corresponding new UUID registered in GarminSender.kt on the Android side) -- not a small addition to the current widget.
 
 Questions for a decision before implementing: (1) is a 4th Garmin product (a new watch-app, appearing separately in the watch's app list) worth it just to publish glucose as a complication for third-party faces, given the watch face already surfaces BG prominently (per COMPLICATIONS.md's own closing rationale for why this was deferred)? (2) if yes, what UUID/name should the new watch-app use? Leaving AC#1-3 unchecked and not guessing at a new product's scope/UUID without that decision.
+---
+
+author: Claude
+created: 2026-07-07 22:40
+---
+Blocked on a product-scope decision, not hardware: ground-truthed the Complications API against the installed SDK and found ComplicationPublisher is only valid for appType=watch-app, not the existing widget -- publishing a complication means standing up an entirely new Connect IQ product (new UUID, manifest, phone-link wiring, Android-side GarminSender changes), not a small addition. See the detail-needed comment for the two concrete questions. Unblocked by: a decision on whether a 4th Garmin product is worth building for this.
 ---
 <!-- COMMENTS:END -->

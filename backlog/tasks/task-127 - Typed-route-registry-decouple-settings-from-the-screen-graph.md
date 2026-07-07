@@ -1,11 +1,11 @@
 ---
 id: TASK-127
 title: Typed route registry (decouple settings from the screen graph)
-status: In Progress
+status: Blocked
 assignee:
   - Claude
 created_date: '2026-07-06 08:37'
-updated_date: '2026-07-07 19:31'
+updated_date: '2026-07-07 22:40'
 labels:
   - code-health
   - ui
@@ -74,6 +74,12 @@ author: Claude
 created: 2026-07-07 19:31
 ---
 detail-needed: AC#3 (integration tests pass on the emulator) cannot be verified in this sandboxed session -- the emulator VM-service WebSocket connection is broken here for ANY integration_test file (pre-existing, documented environment limitation, not specific to this change). AC#1/#2 and all applicable DoD items are complete; this needs a session with real emulator connectivity to close out, matching the TASK-31/TASK-33 hardware-blocked convention.
+---
+
+author: Claude
+created: 2026-07-07 22:40
+---
+Blocked: AC#3 (integration tests still pass on the emulator) is the only remaining item -- AppRoutes registry + settings_screen migration (AC#1/#2) are done and flutter analyze/test/build are all green, but confirming no navigation regression needs an actual on-device/emulator run. Unblocked by: working emulator connectivity.
 ---
 <!-- COMMENTS:END -->
 

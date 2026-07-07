@@ -3,11 +3,11 @@ id: TASK-252
 title: >-
   Test the DB reset file deletion and recovery-screen destructive gate, add
   on-device coverage
-status: In Progress
+status: Blocked
 assignee:
   - Claude
 created_date: '2026-07-07 14:28'
-updated_date: '2026-07-07 20:52'
+updated_date: '2026-07-07 22:40'
 labels:
   - detail-needed
 milestone: m-8
@@ -58,6 +58,12 @@ AC#2: new test/db_recovery_screen_test.dart (9 tests) drives DbRecoveryScreen di
 AC#3: integration_test/db_recovery_screen_test.dart (new) -- boots the real app with dbOpenErrorProvider/dbOpenDiagnosisProvider overridden, taps the storage banner, confirms it reaches DbRecoveryScreen, and exercises through the first reset confirmation dialog. Cannot be executed in this session (no working emulator connectivity here, the same pre-existing limitation documented for TASK-127/226/228/220) -- flagging rather than claiming it passed.
 
 Pipeline: flutter analyze clean, flutter test test/ 1050/1050, flutter build apk --debug succeeded. No native Kotlin, no user-visible change (test-only).
+---
+
+author: Claude
+created: 2026-07-07 22:40
+---
+Blocked: AC#3's integration_test/db_recovery_screen_test.dart is already written but genuinely unexecuted -- needs a real emulator run to confirm the two-dialog destructive-reset gate on-device. AC#1/#2 are done. Unblocked by: working emulator connectivity.
 ---
 <!-- COMMENTS:END -->
 

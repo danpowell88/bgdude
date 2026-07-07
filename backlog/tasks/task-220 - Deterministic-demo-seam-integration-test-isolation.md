@@ -1,11 +1,11 @@
 ---
 id: TASK-220
 title: Deterministic demo seam + integration-test isolation
-status: In Progress
+status: Blocked
 assignee:
   - Claude
 created_date: '2026-07-06 22:13'
-updated_date: '2026-07-07 22:38'
+updated_date: '2026-07-07 22:40'
 labels:
   - testing
   - code-health
@@ -94,6 +94,12 @@ Adopted setUp(setUpDemoHarness) in all 5 integration_test/*.dart files that call
 flutter analyze clean (this actually caught a real bug in my first attempt: tester.addTearDown() doesn't exist -- addTearDown is a top-level function, not a WidgetTester method). flutter test --coverage test/ 1082/1082 green, coverage unchanged at 65.8% (integration_test/ isn't in that scope). flutter build apk --debug succeeded.
 
 Actually confirming this fixes cross-test leakage (vs. just compiling and looking right) still needs a real emulator run -- leaving that specific empirical claim, plus AC#4, under the existing detail-needed label.
+---
+
+author: Claude
+created: 2026-07-07 22:40
+---
+Blocked: AC#4 (a displayed-value assertion proving stability across two on-device runs) and confirming AC#2's harness fix actually stops cross-test leakage both need a real emulator run -- this session has no working emulator connectivity (pre-existing, documented limitation). AC#1/#2/#3 are done. Unblocked by: working emulator connectivity, or the real Pixel 7 Pro device.
 ---
 <!-- COMMENTS:END -->
 

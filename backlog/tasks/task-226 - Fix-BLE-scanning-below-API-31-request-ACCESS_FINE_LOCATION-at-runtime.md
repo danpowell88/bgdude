@@ -1,11 +1,11 @@
 ---
 id: TASK-226
 title: 'Fix BLE scanning below API 31: request ACCESS_FINE_LOCATION at runtime'
-status: In Progress
+status: Blocked
 assignee:
   - Claude
 created_date: '2026-07-06 22:14'
-updated_date: '2026-07-07 19:46'
+updated_date: '2026-07-07 22:40'
 labels:
   - code-health
   - pump
@@ -75,6 +75,12 @@ device_info_plus was already a transitive dependency (used by another plugin) --
 Tests: test/ble_permissions_test.dart pins the pure SDK-gate decision + rationale text for both branches.
 
 Pipeline: flutter pub get, dart run build_runner build succeeded, flutter analyze clean (fixed a use_build_context_synchronously by capturing the ScaffoldMessenger before any await, matching the existing pattern elsewhere in this file), flutter test test/ 1034/1034, flutter build apk --debug succeeded. No native Kotlin touched. doc/user-guide.html: left unchanged -- this SnackBar-on-denial rationale matches the existing pattern for other permission prompts in the app (e.g. the glucose-meter screen's Bluetooth-off message), none of which get individual user-guide callouts.
+---
+
+author: Claude
+created: 2026-07-07 22:40
+---
+Blocked: AC#3 requires an API 29/30 emulator image to confirm the runtime permission flow actually starts a scan after grant -- this session's only available AVD is Pixel_7_Pro at API 37, and there's no working emulator connectivity regardless (pre-existing limitation). AC#1/#2/#4 are done. Unblocked by: an API 29/30 AVD + working emulator connectivity.
 ---
 <!-- COMMENTS:END -->
 

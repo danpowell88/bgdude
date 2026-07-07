@@ -1,11 +1,11 @@
 ---
 id: TASK-33
 title: Pump pairing robustness (pumpx2) — reliability pass
-status: In Progress
+status: Blocked
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-07 22:22'
+updated_date: '2026-07-07 22:40'
 labels:
   - roadmap
   - pump
@@ -82,5 +82,11 @@ AC#1 (retries + reconnect 'robust on hardware'), AC#3 (t:connect mutual-exclusio
 Pipeline: pub get, build_runner build, flutter analyze clean, flutter test --coverage test/ (1082/1082 green, coverage 65.8% vs 65.5% floor -- did not drop), flutter build apk --debug succeeded, gradlew :app:testDebugUnitTest green (native Kotlin changed).
 
 Files: android/app/src/main/kotlin/com/bgdude/app/pump/PairingWindowPolicy.kt (new), PumpCommHandler.kt, android/app/src/test/.../PairingWindowTimeoutTest.kt (new), lib/ui/pump_screen.dart, test/pump_screen_connection_banner_test.dart (new).
+---
+
+author: Claude
+created: 2026-07-07 22:40
+---
+Blocked: AC#1 ('robust on hardware'), AC#3 (t:connect mutual-exclusion) and AC#4 (long-run stability) require an actual t:slim X2 pump to verify -- no emulator/simulator can exercise real BLE pairing/bonding or multi-hour signal behaviour. AC#2 and AC#5 are done (see prior comment). Unblocked by: a session with the real pump available (per decision-2, hardware is on hand for collaborative device runs).
 ---
 <!-- COMMENTS:END -->
