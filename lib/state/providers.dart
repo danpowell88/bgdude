@@ -83,6 +83,7 @@ import '../pump/probe_event.dart';
 import '../pump/pump_client.dart';
 import '../pump/pump_events.dart';
 import '../pump/pump_snapshot.dart';
+import '../reports/report_dataset.dart';
 import '../reports/correlation_report.dart';
 import '../reports/cycle_report.dart';
 import '../reports/events_journal.dart';
@@ -680,37 +681,54 @@ final batteryDrainProvider = FutureProvider<BatteryDrainEstimate>((ref) async {
 final reportRangeProvider = StateProvider<ReportRange>(
     (ref) => ReportRange.preset(ReportPreset.last14, now: DateTime.now()));
 
+/// The ONE range-scoped fetch behind every report (TASK-117): cgm/boluses/basal/
+/// carbs (extended 6 h back for the therapy report's IOB lookback), plus health and
+/// annotations for the exact range. autoDispose: leaving Reports releases the data.
+final reportDatasetProvider = FutureProvider.autoDispose
+    .family<ReportDataset, ReportRange>((ref, range) async {
+  final repo = ref.watch(historyRepositoryProvider);
+  final from = range.from.subtract(ReportDataset.lookback);
+  return ReportDataset(
+    range: range,
+    cgm: await repo.cgm(from, range.to),
+    boluses: await repo.boluses(from, range.to),
+    basal: await repo.basal(from, range.to),
+    carbs: await repo.carbs(from, range.to),
+    health: await repo.health(range.from, range.to),
+    annotations: await repo.annotations(range.from, range.to),
+  );
+});
+
 /// The Glucose report for the selected range, plus the confirmed readings behind it
 /// (kept alongside so PDF/CSV export shares exactly what the report shows). Built from
 /// real, confirmed data — sensor-artifact windows are excluded.
-final glucoseReportProvider =
-    FutureProvider<({GlucoseReport report, List<CgmSample> confirmed})>(
-        (ref) async {
+final glucoseReportProvider = FutureProvider.autoDispose<
+    ({GlucoseReport report, List<CgmSample> confirmed})>((ref) async {
   final range = ref.watch(reportRangeProvider);
-  final repo = ref.watch(historyRepositoryProvider);
-  final cgm = await repo.cgm(range.from, range.to);
-  final annotations = await repo.annotations(range.from, range.to);
-  final report = const GlucoseReportBuilder()
-      .build(cgm: cgm, annotations: annotations, range: range, now: DateTime.now());
+  final ds = await ref.watch(reportDatasetProvider(range).future);
+  final cgm = ds.cgmInRange;
+  final report = const GlucoseReportBuilder().build(
+      cgm: cgm, annotations: ds.annotations, range: range, now: DateTime.now());
   final confirmed = GlucoseReportBuilder.confirmedSamples(
-      cgm: cgm, annotations: annotations, range: range);
+      cgm: cgm, annotations: ds.annotations, range: range);
   return (report: report, confirmed: confirmed);
 });
 
 /// Insulin report (TDD trend, basal/bolus split, bolus behaviour) for the range.
-final insulinReportProvider = FutureProvider<InsulinReport>((ref) async {
+final insulinReportProvider =
+    FutureProvider.autoDispose<InsulinReport>((ref) async {
   final range = ref.watch(reportRangeProvider);
-  final repo = ref.watch(historyRepositoryProvider);
+  final ds = await ref.watch(reportDatasetProvider(range).future);
   return const InsulinReportBuilder().build(
-    boluses: await repo.boluses(range.from, range.to),
-    basal: await repo.basal(range.from, range.to),
+    boluses: ds.bolusesInRange,
+    basal: ds.basalInRange,
     range: range,
     now: DateTime.now(),
   );
 });
 
 /// Meals report (per-meal performance from confirmed outcomes) for the range.
-final mealsReportProvider = Provider<MealsReport>((ref) {
+final mealsReportProvider = Provider.autoDispose<MealsReport>((ref) {
   final range = ref.watch(reportRangeProvider);
   return const MealsReportBuilder().build(
     library: ref.watch(mealLibraryProvider),
@@ -721,7 +739,7 @@ final mealsReportProvider = Provider<MealsReport>((ref) {
 
 /// Post-meal movement correlation: your post-meal steps vs the size of the spike.
 final postMealMovementProvider =
-    FutureProvider<PostMealMovementResult>((ref) async {
+    FutureProvider.autoDispose<PostMealMovementResult>((ref) async {
   final range = ref.watch(reportRangeProvider);
   final library = ref.watch(mealLibraryProvider);
   final meals = [
@@ -730,16 +748,15 @@ final postMealMovementProvider =
         if (range.contains(o.eatenAt))
           (eatenAt: o.eatenAt, excursionMgdl: o.peakMgdl - o.bgAtMealMgdl),
   ];
-  final steps = await ref
-      .watch(historyRepositoryProvider)
-      .health(range.from, range.to);
-  return const PostMealMovementAnalyzer().analyze(meals: meals, steps: steps);
+  final ds = await ref.watch(reportDatasetProvider(range).future);
+  return const PostMealMovementAnalyzer().analyze(meals: meals, steps: ds.health);
 });
 
 /// Therapy report (learned daily sensitivity trend via Autotune) for the range.
 /// TASK-56: rolling 7-day forecast-band coverage (how often the actual reading landed inside
 /// the predicted band). Keyed off the live state so it refreshes as new readings reconcile.
-final bandCoverageProvider = FutureProvider<BandCoverage>((ref) async {
+final bandCoverageProvider =
+    FutureProvider.autoDispose<BandCoverage>((ref) async {
   ref.watch(livePredictionStateProvider); // refresh trigger as new readings flow in
   final repo = ref.watch(historyRepositoryProvider);
   final now = DateTime.now();
@@ -750,15 +767,17 @@ final bandCoverageProvider = FutureProvider<BandCoverage>((ref) async {
   ]);
 });
 
-final therapyReportProvider = FutureProvider<TherapyReport>((ref) async {
+final therapyReportProvider =
+    FutureProvider.autoDispose<TherapyReport>((ref) async {
   final range = ref.watch(reportRangeProvider);
-  final repo = ref.watch(historyRepositoryProvider);
-  final from = range.from.subtract(const Duration(hours: 6)); // IOB lookback
+  // The dataset's dosing lists already extend ReportDataset.lookback (6 h) before
+  // the range start — exactly the IOB lookback this report needs (TASK-117 AC#4).
+  final ds = await ref.watch(reportDatasetProvider(range).future);
   return TherapyReportBuilder().build(
-    cgm: await repo.cgm(from, range.to),
-    boluses: await repo.boluses(from, range.to),
-    basal: await repo.basal(from, range.to),
-    carbs: await repo.carbs(from, range.to),
+    cgm: ds.cgm,
+    boluses: ds.boluses,
+    basal: ds.basal,
+    carbs: ds.carbs,
     settings: ref.read(therapySettingsProvider),
     range: range,
     now: DateTime.now(),
@@ -767,39 +786,41 @@ final therapyReportProvider = FutureProvider<TherapyReport>((ref) async {
 
 /// Correlation report: daily glycemic outcomes vs confirmed lifestyle inputs.
 final correlationReportProvider =
-    FutureProvider<CorrelationReport>((ref) async {
+    FutureProvider.autoDispose<CorrelationReport>((ref) async {
   final range = ref.watch(reportRangeProvider);
-  final repo = ref.watch(historyRepositoryProvider);
+  final ds = await ref.watch(reportDatasetProvider(range).future);
   return const CorrelationReportBuilder().build(
-    cgm: await repo.cgm(range.from, range.to),
-    health: await repo.health(range.from, range.to),
+    cgm: ds.cgmInRange,
+    health: ds.health,
     range: range,
     now: DateTime.now(),
     dailyTempC: await WeatherHistoryStore.loadDaily(),
-    annotations: await repo.annotations(range.from, range.to),
+    annotations: ds.annotations,
   );
 });
 
 /// Menstrual-cycle glucose comparison (follicular vs luteal) for the range. Only computed
 /// for profiles with a menstrual cycle.
-final cycleReportProvider = FutureProvider<CycleReport>((ref) async {
+final cycleReportProvider =
+    FutureProvider.autoDispose<CycleReport>((ref) async {
   final range = ref.watch(reportRangeProvider);
   final now = DateTime.now();
   if (!ref.watch(userProfileProvider).hasMenstrualCycle) {
     return const CycleReportBuilder().build(
         cgm: [], health: [], range: range, now: now);
   }
-  final repo = ref.watch(historyRepositoryProvider);
+  final ds = await ref.watch(reportDatasetProvider(range).future);
   return const CycleReportBuilder().build(
-    cgm: await repo.cgm(range.from, range.to),
-    health: await repo.health(range.from, range.to),
+    cgm: ds.cgmInRange,
+    health: ds.health,
     range: range,
     now: now,
   );
 });
 
 /// Model-performance report: forecast accuracy, Clarke zones, interval calibration.
-final modelReportProvider = FutureProvider<ModelReport>((ref) async {
+final modelReportProvider =
+    FutureProvider.autoDispose<ModelReport>((ref) async {
   final range = ref.watch(reportRangeProvider);
   final repo = ref.watch(historyRepositoryProvider);
   final now = DateTime.now();
@@ -815,13 +836,14 @@ final modelReportProvider = FutureProvider<ModelReport>((ref) async {
 });
 
 /// Events journal: a merged, newest-first timeline of confirmed events for the range.
-final eventsJournalProvider = FutureProvider<List<JournalEntry>>((ref) async {
+final eventsJournalProvider =
+    FutureProvider.autoDispose<List<JournalEntry>>((ref) async {
   final range = ref.watch(reportRangeProvider);
-  final repo = ref.watch(historyRepositoryProvider);
+  final ds = await ref.watch(reportDatasetProvider(range).future);
   final glucose = await ref.watch(glucoseReportProvider.future);
   return const EventsJournalBuilder().build(
     range: range,
-    annotations: await repo.annotations(range.from, range.to),
+    annotations: ds.annotations,
     pumpEvents: await PumpEventLog.load(),
     deviceChanges: ref.read(deviceStateProvider).changes,
     lowEpisodes: glucose.report.lowEpisodes,
