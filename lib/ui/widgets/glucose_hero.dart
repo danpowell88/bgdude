@@ -63,28 +63,71 @@ class GlucoseHero extends StatelessWidget {
       ],
     );
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          // The day's trend, drawn faintly across the whole card behind the number.
-          if (dayTrend.length >= 2)
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _DayTrendPainter(
-                  values: dayTrend,
-                  color: color,
+    // TASK-150: the primary safety readout must be readable under TalkBack —
+    // the glyphs alone announce as raw symbols or nothing.
+    return Semantics(
+      label: semanticLabelFor(
+          mgdl: value, trend: trend, unit: unit, staleness: staleness),
+      container: true,
+      // The number/arrow/unit texts are decorative once the composed label reads.
+      excludeSemantics: true,
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            // The day's trend, drawn faintly across the whole card behind the number.
+            if (dayTrend.length >= 2)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _DayTrendPainter(
+                    values: dayTrend,
+                    color: color,
+                  ),
                 ),
               ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              child: content,
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-            child: content,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+  /// The screen-reader sentence: "<value> <unit>, <trend words>, <range status>"
+  /// (plus staleness when present). Public so tests can pin it.
+  static String semanticLabelFor({
+    required double? mgdl,
+    required GlucoseTrend trend,
+    required GlucoseUnit unit,
+    String? staleness,
+  }) {
+    if (mgdl == null) return 'No glucose reading';
+    final range = mgdl < GlucoseThresholds.low
+        ? 'low'
+        : mgdl > GlucoseThresholds.high
+            ? 'high'
+            : 'in range';
+    final parts = [
+      '${Mgdl(mgdl).display(unit)} ${unit.label}',
+      _trendWords(trend),
+      range,
+      if (staleness != null) staleness,
+    ];
+    return parts.join(', ');
+  }
+
+  static String _trendWords(GlucoseTrend t) => switch (t) {
+        GlucoseTrend.doubleUp => 'rising fast',
+        GlucoseTrend.singleUp => 'rising',
+        GlucoseTrend.fortyFiveUp => 'rising slowly',
+        GlucoseTrend.flat => 'steady',
+        GlucoseTrend.fortyFiveDown => 'falling slowly',
+        GlucoseTrend.singleDown => 'falling',
+        GlucoseTrend.doubleDown => 'falling fast',
+        GlucoseTrend.unknown => 'trend unknown',
+      };
 
   String? _staleness() {
     if (time == null) return null;

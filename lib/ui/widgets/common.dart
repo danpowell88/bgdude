@@ -29,17 +29,25 @@ class StatTile extends StatelessWidget {
   final String suffix;
   final StatVariant variant;
 
+  /// Screen-reader sentence for the tile (TASK-150).
+  String get _semanticLabel =>
+      '$label: $value${suffix.isEmpty ? '' : ' $suffix'}';
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
 
     if (variant == StatVariant.metric) {
       return Expanded(
-        child: Column(
-          children: [
-            Text(value, style: t.titleLarge),
-            Text(label, style: t.labelSmall),
-          ],
+        child: Semantics(
+          label: _semanticLabel,
+          excludeSemantics: true,
+          child: Column(
+            children: [
+              Text(value, style: t.titleLarge),
+              Text(label, style: t.labelSmall),
+            ],
+          ),
         ),
       );
     }
@@ -67,12 +75,17 @@ class StatTile extends StatelessWidget {
       ],
     );
 
+    final labelled = Semantics(
+      label: _semanticLabel,
+      excludeSemantics: true,
+      child: column,
+    );
     if (isCard) {
       return Card(
-        child: Padding(padding: const EdgeInsets.all(16), child: column),
+        child: Padding(padding: const EdgeInsets.all(16), child: labelled),
       );
     }
-    return Expanded(child: column);
+    return Expanded(child: labelled);
   }
 }
 

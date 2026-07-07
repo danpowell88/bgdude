@@ -46,4 +46,41 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('100'), findsOneWidget);
   });
+
+  group('screen-reader semantics (TASK-150)', () {
+    test('the composed label reads value, unit, trend words and range', () {
+      expect(
+        GlucoseHero.semanticLabelFor(
+            mgdl: 120, trend: GlucoseTrend.flat, unit: GlucoseUnit.mgdl),
+        '120 mg/dL, steady, in range',
+      );
+      expect(
+        GlucoseHero.semanticLabelFor(
+            mgdl: 60, trend: GlucoseTrend.doubleDown, unit: GlucoseUnit.mgdl),
+        '60 mg/dL, falling fast, low',
+      );
+      expect(
+        GlucoseHero.semanticLabelFor(
+            mgdl: null, trend: GlucoseTrend.unknown, unit: GlucoseUnit.mmol),
+        'No glucose reading',
+      );
+    });
+
+    testWidgets('the hero exposes a non-empty semantic label', (tester) async {
+      await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(
+          body: GlucoseHero(
+            mgdl: 120,
+            trend: GlucoseTrend.flat,
+            unit: GlucoseUnit.mgdl,
+          ),
+        ),
+      ));
+      final semantics =
+          tester.getSemantics(find.byType(GlucoseHero));
+      expect(semantics.label, isNotEmpty);
+      expect(semantics.label, contains('120 mg/dL'));
+      expect(semantics.label, contains('steady'));
+    });
+  });
 }
