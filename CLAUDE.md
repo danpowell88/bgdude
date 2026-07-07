@@ -126,8 +126,16 @@ green, and **it must never be left red**. `flutter analyze` + `flutter test` pas
    this succeeding. If you changed dependencies (esp. removing/adding codegen packages
    like drift/build_runner), this is the step most likely to break CI — run it.
 3. `flutter analyze` — clean.
-4. `flutter test test/` — green (this is the scope CI uses; the `integration_test/` suite
-   needs an emulator and is separate).
+4. `flutter test --coverage test/` — green (this is the scope CI uses; the
+   `integration_test/` suite needs an emulator and is separate).
+   **Line coverage must not drop.** After the run, compute the percentage the way CI
+   does — sum `LH:`/`LF:` over `coverage/lcov.info`, excluding `lib/data/database.g.dart`
+   — and confirm it is at or above the floor in `ci.yml` (floor 60%; actual ~65% on
+   2026-07-08). Coverage is a **ratchet, per ticket**: any new testable code ships with
+   its tests in the *same* change, so the number never regresses; if your change lowers
+   it, add tests until it recovers before committing; if it raises the sustained level,
+   bump the `ci.yml` floor so the gain is locked in. (UI-only screens are covered by the
+   `integration_test/` suite, not unit tests — don't chase their unit-coverage lines.)
 5. `flutter build apk --debug` — **required**: this catches Android/Gradle/manifest
    breakage that analyze and unit tests miss. Do not skip it.
 6. When native Kotlin changed: `cd android && ./gradlew :app:testDebugUnitTest`.
