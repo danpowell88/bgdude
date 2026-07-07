@@ -120,8 +120,29 @@ class PumpCommHandler(
     }
 
     fun stop() {
-        bluetoothHandler?.stop()
+        stopBluetooth()
         emitState(ConnectionStage.IDLE)
+    }
+
+    /**
+     * TASK-262: `TandemBluetoothHandler` is a process-wide singleton (`getInstance`), and its
+     * `stop()` → blessed's `BluetoothCentralManager.close()` unregisters a broadcast receiver
+     * that is registered only once, in the handler's constructor — a second `close()` (e.g.
+     * `unpair()` followed by the service's own `onDestroy`) throws `IllegalArgumentException:
+     * Receiver not registered`. Nulling [bluetoothHandler] up front makes every path here
+     * idempotent (a second call is a no-op), and `resetInstance()` drops the singleton so a
+     * later `start()` (a sticky-restart reconnect) builds a fresh handler instead of reusing
+     * one whose receiver is already unregistered and whose callbacks route to a dead listener.
+     */
+    private fun stopBluetooth() {
+        val handler = bluetoothHandler ?: return
+        bluetoothHandler = null
+        try {
+            handler.stop()
+        } catch (e: IllegalArgumentException) {
+            Log.w(TAG, "stop(): BLE handler was already torn down", e)
+        }
+        TandemBluetoothHandler.resetInstance()
     }
 
     fun requestFullStatus() {
@@ -207,7 +228,7 @@ class PumpCommHandler(
     }
 
     fun unpair() {
-        bluetoothHandler?.stop()
+        stopBluetooth()
         PumpState.resetState(context)
         PairedPump.clear(context) // TASK-178: no auto-resume after an unpair
         pendingChallenge = null

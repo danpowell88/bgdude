@@ -55,4 +55,43 @@ class PumpServiceDestroyTest {
         service.stopScan()
         assertEquals("{}", service.snapshotJson())
     }
+
+    /**
+     * TASK-262: `TandemBluetoothHandler` is a process-wide singleton, so `start()` followed by
+     * two `stop()`s (e.g. a UI-triggered `stopScan()` and then the service's own `onDestroy`)
+     * used to double-close blessed's `BluetoothCentralManager` — the second `close()`
+     * unregisters an already-unregistered broadcast receiver and throws
+     * `IllegalArgumentException`. Both calls here must be no-ops the second time, not crash.
+     */
+    @Test
+    fun `stopScan called twice after a real start does not throw`() {
+        val controller = Robolectric.buildService(PumpService::class.java).create()
+        val service = controller.get()
+
+        service.startScan(null)
+        service.stopScan()
+        service.stopScan() // must not throw IllegalArgumentException: Receiver not registered
+    }
+
+    @Test
+    fun `unpair followed by service onDestroy does not throw`() {
+        val controller = Robolectric.buildService(PumpService::class.java).create()
+        val service = controller.get()
+
+        service.startScan(null)
+        service.unpair()
+        controller.destroy() // onDestroy's own stop() must not double-close the BLE central
+    }
+
+    @Test
+    fun `onDestroy still reaches Garmin shutdown and super onDestroy after a double stop`() {
+        val controller = Robolectric.buildService(PumpService::class.java).create()
+        val service = controller.get()
+
+        service.startScan(null)
+        service.stopScan() // first close
+        // onDestroy's commHandler.stop() would be a second close on the unfixed code path;
+        // the service must still finish tearing down (no crash propagates out of onDestroy).
+        controller.destroy()
+    }
 }

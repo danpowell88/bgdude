@@ -112,9 +112,21 @@ class PumpService : Service(), PumpCommHandler.Listener {
      * doesn't go through.
      */
     override fun onDestroy() {
-        commHandler?.stop()
-        commHandler = null
-        GarminIntegration.shutdown()
+        // TASK-262: commHandler.stop() is now internally idempotent, but this is defence in
+        // depth — an unpair()/stopScan() double-teardown or an unexpected pumpx2/blessed throw
+        // must still let the Garmin shutdown and super.onDestroy() below run.
+        try {
+            commHandler?.stop()
+        } catch (e: Exception) {
+            Log.w(TAG, "commHandler.stop() threw during onDestroy", e)
+        } finally {
+            commHandler = null
+        }
+        try {
+            GarminIntegration.shutdown()
+        } catch (e: Exception) {
+            Log.w(TAG, "GarminIntegration.shutdown() threw during onDestroy", e)
+        }
         super.onDestroy()
     }
 
