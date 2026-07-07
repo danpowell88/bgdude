@@ -115,6 +115,15 @@ class DayHistoryController extends StateNotifier<DayData> {
     final sample = snapshot.toCgmSample();
     if (sample == null) return;
 
+    // TASK-179: roll the window once local midnight has passed since the last
+    // reading — without this, "today" quietly becomes "since app launch" over a
+    // multi-day run. reload() re-anchors the rolling 24 h window and refreshes
+    // boluses/carbs/basal from the repository.
+    final lastSeen = state.cgm.isNotEmpty ? state.cgm.last.time : state.end;
+    final rolled = DateTime(sample.time.year, sample.time.month, sample.time.day)
+        .isAfter(DateTime(lastSeen.year, lastSeen.month, lastSeen.day));
+    if (rolled) await reload();
+
     // Dedup by timestamp.
     if (state.cgm.isNotEmpty && state.cgm.last.time == sample.time) return;
 
@@ -161,9 +170,17 @@ class DayHistoryController extends StateNotifier<DayData> {
     final basal =
         const BasalReconstructor().reconstruct(_basalObs, until: sample.time);
 
-    final cgm = [...state.cgm, sample];
+    // TASK-179: trim to the rolling 24 h window (mirrors the _basalObs cap) so a
+    // multi-day session can't grow the list — and the metrics — without bound.
+    // The persisted repository keeps the full history.
+    final windowStart = sample.time.subtract(const Duration(hours: 24));
+    final cgm = [
+      for (final s in state.cgm)
+        if (!s.time.isBefore(windowStart)) s,
+      sample,
+    ];
     state = DayData(
-      start: state.start,
+      start: windowStart,
       end: sample.time,
       cgm: cgm,
       boluses: state.boluses,

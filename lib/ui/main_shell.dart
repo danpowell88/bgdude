@@ -23,14 +23,31 @@ class MainShell extends ConsumerStatefulWidget {
   ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends ConsumerState<MainShell> {
+class _MainShellState extends ConsumerState<MainShell>
+    with WidgetsBindingObserver {
   int _index = 0;
 
   static const _titles = ['Today', 'Predict', 'Insights', 'Meals'];
 
   @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    // TASK-179: the day window only rolls on ingest; after hours in the
+    // background (overnight, doze) re-anchor it as soon as the app resumes.
+    if (lifecycle == AppLifecycleState.resumed) {
+      ref.read(dayHistoryControllerProvider.notifier).reload();
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Run background jobs once the first frame is up (meal-outcome loop, prediction
     // reconciliation, forecaster retraining).
     WidgetsBinding.instance.addPostFrameCallback((_) {
