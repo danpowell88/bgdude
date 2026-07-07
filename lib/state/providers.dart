@@ -471,12 +471,18 @@ final dbOpenDiagnosisProvider = Provider<DbOpenDiagnosis?>((ref) => null);
 /// export of whatever tables are still readable. Null otherwise. Overridden in `main()`.
 final dbOpenSalvageDbProvider = Provider<AppDatabase?>((ref) => null);
 
+/// The clock demo-mode data generation reads (TASK-220). Defaults to the wall clock;
+/// integration tests override this to a fixed value so the simulated feed/history
+/// (and therefore any on-device displayed-value assertion) don't vary by run time.
+final demoClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
 /// The active pump data source — real native bridge, or the simulator in dev mode.
 /// Recreated when [devModeProvider] flips so switching modes takes effect live.
 final pumpClientProvider = Provider<PumpSource>((ref) {
   final devMode = ref.watch(devModeProvider);
-  final PumpSource client =
-      devMode ? SimulatedPumpClient() : PumpClient();
+  final PumpSource client = devMode
+      ? SimulatedPumpClient(clock: ref.watch(demoClockProvider))
+      : PumpClient();
   client.start();
   ref.onDispose(client.dispose);
   return client;
@@ -1256,7 +1262,7 @@ final persistentHistoryRepositoryProvider =
 /// only in demo mode so every range-based report/insight has data. Never persisted.
 final demoHistoryRepositoryProvider = Provider<HistoryRepository>((ref) {
   final repo = InMemoryHistoryRepository();
-  final bundle = DemoHistory.build(now: DateTime.now());
+  final bundle = DemoHistory.build(now: ref.watch(demoClockProvider)());
   repo.seed(
     cgm: bundle.cgm,
     boluses: bundle.boluses,

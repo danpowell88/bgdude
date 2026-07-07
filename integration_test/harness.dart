@@ -6,18 +6,39 @@
 library;
 
 import 'package:bgdude/app.dart';
+import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/insights/notifications.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// TASK-220: call from each integration test file's `setUp()`. The process-global
+/// `KvStore` in-memory fallback otherwise leaks app flags/prefs across `testWidgets`
+/// blocks that share the same file/process.
+void setUpDemoHarness() => KvStore.useMemory();
+
+/// TASK-220: call from each integration test file's `tearDown()`. Explicitly
+/// unmounts the app widget tree (rather than relying on the *next* test's
+/// `pumpWidget` to do it) so a dev-mode `SimulatedPumpClient`'s 30 s re-emit ticker
+/// is reliably cancelled before the next test starts.
+Future<void> tearDownDemoHarness(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pumpAndSettle();
+}
+
 /// Boot the app (demo mode by default) and let the first simulated reading land.
+///
+/// [fixedNow] threads a fixed clock into the demo seam (TASK-220): both the
+/// simulated pump feed and the seeded demo history repository read it instead of
+/// the wall clock, so a displayed-value assertion is stable across runs and
+/// wall-clock time-of-day. Omit it to get the old "live" behaviour.
 Future<void> pumpDemoApp(
   WidgetTester tester, {
   bool onboarded = true,
   bool devMode = true,
   String? dbOpenError,
+  DateTime? fixedNow,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -26,6 +47,8 @@ Future<void> pumpDemoApp(
         onboardingDoneProvider.overrideWith((ref) => onboarded),
         devModeProvider.overrideWith((ref) => devMode),
         dbOpenErrorProvider.overrideWithValue(dbOpenError),
+        if (fixedNow != null)
+          demoClockProvider.overrideWithValue(() => fixedNow),
       ],
       child: const BgDudeApp(),
     ),
