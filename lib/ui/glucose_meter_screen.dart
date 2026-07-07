@@ -22,30 +22,49 @@ class _GlucoseMeterScreenState extends ConsumerState<GlucoseMeterScreen> {
   final _found = <MeterDevice>[];
   bool _scanning = false;
 
+  // TASK-209: `ref` throws "Cannot use ref after the widget was disposed" the moment
+  // `dispose()` runs (riverpod marks it unusable as soon as the element goes inactive,
+  // before `State.dispose()` is even called) — cache the transport in initState so
+  // dispose() never needs `ref`. Reading it in dispose() was also unconditionally
+  // throwing before `super.dispose()` could run, so cleanup silently never completed.
+  late final GlucoseMeterTransport _transport;
+
+  @override
+  void initState() {
+    super.initState();
+    _transport = ref.read(glucoseMeterTransportProvider);
+  }
+
   @override
   void dispose() {
     _scanSub?.cancel();
-    ref.read(glucoseMeterTransportProvider).stopScan();
+    _transport.stopScan();
     super.dispose();
   }
 
   Future<void> _startScan() async {
-    final transport = ref.read(glucoseMeterTransportProvider);
+    final transport = _transport;
     final messenger = ScaffoldMessenger.of(context);
     if (!await transport.isAvailable()) {
-      messenger.showSnackBar(const SnackBar(
-          content: Text('Turn on Bluetooth to scan for your meter.')));
+      if (mounted) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text('Turn on Bluetooth to scan for your meter.')));
+      }
       return;
     }
+    if (!mounted) return;
     setState(() {
       _found.clear();
       _scanning = true;
     });
     await _scanSub?.cancel();
     _scanSub = transport.scan().listen(
-      (d) => setState(() {
-        if (!_found.any((e) => e.id == d.id)) _found.add(d);
-      }),
+      (d) {
+        if (!mounted) return;
+        setState(() {
+          if (!_found.any((e) => e.id == d.id)) _found.add(d);
+        });
+      },
       onError: (Object e) {
         if (mounted) setState(() => _scanning = false);
       },
