@@ -1,10 +1,11 @@
 ---
 id: TASK-16
 title: 'Model-download security (reject HTTP, host allowlist, SHA-256, no token echo)'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-06 14:48'
+updated_date: '2026-07-07 10:49'
 labels:
   - roadmap
   - security
@@ -26,10 +27,10 @@ ordinal: 103200
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 HTTP rejected
-- [ ] #2 Token only to allowlisted hosts
+- [x] #1 HTTP rejected
+- [x] #2 Token only to allowlisted hosts
 - [ ] #3 SHA-256 verification
-- [ ] #4 URL/token never logged
+- [x] #4 URL/token never logged
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -66,5 +67,11 @@ author: Claude
 created: 2026-07-06 14:48
 ---
 detail-needed (goal triage): AC#1 (reject HTTP), AC#2 (token only to allowlisted hosts) and AC#4 (never log URL/token) are implementable on PanelModelManager.download. But AC#3 (SHA-256 verification) has two unresolved questions: (1) SOURCE OF THE EXPECTED HASH — the model URL is user-provided (Gemma is licence-gated, so there's no bundled manifest of known-good hashes); do we pin hashes for specific recommended models, require the user to paste an expected hash, or drop AC#3? (2) HOW TO VERIFY — flutter_gemma's installModel().fromNetwork(url).install() owns the download + storage internally, so there's no byte stream to hash mid-download and no documented path to the stored file to hash post-install; verifying would mean downloading ourselves and bypassing the plugin's installer. Need a decision on both before implementing.
+---
+
+author: Claude
+created: 2026-07-07 10:49
+---
+Implemented AC#1, #2, #4 (the parts that don't need the still-unresolved hash-source/verification-path decision from the prior comment): PanelModelManager.validateHttps rejects non-HTTPS URLs before any network call; tokenForHost withholds the access token unless the URL's host is in a small allowlist (huggingface.co, kaggle.com, www.kaggle.com) matching what the UI's own copy names; the HTTPS rejection message is deliberately generic (never embeds the URL) so it can't leak into crash-reporting breadcrumbs, and there was no existing url/token logging to begin with. download() now calls both checks before invoking FlutterGemma.installModel(...).fromNetwork(...). Tests: test/panel_model_manager_test.dart (HTTPS accept/reject incl. unparseable URLs, message-never-echoes-URL, token sent to each allowlisted host, withheld from others and when null). AC#3 (SHA-256 verification) remains detail-needed per the prior comment — flutter_gemma's installModel().fromNetwork().install() owns the download+storage internally with no exposed byte stream or documented stored-file path to hash, and there's no bundled manifest of known-good hashes since Gemma URLs are user-provided/licence-gated. Left In Progress rather than Done since one AC is still open. Pipeline green: analyze clean, 758 tests passed, apk debug build succeeds.
 ---
 <!-- COMMENTS:END -->

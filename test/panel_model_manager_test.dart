@@ -25,4 +25,60 @@ void main() {
       expect(PanelModelManager.fileNameFor(''), 'panel-llm.task');
     });
   });
+
+  group('PanelModelManager.validateHttps (TASK-16 AC#1)', () {
+    test('accepts an HTTPS URL', () {
+      expect(
+          PanelModelManager.validateHttps('https://huggingface.co/x.task').scheme,
+          'https');
+    });
+
+    test('rejects HTTP', () {
+      expect(() => PanelModelManager.validateHttps('http://huggingface.co/x.task'),
+          throwsArgumentError);
+    });
+
+    test('rejects an unparseable URL', () {
+      expect(() => PanelModelManager.validateHttps('not a url'),
+          throwsArgumentError);
+    });
+
+    test('the rejection message never echoes the URL (AC#4)', () {
+      const secretUrl = 'http://evil.example/token-leak-check';
+      try {
+        PanelModelManager.validateHttps(secretUrl);
+        fail('expected ArgumentError');
+      } on ArgumentError catch (e) {
+        expect(e.toString(), isNot(contains('evil.example')));
+      }
+    });
+  });
+
+  group('PanelModelManager.tokenForHost (TASK-16 AC#2)', () {
+    test('sends the token to Hugging Face', () {
+      final uri = Uri.parse('https://huggingface.co/x.task');
+      expect(PanelModelManager.tokenForHost(uri, 'secret'), 'secret');
+    });
+
+    test('sends the token to Kaggle (bare and www)', () {
+      expect(
+          PanelModelManager.tokenForHost(
+              Uri.parse('https://kaggle.com/x.task'), 'secret'),
+          'secret');
+      expect(
+          PanelModelManager.tokenForHost(
+              Uri.parse('https://www.kaggle.com/x.task'), 'secret'),
+          'secret');
+    });
+
+    test('withholds the token from a non-allowlisted host', () {
+      final uri = Uri.parse('https://evil.example/x.task');
+      expect(PanelModelManager.tokenForHost(uri, 'secret'), isNull);
+    });
+
+    test('withholds a null token regardless of host', () {
+      final uri = Uri.parse('https://huggingface.co/x.task');
+      expect(PanelModelManager.tokenForHost(uri, null), isNull);
+    });
+  });
 }
