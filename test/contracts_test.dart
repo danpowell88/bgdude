@@ -17,12 +17,15 @@ void main() {
       final snap = PumpSnapshot.fromJson(
           jsonDecode(golden) as Map<String, dynamic>);
 
+      expect(snap.schemaVersion, PumpSnapshot.expectedSchemaVersion);
       expect(snap.time.millisecondsSinceEpoch, 1751800000000);
       expect(snap.batteryPercent, 75);
       expect(snap.isCharging, false);
       expect(snap.reservoirUnits, 120.5);
       expect(snap.iobUnits, 1.5);
       expect(snap.basalUnitsPerHour, 0.8);
+      expect(snap.maxBolusUnits, 15.0);
+      expect(snap.maxBasalUnitsPerHour, 3.0);
       expect(snap.controlIqActive, true);
       expect(snap.closedLoopEnabled, true);
       expect(snap.controlIqMode, ControlIqMode.sleep);

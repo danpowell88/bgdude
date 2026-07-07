@@ -67,6 +67,17 @@ class MutableSnapshot {
     var activeAlerts: MutableList<String> = mutableListOf()
     var activeAlarms: MutableList<String> = mutableListOf()
 
+    companion object {
+        /**
+         * TASK-120: wire-format version of this JSON. Evolution policy is
+         * ADDITIVE-ONLY: new fields may be appended (old Dart parsers ignore
+         * them); renaming, retyping or removing a field requires bumping this
+         * AND updating the golden fixture + both contract tests
+         * (SnapshotContractTest.kt / contracts_test.dart).
+         */
+        const val SCHEMA_VERSION = 1
+    }
+
     /** JSON string streamed over the EventChannel (compact, hand-rolled to avoid deps).
      *  Non-null fields are collected and comma-joined so the output is always valid JSON
      *  regardless of which fields are set. */
@@ -80,6 +91,7 @@ class MutableSnapshot {
             }
             parts.add("\"$name\":$v")
         }
+        field("schemaVersion", SCHEMA_VERSION)
         field("timestampEpochMs", System.currentTimeMillis())
         field("model", model.name)
         field("batteryPercent", batteryPercent)

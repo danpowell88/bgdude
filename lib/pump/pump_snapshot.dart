@@ -94,6 +94,7 @@ class PumpConnection {
 
 class PumpSnapshot {
   const PumpSnapshot({
+    this.schemaVersion,
     required this.time,
     this.batteryPercent,
     this.isCharging,
@@ -115,6 +116,10 @@ class PumpSnapshot {
     this.activeAlerts = const [],
     this.activeAlarms = const [],
   });
+
+  /// Wire-format version the native side emitted (null on locally-constructed
+  /// snapshots and pre-versioned payloads). See [expectedSchemaVersion].
+  final int? schemaVersion;
 
   final DateTime time;
   final int? batteryPercent;
@@ -165,7 +170,15 @@ class PumpSnapshot {
   static DateTime? _time(num? epochMs) =>
       epochMs == null ? null : DateTime.fromMillisecondsSinceEpoch(epochMs.toInt());
 
+  /// TASK-120: wire-format version expected from the Kotlin side
+  /// (MutableSnapshot.SCHEMA_VERSION). Evolution policy is ADDITIVE-ONLY: new
+  /// fields may be appended (this parser ignores unknowns); renaming, retyping
+  /// or removing a field requires bumping the version and updating the golden
+  /// fixture + both contract tests.
+  static const int expectedSchemaVersion = 1;
+
   static PumpSnapshot fromJson(Map<String, dynamic> j) => PumpSnapshot(
+        schemaVersion: (j['schemaVersion'] as num?)?.toInt(),
         time: _time(j['timestampEpochMs'] as num?) ?? DateTime.now(),
         batteryPercent: (j['batteryPercent'] as num?)?.toInt(),
         isCharging: j['isCharging'] as bool?,

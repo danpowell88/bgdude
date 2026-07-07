@@ -15,9 +15,10 @@ import org.junit.Test
 class SnapshotContractTest {
 
     private val golden =
-        """{"timestampEpochMs":1751800000000,"model":"UNKNOWN","batteryPercent":75,""" +
-            """"isCharging":false,"reservoirUnits":120.5,"iobUnits":1.5,""" +
-            """"basalUnitsPerHour":0.8,"controlIqActive":true,"closedLoopEnabled":true,""" +
+        """{"schemaVersion":1,"timestampEpochMs":1751800000000,"model":"UNKNOWN",""" +
+            """"batteryPercent":75,"isCharging":false,"reservoirUnits":120.5,""" +
+            """"iobUnits":1.5,"basalUnitsPerHour":0.8,"maxBolusUnits":15.0,""" +
+            """"maxBasalUnitsPerHour":3.0,"controlIqActive":true,"closedLoopEnabled":true,""" +
             """"controlIqMode":"SLEEP","cgmMgdl":120,"cgmTrend":"flat",""" +
             """"cgmTimestampEpochMs":1751799900000,"lastBolusUnits":5.5,""" +
             """"lastBolusTimestampEpochMs":1751799000000,"apiVersion":"2.1",""" +
@@ -31,6 +32,8 @@ class SnapshotContractTest {
         reservoirUnits = 120.5
         iobUnits = 1.5
         basalUnitsPerHour = 0.8
+        maxBolusUnits = 15.0
+        maxBasalUnitsPerHour = 3.0
         controlIqActive = true
         closedLoopEnabled = true
         controlIqMode = "SLEEP"
