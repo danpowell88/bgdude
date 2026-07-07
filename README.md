@@ -1,6 +1,7 @@
 # bgdude
 
 ![CI](https://github.com/danpowell88/bgdude/actions/workflows/ci.yml/badge.svg)
+![Emulator tests](https://github.com/danpowell88/bgdude/actions/workflows/emulator-tests.yml/badge.svg)
 
 A **personal** Tandem t:slim X2 companion app for Android. It syncs pump + CGM data
 read-only over BLE (via [pumpx2](https://github.com/jwoglom/pumpX2)), pulls contextual

@@ -6,15 +6,20 @@
 #
 #   tools/run_functional_integration_tests.sh                 # all files below
 #   tools/run_functional_integration_tests.sh --device emulator-5554
+#   tools/run_functional_integration_tests.sh --skip-network   # TASK-219: for CI —
+#     nutrition_ocr_accuracy_test.dart needs real network + ~5 extra minutes, which
+#     a nightly automated job shouldn't depend on; local runs default to including it.
 #
 # Requires: a running Android device/emulator and `flutter` on PATH.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 DEVICE=""
+SKIP_NETWORK=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --device) DEVICE="$2"; shift 2;;
+    --skip-network) SKIP_NETWORK="1"; shift;;
     *) echo "unknown arg: $1"; exit 1;;
   esac
 done
@@ -38,6 +43,10 @@ FILES=(
 )
 
 for f in "${FILES[@]}"; do
+  if [[ -n "$SKIP_NETWORK" && "$f" == *nutrition_ocr_accuracy_test.dart ]]; then
+    echo "--- skipping $f (--skip-network) ---"
+    continue
+  fi
   echo "--- flutter test $f -d $DEVICE ---"
   flutter test "$f" -d "$DEVICE"
 done

@@ -5,12 +5,14 @@
 #
 #   powershell -File tools/run_functional_integration_tests.ps1
 #   powershell -File tools/run_functional_integration_tests.ps1 -Device emulator-5554
+#   powershell -File tools/run_functional_integration_tests.ps1 -SkipNetwork
 #
 # Requires: a running Android device/emulator, Flutter on PATH (or edit $FlutterBin).
 
 param(
   [string]$Device = "",
-  [string]$FlutterBin = "C:\flutter\flutter\bin"
+  [string]$FlutterBin = "C:\flutter\flutter\bin",
+  [switch]$SkipNetwork
 )
 
 $ErrorActionPreference = "Stop"
@@ -37,6 +39,10 @@ $Files = @(
 )
 
 foreach ($f in $Files) {
+  if ($SkipNetwork -and $f -like "*nutrition_ocr_accuracy_test.dart") {
+    Write-Host "--- skipping $f (-SkipNetwork) ---"
+    continue
+  }
   Write-Host "--- flutter test $f -d $Device ---"
   flutter test $f -d $Device
 }

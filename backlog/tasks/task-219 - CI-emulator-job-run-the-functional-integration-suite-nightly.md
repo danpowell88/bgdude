@@ -1,9 +1,11 @@
 ---
 id: TASK-219
 title: 'CI emulator job: run the functional integration suite nightly'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-06 22:12'
+updated_date: '2026-07-07 23:48'
 labels:
   - testing
   - infra
@@ -54,6 +56,16 @@ ordinal: 113300
 - Where: `.github/workflows/`, `tools/`
 - Related: TASK-159 (resolves its integration policy), TASK-218 (reuse Gradle cache), TASK-98
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 23:48
+---
+Started: add a nightly + workflow_dispatch GitHub Actions job using reactivecircus/android-emulator-runner@v2 (KVM on ubuntu runners, so genuinely runnable in CI unlike this session's local emulator-connectivity gap), reusing tools/run_functional_integration_tests.sh's file list and TASK-218's Gradle caching. Will dispatch it manually via gh workflow run and watch the result.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
