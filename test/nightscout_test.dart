@@ -270,6 +270,34 @@ void main() {
       await client.uploadEntries(
           [CgmSample(time: t, mgdl: 120, trend: GlucoseTrend.flat)]);
     });
+
+    // TASK-214(3): uploadDeviceStatus/testConnection go through the same http.Client
+    // seam but weren't individually pinned -- only uploadEntries was.
+    test('uploadDeviceStatus with a throwing client is swallowed', () async {
+      final client = NightscoutClient(
+        const NightscoutConfig(
+            baseUrl: 'https://ns.example.com',
+            apiSecret: 'secret1234567',
+            enabled: true),
+        httpClient: _ThrowingClient(),
+      );
+
+      await expectLater(
+          client.uploadDeviceStatus(iob: 1.2, at: t), completes);
+    });
+
+    test('testConnection with a throwing client returns false, does not throw',
+        () async {
+      final client = NightscoutClient(
+        const NightscoutConfig(
+            baseUrl: 'https://ns.example.com',
+            apiSecret: 'secret1234567',
+            enabled: true),
+        httpClient: _ThrowingClient(),
+      );
+
+      expect(await client.testConnection(), isFalse);
+    });
   });
 
   group('config json round-trip', () {

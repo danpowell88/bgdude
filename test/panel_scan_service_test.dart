@@ -30,6 +30,14 @@ class _FakeLlm implements PanelLlmExtractor {
   }
 }
 
+class _ThrowingLlm implements PanelLlmExtractor {
+  @override
+  bool get available => true;
+  @override
+  Future<PanelNutrition?> extract(String ocrText) async =>
+      throw Exception('model inference failed');
+}
+
 const _goodAu = '''
 Per Serve   Per 100g
 Carbohydrate 19.2g 64.0g
@@ -100,5 +108,21 @@ void main() {
     final r = await svc.scan('x.jpg');
     expect(r.hasResult, isFalse);
     expect(r.ocrText, isEmpty);
+  });
+
+  // TASK-214(1): the LLM extract() throw path (scan()'s catch falling back to
+  // whatever the deterministic parser managed) had no test.
+  test('a throwing LLM falls back to the parser result, usedLlm false, no throw',
+      () async {
+    // Carbs-only parse (confidence 0.6) is below the LLM threshold, so the LLM runs
+    // and throws -- the parser's own (thinner) result must still come back.
+    const carbsOnly = 'Carbohydrate 64.0g';
+    final svc = PanelScanService(ocr: _FakeOcr(carbsOnly), llm: _ThrowingLlm());
+
+    final r = await svc.scan('x.jpg');
+
+    expect(r.usedLlm, isFalse);
+    expect(r.panel, isNotNull);
+    expect(r.panel!.carbs.perServe, closeTo(64.0, 0.01));
   });
 }
