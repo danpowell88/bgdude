@@ -524,21 +524,23 @@ final sleepInsightProvider = FutureProvider<SleepInsight>((ref) async {
 /// The "Your Day" narrative: a plain-language summary + suggestions built from the
 /// current state, today's metrics, the sensitivity context, and the forecast.
 final dailyNarrativeProvider = Provider<DailyNarrative>((ref) {
-  final snap = ref.watch(pumpSnapshotProvider).valueOrNull;
+  // TASK-122: watch only the snapshot fields this narrative reads, so battery/IOB
+  // ticks on the same reading don't rebuild it.
+  final cgmMgdl = ref
+      .watch(pumpSnapshotProvider.select((s) => s.valueOrNull?.cgmMgdl));
+  final cgmTrend = ref
+      .watch(pumpSnapshotProvider.select((s) => s.valueOrNull?.cgmTrend));
   final metrics = ref.watch(todayMetricsProvider);
   final sensitivity = ref.watch(effectiveSensitivityProvider);
   final unit = ref.watch(glucoseUnitProvider);
-  final state = ref.watch(livePredictionStateProvider);
   final illness = ref.watch(illnessModeProvider);
   final events = ref.watch(dayEventsProvider);
 
   double? low, high;
-  if (state != null) {
-    final f = ref.watch(forecasterProvider).forecastState(state);
-    if (f.isNotEmpty) {
-      low = f.map((e) => e.mgdl).reduce((a, b) => a < b ? a : b);
-      high = f.map((e) => e.mgdl).reduce((a, b) => a > b ? a : b);
-    }
+  final f = ref.watch(horizonForecastsProvider);
+  if (f.isNotEmpty) {
+    low = f.map((e) => e.mgdl).reduce((a, b) => a < b ? a : b);
+    high = f.map((e) => e.mgdl).reduce((a, b) => a > b ? a : b);
   }
   final notable = events
       .where((e) =>
@@ -549,8 +551,8 @@ final dailyNarrativeProvider = Provider<DailyNarrative>((ref) {
 
   return const DailyNarrativeGenerator().generate(DailyNarrativeInput(
     now: DateTime.now(),
-    currentMgdl: snap?.cgmMgdl?.toDouble(),
-    trend: snap?.cgmTrend ?? GlucoseTrend.unknown,
+    currentMgdl: cgmMgdl?.toDouble(),
+    trend: cgmTrend ?? GlucoseTrend.unknown,
     todayMetrics: metrics,
     sensitivity: sensitivity,
     predictedLowMgdl: low,
@@ -563,6 +565,24 @@ final dailyNarrativeProvider = Provider<DailyNarrative>((ref) {
 
 /// Shared engines.
 final predictorProvider = Provider<GlucosePredictor>((ref) => GlucosePredictor());
+
+/// The horizon forecast for the CURRENT prediction state, computed ONCE per
+/// snapshot and shared (TASK-122) — the narrative, rescue advice, alerts and the
+/// Predictions screen all read this instead of each re-running the forecaster.
+final horizonForecastsProvider = Provider<List<HorizonForecast>>((ref) {
+  final state = ref.watch(livePredictionStateProvider);
+  if (state == null) return const [];
+  return ref.watch(forecasterProvider).forecastState(state);
+});
+
+/// [horizonForecastsProvider] with the uncertainty band calibrated against recent
+/// per-horizon error — the display/alert variant.
+final calibratedForecastsProvider = Provider<List<HorizonForecast>>((ref) {
+  return const UncertaintyCalibrator().calibrateAll(
+    ref.watch(horizonForecastsProvider),
+    ref.watch(recentHorizonErrorProvider),
+  );
+});
 
 /// The active learned residual model (deterministic-only until trained). The controller
 /// loads the persisted model and runs the train → gate → promote cycle.
@@ -623,7 +643,7 @@ final rescueCarbAdviceProvider = Provider<RescueCarbAdvice?>((ref) {
   // insulin still pulling glucose down and over-treat the low.
   final iob =
       const IobCalculator().fromBoluses(state.boluses, state.now).units;
-  final forecasts = ref.watch(forecasterProvider).forecastState(state);
+  final forecasts = ref.watch(horizonForecastsProvider); // shared (TASK-122)
   final nadir = forecasts.isEmpty
       ? null
       : forecasts.map((f) => f.mgdl).reduce((a, b) => a < b ? a : b);
@@ -1184,18 +1204,41 @@ final dayEventsProvider = Provider<List<DayEvent>>((ref) {
 /// silently skip the history and context overlays.
 final livePredictionStateProvider = Provider<PredictionState?>((ref) {
   final day = ref.watch(dayDataProvider);
-  final snapshot = ref.watch(pumpSnapshotProvider).valueOrNull;
-  final latest = day.latest ?? snapshot?.toCgmSample();
+  // TASK-122: select only the snapshot fields this state uses (a record, so
+  // structural equality gates the rebuild) — battery/reservoir ticks on the same
+  // reading no longer recompute the prediction state.
+  final snap = ref.watch(pumpSnapshotProvider.select((s) {
+    final v = s.valueOrNull;
+    return v == null
+        ? null
+        : (
+            cgmMgdl: v.cgmMgdl,
+            cgmTime: v.cgmTime,
+            cgmTrend: v.cgmTrend,
+            maxBolusUnits: v.maxBolusUnits,
+            closedLoopEnabled: v.closedLoopEnabled,
+            controlIqActive: v.controlIqActive,
+            controlIqMode: v.controlIqMode,
+          );
+  }));
+  final snapSample = snap == null || snap.cgmMgdl == null || snap.cgmTime == null
+      ? null
+      : CgmSample(
+          time: snap.cgmTime!,
+          mgdl: snap.cgmMgdl!.toDouble(),
+          trend: snap.cgmTrend ?? GlucoseTrend.unknown,
+        );
+  final latest = day.latest ?? snapSample;
   if (latest == null) return null;
 
   final roc = day.recentRocMgdlPerMin() ??
-      (snapshot?.cgmTrend ?? GlucoseTrend.flat).mgdlPerMin;
+      (snap?.cgmTrend ?? GlucoseTrend.flat).mgdlPerMin;
 
   final healthSampler = ref.watch(forecastHealthSamplerProvider);
 
   // TASK-72: never let the advisor suggest more than the pump's own configured max bolus.
   var settings = day.settings;
-  final pumpMaxBolus = snapshot?.maxBolusUnits;
+  final pumpMaxBolus = snap?.maxBolusUnits;
   if (pumpMaxBolus != null && pumpMaxBolus < settings.maxBolusUnits) {
     settings = settings.copyWith(maxBolusUnits: pumpMaxBolus);
   }
@@ -1211,17 +1254,23 @@ final livePredictionStateProvider = Provider<PredictionState?>((ref) {
     context: ref.watch(effectiveSensitivityProvider),
     healthFeatures:
         healthSampler?.featuresAt(latest.time) ?? HealthFeatureSampler.zeros,
-    controlIq: _controlIqStateFrom(snapshot),
+    controlIq: _controlIqStateFrom(
+        enabled: snap?.closedLoopEnabled,
+        active: snap?.controlIqActive,
+        mode: snap?.controlIqMode),
   );
 });
 
 /// Map the live pump snapshot's Control-IQ status onto the closed-loop model the
 /// predictor/advisor use. Off unless the loop is actually enabled.
-ControlIqState _controlIqStateFrom(PumpSnapshot? snap) {
-  if (snap == null) return ControlIqState.off;
-  final on = snap.closedLoopEnabled ?? snap.controlIqActive ?? false;
+ControlIqState _controlIqStateFrom({
+  required bool? enabled,
+  required bool? active,
+  required ControlIqMode? mode,
+}) {
+  final on = enabled ?? active ?? false;
   if (!on) return ControlIqState.off;
-  return switch (snap.controlIqMode) {
+  return switch (mode) {
     ControlIqMode.sleep => ControlIqState.sleep,
     ControlIqMode.exercise => ControlIqState.exercise,
     // Standard, or unknown-but-active firmware → treat as Standard.
@@ -1523,10 +1572,7 @@ class AlertService {
     var illnessActive = false;
     var activity = 0.0;
     if (state != null) {
-      forecasts = const UncertaintyCalibrator().calibrateAll(
-        _ref.read(forecasterProvider).forecastState(state),
-        _ref.read(recentHorizonErrorProvider),
-      );
+      forecasts = _ref.read(calibratedForecastsProvider); // shared (TASK-122)
       day = _ref.read(dayDataProvider);
       profile = _ref.read(userProfileProvider);
       const alcohol = AlcoholWatch();

@@ -4,9 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../analytics/predictor.dart';
 import '../analytics/therapy_settings.dart';
 import '../core/units.dart';
-import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
-import '../ml/uncertainty_calibrator.dart';
 import '../state/providers.dart';
 import 'widgets/on_board_forecast_chart.dart';
 import 'widgets/prediction_chart.dart';
@@ -41,10 +39,7 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
       );
     }
 
-    final forecasts = const UncertaintyCalibrator().calibrateAll(
-      ref.watch(forecasterProvider).forecastState(state),
-      ref.watch(recentHorizonErrorProvider),
-    );
+    final forecasts = ref.watch(calibratedForecastsProvider); // shared (TASK-122)
     final predictor = ref.watch(predictorProvider);
     final ctx = ref.watch(effectiveSensitivityProvider);
     final whatIf = (_carbs > 0 || _units > 0)
