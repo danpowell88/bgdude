@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:bgdude/insights/notification_prefs.dart';
+import 'package:bgdude/insights/notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -146,6 +147,18 @@ void main() {
       ]) {
         expect(c.bypassesQuietHours, isFalse, reason: c.name);
       }
+    });
+
+    test('scheduled/summary notification ids are distinct (TASK-145)', () {
+      // Colliding ids make Android silently replace one notification with the
+      // other (the weekly digest used to clobber the weekly-report nudge).
+      final ids = {
+        NotificationService.dailySummaryId,
+        NotificationService.morningSummaryId,
+        NotificationService.weeklyReportNudgeId,
+        NotificationService.weeklyDigestId,
+      };
+      expect(ids, hasLength(4));
     });
 
     test('every category exposes a label and description', () {

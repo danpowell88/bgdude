@@ -85,13 +85,22 @@ class NotificationService {
 
   Future<void> showMorningSummary(String headline, String body) =>
       show(NotificationCategory.morningSummary, headline, body,
-          id: 1001, bigText: true);
+          id: morningSummaryId, bigText: true);
 
-  /// The weekly digest (§4-4.5) — shares the morning-summary opt-in/quiet settings but a
-  /// distinct id so it doesn't clobber the daily summary.
+  /// The weekly digest (§4-4.5). TASK-145: routed through the reportDigest
+  /// category (so ITS prefs toggle gates it, as the settings screen claims) with
+  /// id 1003 — 1002 collided with the scheduled weekly-report nudge and the two
+  /// silently replaced each other in the tray.
   Future<void> showWeeklyDigest(String headline, String body) =>
-      show(NotificationCategory.morningSummary, headline, body,
-          id: 1002, bigText: true);
+      show(NotificationCategory.reportDigest, headline, body,
+          id: weeklyDigestId, bigText: true);
+
+  /// Fixed notification ids for the scheduled/summary surfaces — must stay
+  /// distinct or Android replaces one with the other (TASK-145).
+  static const int dailySummaryId = 1000;
+  static const int morningSummaryId = 1001;
+  static const int weeklyReportNudgeId = 1002;
+  static const int weeklyDigestId = 1003;
 
   /// Next wall-clock [hour]:[minute] in [now]'s location, strictly ahead of [now].
   /// Pure and location-aware (TASK-175); constructing tomorrow via `day + 1` (not
@@ -123,7 +132,7 @@ class NotificationService {
   Future<void> scheduleDailySummary({int hour = 7, int minute = 0}) async {
     final scheduled = nextDailyInstant(tz.TZDateTime.now(tz.local), hour, minute);
     await _plugin.zonedSchedule(
-      1000,
+      dailySummaryId,
       'Preparing your morning summary…',
       '',
       scheduled,
@@ -142,7 +151,7 @@ class NotificationService {
     final scheduled =
         nextWeeklyInstant(tz.TZDateTime.now(tz.local), weekday, hour);
     await _plugin.zonedSchedule(
-      1002,
+      weeklyReportNudgeId,
       'Your weekly report is ready',
       'Tap to review your glucose, insulin and trends from the past week.',
       scheduled,
