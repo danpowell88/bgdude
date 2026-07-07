@@ -1,10 +1,11 @@
 ---
 id: TASK-160
 title: Reference-pin clinical formulas with independent literals
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 09:13'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 03:00'
 labels:
   - code-health
   - testing
@@ -31,12 +32,12 @@ ordinal: 102600
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 LBGI/HBGI pinned to model-independent anchors: f=0 at BG 112.5 mg/dL; steady BG 50 → LBGI ≈ 22.5 (hand-computed)
-- [ ] #2 GRI test uses hand-calculated literals, not re-derived weights
-- [ ] #3 IOB curve pinned for DIA=360/peak=75: `iobFraction(75)≈0.694`, `iobFraction(180)≈0.208`, activity max at exactly t=peak
-- [ ] #4 Clarke boundary pins at ref 290/291, 240, 130 and A-edge pairs (100,120)→A vs (100,121)→not A
-- [ ] #5 CV pinned on an alternating 100/200 trace (CV 33.3%) and variabilityHigh at 35.9 vs 36.0
-- [ ] #6 `_percentile` documented as type-7 and pinned ([10,20,30,40] p25=17.5) with a minimum-count guard or flag for sparse AGP buckets
+- [x] #1 LBGI/HBGI pinned to model-independent anchors: f=0 at BG 112.5 mg/dL; steady BG 50 → LBGI ≈ 22.5 (hand-computed)
+- [x] #2 GRI test uses hand-calculated literals, not re-derived weights
+- [x] #3 IOB curve pinned for DIA=360/peak=75: `iobFraction(75)≈0.694`, `iobFraction(180)≈0.208`, activity max at exactly t=peak
+- [x] #4 Clarke boundary pins at ref 290/291, 240, 130 and A-edge pairs (100,120)→A vs (100,121)→not A
+- [x] #5 CV pinned on an alternating 100/200 trace (CV 33.3%) and variabilityHigh at 35.9 vs 36.0
+- [x] #6 `_percentile` documented as type-7 and pinned ([10,20,30,40] p25=17.5) with a minimum-count guard or flag for sparse AGP buckets
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -55,13 +56,35 @@ ordinal: 102600
 - Where: `test/risk_metrics_test.dart`, `test/metrics_test.dart`, `lib/analytics/insulin_math.dart`, `lib/ml/error_grid.dart`, `lib/analytics/metrics.dart`
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 02:54
+---
+Started: hand-computed, model-independent anchors per formula (LBGI/HBGI, GRI, IOB curve, Clarke boundaries, CV boundary, percentile type-7 doc + sparse guard), derivations recorded in test comments.
+---
+
+author: Claude
+created: 2026-07-07 03:00
+---
+Done (commit b417e3d). AC#6 chose the flag (AgpBucket.sparse) over a hard guard so existing AGP rendering is unchanged; consumers can de-emphasise sparse buckets when the UI work happens.
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+All six formula families now have hand-computed, model-independent anchors with derivations in the test comments: (1) LBGI steady-50 = 22.5004, f(112.5)=0; (2) GRI mixed-trace literals 59.0 (metrics from raw CGM) and 44.2 (band-constructed); (3) IOB DIA360/peak75: iob(75)=0.6943, iob(180)=0.2082, activity max exactly at t=75; (4) Clarke pins: 290/400=C vs 291/401=B, 240/100=D vs 239/100=B, lower-C straddled at ref 170 (7/5 not exactly representable in binary FP), A-edges (100,120)/(100,121) and (100,80)/(100,79); (5) CV alternating 100/200 = 33.33% and variabilityHigh flipping 35.9->36.0; (6) _percentile documented as Hyndman-Fan type-7 with the [10,20,30,40] p25=17.5 pin and a new AgpBucket.sparse flag (count<5) for thin buckets. Verified: analyze clean, 689 tests green, debug APK builds. Commit b417e3d.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

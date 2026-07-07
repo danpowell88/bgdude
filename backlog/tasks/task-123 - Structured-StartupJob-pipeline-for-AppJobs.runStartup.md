@@ -1,10 +1,11 @@
 ---
 id: TASK-123
 title: Structured StartupJob pipeline for AppJobs.runStartup
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-06 08:36'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 03:46'
 labels:
   - code-health
   - architecture
@@ -57,6 +58,12 @@ author: Claude
 created: 2026-07-06 09:20
 ---
 Accuracy-reliability sweep 2026-07-06: concrete instance for this ticket — training isolate failures are currently swallowed (Isolate.run in providers.dart:1876-1879 inside catch(_)); the structured pipeline must record per-job outcomes and surface a training-failed diagnostic, with a bounded retry considered.
+---
+
+author: Claude
+created: 2026-07-07 03:46
+---
+Started: StartupJob (name+run) list runner with per-job logging, StartupReport aggregated into the dev log; failing-job unit test.
 ---
 <!-- COMMENTS:END -->
 

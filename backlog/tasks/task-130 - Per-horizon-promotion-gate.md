@@ -1,10 +1,11 @@
 ---
 id: TASK-130
 title: Per-horizon promotion gate
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 08:38'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 02:53'
 labels:
   - code-health
   - ml
@@ -24,9 +25,9 @@ ordinal: 102500
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Each horizon is evaluated and gated independently (promote per-horizon or all-pass; the choice is documented)
-- [ ] #2 `minSampleCount` is applied per horizon
-- [ ] #3 Test: a candidate that wins the short horizon but regresses the long one is not promoted (or only the winning horizon is)
+- [x] #1 Each horizon is evaluated and gated independently (promote per-horizon or all-pass; the choice is documented)
+- [x] #2 `minSampleCount` is applied per horizon
+- [x] #3 Test: a candidate that wins the short horizon but regresses the long one is not promoted (or only the winning horizon is)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -48,13 +49,35 @@ ordinal: 102500
 - Related: TASK-19, TASK-55 (fold into its fold work if concurrent)
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 02:48
+---
+Started: evaluate/gate each horizon independently with minSampleCount applied per horizon; promotion decision = all-pass (a candidate that regresses ANY horizon does not ship — documented choice: one model blob is stored, so shipping per-horizon mixes would need per-horizon persistence; all-pass is the conservative gate). Mixed-outcome test added.
+---
+
+author: Claude
+created: 2026-07-07 02:53
+---
+Done (commit 5e51b68).
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+ForecasterTrainingResult now carries baselineByHorizon/candidateByHorizon/incumbentByHorizon (pooled evals kept for display). PromotionGate.decideAcrossHorizons implements the documented ALL-PASS choice: one blob is persisted so there is no per-horizon promotion; a candidate that fails the gate or does not strictly improve RMSE at ANY trained horizon does not ship; untrained horizons keep baseline behaviour and are not gated. minSampleCount applies per horizon (96). Controller rewired; aggregate reason strings kept stable. Tests: mixed-outcome (short win + long regression -> not promoted), per-horizon sample floor, untrained-horizon pass-through, tie-never-ships, no-trained-horizons. Verified: analyze clean, 680 tests green, debug APK builds. Commit 5e51b68.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

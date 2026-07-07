@@ -1,10 +1,11 @@
 ---
 id: TASK-169
 title: Boundary tests at the clinical thresholds
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 09:16'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 03:11'
 labels:
   - code-health
   - testing
@@ -25,8 +26,8 @@ ordinal: 103000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Parameterized boundary cases at 69.9/70.0/70.1, 53.9/54.0, 179.9/180.0, 249.9/250.0 for TIR bands, low-guard, stubborn-high and urgent-low detectors
-- [ ] #2 Each boundary test documents the intended inclusivity (which side the exact threshold belongs to)
+- [x] #1 Parameterized boundary cases at 69.9/70.0/70.1, 53.9/54.0, 179.9/180.0, 249.9/250.0 for TIR bands, low-guard, stubborn-high and urgent-low detectors
+- [x] #2 Each boundary test documents the intended inclusivity (which side the exact threshold belongs to)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -47,13 +48,35 @@ ordinal: 103000
 - Related: TASK-103 (constants), companion to the TASK-102 boundary-test gap
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 03:08
+---
+Started: parameterized boundary cases at 69.9/70/70.1, 53.9/54, 179.9/180, 249.9/250 across TIR bands, the advisor low-guard, stubborn-high and urgent-low (AlertMonitor) with inclusivity documented per case.
+---
+
+author: Claude
+created: 2026-07-07 03:11
+---
+Done (commit bb16d9d). Note: AlertMonitor's default urgent line is 55 (its own constructor default); the boundary suite pins the 54 clinical line by passing urgentLowMgdl: 54 explicitly, matching the AC.
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+New test/clinical_boundaries_test.dart: parameterized probes at 53.9/54.0, 69.9/70.0/70.1, 179.9/180.0/180.1, 249.9/250.0/250.1 across the TIR bands (MetricsCalculator), the advisor low-guard (P0-6), the stubborn-high run threshold, and the urgent-low forecast line (AlertMonitor with the 54 mg/dL urgent line the AC names). Inclusivity documented in the library header and each test name: in-range is [70,180] inclusive, lows are strict <, highs are strict >, the low-guard blocks strictly below 70, urgent requires strictly below the line. 9 tests. Verified: analyze clean, 701 tests green, debug APK builds. Commit bb16d9d.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

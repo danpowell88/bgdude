@@ -1,10 +1,11 @@
 ---
 id: TASK-165
 title: Extract and regression-pin the JPAKE pairing-scheme decision
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 09:14'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 03:04'
 labels:
   - code-health
   - native
@@ -26,9 +27,9 @@ ordinal: 102700
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The scheme→challenge decision is extracted as a pure function `(scheme, code) → PairRequest` with no BLE deps
-- [ ] #2 JVM tests pin: JPAKE/6-digit → no central challenge AND `pair()` still invoked; long-code scheme → 16-char challenge
-- [ ] #3 `gradlew :app:testDebugUnitTest` green
+- [x] #1 The scheme→challenge decision is extracted as a pure function `(scheme, code) → PairRequest` with no BLE deps
+- [x] #2 JVM tests pin: JPAKE/6-digit → no central challenge AND `pair()` still invoked; long-code scheme → 16-char challenge
+- [x] #3 `gradlew :app:testDebugUnitTest` green
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -49,13 +50,35 @@ ordinal: 102700
 - Related: TASK-114 (same file — coordinate), TASK-33
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 03:01
+---
+Started: extract the scheme->challenge pairing decision into a pure JVM-testable PairingDecision function used by submitPairingCode/onWaitingForPairingCode; pin JPAKE (null challenge, pair still invoked) and 16-char paths.
+---
+
+author: Claude
+created: 2026-07-07 03:04
+---
+Done (commit 903f66e).
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+New pure PairingDecision object (no BLE deps): pairRequest(pendingChallenge, code) -> PairRequest (challenge passes through, invokePair always true so a regression to challenge-gating is loud), initialScheme(derivedSecret) -> SHORT_6CHAR on fresh pairs / null (keep state) on re-auth, promptType(scheme) for the dialog. PumpCommHandler.start/submitPairingCode/onWaitingForPairingCode now consult it. 5 JVM pins: JPAKE null-challenge-still-pairs, 16-char challenge pass-through (FakeChallenge subclass verified via javap), fresh-pair default, re-auth keep, prompt mapping. Verified: gradlew green, APK builds, analyze clean (Dart suite untouched). Commit 903f66e.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

@@ -1,10 +1,11 @@
 ---
 id: TASK-179
 title: Cap DayHistoryController CGM list; roll the day at local midnight
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 09:18'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 03:08'
 labels:
   - code-health
   - data-integrity
@@ -24,10 +25,10 @@ ordinal: 102800
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `state.cgm` trimmed to the rolling window in `ingestSnapshot`
-- [ ] #2 Day window rolls at local midnight
-- [ ] #3 `reload()` runs on app resume
-- [ ] #4 Unit tests cover the cap and the rollover
+- [x] #1 `state.cgm` trimmed to the rolling window in `ingestSnapshot`
+- [x] #2 Day window rolls at local midnight
+- [x] #3 `reload()` runs on app resume
+- [x] #4 Unit tests cover the cap and the rollover
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -47,13 +48,35 @@ ordinal: 102800
 - Where: `lib/state/day_history_controller.dart`
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 03:04
+---
+Started: trim state.cgm to the rolling window in ingestSnapshot; roll the window past local midnight via a check-on-ingest; reload() on app resume via a lifecycle observer; cap + rollover unit tests.
+---
+
+author: Claude
+created: 2026-07-07 03:08
+---
+Done (commit 07a5b87).
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+ingestSnapshot now trims state.cgm to the rolling 24 h window (and anchors state.start to it) — mirrors the _basalObs cap; the persisted repository keeps full history. Crossing local midnight since the last reading triggers reload() (check-on-ingest), re-anchoring the window and refreshing boluses/carbs/basal. MainShell gained a WidgetsBindingObserver that calls reload() on AppLifecycleState.resumed. 3 tests: 26-hour ingest run stays <= 289 samples/24 h, midnight roll re-anchors with both readings intact, same-day gap doesn't roll. Verified: analyze clean, 692 tests green, debug APK builds. Commit 07a5b87.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

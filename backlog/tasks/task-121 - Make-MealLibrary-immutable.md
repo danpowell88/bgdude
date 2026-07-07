@@ -1,10 +1,11 @@
 ---
 id: TASK-121
 title: Make MealLibrary immutable
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 08:36'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 03:41'
 labels:
   - code-health
   - meals
@@ -24,10 +25,10 @@ ordinal: 105900
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `add`/`update`/`learnFromOutcome` return new instances (copied map)
-- [ ] #2 The notifier assigns `state = state.withMeal(...)` style
-- [ ] #3 No in-place mutation remains
-- [ ] #4 Existing meal tests are green
+- [x] #1 `add`/`update`/`learnFromOutcome` return new instances (copied map)
+- [x] #2 The notifier assigns `state = state.withMeal(...)` style
+- [x] #3 No in-place mutation remains
+- [x] #4 Existing meal tests are green
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -48,13 +49,35 @@ ordinal: 105900
 - Related: TASK-54 (`learnFromOutcome` lives here)
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 03:35
+---
+Started: MealLibrary mutators return new instances (copied map); notifier assigns returned state; sweep in-place mutation.
+---
+
+author: Claude
+created: 2026-07-07 03:41
+---
+Done. @useResult was tried but meta isn't a direct dependency and flutter/foundation doesn't re-export it — dropped as non-essential.
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+MealLibrary is immutable: private map-carrying ctor, add/update return new instances ({...map, id: meal}), learnFromOutcome returns ({library, meal}) — no in-place mutation remains (the only mutators were these three). MealLibraryNotifier assigns state = state.add(...) / .learnFromOutcome(...).library. Meal tests adapted to the value API with identical assertions; all 702 tests green, analyze clean, APK builds. Commit follows in message.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

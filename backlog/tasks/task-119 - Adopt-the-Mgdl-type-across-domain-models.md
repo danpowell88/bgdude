@@ -1,10 +1,10 @@
 ---
 id: TASK-119
 title: Adopt the Mgdl type across domain models
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-06 08:35'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 03:30'
 labels:
   - code-health
   - architecture
@@ -24,10 +24,10 @@ ordinal: 105700
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Core value fields are typed `Mgdl`, staged by layer (start: `CgmSample`, `AlertThresholds`, forecast points, `StoredPrediction`)
-- [ ] #2 DB columns stay `double`; conversion happens only in repository mapping
-- [ ] #3 Arithmetic helpers (`+`, `-`, `compareTo`) exist on `Mgdl`
-- [ ] #4 No behaviour change (tests green)
+- [x] #1 Core value fields are typed `Mgdl`, staged by layer (start: `CgmSample`, `AlertThresholds`, forecast points, `StoredPrediction`)
+- [x] #2 DB columns stay `double`; conversion happens only in repository mapping
+- [x] #3 Arithmetic helpers (`+`, `-`, `compareTo`) exist on `Mgdl`
+- [x] #4 No behaviour change (tests green)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -49,13 +49,29 @@ ordinal: 105700
 - Related: do after TASK-104 (landed); distinct from TASK-103
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 03:30
+---
+Done (commit f7f69a4). The 'implements double' choice trades operator-level distinctness for adoption pragmatism: full wrapper semantics would have required unwrapping at every arithmetic site (139+).
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Mgdl is now an extension type 'implements double': +/-/</compareTo work natively (AC#3, pinned in units_test), Mgdl flows into double slots, but a raw double cannot enter an Mgdl slot without an explicit wrap — the one-way unit safety. Staged fields typed per AC#1: CgmSample.mgdl, AlertThresholds + AlertBand lines (const-able via const Mgdl defaults), HorizonForecast mgdl/lower/upper, StoredPrediction predicted/lower/upper/actual. Constructors keep accepting plain doubles and wrap once (readings arrive raw), so 139 call sites needed almost no churn; DB columns stay double with conversion only in repository mapping (AC#2). No behaviour change: all 701 tests pass unchanged (AC#4). Verified: analyze clean, APK builds. Commit f7f69a4.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->

@@ -1,10 +1,11 @@
 ---
 id: TASK-189
 title: Guard the pumpx2 BLE callback bodies so one throw cannot kill the service
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 12:55'
-updated_date: '2026-07-06 12:57'
+updated_date: '2026-07-07 02:34'
 labels:
   - code-health
   - native
@@ -26,9 +27,9 @@ ordinal: 101600
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Every externally-invoked callback body is wrapped (or dispatched through a shared safeCallback helper) that catches Throwable, logs with the callback name, and returns
-- [ ] #2 onPumpCriticalError handling itself cannot throw
-- [ ] #3 JVM test: a callback that throws does not propagate; a subsequent good callback still processes
+- [x] #1 Every externally-invoked callback body is wrapped (or dispatched through a shared safeCallback helper) that catches Throwable, logs with the callback name, and returns
+- [x] #2 onPumpCriticalError handling itself cannot throw
+- [x] #3 JVM test: a callback that throws does not propagate; a subsequent good callback still processes
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -49,13 +50,35 @@ ordinal: 101600
 - Related: TASK-114 (extraction — coordinate), TASK-11 (done, looper marshalling)
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 02:28
+---
+Started: add a safe(name){...} helper in PumpCommHandler catching Throwable with the callback name logged; wrap every externally-invoked callback body; JVM test proves a throwing callback doesn't propagate and later callbacks still process.
+---
+
+author: Claude
+created: 2026-07-07 02:34
+---
+Done (commit fda553d).
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+New SafeCallbacks object (injectable logSink because android.util.Log is a throwing stub in JVM tests): run(name){} and run(name, fallback){} catch Throwable, log the callback name, and never propagate — the report path itself is guarded so even a broken sink can't throw (AC#2 covers onPumpCriticalError). All 11 TandemPump overrides in PumpCommHandler now route through safe(...): the Boolean callbacks fail OPEN (onPumpDiscovered -> attempt connection, onPumpDisconnected -> keep auto-reconnect). onReceiveMessage's old partial try became the same guard with the message class name in the log. 5 JVM tests incl. throw-then-recover and the broken-sink case. Verified: gradlew :app:testDebugUnitTest green, debug APK builds, analyze clean, 666 Dart tests green. Commit fda553d.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
-- [ ] #7 Integration test added or extended when a screen/flow changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->
