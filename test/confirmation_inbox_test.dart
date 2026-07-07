@@ -50,6 +50,44 @@ void main() {
       expect(meal.first.suggestedKind, AnnotationKind.missedCarbs);
     });
 
+    test(
+        'TASK-171: the same rise with a recent MANUAL bolus is announced — no '
+        'unannounced-meal confirmation', () {
+      final items = svc.scan(
+        now: noon.add(const Duration(hours: 1)),
+        cgm: _risingMeal(noon),
+        boluses: [BolusEvent(time: noon, units: 4.5)],
+        basal: const [],
+        carbs: const [],
+        settings: settings,
+        annotations: const [],
+        decidedIds: const {},
+      );
+      expect(items.where((i) => i.type == ConfirmationType.unannouncedMeal),
+          isEmpty,
+          reason: 'a pump-bolused meal must not nag as unannounced');
+    });
+
+    test(
+        'TASK-171: an AUTOMATIC microbolus near the rise does NOT count as an '
+        'announcement', () {
+      final items = svc.scan(
+        now: noon.add(const Duration(hours: 1)),
+        cgm: _risingMeal(noon),
+        boluses: [
+          BolusEvent(time: noon, units: 0.4, isAutomatic: true),
+        ],
+        basal: const [],
+        carbs: const [],
+        settings: settings,
+        annotations: const [],
+        decidedIds: const {},
+      );
+      expect(items.where((i) => i.type == ConfirmationType.unannouncedMeal),
+          isNotEmpty,
+          reason: 'Control-IQ reacting to the rise is not the user announcing it');
+    });
+
     test('skips a meal that was announced (carbs logged nearby)', () {
       final items = svc.scan(
         now: noon.add(const Duration(hours: 1)),

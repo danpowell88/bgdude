@@ -51,8 +51,16 @@ class ConfirmationService {
     );
     for (final m in meals) {
       if (m.confidence < minConfidence) continue;
+      // Announced = a carb entry OR a bolus near the rise (TASK-171): a normal
+      // pump-bolused meal whose carbs were never logged in-app must not nag as
+      // an unannounced meal — that false positive drives alarm fatigue and bad
+      // training annotations. (Auto microboluses don't count as announcements.)
       final announced = carbs.any((c) =>
-          (c.time.difference(m.time)).abs() <= carbLogWindow);
+              (c.time.difference(m.time)).abs() <= carbLogWindow) ||
+          boluses.any((b) =>
+              !b.isAutomatic &&
+              b.units > 0 &&
+              (b.time.difference(m.time)).abs() <= carbLogWindow);
       if (announced) continue;
       if (_coveredBy(annotations, m.time,
           const {AnnotationKind.missedCarbs, AnnotationKind.extraCarbs})) {

@@ -27,6 +27,24 @@ void main() {
       expect(out.first.confidence, greaterThan(0));
     });
 
+    test(
+        'TASK-171: a rise with a recent bolus still yields a candidate at the '
+        'detector level — coverage is the CONSUMER side job', () {
+      // Physiology: insulin only pulls glucose down, so rising THROUGH insulin
+      // is even stronger evidence of carbs. The raw detector must keep firing;
+      // announcement/coverage suppression lives in ConfirmationService (see
+      // confirmation_inbox_test) and MissedBolusDetector.
+      final start = DateTime(2026, 7, 4, 13);
+      final cgm = trace(start, [100, 110, 120, 130, 140, 150]);
+      final out = MealDetector().detect(
+        cgm: cgm,
+        boluses: [BolusEvent(time: start, units: 4)],
+        basal: const [],
+        settings: settings,
+      );
+      expect(out, isNotEmpty);
+    });
+
     test('a flat trace produces no candidate', () {
       final cgm = trace(DateTime(2026, 7, 4, 13), [120, 120, 121, 120, 119, 120]);
       final out = MealDetector().detect(
