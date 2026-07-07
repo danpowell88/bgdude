@@ -36,7 +36,10 @@ class ReportExporter {
       ['cgm_active_pct', (m.activeFraction * 100).toStringAsFixed(1)],
       ['sufficient_for_agp', '${m.sufficient}'],
       ['mean_glucose', g(m.meanMgdl)],
-      ['gmi_eA1c_pct', m.gmi.toStringAsFixed(1)],
+      // TASK-164: GMI (Bergenstal) and eA1c (ADAG eAG-derived) are different
+      // quantities and this codebase only computes GMI — the header must say so,
+      // not imply an eA1c a clinician could mistake for a lab A1c equivalent.
+      ['gmi_pct', m.gmi.toStringAsFixed(1)],
       ['cv_pct', m.cvPercent.toStringAsFixed(1)],
       ['cv_high_ge36', '${m.variabilityHigh}'],
       ['gri', m.gri.toStringAsFixed(1)],
@@ -109,7 +112,7 @@ class ReportExporter {
         pw.Header(level: 1, child: pw.Text('Key metrics')),
         _kv(<List<String>>[
           ['Mean glucose', g(m.meanMgdl)],
-          ['GMI (est. A1c)', '${m.gmi.toStringAsFixed(1)}%'],
+          ['GMI (glucose management indicator)', '${m.gmi.toStringAsFixed(1)}%'],
           [
             'Glucose variability (CV)',
             '${m.cvPercent.toStringAsFixed(1)}%'

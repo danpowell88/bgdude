@@ -121,7 +121,7 @@ void main() {
     test('summary CSV carries key fields', () {
       final csv = exporter.summaryCsv(report, GlucoseUnit.mmol);
       expect(csv, contains('tir_70_180_pct'));
-      expect(csv, contains('gmi_eA1c_pct'));
+      expect(csv, contains('gmi_pct')); // TASK-164: not gmi_eA1c_pct -- no eA1c is computed
       expect(csv.split('\n').first, 'field,value');
     });
 
