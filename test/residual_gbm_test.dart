@@ -110,11 +110,13 @@ void main() {
       // 120 was never trained.
       final c120 = model.correct(features: const [1.0, 1.0], horizonMinutes: 120);
       expect(c120.residual, 0.0);
-      expect(c120.sigma, closeTo(9 + 120 * 0.30, 1e-9));
+      // TASK-136: the untrained-horizon path delegates to the single shared
+      // fallbackSigma, not its own copy of the widening formula.
+      expect(c120.sigma, closeTo(fallbackSigma(120), 1e-9));
 
       final c30 = model.correct(features: const [1.0, 1.0], horizonMinutes: 30);
       expect(c30.residual, 0.0);
-      expect(c30.sigma, closeTo(9 + 30 * 0.30, 1e-9));
+      expect(c30.sigma, closeTo(fallbackSigma(30), 1e-9));
       // Sigma widens with horizon for untrained horizons.
       expect(c120.sigma, greaterThan(c30.sigma));
     });

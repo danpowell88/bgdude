@@ -1,10 +1,11 @@
 ---
 id: TASK-136
 title: Single source for the widening-band fallback sigma
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 08:39'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-07 15:22'
 labels:
   - code-health
   - ml
@@ -25,9 +26,9 @@ ordinal: 110300
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 One shared function/const lives next to `kForecastZ90`
-- [ ] #2 All three sites call it
-- [ ] #3 A test pins the value
+- [x] #1 One shared function/const lives next to `kForecastZ90`
+- [x] #2 All three sites call it
+- [x] #3 A test pins the value
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -47,12 +48,28 @@ ordinal: 110300
 - Where: `lib/ml/forecaster.dart`, `lib/ml/residual_gbm_model.dart`
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 15:19
+---
+Started: deduplicating the 9 + horizonMinutes*0.30 fallback sigma into a shared function next to kForecastZ90.
+---
+
+author: Claude
+created: 2026-07-07 15:22
+---
+Added fallbackSigma(horizonMinutes) next to kForecastZ90 in lib/ml/forecaster.dart; replaced all three copies (NoResidualModel.correct, and both the untrained-horizon + missing-per-horizon-sigma branches in ResidualGbmModel.correct) with calls to it. New test/forecaster_test.dart pins the exact curve at 4 horizons and asserts NoResidualModel delegates to it; tightened residual_gbm_test.dart's existing untrained-horizon test to assert against fallbackSigma(...) directly instead of a hand-duplicated literal, so a future edit to the formula can't silently desync the test from the implementation either. flutter analyze clean, flutter test test/ green (945 tests), flutter build apk --debug succeeded. No user-visible/native/screen changes -- DoD #5/#6/#7 n/a.
+---
+<!-- COMMENTS:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
 - [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
 - [ ] #6 doc/user-guide.html updated when the change is user-visible
 - [ ] #7 Integration test added or extended when a screen/flow changed

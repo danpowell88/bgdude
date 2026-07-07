@@ -43,11 +43,10 @@ class ResidualGbmModel implements ResidualModel {
   }) {
     final model = _models[horizonMinutes];
     if (model == null || !model.isTrained) {
-      // Same widening default as NoResidualModel: ~0.5 mmol at 30 min → ~2.5 at 120.
-      return (residual: 0.0, sigma: 9 + horizonMinutes * 0.30);
+      return (residual: 0.0, sigma: fallbackSigma(horizonMinutes));
     }
     final residual = model.predict(features);
-    final sigma = _sigmas[horizonMinutes] ?? (9 + horizonMinutes * 0.30);
+    final sigma = _sigmas[horizonMinutes] ?? fallbackSigma(horizonMinutes);
     return (residual: residual, sigma: sigma);
   }
 

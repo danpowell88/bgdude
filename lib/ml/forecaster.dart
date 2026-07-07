@@ -17,6 +17,14 @@ import '../core/units.dart';
 /// z-value for the ~90% prediction interval (±1.64σ), shared by every band builder.
 const double kForecastZ90 = 1.64;
 
+/// Widening fallback 1-sigma uncertainty for when no learned residual model is
+/// available at [horizonMinutes] — deterministic-only forecasts (untrained
+/// horizons, or a missing per-horizon sigma) all use this same empirical curve
+/// (TASK-136): ~half an mmol at 30 min growing to ~2.5 mmol at 120 min. Was
+/// copy-pasted across three call sites; kept in one place next to [kForecastZ90]
+/// since both are safety-relevant band-width constants.
+double fallbackSigma(int horizonMinutes) => 9 + horizonMinutes * 0.30;
+
 /// Forecast at a single horizon.
 class HorizonForecast {
   /// Values arrive as raw doubles from the model math and are CARRIED as
@@ -67,9 +75,7 @@ class NoResidualModel implements ResidualModel {
     required List<double> features,
     required int horizonMinutes,
   }) {
-    // Empirical widening: ~ half an mmol at 30 min growing to ~2.5 mmol at 120 min.
-    final sigma = 9 + horizonMinutes * 0.30;
-    return (residual: 0.0, sigma: sigma);
+    return (residual: 0.0, sigma: fallbackSigma(horizonMinutes));
   }
 }
 
