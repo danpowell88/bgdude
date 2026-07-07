@@ -6,6 +6,7 @@ library;
 
 import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
+import '../insights/care_detectors.dart';
 import '../insights/illness_mode.dart';
 import '../ml/event_detectors.dart';
 import 'annotations.dart';
@@ -36,6 +37,7 @@ class ConfirmationService {
     required Set<String> decidedIds,
     bool Function(DateTime)? isAsleep,
     IllnessSuggestion? illness,
+    double? siteAgeHours,
   }) {
     final asleep = isAsleep ?? defaultAsleepAt;
     final out = <PendingConfirmation>[];
@@ -94,7 +96,42 @@ class ConfirmationService {
       ));
     }
 
-    // 3. Illness: the detector thinks recent data looks illness-like.
+    // 3. Site failure (TASK-149): a stubborn high on an old site — insulin not
+    // working with the infusion set past its life is the classic failed-site
+    // signature. Confirming writes an AnnotationKind.siteFailure annotation so
+    // the period is excluded from training as non-physiological.
+    final stubborn = const StubbornHighDetector().detect(
+      cgm: cgm,
+      boluses: boluses,
+      basal: basal,
+      settings: settings,
+      siteAgeHours: siteAgeHours,
+      now: now,
+    );
+    if (stubborn != null && stubborn.likelySiteIssue) {
+      // Day-stable start so re-scans dedupe to one entry per day.
+      final dayStart =
+          DateTime(stubborn.since.year, stubborn.since.month, stubborn.since.day);
+      if (!_coveredBy(annotations, stubborn.since,
+          const {AnnotationKind.siteFailure})) {
+        out.add(PendingConfirmation(
+          type: ConfirmationType.siteFailure,
+          start: dayStart,
+          end: now,
+          title: 'Infusion site failing?',
+          detail: 'High for a while with '
+              '${stubborn.iobUnits.toStringAsFixed(1)} U on board doing little, '
+              'and the site is ~${(stubborn.siteAgeHours! / 24).toStringAsFixed(1)} '
+              'days old. Confirm to tag the period as a site failure (excluded '
+              'from training).',
+          // Rule-based signal (no scored confidence): fixed, comfortably above
+          // the surfacing floor.
+          confidence: 0.7,
+        ));
+      }
+    }
+
+    // 4. Illness: the detector thinks recent data looks illness-like.
     if (illness != null && illness.suggestActivation) {
       final dayStart = DateTime(now.year, now.month, now.day);
       if (!_coveredBy(annotations, dayStart, const {AnnotationKind.illness})) {

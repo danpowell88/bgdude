@@ -195,4 +195,92 @@ void main() {
     );
     expect(a.id, b.id); // same 30-min bucket
   });
+
+  group('site failure (TASK-149)', () {
+    final noon = DateTime(2026, 7, 4, 12);
+    // Flat 250 mg/dL for 2.5 h with recent insulin on board -> stubborn high.
+    List<CgmSample> flatHigh() => [
+          for (var i = 0; i <= 30; i++)
+            CgmSample(
+                time: noon.add(Duration(minutes: 5 * i)), mgdl: 250),
+        ];
+    final now = noon.add(const Duration(minutes: 150));
+    final boluses = [
+      BolusEvent(time: now.subtract(const Duration(minutes: 30)), units: 3),
+    ];
+
+    test('a stubborn high on an old site surfaces a siteFailure confirmation',
+        () {
+      final items = svc.scan(
+        now: now,
+        cgm: flatHigh(),
+        boluses: boluses,
+        basal: const [],
+        carbs: const [],
+        settings: settings,
+        annotations: const [],
+        decidedIds: const {},
+        siteAgeHours: 60,
+      );
+      final site = items.where((i) => i.type == ConfirmationType.siteFailure);
+      expect(site, hasLength(1));
+      expect(site.first.suggestedKind, AnnotationKind.siteFailure);
+      // Day-stable id: rescanning yields the same id for dedup.
+      final again = svc.scan(
+        now: now.add(const Duration(minutes: 10)),
+        cgm: flatHigh(),
+        boluses: boluses,
+        basal: const [],
+        carbs: const [],
+        settings: settings,
+        annotations: const [],
+        decidedIds: const {},
+        siteAgeHours: 60,
+      );
+      expect(again.where((i) => i.type == ConfirmationType.siteFailure).first.id,
+          site.first.id);
+    });
+
+    test('a fresh site (or unknown age) never suggests a site failure', () {
+      for (final age in <double?>[10, null]) {
+        final items = svc.scan(
+          now: now,
+          cgm: flatHigh(),
+          boluses: boluses,
+          basal: const [],
+          carbs: const [],
+          settings: settings,
+          annotations: const [],
+          decidedIds: const {},
+          siteAgeHours: age,
+        );
+        expect(items.where((i) => i.type == ConfirmationType.siteFailure),
+            isEmpty,
+            reason: 'siteAgeHours=$age');
+      }
+    });
+
+    test('an existing siteFailure annotation suppresses the suggestion', () {
+      final items = svc.scan(
+        now: now,
+        cgm: flatHigh(),
+        boluses: boluses,
+        basal: const [],
+        carbs: const [],
+        settings: settings,
+        annotations: [
+          Annotation(
+            id: 'sf',
+            kind: AnnotationKind.siteFailure,
+            start: noon,
+            end: now,
+          ),
+        ],
+        decidedIds: const {},
+        siteAgeHours: 60,
+      );
+      expect(
+          items.where((i) => i.type == ConfirmationType.siteFailure), isEmpty);
+    });
+  });
 }

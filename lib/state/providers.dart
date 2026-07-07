@@ -912,6 +912,11 @@ final pendingConfirmationsProvider =
     annotations: await repo.annotations(from, now),
     decidedIds: decided,
     illness: ref.watch(illnessSuggestionProvider),
+    siteAgeHours: switch (
+        ref.read(deviceStateProvider).age(DeviceKind.site, now)?.inMinutes) {
+      final int m => m / 60.0,
+      null => null,
+    },
   );
 });
 
