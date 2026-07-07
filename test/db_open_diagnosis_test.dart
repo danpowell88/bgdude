@@ -109,12 +109,13 @@ void main() {
       if (await dir.exists()) await dir.delete(recursive: true);
     });
 
-    test('a wrong-key open against an intact file never results in file deletion',
-        () async {
+    test('a wrong-key open against an intact file never results in file deletion '
+        '(TASK-252: all three sidecars -- wal, shm AND journal)', () async {
       final dbFile = File(p.join(dir.path, 'bgdude_encrypted.db'));
       await dbFile.writeAsBytes([1, 2, 3, 4]); // stand-in for real encrypted bytes
       final wal = File('${dbFile.path}-wal')..writeAsBytesSync([5]);
       final shm = File('${dbFile.path}-shm')..writeAsBytesSync([6]);
+      final journal = File('${dbFile.path}-journal')..writeAsBytesSync([7]);
 
       await retireDatabaseFile(file: dbFile);
 
@@ -122,6 +123,7 @@ void main() {
       expect(await dbFile.exists(), isFalse);
       expect(await wal.exists(), isFalse);
       expect(await shm.exists(), isFalse);
+      expect(await journal.exists(), isFalse);
 
       // ...but the bytes are still on disk somewhere under a .bak-<stamp> name, not
       // deleted — this is the actual data-loss guard (AC#4).
@@ -134,6 +136,23 @@ void main() {
           survivors.any((f) => p.basename(f.path).contains('-wal.bak-')), isTrue);
       expect(
           survivors.any((f) => p.basename(f.path).contains('-shm.bak-')), isTrue);
+      expect(
+          survivors.any((f) => p.basename(f.path).contains('-journal.bak-')),
+          isTrue);
+    });
+
+    test('sidecars alone (no journal present) leave only the main file and its '
+        'existing siblings retired -- a missing sidecar is not an error', () async {
+      final dbFile = File(p.join(dir.path, 'bgdude_encrypted.db'));
+      await dbFile.writeAsBytes([9]);
+      // No -wal/-shm/-journal files at all -- a clean, checkpointed database.
+      await retireDatabaseFile(file: dbFile);
+
+      expect(await dbFile.exists(), isFalse);
+      final survivors = dir.listSync().whereType<File>().toList();
+      expect(survivors, hasLength(1));
+      expect(p.basename(survivors.single.path),
+          startsWith('bgdude_encrypted.db.bak-'));
     });
 
     test('a missing file is a no-op, not an error', () async {
