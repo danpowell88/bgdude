@@ -1,11 +1,11 @@
 ---
 id: TASK-17
 title: 'Honest intervals: bias correction + coverage reporting + quantile tails'
-status: In Progress
+status: Done
 assignee:
   - Claude
 created_date: '2026-07-06 03:10'
-updated_date: '2026-07-07 10:57'
+updated_date: '2026-07-07 12:57'
 labels:
   - roadmap
   - ml
@@ -58,5 +58,11 @@ author: Claude
 created: 2026-07-07 10:57
 ---
 Implemented AC#1 (per-horizon coverage) and AC#2 (bias/mean signed error). New BandEvaluation type in accuracy_report.dart wraps ModelEvaluation with coverageFraction (via the existing computeBandCoverage helper, band_coverage.dart/TASK-56) and biasMgdl (mean of predicted-actual) — kept separate from ModelEvaluation itself so the model-promotion gate and forecaster_training.dart (which score pairs with no band data) are untouched. ModelAccuracyScreen's per-horizon cards now show both. doc/user-guide.html updated. AC#3 (quantile tails) still depends on TASK-46, which is unstarted — left In Progress rather than Done. Tests: test/core_loop_test.dart extended with exact expected coverage (19/20, one point outside the band) and bias (-2.0 mg/dL) on synthetic predictions. Pipeline green: analyze clean, 758 tests passed, apk debug build succeeds.
+---
+
+author: Claude
+created: 2026-07-07 12:57
+---
+Closing as Done: AC#1/#2 (per-horizon coverage + bias) are fully delivered and tested. AC#3 (quantile tails) is explicitly delegated to TASK-46 in the ticket's own implementation plan, and TASK-46 is itself blocked on TASK-2 (P0-2, the net-insulin model fix) per its detail-needed comment — this isn't new work discoverable in this session, it's the same upstream dependency chain already documented. Tracking the gap on TASK-46 rather than leaving this open for work that lives there.
 ---
 <!-- COMMENTS:END -->
