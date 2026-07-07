@@ -77,11 +77,21 @@ jobs:
 
       # 9. Coverage gate (TASK-159): fail on a coverage collapse. Threshold is
       #    a floor, not a target — raise it as coverage grows (63% on 2026-07-07).
+      #    Generated files (lib/data/database.g.dart -- drift's generated
+      #    schema/query code, the one *.g.dart committed to the repo, see
+      #    SETUP.md) are excluded (TASK-274): most of its lines are
+      #    boilerplate the app never calls, and it dilutes the score without
+      #    reflecting real hand-written-code coverage.
       - name: Coverage gate
         run: |
-          read -r hit total <<< "$(awk -F: '/^LH:/{h+=$2} /^LF:/{t+=$2} END{print h, t}' coverage/lcov.info)"
+          read -r hit total <<< "$(awk -F: '
+            /^SF:/ { skip = ($0 ~ /database\.g\.dart$/) }
+            /^LH:/ && !skip { h += $2 }
+            /^LF:/ && !skip { t += $2 }
+            END { print h, t }
+          ' coverage/lcov.info)"
           pct=$(awk "BEGIN {printf \"%.1f\", 100*$hit/$total}")
-          echo "Line coverage: $pct% ($hit/$total lines)"
+          echo "Line coverage: $pct% ($hit/$total lines, excluding generated files)"
           awk "BEGIN {exit !($pct >= 60.0)}" || { echo "::error::Line coverage $pct% is below the 60% minimum"; exit 1; }
 
       # 10. Debug APK build. Pulls pumpx2/blessed from JitPack (network available).
