@@ -142,9 +142,9 @@ class ForecasterTrainer {
 
       for (final h in horizons) {
         final target = cur.time.add(Duration(minutes: h));
-        final actual = _nearest(samples, target);
+        final actual = nearestMgdl(samples, target);
         if (actual == null) continue;
-        final baseline = _valueAt(line, target);
+        final baseline = valueAt(line, target);
         final residual = actual - baseline;
         final feats = ForecastFeatures.build(
           now: cur.time,
@@ -249,28 +249,63 @@ class ForecasterTrainer {
     );
   }
 
-  static double? _nearest(List<CgmSample> samples, DateTime t) {
+  /// Lower bound (first index whose time is not before [t]) over a
+  /// time-sorted list — the TASK-134 replacement for the full linear scans
+  /// that made training cost quadratic in history length.
+  static int _lowerBound<T>(
+      List<T> xs, DateTime t, DateTime Function(T) timeOf) {
+    var lo = 0, hi = xs.length;
+    while (lo < hi) {
+      final mid = (lo + hi) >> 1;
+      if (timeOf(xs[mid]).isBefore(t)) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return lo;
+  }
+
+  /// Nearest confirmed reading to [t] within ±6 min, by binary search over the
+  /// time-sorted [samples]. Tie (equidistant neighbours) goes to the LATER
+  /// sample — identical to the old scan's `<=` update rule. Public for the
+  /// linear-vs-binary equivalence test.
+  static double? nearestMgdl(List<CgmSample> samples, DateTime t) {
+    if (samples.isEmpty) return null;
+    const cap = Duration(minutes: 6);
+    final i = _lowerBound(samples, t, (s) => s.time);
     CgmSample? best;
-    var bestDelta = const Duration(minutes: 6);
-    for (final s in samples) {
-      final d = s.time.difference(t).abs();
+    var bestDelta = cap;
+    if (i > 0) {
+      final s = samples[i - 1];
+      final d = t.difference(s.time).abs();
       if (d <= bestDelta) {
         bestDelta = d;
+        best = s;
+      }
+    }
+    if (i < samples.length) {
+      final s = samples[i];
+      final d = s.time.difference(t).abs();
+      if (d <= bestDelta) {
+        // <= so the later of two equidistant samples wins, like the old scan.
         best = s;
       }
     }
     return best?.mgdl;
   }
 
-  static double _valueAt(PredictionLine line, DateTime t) {
-    var best = line.points.first;
-    var bestDelta = best.time.difference(t).inSeconds.abs();
-    for (final p in line.points) {
-      final d = p.time.difference(t).inSeconds.abs();
-      if (d < bestDelta) {
-        best = p;
-        bestDelta = d;
-      }
+  /// Baseline value at [t] from the prediction line's fixed-cadence points, by
+  /// binary search. Tie goes to the EARLIER point — identical to the old scan's
+  /// strict `<` update rule. Public for the equivalence test.
+  static double valueAt(PredictionLine line, DateTime t) {
+    final pts = line.points;
+    final i = _lowerBound(pts, t, (p) => p.time);
+    var best = pts[i > 0 ? i - 1 : 0];
+    if (i < pts.length) {
+      final dAfter = pts[i].time.difference(t).abs();
+      final dBest = best.time.difference(t).abs();
+      if (dAfter < dBest) best = pts[i];
     }
     return best.mgdl;
   }
