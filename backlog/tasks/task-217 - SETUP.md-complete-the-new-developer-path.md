@@ -1,9 +1,11 @@
 ---
 id: TASK-217
 title: 'SETUP.md: complete the new-developer path'
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 21:32'
+updated_date: '2026-07-07 21:25'
 labels:
   - docs
   - infra
@@ -30,10 +32,10 @@ ordinal: 113100
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Verify-like-CI section pointing at the CLAUDE.md pipeline
-- [ ] #2 Emulator + integration-test how-to
-- [ ] #3 pumpx2/javap and backlog CLI onboarding covered
-- [ ] #4 Troubleshooting section added; database.g.dart exception resolved or documented
+- [x] #1 Verify-like-CI section pointing at the CLAUDE.md pipeline
+- [x] #2 Emulator + integration-test how-to
+- [x] #3 pumpx2/javap and backlog CLI onboarding covered
+- [x] #4 Troubleshooting section added; database.g.dart exception resolved or documented
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -52,12 +54,36 @@ ordinal: 113100
 - Where: SETUP.md
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 21:22
+---
+Started: fill the 4 new-developer gaps in SETUP.md (CI-equivalent pipeline pointer, emulator/integration-test how-to, pumpx2/javap + backlog CLI onboarding, troubleshooting section) and document (not gitignore) the database.g.dart committed-generated-file exception -- deleting a tracked generated file is a bigger, less reversible change than documenting it, and the AC allows either.
+---
+
+author: Claude
+created: 2026-07-07 21:25
+---
+Fixed all 4 ACs in SETUP.md:
+
+- Added step 6 'Verify like CI before committing anything', pointing at the CLAUDE.md pipeline (pub get -> build_runner -> analyze -> test -> apk debug -> gradlew unit tests when native changed).
+- Added step 7: emulator create/list/launch commands (avdmanager, flutter emulators) and how to run a single functional integration_test/ file against it, plus the screenshots/walkthrough-need-flutter-drive caveat.
+- Added step 8: pumpx2/javap onboarding -- verified against this machine's actual Gradle caches that pumpx2-messages/pumpx2-shared are plain jars under caches/modules-2 while pumpx2-android is an AAR whose classes.jar only appears under caches/*/transforms/*/transformed/ (confirmed TandemBluetoothHandler is really in there via unzip -l before writing the doc). Also added backlog CLI (npm install -g backlog.md) to the prerequisites list.
+- Added step 9 troubleshooting (build_runner conflicts, JitPack lazy-build flakiness, stale Pigeon output, flutter create clobbering the two customised Android files).
+- Resolved the database.g.dart discrepancy by documenting it (chose documenting over gitignoring/untracking: confirmed via git ls-files it's the only committed *.g.dart in the repo, and removing a tracked generated file is a bigger, less reversible change than noting the exception -- the AC allows either).
+
+Verified every command/path against this machine before writing it (javap against a real class, the two Gradle cache find patterns, backlog --version). Docs-only change; flutter analyze still clean.
+---
+<!-- COMMENTS:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
 - [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
 - [ ] #6 doc/user-guide.html updated when the change is user-visible
 - [ ] #7 Integration test added or extended when a screen/flow changed
