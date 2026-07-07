@@ -77,9 +77,23 @@ class PumpService : Service(), PumpCommHandler.Listener {
             }
             // TASK-12: after a reboot the app isn't open to kick off a scan, so the service
             // reconnects itself when started with the auto-reconnect flag.
-            if (intent?.getBooleanExtra(EXTRA_AUTO_RECONNECT, false) == true) {
-                Log.i(TAG, "Auto-reconnecting after boot")
-                startScan(null)
+            // TASK-178: a NULL intent is the system's sticky restart after a kill —
+            // resume the saved pump too, or overnight kills silently end monitoring.
+            val savedMac = PairedPump.saved(applicationContext)
+            if (ServiceRestartPolicy.shouldResume(
+                    nullIntent = intent == null,
+                    autoReconnectExtra =
+                        intent?.getBooleanExtra(EXTRA_AUTO_RECONNECT, false) == true,
+                    hasBluetoothPermission = true, // checked by the enclosing branch
+                    hasSavedMac = savedMac != null,
+                )
+            ) {
+                Log.i(TAG, if (intent == null) {
+                    "Sticky restart — resuming pump $savedMac"
+                } else {
+                    "Auto-reconnecting after boot"
+                })
+                startScan(savedMac)
             }
         } else {
             Log.i(TAG, "BLUETOOTH_CONNECT not granted yet; deferring foreground start")

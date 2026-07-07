@@ -209,6 +209,7 @@ class PumpCommHandler(
     fun unpair() {
         bluetoothHandler?.stop()
         PumpState.resetState(context)
+        PairedPump.clear(context) // TASK-178: no auto-resume after an unpair
         pendingChallenge = null
         peripheral = null
         emitState(ConnectionStage.IDLE)
@@ -342,6 +343,9 @@ class PumpCommHandler(
             snapshot.pumpName = peripheral.name
             snapshot.macAddress = peripheral.address
         }
+        // TASK-178: persist the MAC natively so a sticky service restart (no Dart
+        // isolate alive) can resume the connection on its own.
+        PairedPump.save(context, peripheral.address)
         emitState(ConnectionStage.DISCOVERED)
         true
     }
