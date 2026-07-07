@@ -119,6 +119,14 @@ abstract class PersistedStateNotifier<T> extends StateNotifier<T> {
   /// false so the caller can surface the failure instead of assuming it succeeded.
   Future<bool> persist(T value) async {
     final previous = state;
+    // TASK-259: snapshot the latch, not just the value. If this attempt fails and it
+    // was ALSO the first local write (hadLocalWrite false), _hasLocalWrite must revert
+    // to false too -- otherwise it stays latched from a write that never actually
+    // landed, and a concurrent in-flight _restore() discards the real persisted disk
+    // value once its load() completes, silently running a dosing-relevant setting on
+    // defaults. A prior GENUINE successful write (hadLocalWrite true) must still block
+    // a stale restore, so this only reverts when there was nothing to protect.
+    final hadLocalWrite = _hasLocalWrite;
     _hasLocalWrite = true;
     state = value;
     try {
@@ -129,6 +137,7 @@ abstract class PersistedStateNotifier<T> extends StateNotifier<T> {
           '$runtimeType persist failed — reverting to the last saved value',
           error: e);
       state = previous;
+      _hasLocalWrite = hadLocalWrite;
       return false;
     }
   }

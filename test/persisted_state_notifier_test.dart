@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/state/persisted_state_notifier.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +27,28 @@ class _ThrowingIntNotifier extends PersistedStateNotifier<int> {
 
   @override
   Future<int?> load() async {
+    final raw = await KvStore.getString(_key);
+    return raw == null ? null : int.tryParse(raw);
+  }
+
+  @override
+  Future<void> store(int v) async {
+    if (shouldThrow) throw StateError('simulated write failure');
+    await KvStore.setString(_key, '$v');
+  }
+}
+
+/// TASK-259: a `load()` that blocks on an externally-controlled gate, so a test can
+/// force a `persist()` failure to land WHILE the initial restore is still in flight.
+class _SlowLoadIntNotifier extends PersistedStateNotifier<int> {
+  _SlowLoadIntNotifier(this._loadGate) : super(0);
+  static const _key = 'test_int_slow_load';
+  final Completer<void> _loadGate;
+  bool shouldThrow = true;
+
+  @override
+  Future<int?> load() async {
+    await _loadGate.future;
     final raw = await KvStore.getString(_key);
     return raw == null ? null : int.tryParse(raw);
   }
@@ -105,6 +129,49 @@ void main() {
       expect(ok, isTrue);
       expect(n.state, 7);
       expect(await KvStore.getString(_ThrowingIntNotifier._key), '7');
+    });
+
+    test('a persist failure racing an in-flight restore does not suppress the '
+        'real disk value once load() completes (TASK-259)', () async {
+      await KvStore.setString(_SlowLoadIntNotifier._key, '55'); // the real disk value
+      final loadGate = Completer<void>();
+      final n = _SlowLoadIntNotifier(loadGate); // _restore() is now blocked on loadGate
+
+      // A local write attempt fails WHILE the restore's load() is still in flight.
+      final ok = await n.persist(42);
+      expect(ok, isFalse);
+      expect(n.state, 0); // reverted, not left looking saved
+
+      // Now let the in-flight load() resolve with the real disk value.
+      loadGate.complete();
+      await n.restored;
+
+      // The failed persist must not have latched _hasLocalWrite -- the real disk
+      // value wins, not the default (the exact bug this ticket fixes: without the
+      // revert, this would still be 0, silently running on defaults).
+      expect(n.state, 55);
+    });
+
+    test('a GENUINE prior local write still blocks a stale restore even after a '
+        'later persist failure (the latch must not over-revert)', () async {
+      await KvStore.setString(_SlowLoadIntNotifier._key, '55'); // stale disk value
+      final loadGate = Completer<void>();
+      final n = _SlowLoadIntNotifier(loadGate);
+
+      // First write succeeds -- a genuine local write has now happened.
+      n.shouldThrow = false;
+      expect(await n.persist(1), isTrue);
+
+      // A second write then fails, still while the restore is in flight.
+      n.shouldThrow = true;
+      expect(await n.persist(2), isFalse);
+      expect(n.state, 1); // reverted to the last successfully-saved value
+
+      // The restore must NOT clobber it with the stale disk value -- there WAS a
+      // genuine local write, so _hasLocalWrite must still be latched.
+      loadGate.complete();
+      await n.restored;
+      expect(n.state, 1);
     });
   });
 }
