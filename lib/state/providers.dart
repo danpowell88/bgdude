@@ -46,6 +46,7 @@ import '../insights/morning_summary.dart';
 import '../insights/notification_prefs.dart';
 import '../insights/stale_data_watchdog.dart';
 import '../insights/notifications.dart';
+import '../insights/system_health.dart';
 import '../insights/post_meal_movement.dart';
 import '../insights/workout_classifier.dart';
 import '../profile/user_profile.dart';
@@ -211,13 +212,14 @@ class PanelModelStatus {
 
 final panelModelProvider =
     StateNotifierProvider<PanelModelController, PanelModelStatus>(
-        (ref) => PanelModelController());
+        (ref) => PanelModelController(ref));
 
 class PanelModelController extends StateNotifier<PanelModelStatus> {
-  PanelModelController() : super(const PanelModelStatus(installed: false)) {
+  PanelModelController(this._ref) : super(const PanelModelStatus(installed: false)) {
     _restore();
   }
 
+  final Ref _ref;
   static const _urlKey = 'panel_llm_url_v1';
   final _mgr = const PanelModelManager();
 
@@ -229,7 +231,11 @@ class PanelModelController extends StateNotifier<PanelModelStatus> {
   }
 
   /// Download + activate the model from [url] (with optional gated-download [token]).
-  Future<void> download(String url, {String? token}) async {
+  Future<void> download(String url, {String? token}) => _ref
+      .read(systemHealthProvider.notifier)
+      .track(Subsystem.modelDownload, () => _download(url, token: token));
+
+  Future<void> _download(String url, {String? token}) async {
     state = PanelModelStatus(
         installed: false, url: url, downloading: true, progress: 0);
     try {
@@ -1240,8 +1246,24 @@ class WeatherSettingsNotifier extends PersistedStateNotifier<WeatherSettings> {
 /// into the daily weather history for correlation.
 final weatherProvider = FutureProvider<Weather?>((ref) async {
   final s = ref.watch(weatherSettingsProvider);
-  if (!s.ready) return null;
-  final w = await ref.read(weatherServiceProvider).current(s.lat!, s.lon!);
+  if (!s.ready) return null; // not configured -- not a failure, nothing was attempted.
+  final health = ref.read(systemHealthProvider.notifier);
+  Weather? w;
+  try {
+    w = await ref.read(weatherServiceProvider).current(s.lat!, s.lon!);
+    if (w == null) {
+      // current() swallows a non-200 HTTP status into null -- that IS a real
+      // fetch failure, not "no weather data configured" (s.ready already
+      // confirmed a location is set).
+      unawaited(
+          health.recordFailure(Subsystem.weather, 'weather API returned no data'));
+    } else {
+      unawaited(health.recordSuccess(Subsystem.weather));
+    }
+  } catch (e) {
+    unawaited(health.recordFailure(Subsystem.weather, e));
+    rethrow;
+  }
   if (w != null) {
     try {
       await WeatherHistoryStore.record(w.at, w.tempC);
@@ -1815,6 +1837,56 @@ class AlertService {
   String? _lastAlarmSignature;
 }
 
+/// Per-subsystem last-success/failure-count (TASK-201), persisted so a recurring
+/// silent background failure has a user-visible signal instead of only ever
+/// landing in appLog. See the Developer/Advanced "System health" screen.
+final systemHealthProvider =
+    StateNotifierProvider<SystemHealthNotifier, SystemHealthReport>(
+        (ref) => SystemHealthNotifier());
+
+/// Native Garmin watch-delivery health (TASK-201) — fetched fresh each time the
+/// system-health screen is opened (autoDispose), since GarminSender tracks it
+/// in-memory only rather than through [systemHealthProvider]'s persistence.
+final garminHealthProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>?>(
+        (ref) => ref.read(pumpClientProvider).garminHealth());
+
+class SystemHealthNotifier extends PersistedStateNotifier<SystemHealthReport> {
+  SystemHealthNotifier() : super(const SystemHealthReport());
+  static const _key = 'system_health_v1';
+
+  @override
+  Future<SystemHealthReport?> load() => restoreJsonGuarded(
+        key: _key,
+        fromJson: SystemHealthReport.fromJson,
+      );
+
+  @override
+  Future<void> store(SystemHealthReport v) =>
+      KvStore.setString(_key, jsonEncode(v.toJson()));
+
+  Future<void> recordSuccess(Subsystem s, {DateTime? at}) =>
+      persist(state.withRecord(s, state.of(s).withSuccess(at ?? DateTime.now())));
+
+  Future<void> recordFailure(Subsystem s, Object error, {DateTime? at}) => persist(
+      state.withRecord(
+          s, state.of(s).withFailure(at ?? DateTime.now(), error.toString())));
+
+  /// Runs [body], recording success/failure on [s] in [systemHealthProvider], and
+  /// rethrows on failure so callers keep their existing error-handling behaviour —
+  /// this only ADDS observability, it never changes what a caller sees.
+  Future<T> track<T>(Subsystem s, Future<T> Function() body) async {
+    try {
+      final result = await body();
+      unawaited(recordSuccess(s));
+      return result;
+    } catch (e) {
+      unawaited(recordFailure(s, e));
+      rethrow;
+    }
+  }
+}
+
 /// Background jobs run at startup (and on demand): close the meal-outcome loop,
 /// reconcile matured predictions, and retrain the forecaster when enough data exists.
 final appJobsProvider = Provider<AppJobs>((ref) => AppJobs(ref));
@@ -1841,10 +1913,7 @@ class AppJobs {
       StartupJob('syncHealth', syncHealth, enabled: !demo),
       StartupJob('refreshForecastHealthSampler', refreshForecastHealthSampler),
       StartupJob('runMealOutcomeLoop', runMealOutcomeLoop),
-      StartupJob('reconcilePredictions', () async {
-        await _ref.read(historyRepositoryProvider).reconcilePredictions(DateTime.now());
-        await updateRecentForecastError();
-      }),
+      StartupJob('reconcilePredictions', reconcilePredictions),
       // TASK-62: keep the DB lean — prune stale predictions/health (CGM + insulin kept).
       StartupJob('pruneOldData',
           () => _ref.read(historyRepositoryProvider).pruneOldData(DateTime.now())),
@@ -1875,6 +1944,17 @@ class AppJobs {
     final last = raw == null ? null : DateTime.tryParse(raw);
     return last == null ||
         DateTime.now().difference(last) >= const Duration(hours: 20);
+  }
+
+  /// Back-fill matured predictions with their actual outcome, then refresh the
+  /// live forecast-error estimate from them.
+  Future<void> reconcilePredictions() => _ref
+      .read(systemHealthProvider.notifier)
+      .track(Subsystem.predictionReconciliation, _reconcilePredictions);
+
+  Future<void> _reconcilePredictions() async {
+    await _ref.read(historyRepositoryProvider).reconcilePredictions(DateTime.now());
+    await updateRecentForecastError();
   }
 
   /// Recompute per-horizon live forecast RMSE from reconciled predictions and publish it
@@ -2103,7 +2183,11 @@ class AppJobs {
 
   /// Pull recent Health Connect data (sleep, HRV, resting HR, steps, workouts) into the
   /// store and refresh today's context. Returns how many samples were ingested.
-  Future<int> syncHealth() async {
+  Future<int> syncHealth() => _ref
+      .read(systemHealthProvider.notifier)
+      .track(Subsystem.healthSync, _syncHealth);
+
+  Future<int> _syncHealth() async {
     final svc = _ref.read(healthSyncServiceProvider);
     final now = DateTime.now();
     final samples = await svc.fetch(now.subtract(const Duration(days: 2)), now);
@@ -2158,8 +2242,14 @@ class AppJobs {
   }
 
   /// Retrain the residual forecaster from all stored history, recording a model-run
-  /// row (registry version history) with the outcome.
-  Future<TrainingOutcome> trainForecaster() async {
+  /// row (registry version history) with the outcome. "Success" here means the
+  /// training pipeline ran without throwing — outcome.trained == false (not enough
+  /// data yet) is a normal, expected result, not a health failure.
+  Future<TrainingOutcome> trainForecaster() => _ref
+      .read(systemHealthProvider.notifier)
+      .track(Subsystem.forecasterTraining, _trainForecaster);
+
+  Future<TrainingOutcome> _trainForecaster() async {
     final repo = _ref.read(historyRepositoryProvider);
     final now = DateTime.now();
     final from = now.subtract(const Duration(days: 30));

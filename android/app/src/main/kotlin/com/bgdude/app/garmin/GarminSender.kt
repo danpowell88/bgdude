@@ -35,6 +35,31 @@ class GarminSender(private val context: Context) {
     private var initialized = false
     private var lastSentAtMs = 0L
 
+    /**
+     * TASK-201: in-memory-only (not persisted across process restarts, unlike the
+     * Dart-side SystemHealthNotifier subsystems) last-success time and consecutive
+     * failure count, exposed to Dart via PumpBridge's "garminHealth" method call so
+     * the system-health screen can show whether watch delivery is actually working
+     * instead of only ever logging failures.
+     */
+    @Volatile private var lastSuccessAtMs: Long? = null
+    @Volatile private var consecutiveFailures: Int = 0
+
+    private fun recordSendSuccess() {
+        lastSuccessAtMs = System.currentTimeMillis()
+        consecutiveFailures = 0
+    }
+
+    private fun recordSendFailure() {
+        consecutiveFailures += 1
+    }
+
+    /** Current health snapshot for the Dart-side system-health surface. */
+    fun health(): Map<String, Any?> = mapOf(
+        "lastSuccessAtMs" to lastSuccessAtMs,
+        "consecutiveFailures" to consecutiveFailures,
+    )
+
     fun initialize() {
         if (initialized) return
         try {
@@ -73,20 +98,30 @@ class GarminSender(private val context: Context) {
 
         try {
             val devices: List<IQDevice> = ciq.connectedDevices ?: emptyList()
+            // No paired device is a normal state (the user may not own a Garmin
+            // watch) — not a failure, so health is left untouched.
             if (devices.isEmpty()) return
             for (device in devices) {
                 for (app in watchTargets) {
                     ciq.sendMessage(device, app, payload) { _, _, status ->
+                        if (status == ConnectIQ.IQMessageStatus.SUCCESS) {
+                            recordSendSuccess()
+                        } else {
+                            recordSendFailure()
+                        }
                         Log.d(TAG, "watch send ${app.applicationId} → $status")
                     }
                 }
             }
             lastSentAtMs = now
         } catch (e: InvalidStateException) {
+            recordSendFailure()
             Log.i(TAG, "Connect IQ not in a sendable state", e)
         } catch (e: ServiceUnavailableException) {
+            recordSendFailure()
             Log.i(TAG, "Garmin Connect service unavailable", e)
         } catch (t: Throwable) {
+            recordSendFailure()
             Log.w(TAG, "watch send failed", t)
         }
     }

@@ -25,6 +25,7 @@ import 'notification_settings_screen.dart';
 import 'profile_screen.dart';
 import 'pump_screen.dart';
 import 'reports/reports_hub_screen.dart';
+import 'system_health_screen.dart';
 import 'therapy_settings_screen.dart';
 import 'weather_settings_screen.dart';
 
@@ -45,6 +46,7 @@ enum AppRoute {
   aiModel,
   modelAccuracy,
   developer,
+  systemHealth,
 }
 
 /// Typed push helpers for [AppRoute] — the registry AC#1 asks for.
@@ -69,6 +71,7 @@ class AppRoutes {
         AppRoute.aiModel => (_) => const AiModelScreen(),
         AppRoute.modelAccuracy => (_) => const ModelAccuracyScreen(),
         AppRoute.developer => (_) => const DeveloperScreen(),
+        AppRoute.systemHealth => (_) => const SystemHealthScreen(),
       };
 
   /// Pushes [route] onto the navigator rooted at [context].

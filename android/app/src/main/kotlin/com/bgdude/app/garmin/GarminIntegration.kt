@@ -34,6 +34,10 @@ object GarminIntegration {
         displayUnit = if (unit == "mgdl") "mgdl" else "mmol"
     }
 
+    /** TASK-201: current watch-delivery health, for the Dart-side system-health screen. */
+    fun health(): Map<String, Any?> =
+        sender?.health() ?: mapOf("lastSuccessAtMs" to null, "consecutiveFailures" to 0)
+
     /** Called from PumpService.onSnapshotUpdated with the snapshot JSON. */
     fun onSnapshot(snapshotJson: String) {
         val s = sender ?: return

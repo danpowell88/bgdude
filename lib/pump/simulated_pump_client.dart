@@ -184,4 +184,9 @@ class SimulatedPumpClient implements PumpSource {
   Future<void> setGarminUnit(GlucoseUnit unit) async {
     // No native Garmin push in demo mode.
   }
+
+  @override
+  Future<Map<String, dynamic>?> garminHealth() async =>
+      // No native Garmin bridge in demo mode — nothing to report.
+      null;
 }

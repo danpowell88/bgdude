@@ -47,4 +47,11 @@ abstract interface class PumpSource {
 
   /// Push the display unit to the native Garmin sender so the watch matches the app (TASK-24).
   Future<void> setGarminUnit(GlucoseUnit unit);
+
+  /// Current native Garmin watch-delivery health (TASK-201): `{lastSuccessAtMs,
+  /// consecutiveFailures}`, or null if unavailable (e.g. no native bridge). Unlike
+  /// the other system-health subsystems this is NOT persisted across restarts —
+  /// GarminSender tracks it in-memory only, so it reflects "since this process
+  /// started", not lifetime history.
+  Future<Map<String, dynamic>?> garminHealth();
 }

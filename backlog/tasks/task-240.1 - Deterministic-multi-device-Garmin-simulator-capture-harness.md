@@ -4,6 +4,7 @@ title: Deterministic multi-device Garmin simulator capture harness
 status: To Do
 assignee: []
 created_date: '2026-07-07 12:53'
+updated_date: '2026-07-07 16:37'
 labels:
   - garmin
   - testing
@@ -48,6 +49,20 @@ ordinal: 111100
 - Depends on nothing; feeds the comparison subtask
 - Related: TASK-39 (inject the clock), TASK-220 (deterministic demo seam)
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-07 16:37
+---
+Feasibility spike (2026-07-08): confirmed the core pipeline actually works in this environment -- ran the existing garmin/tools/screenshots.ps1 end-to-end (builds widget/watchface/datafield via monkeyc, launches simulator.exe, captures via System.Drawing.CopyFromScreen, restores source) and got a correctly-rendered watchface PNG back (fenix847mm, seeded BG data visible). So this is NOT blocked by an environment limitation the way the Android emulator integration tests are (see memory integration-test-emulator-limitation) -- CIQ SDK 9.2.0 is installed and the simulator renders and captures cleanly here.
+
+Found the real open technical question for AC#2 (byte-identical determinism): BgData.mc's save() always stamps receivedAt = Time.now().value() at the moment the seed is injected -- the displayed 'age' is Time.now() - receivedAt computed fresh at RENDER time, so it drifts with however long the build+launch+capture pipeline takes (observed '99m (stale)' in the smoke test instead of the intended ~2min). monkeydo.bat / monkeyc.bat / simulator.exe have no CLI flag for setting/freezing simulator time (checked monkeydo's usage text; simulator.exe is a GUI-only app with no --help). Achieving true byte-identical runs likely needs one of: (a) a Monkey C source change to accept an explicit receivedAt in the seed payload AND a way to freeze Time.now() itself (no obvious public API for that), or (b) UI-automating the simulator's Settings menu if it exposes a fixed-time option (unconfirmed), or (c) relaxing AC#2 to a pixel-diff tolerance instead of true byte-identity (which is what subtask 240.2 already builds anyway) and rendering the SAME instant across devices in one run rather than matching bit-for-bit across separate runs.
+
+This is a legitimate, sizeable (multi-hour) build-out (~45-device matrix, per-device geometry handling, device-driven config) that deserves focused, uninterrupted implementation time rather than being squeezed between smaller fixes. Deferring to a dedicated pass; not detail-needed (nothing here is ambiguous -- it just needs the time budget).
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->

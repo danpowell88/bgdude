@@ -119,6 +119,11 @@ class PumpBridge(
                         GarminIntegration.setUnit(call.argument<String>("unit") ?: "mmol")
                         result.success(null)
                     }
+                    "garminHealth" -> {
+                        // TASK-201: exposes GarminSender's in-memory last-success/failure
+                        // counters to the Dart-side system-health screen.
+                        result.success(GarminIntegration.health())
+                    }
                     else -> result.notImplemented()
                 }
             }

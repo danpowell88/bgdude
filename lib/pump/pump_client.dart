@@ -166,6 +166,19 @@ class PumpClient implements PumpSource {
   Future<void> setGarminUnit(GlucoseUnit unit) =>
       _invoke('setGarminUnit', {'unit': unit.name});
 
+  @override
+  Future<Map<String, dynamic>?> garminHealth() async {
+    try {
+      final raw = await _commands.invokeMapMethod<String, dynamic>('garminHealth');
+      return raw;
+    } on MissingPluginException {
+      return null;
+    } on PlatformException catch (e) {
+      _log.warning('command garminHealth failed', e);
+      return null;
+    }
+  }
+
   Future<void> _invoke(String method, Map<String, dynamic> args) async {
     try {
       await _commands.invokeMethod<void>(method, args);

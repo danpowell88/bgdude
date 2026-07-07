@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/providers.dart';
+import 'app_routes.dart';
 import 'log_viewer_screen.dart';
 import 'model_accuracy_screen.dart';
 import 'widgets/error_grid_chart.dart';
@@ -137,6 +138,19 @@ class AdvancedScreen extends ConsumerWidget {
                     ),
                   )
                 : ErrorGridChart(points: pts, unit: unit),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.monitor_heart_outlined),
+              title: const Text('System health'),
+              subtitle: const Text(
+                  'Last-success time and failure count per background subsystem '
+                  '(health sync, training, reconciliation, Garmin, weather, model '
+                  'download).'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => AppRoutes.push(context, AppRoute.systemHealth),
+            ),
           ),
           const SizedBox(height: 16),
           Card(

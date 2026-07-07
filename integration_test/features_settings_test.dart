@@ -103,6 +103,24 @@ void main() {
     expect(find.text('Learned residual'), findsOneWidget);
   });
 
+  testWidgets('System health screen opens from Advanced and lists every subsystem',
+      (tester) async {
+    await pumpDemoApp(tester);
+    await openSettingsScreen(tester, 'Model internals');
+    await tester.scrollUntilVisible(find.text('System health'), 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('System health'));
+    await tester.pumpAndSettle();
+    expect(find.text('System health'), findsWidgets);
+    // TASK-201: all 6 tracked subsystems render a row.
+    expect(find.text('Health data sync'), findsOneWidget);
+    expect(find.text('Forecaster training'), findsOneWidget);
+    expect(find.text('Prediction reconciliation'), findsOneWidget);
+    expect(find.text('Garmin watch delivery'), findsOneWidget);
+    expect(find.text('Weather'), findsOneWidget);
+    expect(find.text('Nutrition-label model download'), findsOneWidget);
+  });
+
   testWidgets('changing units to mg/dL propagates to the Pump screen',
       (tester) async {
     await pumpDemoApp(tester);
