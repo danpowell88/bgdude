@@ -1,14 +1,20 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:bgdude/data/database.dart';
 import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/dev/sim_data.dart';
+import 'package:bgdude/insights/exercise_mode.dart';
+import 'package:bgdude/insights/notification_prefs.dart';
 import 'package:bgdude/insights/notifications.dart';
+import 'package:bgdude/insights/workout_classifier.dart';
 import 'package:bgdude/ml/drift_detector.dart';
 import 'package:bgdude/ml/forecaster.dart';
 import 'package:bgdude/ml/health_features.dart';
 import 'package:bgdude/state/forecast_providers.dart';
 import 'package:bgdude/state/providers.dart';
+import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -235,6 +241,51 @@ void main() {
       expect(metrics['driftTriggered'], isTrue);
       expect((metrics['driftRatios'] as Map)['30'],
           greaterThanOrEqualTo(kDriftRatioThreshold));
+    });
+  });
+
+  group('announceExercise notification gating (TASK-305)', () {
+    setUp(() => KvStore.useMemory());
+
+    ProviderContainer buildContainer(NotificationService notifications) =>
+        ProviderContainer(overrides: [
+          historyRepositoryProvider.overrideWithValue(repo),
+          notificationServiceProvider.overrideWithValue(notifications),
+          devModeProvider.overrideWith((ref) => false),
+          therapySettingsProvider.overrideWith((ref) => TherapyNotifier()),
+        ]);
+
+    final plan = ExercisePlan(
+      startAt: DateTime.now(), // now-ok: only the plan's relative fields matter
+      durationMinutes: 45,
+      type: WorkoutType.aerobic, // raisesHypoRisk == true
+    );
+
+    test('notifies once the plan actually persists', () async {
+      final notifications = NoopNotificationService();
+      final c = buildContainer(notifications);
+      addTearDown(c.dispose);
+
+      await c.read(appJobsProvider).announceExercise(plan);
+
+      expect(notifications.shown, contains(NotificationCategory.overnightLowRisk));
+    });
+
+    test(
+        'does not notify when the persist fails -- the low-alert threshold was '
+        'never actually raised, so saying it was would be a false signal',
+        () async {
+      final notifications = NoopNotificationService();
+      final c = buildContainer(notifications);
+      addTearDown(c.dispose);
+      final unopenable = File('${Directory.systemTemp.path}/${'u' * 300}.db');
+      KvStore.init(AppDatabase(NativeDatabase(unopenable)));
+
+      await c.read(appJobsProvider).announceExercise(plan);
+
+      expect(notifications.shown, isEmpty);
+      expect(c.read(exercisePlanProvider), isNull,
+          reason: 'the write failed -- no plan should be considered active');
     });
   });
 }

@@ -386,7 +386,10 @@ class ExercisePlanNotifier extends PersistedStateNotifier<ExercisePlan?> {
   Future<void> store(ExercisePlan? v) =>
       KvStore.setString(_key, v == null ? '' : jsonEncode(v.toJson()));
 
-  Future<void> set(ExercisePlan plan) => persist(plan);
+  /// Returns whether the write actually landed (TASK-305) — [AppJobs.announceExercise]
+  /// gates its "exercise mode on" notification on this so a failed persist can't
+  /// tell the user the low-alert threshold raised when it didn't.
+  Future<bool> set(ExercisePlan plan) => persist(plan);
   Future<void> clear() => persist(null);
 
   /// Clears the plan once its effect window has passed (TASK-200) — called at
@@ -2699,8 +2702,12 @@ class AppJobs {
   /// Announce an upcoming/active exercise session: arm the raised low-alert threshold and
   /// (for aerobic) a heads-up about the raised during/after/overnight low risk.
   Future<void> announceExercise(ExercisePlan plan) async {
-    await _ref.read(exercisePlanProvider.notifier).set(plan);
-    if (plan.type.raisesHypoRisk) {
+    final persisted = await _ref.read(exercisePlanProvider.notifier).set(plan);
+    // TASK-305: gate the notification on the persist actually landing -- same
+    // gate-annotation-not-notification bug class as TASK-304. A failed write
+    // reverts the plan's state (PersistedStateNotifier.persist), so the low-alert
+    // threshold is NOT actually raised; notifying anyway would be a false signal.
+    if (persisted && plan.type.raisesHypoRisk) {
       try {
         await _ref.read(notificationServiceProvider).show(
               NotificationCategory.overnightLowRisk,
