@@ -180,7 +180,8 @@ void main() {
   group('Illness/medication mode auto-expiry across a restart', () {
     test(
         'an illness mode activated with a since-elapsed expiry is deactivated at '
-        'startup, and the annotation is emitted', () async {
+        'startup, emits the annotation, and notifies the user (TASK-261)',
+        () async {
       final sim = RestartSimulation();
       // Simulate a mode that was activated a while ago and expired before this
       // "launch" -- the KvStore write stands in for a real activation days earlier.
@@ -193,7 +194,10 @@ void main() {
       );
       await KvStore.setString('illness_mode_v1', expired.encode());
 
-      final c = sim.buildContainer();
+      final notifications = NoopNotificationService();
+      final c = sim.buildContainer(extraOverrides: [
+        notificationServiceProvider.overrideWithValue(notifications),
+      ]);
       addTearDown(c.dispose);
       // Force construction (so the unawaited _restore() actually starts) before
       // waiting for it to land -- Riverpod builds a provider's value lazily on
@@ -218,11 +222,15 @@ void main() {
           reason: 'the deactivation annotation must be saved to the history '
               'repository, not dropped after being built');
       expect(saved.single.kind, AnnotationKind.illness);
+      // TASK-261: an AUTO-expiry (unlike a manual stop) must notify -- consistent
+      // with the illness auto-DETECTION path, which already notifies.
+      expect(notifications.shown, contains(NotificationCategory.modeExpired));
     });
 
     test(
-        'a medication course activated with a since-elapsed expiry is '
-        'deactivated at startup', () async {
+        'a medication course activated with a since-elapsed expiry is deactivated '
+        'at startup, emits an annotation, and notifies the user (TASK-261)',
+        () async {
       final sim = RestartSimulation();
       final past = DateTime(2026, 6, 1, 8);
       final expired = MedicationMode(
@@ -230,19 +238,34 @@ void main() {
         startedAt: past,
         expiresAt: past.add(const Duration(days: 14)),
         intensity: MedicationIntensity.high,
+        name: 'Prednisolone',
       );
       await KvStore.setString(
           'medication_mode_v1', jsonEncode(expired.toJson()));
 
-      final c = sim.buildContainer();
+      final notifications = NoopNotificationService();
+      final c = sim.buildContainer(extraOverrides: [
+        notificationServiceProvider.overrideWithValue(notifications),
+      ]);
       addTearDown(c.dispose);
       c.read(medicationModeProvider.notifier);
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(c.read(medicationModeProvider).active, isTrue);
 
       await c.read(appJobsProvider).checkModeExpiry();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       expect(c.read(medicationModeProvider).active, isFalse);
+      // TASK-261: medication days were never annotated at all before this --
+      // a steroid course raises resistance the same way illness does, so those
+      // days must be tagged for the retraining pipeline too.
+      final saved = await sim.repo.annotations(DateTime(2020), DateTime(2030));
+      expect(saved, isNotEmpty,
+          reason: 'medication-mode days must be annotated for retraining, '
+              'like illness days already are');
+      expect(saved.single.kind, AnnotationKind.medication);
+      expect(saved.single.note, 'Prednisolone');
+      expect(notifications.shown, contains(NotificationCategory.modeExpired));
     });
 
     test('a mode that has NOT yet expired survives the startup check', () async {

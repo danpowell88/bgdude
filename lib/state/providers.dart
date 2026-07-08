@@ -1084,13 +1084,17 @@ final pendingConfirmationsProvider =
 });
 
 /// Illness ("sick day") mode with shared_preferences persistence.
-final illnessModeProvider =
-    StateNotifierProvider<IllnessModeNotifier, IllnessMode>((ref) =>
-        IllnessModeNotifier(historyRepository: ref.read(historyRepositoryProvider)));
+final illnessModeProvider = StateNotifierProvider<IllnessModeNotifier, IllnessMode>(
+    (ref) => IllnessModeNotifier(
+        historyRepository: ref.read(historyRepositoryProvider),
+        notificationService: ref.read(notificationServiceProvider)));
 
 class IllnessModeNotifier extends StateNotifier<IllnessMode> {
-  IllnessModeNotifier({HistoryRepository? historyRepository})
+  IllnessModeNotifier(
+      {HistoryRepository? historyRepository,
+      NotificationService? notificationService})
       : _historyRepository = historyRepository,
+        _notificationService = notificationService,
         super(IllnessMode.inactive) {
     _restore();
   }
@@ -1103,6 +1107,13 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
   /// tests that construct this notifier directly (with no repository to hand)
   /// keep working -- those don't exercise the save path.
   final HistoryRepository? _historyRepository;
+
+  /// TASK-261: notifies when illness mode auto-expires -- consistent with the
+  /// illness AUTO-DETECTION path (checkIllnessSuggestion), which already notifies
+  /// on illnessSuggestion; auto-expiry silently reverting dosing hints with no
+  /// signal at all was the inconsistency this closes. Nullable/optional for the
+  /// same reason as [_historyRepository].
+  final NotificationService? _notificationService;
 
   /// The annotation emitted by the most recent deactivation, for the data layer to
   /// persist into the feedback store. Set by [deactivate]/[deactivateIfExpired] and
@@ -1179,12 +1190,22 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
   /// annotation exactly like a manual deactivation. Called at startup
   /// ([AppJobs.checkModeExpiry]) and on a periodic tick
   /// ([ModeExpiryWatchdogService]) so a forgotten illness mode can't keep
-  /// inflating dosing across a restart or an open-ended session.
+  /// inflating dosing across a restart or an open-ended session. TASK-261:
+  /// notifies too -- unlike [deactivate] (the user just tapped "stop", so they
+  /// already know), an AUTO-expiry silently reverting dosing hints with nothing
+  /// else acting on it is exactly the "the user relied on the elevated hints
+  /// and got no signal they reverted" gap this closes.
   void deactivateIfExpired(DateTime now) {
     final annotation = _controller.deactivateIfExpired(now);
     if (annotation != null) {
       lastDeactivationAnnotation = annotation;
       unawaited(_persist());
+      unawaited(_notificationService?.show(
+        NotificationCategory.modeExpired,
+        'Illness mode ended',
+        'Your 7-day sick-day period ended automatically — dosing hints have '
+            'reverted to normal.',
+      ));
     }
   }
 
@@ -1229,19 +1250,56 @@ final effectiveSensitivityProvider = Provider<SensitivityContext>((ref) {
 
 /// A medication/steroid course that raises insulin resistance while active. Persisted.
 final medicationModeProvider =
-    StateNotifierProvider<MedicationModeNotifier, MedicationMode>(
-        (ref) => MedicationModeNotifier());
+    StateNotifierProvider<MedicationModeNotifier, MedicationMode>((ref) =>
+        MedicationModeNotifier(
+            historyRepository: ref.read(historyRepositoryProvider),
+            notificationService: ref.read(notificationServiceProvider)));
 
 class MedicationModeNotifier extends StateNotifier<MedicationMode> {
-  MedicationModeNotifier() : super(const MedicationMode()) {
+  MedicationModeNotifier(
+      {HistoryRepository? historyRepository,
+      NotificationService? notificationService})
+      : _historyRepository = historyRepository,
+        _notificationService = notificationService,
+        super(const MedicationMode()) {
     _restore();
   }
   static const _key = 'medication_mode_v1';
+
+  /// TASK-261: medication days were never annotated at all (illness gained this in
+  /// TASK-258) -- a steroid course raises resistance the same way illness does, so
+  /// those days should be tagged for the retraining pipeline too, not silently
+  /// mislearned as normal glucose behaviour. Nullable/optional so tests that
+  /// construct this notifier directly (with no repository to hand) keep working.
+  final HistoryRepository? _historyRepository;
+
+  /// TASK-261: notifies when medication mode auto-expires -- see
+  /// IllnessModeNotifier._notificationService for the full rationale (consistency
+  /// with the illness auto-detection notification path).
+  final NotificationService? _notificationService;
+
+  /// Mirrors IllnessModeNotifier.lastDeactivationAnnotation: set by [stop]/
+  /// [deactivateIfExpired], consumed (saved, then cleared) by [_persist] once that
+  /// deactivation's mode change has actually persisted -- never survives a failed
+  /// write, so a deactivation that never stuck can't later save a stale annotation.
+  Annotation? _lastDeactivationAnnotation;
 
   Future<void> _restore() async {
     final restored = await restoreJsonGuarded(
         key: _key, fromJson: MedicationMode.fromJson);
     if (restored != null) state = restored;
+  }
+
+  Annotation _buildAnnotation(MedicationMode mode, DateTime now) {
+    final start = mode.startedAt!;
+    return Annotation(
+      id: 'medication-${start.millisecondsSinceEpoch}',
+      kind: AnnotationKind.medication,
+      start: start,
+      end: now.isBefore(start) ? start : now,
+      note: mode.name,
+      confidence: 1.0,
+    );
   }
 
   /// TASK-260: [previous] is the state before the caller's mutation -- reverted to
@@ -1254,9 +1312,23 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
     // _persist above.
     try {
       await KvStore.setString(_key, jsonEncode(state.toJson()));
+      // TASK-261: mirrors IllnessModeNotifier._persist -- only safe to save now
+      // that the mode change this annotation belongs to genuinely persisted.
+      final annotation = _lastDeactivationAnnotation;
+      if (annotation != null) {
+        _lastDeactivationAnnotation = null;
+        try {
+          await _historyRepository?.saveAnnotation(annotation);
+        } catch (e) {
+          appLog.error('persistence', 'medication annotation save failed', error: e);
+        }
+      }
     } catch (e) {
       appLog.error('persistence', 'MedicationMode persist failed', error: e);
       state = previous;
+      // TASK-261: a deactivation annotation must not survive a failed persist --
+      // same rationale as IllnessModeNotifier._persist.
+      _lastDeactivationAnnotation = null;
     }
   }
 
@@ -1276,19 +1348,33 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
 
   Future<void> stop() async {
     final previous = state;
+    if (previous.active && previous.startedAt != null) {
+      _lastDeactivationAnnotation = _buildAnnotation(previous, DateTime.now());
+    }
     state = state.copyWith(active: false, startedAt: null, expiresAt: null);
     await _persist(previous);
   }
 
-  /// Deactivates if the auto-expiry has passed (TASK-197). Called at startup
-  /// ([AppJobs.checkModeExpiry]) and on a periodic tick
-  /// ([ModeExpiryWatchdogService]) so a forgotten medication course can't keep
-  /// inflating dosing across a restart or an open-ended session.
+  /// Deactivates if the auto-expiry has passed (TASK-197), persisting the
+  /// annotation exactly like a manual stop. Called at startup ([AppJobs.
+  /// checkModeExpiry]) and on a periodic tick ([ModeExpiryWatchdogService]) so a
+  /// forgotten medication course can't keep inflating dosing across a restart or
+  /// an open-ended session. TASK-261: notifies too -- unlike [stop] (the user just
+  /// tapped it, so they already know), an AUTO-expiry silently reverting dosing
+  /// hints with nothing else acting on it is exactly the "the user relied on the
+  /// elevated hints and got no signal they reverted" gap this closes.
   Future<void> deactivateIfExpired(DateTime now) async {
     if (!state.isExpired(now)) return;
     final previous = state;
+    _lastDeactivationAnnotation = _buildAnnotation(previous, now);
     state = state.copyWith(active: false, startedAt: null, expiresAt: null);
     await _persist(previous);
+    unawaited(_notificationService?.show(
+      NotificationCategory.modeExpired,
+      'Medication mode ended',
+      '${previous.name} mode ended automatically — dosing hints have reverted '
+          'to normal.',
+    ));
   }
 
   /// Remember the intensity choice without (de)activating.

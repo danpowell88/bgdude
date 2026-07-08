@@ -26,8 +26,9 @@ enum NotificationCategory {
   morningSummary,
   reportDigest,
   preBolusTimer,
-  // Appended last: notification ids derive from the index (TASK-176).
   dataStale,
+  // Appended last: notification ids derive from the index (TASK-176).
+  modeExpired, // TASK-261
 }
 
 extension NotificationCategoryX on NotificationCategory {
@@ -52,6 +53,7 @@ extension NotificationCategoryX on NotificationCategory {
         NotificationCategory.reportDigest => 'Weekly report',
         NotificationCategory.preBolusTimer => 'Pre-bolus timer',
         NotificationCategory.dataStale => 'Readings stalled',
+        NotificationCategory.modeExpired => 'Sick day / medication mode ended',
       };
 
   String get description => switch (this) {
@@ -93,6 +95,9 @@ extension NotificationCategoryX on NotificationCategory {
         NotificationCategory.dataStale =>
           'Readings stopped arriving even though the pump link looks healthy — '
               'predictions and app alerts are running blind.',
+        NotificationCategory.modeExpired =>
+          'A sick-day or medication mode auto-expired and its dosing hints reverted '
+              'to normal — the same signal you get when one is auto-detected.',
       };
 }
 
@@ -395,6 +400,14 @@ class NotificationPrefs {
             importance: NotifImportance.high,
             vibrate: true,
             sound: true,
+            repeatMinutes: 0),
+        // Same tier as illnessSuggestion (low-key, no sound/vibrate) -- this is
+        // informational ("your hints just reverted"), not actionable/urgent.
+        NotificationCategory.modeExpired => const CategoryPref(
+            enabled: true,
+            importance: NotifImportance.low,
+            vibrate: false,
+            sound: false,
             repeatMinutes: 0),
       };
 }

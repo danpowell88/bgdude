@@ -31,6 +31,8 @@ import 'package:bgdude/weather/weather_history.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/faults.dart';
+
 const _corrupt = '{"truncated": '; // invalid JSON — the classic torn write
 
 Future<void> _settle() async {
@@ -416,6 +418,26 @@ void main() {
     });
 
     test(
+        'a manual deactivate() does NOT notify -- the user just tapped it, so '
+        'they already know (TASK-261, unlike auto-expiry which does notify)',
+        () async {
+      final repo = InMemoryHistoryRepository();
+      final notifications = NoopNotificationService();
+      final n = IllnessModeNotifier(
+          historyRepository: repo, notificationService: notifications);
+      await _settle();
+      n.activate(boost: 1.5, notes: 'flu');
+      await _settle();
+
+      n.deactivate();
+      await _settle();
+
+      expect(notifications.shown, isEmpty,
+          reason: 'a notification here would be redundant noise -- the user '
+              'themselves ended the mode');
+    });
+
+    test(
         'a failed deactivate() write does not save a stale annotation for a '
         'deactivation that never actually persisted', () async {
       final repo = InMemoryHistoryRepository();
@@ -440,6 +462,66 @@ void main() {
       expect(n.lastDeactivationAnnotation, isNull,
           reason: 'a failed persist must not leave a stale pending '
               'annotation for some future unrelated persist to pick up');
+    });
+  });
+
+  // TASK-261: medication days were never annotated at all before this (illness
+  // gained this in TASK-258) -- a steroid course raises resistance the same way
+  // illness does, so those days should be tagged for the retraining pipeline too.
+  // The auto-expiry path is covered end-to-end in restart_recovery_test.dart;
+  // this covers the manual stop() path.
+  group('medication deactivation annotation persistence', () {
+    test('a manual stop() saves the annotation to the history repository',
+        () async {
+      final repo = InMemoryHistoryRepository();
+      final n = MedicationModeNotifier(historyRepository: repo);
+      await n.start(MedicationIntensity.high, name: 'Prednisolone');
+
+      await n.stop();
+
+      final saved = await repo.annotations(DateTime(2020), DateTime(2030));
+      expect(saved, isNotEmpty,
+          reason: 'the deactivation annotation must reach the history '
+              'repository, just like illness mode already does');
+      expect(saved.single.kind, AnnotationKind.medication);
+      expect(saved.single.note, 'Prednisolone');
+    });
+
+    test(
+        'a manual stop() does NOT notify -- the user just tapped it, so they '
+        'already know (unlike auto-expiry, which does notify)', () async {
+      final repo = InMemoryHistoryRepository();
+      final notifications = NoopNotificationService();
+      final n = MedicationModeNotifier(
+          historyRepository: repo, notificationService: notifications);
+      await n.start(MedicationIntensity.high);
+
+      await n.stop();
+
+      expect(notifications.shown, isEmpty,
+          reason: 'a notification here would be redundant noise -- the user '
+              'themselves ended the mode');
+    });
+
+    test(
+        'a failed stop() write does not save a stale annotation for a '
+        'deactivation that never actually persisted', () async {
+      final repo = InMemoryHistoryRepository();
+      final n = MedicationModeNotifier(historyRepository: repo);
+      await n.start(MedicationIntensity.high, name: 'Prednisolone');
+
+      final unopenable = File('${Directory.systemTemp.path}/${'z' * 300}.db');
+      KvStore.init(AppDatabase(NativeDatabase(unopenable)));
+
+      await n.stop();
+
+      expect(n.state.active, isTrue,
+          reason: 'the write failed -- the UI-visible state must still show '
+              'medication mode on');
+      final saved = await repo.annotations(DateTime(2020), DateTime(2030));
+      expect(saved, isEmpty,
+          reason: 'no annotation should be saved for a deactivation that '
+              'never actually persisted -- medication mode is still active');
     });
   });
 }

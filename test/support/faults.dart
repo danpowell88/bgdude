@@ -189,6 +189,30 @@ class ThrowingNotificationService extends NotificationService {
   }
 }
 
+/// TASK-261: a safe default for tests that don't care whether a notification fires
+/// but exercise a code path that calls NotificationService.show() as a side effect
+/// (e.g. mode auto-expiry) -- the real NotificationService touches
+/// FlutterLocalNotificationsPlugin's platform channel, which throws
+/// MissingPluginException with no native implementation registered in a plain unit
+/// test. Records what it was asked to show, same as [ThrowingNotificationService],
+/// for a test that DOES want to assert a notification fired without caring about
+/// failure-injection.
+class NoopNotificationService extends NotificationService {
+  final List<NotificationCategory> shown = [];
+
+  @override
+  Future<bool> show(
+    NotificationCategory category,
+    String title,
+    String body, {
+    int? id,
+    bool bigText = false,
+  }) async {
+    shown.add(category);
+    return true;
+  }
+}
+
 /// A [PumpSource] whose command methods throw on demand (see [failOn]) and whose streams
 /// are driven manually via [emitConnection]/[emitSnapshot]/[emitError] — for tests that
 /// need to inject a pump-command failure without a real native bridge.

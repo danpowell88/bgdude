@@ -9,9 +9,10 @@ library;
 
 import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/data/kv_store.dart';
-import 'package:bgdude/insights/notifications.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'faults.dart';
 
 /// Resets the shared in-memory KvStore backing ONCE, then returns a builder that
 /// creates fresh [ProviderContainer]s sharing the SAME [repo] (standing in for "the
@@ -39,10 +40,17 @@ class RestartSimulation {
   /// Builds a fresh container — a new "process" — over the same [repo]/KvStore.
   /// [extraOverrides] lets a test add scenario-specific overrides on top of the
   /// baseline ones every simulated launch needs.
+  ///
+  /// TASK-261: notificationServiceProvider defaults to [NoopNotificationService],
+  /// not a real [NotificationService] -- a mode auto-expiring now calls .show() as
+  /// a side effect (illness/medication), and the real service's platform channel
+  /// throws MissingPluginException with no native implementation registered in a
+  /// plain unit test. A scenario that cares whether/what fired can still override
+  /// this via [extraOverrides].
   ProviderContainer buildContainer({List<Override> extraOverrides = const []}) {
     return ProviderContainer(overrides: [
       historyRepositoryProvider.overrideWithValue(repo),
-      notificationServiceProvider.overrideWithValue(NotificationService()),
+      notificationServiceProvider.overrideWithValue(NoopNotificationService()),
       devModeProvider.overrideWith((ref) => false),
       therapySettingsProvider.overrideWith((ref) => TherapyNotifier()),
       ...extraOverrides,

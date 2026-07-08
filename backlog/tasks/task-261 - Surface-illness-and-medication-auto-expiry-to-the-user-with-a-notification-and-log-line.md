@@ -3,10 +3,11 @@ id: TASK-261
 title: >-
   Surface illness and medication auto-expiry to the user with a notification and
   log line
-status: To Do
+status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-07 16:27'
+updated_date: '2026-07-08 10:16'
 labels: []
 milestone: m-8
 dependencies: []
@@ -22,10 +23,12 @@ When a 7-day illness or 14-day medication mode auto-expires via checkModeExpiry,
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Illness and medication auto-expiry emit a user-facing notification (or at minimum a persisted log line) noting the mode ended and hints reverted
-- [ ] #2 Behaviour is consistent with the auto-detection notification path
-- [ ] #3 Confirm whether medication-mode days should be annotated for retraining like illness days; wire it or record the decision
+- [x] #1 Illness and medication auto-expiry emit a user-facing notification (or at minimum a persisted log line) noting the mode ended and hints reverted
+- [x] #2 Behaviour is consistent with the auto-detection notification path
+- [x] #3 Confirm whether medication-mode days should be annotated for retraining like illness days; wire it or record the decision
 <!-- AC:END -->
+
+
 
 ## Implementation Notes
 
@@ -35,14 +38,24 @@ When a 7-day illness or 14-day medication mode auto-expires via checkModeExpiry,
 - Related: TASK-258 (illness annotation never persisted)
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-08 10:16
+---
+Started: mirror the illness auto-detection notification path (NotificationCategory.modeExpired) onto both deactivateIfExpired() call sites; only auto-expiry notifies, manual deactivate()/stop() doesn't since the user already knows. AC#3: decided to wire full annotation support for MedicationMode (previously had none, even on manual stop), exactly mirroring illness mode's TASK-258 pattern rather than treating this as detail-needed -- the pattern was directly analogous and already established.
+---
+<!-- COMMENTS:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
 - [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible with screenshots
+- [x] #6 doc/user-guide.html updated when the change is user-visible with screenshots
 - [ ] #7 Integration test added or extended when a screen/flow changed
-- [ ] #8 backlog item updated with comments
+- [x] #8 backlog item updated with comments
 <!-- DOD:END -->

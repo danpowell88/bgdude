@@ -6,8 +6,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/faults.dart';
+
+// TASK-261: medicationModeProvider's notifier now reads notificationServiceProvider
+// at construction (to notify on auto-expiry) -- effectiveSensitivityProvider watches
+// medicationModeProvider, which these charts read transitively, so
+// notificationServiceProvider (throw-by-default outside main()) must be overridden
+// here too even though these tests never trigger a notification themselves.
 Widget _host(Widget child) => ProviderScope(
-      overrides: [devModeProvider.overrideWith((ref) => true)],
+      overrides: [
+        devModeProvider.overrideWith((ref) => true),
+        notificationServiceProvider.overrideWithValue(NoopNotificationService()),
+      ],
       child: MaterialApp(
         home: Scaffold(body: SingleChildScrollView(child: child)),
       ),

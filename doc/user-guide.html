@@ -328,8 +328,8 @@
   <p class="lead">Settings → <b>Medication / steroid mode</b>. Steroids raise insulin needs, often a lot.</p>
   <ul class="tight">
     <li>Turn it <b>on</b> while you're on a course; pick an <b>intensity</b> (mild / moderate / high → +15 / 25 / 40% resistance).</li>
-    <li>The whole app then expects more resistance in its sensitivity, dosing hints and insights. Turn it off when the course ends. Advisory only — it never changes your pump.</li>
-    <li>It also auto-expires after 14 days if you forget to turn it off, so a finished course can't keep inflating expected insulin needs indefinitely.</li>
+    <li>The whole app then expects more resistance in its sensitivity, dosing hints and insights, and tags the period for the models — same as illness mode — so a medication course doesn't mislead training. Turn it off when the course ends. Advisory only — it never changes your pump.</li>
+    <li>It also auto-expires after 14 days if you forget to turn it off, so a finished course can't keep inflating expected insulin needs indefinitely — you'll get a <b>notification</b> when that happens (see <a href="#notifications">Notifications</a>).</li>
   </ul>
 </section>
 
@@ -340,7 +340,7 @@
     <li><b>Auto-detected.</b> When your data looks illness-like (fever, raised resting heart rate, low HRV, dropped steps, higher glucose), the app raises a suggestion in <a href="#confirm">Confirm events</a> (and a notification). <b>Confirm</b> turns illness mode on; <b>Dismiss</b> clears it.</li>
     <li><b>Turn it on yourself</b> from <a href="#quicklog">Quick-log</a> → <b>🤒 Illness</b> — pick <b>Mild / Moderate / Severe</b> (how much to boost). Tap it again to <b>End illness</b> when you're better.</li>
     <li>While a sustained high coincides with illness (or a likely site failure, or being very high with little insulin on board), a <b>Check ketones</b> alert fires with sick-day guidance.</li>
-    <li>It also auto-expires after 7 days if you forget to end it, so a resolved illness can't keep inflating expected insulin needs indefinitely.</li>
+    <li>It also auto-expires after 7 days if you forget to end it, so a resolved illness can't keep inflating expected insulin needs indefinitely — you'll get a <b>notification</b> when that happens (see <a href="#notifications">Notifications</a>).</li>
   </ul>
   <div class="note">Illness mode used to live on the Insights tab — it's now auto-suggested in Confirm events and toggled from Quick-log.</div>
 </section>
@@ -381,6 +381,7 @@
     <tr><td><b>Move after meals</b></td><td>A post-meal spike is predicted and you're not already moving — a nudge to walk.</td><td>Low</td></tr>
     <tr><td><b>Overnight low risk</b></td><td>Tonight/tomorrow carries a higher low risk (after alcohol or aerobic exercise).</td><td>Normal</td></tr>
     <tr><td><b>Illness detected</b></td><td>Your data looks illness-like (persistent unexplained highs / resistance).</td><td>Low</td></tr>
+    <tr><td><b>Sick day / medication mode ended</b></td><td>Illness mode or medication mode <b>auto-expired</b> (you forgot to turn it off) and dosing hints reverted to normal — the same signal you get when one is auto-detected. A manual <b>End illness</b>/turn-off doesn't notify, since you already know you ended it.</td><td>Low</td></tr>
   </table>
   <h4>Pump &amp; device</h4>
   <table>

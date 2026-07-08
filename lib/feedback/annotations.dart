@@ -18,6 +18,10 @@ enum AnnotationKind {
   mood, // context: wellbeing note (great/ok/low)
   alcohol, // context: biases toward delayed lows
   other,
+  // Appended last: persisted as AnnotationKind.index (database.dart's `kind` column
+  // stores the raw int), so inserting anywhere but the end would silently relabel
+  // every already-persisted annotation whose kind shifted -- always append here.
+  medication, // context: raises resistance (e.g. a steroid course), TASK-261
 }
 
 extension AnnotationKindX on AnnotationKind {
@@ -39,6 +43,7 @@ extension AnnotationKindX on AnnotationKind {
   /// Whether it feeds the sensitivity/context model.
   bool get isContext => switch (this) {
         AnnotationKind.illness => true,
+        AnnotationKind.medication => true,
         AnnotationKind.stress => true,
         AnnotationKind.mood => true,
         AnnotationKind.exercise => true,
@@ -54,6 +59,7 @@ extension AnnotationKindX on AnnotationKind {
         AnnotationKind.compressionLow => 'Compression low',
         AnnotationKind.exercise => 'Exercise',
         AnnotationKind.illness => 'Illness',
+        AnnotationKind.medication => 'Medication',
         AnnotationKind.stress => 'Stress',
         AnnotationKind.mood => 'Mood',
         AnnotationKind.alcohol => 'Alcohol',
