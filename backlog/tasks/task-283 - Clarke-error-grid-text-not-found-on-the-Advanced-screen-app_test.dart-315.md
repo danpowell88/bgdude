@@ -1,10 +1,11 @@
 ---
 id: TASK-283
 title: '''Clarke error grid'' text not found on the Advanced screen (app_test.dart:315)'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-08 00:16'
-updated_date: '2026-07-08 00:16'
+updated_date: '2026-07-08 00:19'
 labels: []
 milestone: m-8
 dependencies: []
@@ -36,3 +37,13 @@ Found by TASK-219's emulator workflow: integration_test/app_test.dart's 'advance
 - [ ] #8 Integration test added or extended when a screen/flow changed
 - [ ] #9 backlog item updated with comments
 <!-- DOD:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-08 00:19
+---
+Started: root cause found -- the Advanced screen's body is a lazy ListView; the test checked for Clarke error grid text without scrolling to it first (unlike checks for it being off-screen in the initial viewport at higher sections). Not a missing-widget bug, a missing-scroll-in-the-test bug.
+---
+<!-- COMMENTS:END -->

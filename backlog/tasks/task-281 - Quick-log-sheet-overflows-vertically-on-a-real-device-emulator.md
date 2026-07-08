@@ -1,10 +1,11 @@
 ---
 id: TASK-281
 title: Quick-log sheet overflows vertically on a real device/emulator
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-08 00:16'
-updated_date: '2026-07-08 00:16'
+updated_date: '2026-07-08 00:20'
 labels: []
 milestone: m-8
 dependencies: []
@@ -36,3 +37,13 @@ Found by TASK-219's emulator workflow (2nd dispatch, after TASK-280's AppBar fix
 - [ ] #8 Integration test added or extended when a screen/flow changed
 - [ ] #9 backlog item updated with comments
 <!-- DOD:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-08 00:20
+---
+Started+fixed: wrapped the quick-log sheet's Column in a SingleChildScrollView so the 9-chip Wrap can scroll instead of overflowing when showModalBottomSheet's height cap is tight on a shorter screen.
+---
+<!-- COMMENTS:END -->

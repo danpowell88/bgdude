@@ -264,8 +264,10 @@ void main() {
     // Sheet closed; the meal is in the list.
     expect(find.text('Save meal'), findsNothing);
     expect(find.text('Test pasta'), findsOneWidget);
-    await tester.tap(find.text('Test pasta'));
-    await tester.pumpAndSettle();
+    // TASK-282: the newly-added meal can land off-screen in the list -- a bare
+    // tap() (no scroll at all) intermittently missed it, the same class of bug
+    // TASK-234/235 fixed elsewhere. tapListTile scrolls + ensureVisible first.
+    await tapListTile(tester, find.text('Test pasta'));
 
     // Demo mode has a live reading, so the pre-bolus coach renders (not the
     // "needs a live CGM" fallback). "Learned curve" appears as both the section
@@ -312,6 +314,12 @@ void main() {
     await tapListTile(tester, find.text('Model internals'));
     expect(find.text('Effective sensitivity'), findsOneWidget);
     expect(find.text('Forecaster'), findsOneWidget);
+    // TASK-283: the Advanced screen's body is a lazy ListView -- "Clarke error
+    // grid" is the 3rd section (after Effective sensitivity/Time-of-day
+    // profile/Forecaster) and isn't necessarily built yet without scrolling to it
+    // first, unlike the two checks above which happen to fit the initial viewport.
+    await tester.scrollUntilVisible(find.text('Clarke error grid'), 200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('Clarke error grid'), findsOneWidget);
 
     // §4-6.4 / TASK-38: the read-only diagnostics log opens from Advanced.

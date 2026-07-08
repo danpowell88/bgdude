@@ -1,10 +1,11 @@
 ---
 id: TASK-282
 title: 'Meals-tab tap-miss on a saved meal tile (app_test.dart:267)'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-08 00:16'
-updated_date: '2026-07-08 00:16'
+updated_date: '2026-07-08 00:18'
 labels: []
 milestone: m-8
 dependencies: []
@@ -36,3 +37,13 @@ Found by TASK-219's emulator workflow: tapping a saved meal tile ('Test pasta') 
 - [ ] #8 Integration test added or extended when a screen/flow changed
 - [ ] #9 backlog item updated with comments
 <!-- DOD:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-08 00:18
+---
+Started: route the meals-tab tap through the shared tapListTile helper, same fix as TASK-235/279.
+---
+<!-- COMMENTS:END -->

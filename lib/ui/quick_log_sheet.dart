@@ -24,57 +24,67 @@ class QuickLogSheet extends ConsumerWidget {
 
     void toast(String msg) {
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
 
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Quick log', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _Chip('🍽️ Carbs', () => _number(context, 'Carbs (g)', (v) async {
-                      await jobs.logCarb(v);
-                      toast('Logged ${v.toStringAsFixed(0)}g carbs.');
-                    })),
-                _Chip('💉 Bolus', () => _number(context, 'Units', (v) async {
-                      await jobs.logBolus(v);
-                      toast('Logged ${v.toStringAsFixed(1)}U bolus.');
-                    }, decimal: true)),
-                _Chip('🏃 Exercise', () async {
-                  await jobs.logContext(AnnotationKind.exercise);
-                  toast('Logged exercise.');
-                }),
-                _Chip('🍷 Alcohol', () async {
-                  await jobs.logContext(AnnotationKind.alcohol,
-                      window: const Duration(hours: 12));
-                  toast('Logged alcohol — watch for delayed lows.');
-                }),
-                _Chip('😰 Stress', () async {
-                  await jobs.logContext(AnnotationKind.stress);
-                  toast('Logged stress.');
-                }),
-                _Chip('🙂 Mood', () => _mood(context, ref, toast)),
-                _Chip('🤒 Illness', () => _illness(context, ref, toast)),
-                _Chip('🩹 New sensor', () async {
-                  await jobs.recordDeviceChange(DeviceKind.sensor);
-                  toast('Sensor change recorded.');
-                }),
-                _Chip('🧷 New site', () async {
-                  await jobs.recordDeviceChange(DeviceKind.site);
-                  toast('Infusion site change recorded.');
-                }),
-              ],
-            ),
-          ],
+      // TASK-281: showModalBottomSheet caps this sheet's height, and the Wrap of
+      // 9 quick-log chips (plus the title) doesn't always fit under that cap on a
+      // shorter screen -- found by the emulator suite as a 16px bottom overflow.
+      // A scroll view lets the content scroll instead of overflowing rather than
+      // needing to guess a screen-size-proof fixed height.
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Quick log', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _Chip(
+                      '🍽️ Carbs',
+                      () => _number(context, 'Carbs (g)', (v) async {
+                            await jobs.logCarb(v);
+                            toast('Logged ${v.toStringAsFixed(0)}g carbs.');
+                          })),
+                  _Chip(
+                      '💉 Bolus',
+                      () => _number(context, 'Units', (v) async {
+                            await jobs.logBolus(v);
+                            toast('Logged ${v.toStringAsFixed(1)}U bolus.');
+                          }, decimal: true)),
+                  _Chip('🏃 Exercise', () async {
+                    await jobs.logContext(AnnotationKind.exercise);
+                    toast('Logged exercise.');
+                  }),
+                  _Chip('🍷 Alcohol', () async {
+                    await jobs.logContext(AnnotationKind.alcohol,
+                        window: const Duration(hours: 12));
+                    toast('Logged alcohol — watch for delayed lows.');
+                  }),
+                  _Chip('😰 Stress', () async {
+                    await jobs.logContext(AnnotationKind.stress);
+                    toast('Logged stress.');
+                  }),
+                  _Chip('🙂 Mood', () => _mood(context, ref, toast)),
+                  _Chip('🤒 Illness', () => _illness(context, ref, toast)),
+                  _Chip('🩹 New sensor', () async {
+                    await jobs.recordDeviceChange(DeviceKind.sensor);
+                    toast('Sensor change recorded.');
+                  }),
+                  _Chip('🧷 New site', () async {
+                    await jobs.recordDeviceChange(DeviceKind.site);
+                    toast('Infusion site change recorded.');
+                  }),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -173,7 +183,8 @@ class QuickLogSheet extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel')),
           FilledButton(
             onPressed: () =>
                 Navigator.of(ctx).pop(double.tryParse(controller.text)),
