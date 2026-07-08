@@ -90,13 +90,20 @@ jobs:
         run: flutter analyze
 
   # TASK-297: the unit-test suite (1185+ tests, one process) was the test
-  # job's dominant cost. Sharded across 4 matrix jobs by test/ subdirectory
-  # (test/ is grouped by feature area since TASK-276) so the dominant cost
+  # job's dominant cost. Sharded across 4 matrix jobs so the dominant cost
   # runs in parallel; each shard uploads its own coverage, and a separate
   # coverage-gate job merges them with `lcov --add-tracefile` (which sums
   # per-line hit counts for files touched by more than one shard, so the
   # merged percentage is exact, not a naive/double-counted concatenation)
   # before running the same floor check as before sharding.
+  #
+  # TASK-301: the original split used a hand-maintained case statement of
+  # test/ subdirectories, which silently drops any *_test.dart landing under
+  # a directory nobody remembers to add to the list -- analyze/test would
+  # stay green on an untested file with no signal at all. `flutter test`'s
+  # own --total-shards/--shard-index discovers every test file itself, so
+  # nothing can go unlisted; verified locally all 4 shards sum to exactly
+  # the unsharded total (1314 tests), no gaps or overlap.
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -141,19 +148,13 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
 
       # Unit tests with line-coverage measurement (TASK-159), sharded
-      # (TASK-297). The integration_test/ suite needs an emulator and is
+      # (TASK-297/301). The integration_test/ suite needs an emulator and is
       # DELIBERATELY manual-only: run it locally per CLAUDE.md ("Emulator
       # (integration) tests for every feature") — an emulator job on hosted
       # runners is slow/flaky and this is a personal, single-device project.
       - name: Unit tests (with coverage) — shard ${{ matrix.shard }}
         run: |
-          case ${{ matrix.shard }} in
-            1) dirs="test/insights test/core test/weather test/profile test/onboarding test/feedback" ;;
-            2) dirs="test/ml test/data test/meals test/dev" ;;
-            3) dirs="test/state test/analytics test/support test/logging test/timeline" ;;
-            4) dirs="test/ui test/reports test/pump test/integrations test/food" ;;
-          esac
-          flutter test --coverage $dirs
+          flutter test --coverage --total-shards=4 --shard-index=$(( ${{ matrix.shard }} - 1 )) test/
 
       - name: Upload shard coverage
         uses: actions/upload-artifact@v4
@@ -172,13 +173,20 @@ jobs:
           pattern: coverage-shard-*
           path: shard-coverage
 
+      # TASK-301: `empty` deliberately dropped from --ignore-errors -- it was
+      # silently tolerating a shard that contributed zero coverage (e.g. a
+      # shard whose `flutter test` step failed to even write lcov.info), the
+      # one signal that would otherwise catch a shard silently missing from
+      # the merge. `inconsistent,corrupt` stay ignored: expected, benign
+      # cross-shard warnings when the same source file is touched by more
+      # than one shard's run.
       - name: Merge shard coverage
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq lcov
           mkdir -p coverage
           args=()
           for f in shard-coverage/*/lcov.info; do args+=(--add-tracefile "$f"); done
-          lcov "${args[@]}" -o coverage/lcov.info --ignore-errors inconsistent,corrupt,empty
+          lcov "${args[@]}" -o coverage/lcov.info --ignore-errors inconsistent,corrupt
 
       # Coverage gate (TASK-159): fail on a coverage collapse. Threshold is
       # a floor, not a target — raise it as coverage grows (67.6% on
@@ -258,16 +266,18 @@ jobs:
       - name: Run code generation
         run: dart run build_runner build --delete-conflicting-outputs
 
-      # Pulls pumpx2/blessed from JitPack (network available) -- retry-wrapped
-      # (TASK-288) since a Maven/JitPack dependency-resolution blip is a
-      # transient network failure, not a build defect.
+      # Pulls pumpx2/blessed from JitPack (network available). TASK-301: NOT
+      # retry-wrapped -- unlike a pure dependency-resolution step, this
+      # command also compiles Dart and Kotlin, and there is no equally clean
+      # single-purpose Gradle/Flutter task to isolate resolution from
+      # compilation for an APK build the way native-tests' warm-up step does.
+      # A blind retry here would risk masking a real, rare compile failure as
+      # readily as it catches a genuine Maven/JitPack blip. The already
+      # retried "Install dependencies" step above catches the large majority
+      # of transient network failures; a resolution blip that survives to
+      # this step is rare enough to accept as a real (rerunnable) failure.
       - name: Build debug APK
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 15
-          max_attempts: 2
-          retry_wait_seconds: 15
-          command: flutter build apk --debug
+        run: flutter build apk --debug
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -319,26 +329,51 @@ jobs:
           retry_wait_seconds: 10
           command: flutter pub get
 
+      # local.properties is written deterministically (flutter-action exports
+      # FLUTTER_ROOT; ANDROID_HOME / ANDROID_SDK_ROOT is set on the hosted
+      # runner) -- its own step since both the warm-up and the real test run
+      # below need it, and it is a plain local file write, nothing to retry.
+      - name: Write local.properties
+        run: |
+          FLUTTER_SDK="${FLUTTER_ROOT:-$(dirname "$(dirname "$(command -v flutter)")")}"
+          ANDROID_SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$FLUTTER_SDK" ] || [ -z "$ANDROID_SDK" ]; then
+            echo "::error::Could not resolve FLUTTER_SDK ('$FLUTTER_SDK') or ANDROID_SDK ('$ANDROID_SDK')"; exit 1
+          fi
+          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_SDK" "$ANDROID_SDK" > android/local.properties
+
+      # TASK-301: the old single retried command wrapped test EXECUTION, not
+      # just Gradle's dependency resolution -- an intermittent native-test
+      # failure would quietly pass on attempt 2, masking a flake in exactly
+      # the tests that guard the read-only-pump charter and the mU→U
+      # conversions (the highest-value place a masked failure could hide).
+      # Robolectric's own android-all-instrumented SDK jar is fetched via its
+      # own resolver the first time any @Config(sdk=...) level is used at
+      # TEST RUNTIME, not at Gradle's normal dependency-resolution time, and
+      # is NOT covered by gradle/actions/setup-gradle's cache (~/.gradle
+      # only) -- so it is a real, separate network dependency hiding inside
+      # what looked like "just run the tests". Every Robolectric class here
+      # uses the same @Config(sdk=[34]), so running any one of them warms
+      # that fetch for the whole suite. This step's outcome is deliberately
+      # ignored (continue-on-error) -- its only job is populating the local
+      # Maven cache as a side effect before the real, ungated run below.
+      - name: Warm the Robolectric SDK-jar cache (network-dependent, retried)
+        continue-on-error: true
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: |
+            cd android && ./gradlew :app:testDebugUnitTest --tests "com.bgdude.app.pump.PairingWindowTimeoutTest" --no-daemon
+
       # Native Kotlin unit tests (android/app/src/test) — BLOCKING
       # (TASK-159): ProtocolProbeTest guards the read-only-pump guarantee
       # and PumpResponseMapperTest guards the mU→U conversions; a red
-      # native suite must fail the build. local.properties is written
-      # deterministically first (flutter-action exports FLUTTER_ROOT;
-      # ANDROID_HOME / ANDROID_SDK_ROOT is set on the hosted runner).
-      # Retry-wrapped (TASK-288): the first invocation triggers Gradle's own
-      # dependency resolution (Maven/Google), a real network dependency
-      # distinct from the Kotlin compile/test work itself.
+      # native suite must fail the build. NOT retried (TASK-301): by this
+      # point Gradle's dependencies and Robolectric's SDK jar are already
+      # resolved/cached from the warm-up step above, so a failure here is a
+      # genuine test/build problem, not a network blip, and must actually
+      # fail the build rather than get a free second attempt.
       - name: Native unit tests
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 10
-          max_attempts: 2
-          retry_wait_seconds: 15
-          command: |
-            FLUTTER_SDK="${FLUTTER_ROOT:-$(dirname "$(dirname "$(command -v flutter)")")}"
-            ANDROID_SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-            if [ -z "$FLUTTER_SDK" ] || [ -z "$ANDROID_SDK" ]; then
-              echo "::error::Could not resolve FLUTTER_SDK ('$FLUTTER_SDK') or ANDROID_SDK ('$ANDROID_SDK')"; exit 1
-            fi
-            printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_SDK" "$ANDROID_SDK" > android/local.properties
-            cd android && ./gradlew :app:testDebugUnitTest --no-daemon
+        run: cd android && ./gradlew :app:testDebugUnitTest --no-daemon

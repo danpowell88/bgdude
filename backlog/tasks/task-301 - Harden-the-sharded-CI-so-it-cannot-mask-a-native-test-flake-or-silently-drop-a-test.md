@@ -3,10 +3,11 @@ id: TASK-301
 title: >-
   Harden the sharded CI so it cannot mask a native-test flake or silently drop a
   test
-status: To Do
+status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-08 07:27'
+updated_date: '2026-07-08 07:46'
 labels: []
 milestone: m-8
 dependencies: []
@@ -22,10 +23,10 @@ Verifying the TASK-288/297 CI work surfaced four test-signal-integrity gaps in .
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The native-tests retry wraps ONLY the network-dependent Gradle dependency-resolution phase (e.g. a separate ./gradlew dependencies/resolve step), not the test execution -- an intermittent native-test failure fails the build
-- [ ] #2 A CI guard asserts the union of the shard directory lists equals the actual set of test/ subdirs containing a *_test.dart (fail the build if a dir is unlisted), OR sharding is done by flutter's --total-shards/--shard-index so no dir can be missed
-- [ ] #3 apk-build retry is scoped to dependency resolution, not the compile, or the retry is removed there
-- [ ] #4 lcov merge does not silently tolerate an empty shard tracefile (drop the empty suppression or assert each shard contributed coverage)
+- [x] #1 The native-tests retry wraps ONLY the network-dependent Gradle dependency-resolution phase (e.g. a separate ./gradlew dependencies/resolve step), not the test execution -- an intermittent native-test failure fails the build
+- [x] #2 A CI guard asserts the union of the shard directory lists equals the actual set of test/ subdirs containing a *_test.dart (fail the build if a dir is unlisted), OR sharding is done by flutter's --total-shards/--shard-index so no dir can be missed
+- [x] #3 apk-build retry is scoped to dependency resolution, not the compile, or the retry is removed there
+- [x] #4 lcov merge does not silently tolerate an empty shard tracefile (drop the empty suppression or assert each shard contributed coverage)
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -35,6 +36,22 @@ Verifying the TASK-288/297 CI work surfaced four test-signal-integrity gaps in .
 - File: .github/workflows/ci.yml native-tests retry :331-344, shard case list :150-155, apk retry :264-270, lcov merge :181
 - The coverage gate itself is correct (post-merge, unioned, database.g.dart excluded, >=65) and the build_runner cache cannot serve stale codegen -- those were verified fine; this ticket is only the masking/drop gaps
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-08 07:43
+---
+Started: this is the concurrent sessions review of my own TASK-288/297 CI work -- all 4 findings are legitimate. Plan: AC#1/#3 split the network-dependent phase (Gradle/Maven resolution) from the phase whose failure must actually gate the build (Kotlin test execution, Dart/Kotlin compilation) so a genuine flake/bug cannot be masked by a blind retry of the whole command. For native-tests specifically: local.properties writing becomes its own step; a new retry-wrapped, continue-on-error warm-up step runs one existing Robolectric test class first (confirmed all 14 Robolectric test classes uniformly use @Config(sdk=[34]), so any one of them exercises the same SDK-jar fetch path -- Robolectric fetches its android-all-instrumented jar via its own resolver at TEST RUNTIME on first use, which is NOT covered by gradle/actions/setup-gradle caching since that only covers ~/.gradle, not the Maven-style path Robolectric uses -- this is the real network dependency inside what used to be one retried step); the real gating test run is a separate, unretried step. For apk-build: taking AC#3s simpler sanctioned alternative (remove the retry rather than trying to cleanly split Gradle-Android dependency resolution from compilation, which has no equally clean single-purpose Gradle task to isolate it safely) -- the already-retried pub get step catches the large majority of transient blips; a rare Maven/JitPack resolution failure during the actual Android build becomes a real, visible failure again, matching pre-TASK-288 behavior for this one step. AC#2: switching the test job from a hand-maintained directory-list case statement to flutter tests native --total-shards/--shard-index sharding, which auto-discovers every test file under test/ -- verified locally all 4 shards sum to exactly 1314 (the full suite), so nothing can ever be silently unlisted again. AC#4: drop empty from lcov --ignore-errors so a shard that contributed zero coverage becomes a visible merge error instead of being silently tolerated.
+---
+
+author: Claude
+created: 2026-07-08 07:46
+---
+Implemented all 4. Verified what is locally verifiable before pushing: (a) --total-shards=4/--shard-index sharding sums to exactly 1314 across all 4 shards (full suite, no gaps/overlap); (b) both halves of the native-tests split run correctly in sequence locally -- the warm-up (PairingWindowTimeoutTest alone) succeeds, then the full gradlew :app:testDebugUnitTest succeeds as a separate invocation; (c) analyze clean. Could NOT test the lcov --ignore-errors empty removal locally (no lcov on this Windows dev box, same limitation as TASK-297) -- watching the live CI dispatch closely for the coverage-gate job specifically.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
