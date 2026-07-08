@@ -3,10 +3,11 @@ id: TASK-260
 title: >-
   Illness/medication persist failure leaves in-memory dosing state diverged from
   the UI
-status: To Do
+status: Done
 assignee:
   - Claude
 created_date: '2026-07-07 16:26'
+updated_date: '2026-07-08 05:13'
 labels: []
 milestone: m-8
 dependencies: []
@@ -22,9 +23,9 @@ In providers.dart the IllnessMode activate/deactivate/updateBoost mutate _contro
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 On a failed illness-mode write, the dosing controller (_controller.mode) and the UI state are reconciled to the same value (both revert, or both stay with a surfaced error)
-- [ ] #2 Medication mode and meal library apply the same reconcile-on-failure semantics
-- [ ] #3 Test: a failed write leaves dosing math and UI state agreeing, not diverged
+- [x] #1 On a failed illness-mode write, the dosing controller (_controller.mode) and the UI state are reconciled to the same value (both revert, or both stay with a surfaced error)
+- [x] #2 Medication mode and meal library apply the same reconcile-on-failure semantics
+- [x] #3 Test: a failed write leaves dosing math and UI state agreeing, not diverged
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -35,14 +36,46 @@ In providers.dart the IllnessMode activate/deactivate/updateBoost mutate _contro
 - Distinct from TASK-259 (base-notifier latch): these are the hand-rolled mode notifiers
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-08 04:59
+---
+Started: reading lib/state/providers.dart's IllnessMode/MedicationMode/MealLibrary notifiers to design reconcile-on-persist-failure semantics so _controller.mode (what dosing math reads) and state (what the UI reads) never diverge.
+---
+
+author: Claude
+created: 2026-07-08 05:13
+---
+Fixed all 3 ACs across all three notifiers.
+
+AC#1 (IllnessMode): _persist()'s catch block now reverts _controller.mode (what dosing math reads via overlay()) to match state (what the UI reads, unchanged on failure since it's only assigned on the successful write). Previously activate/deactivate/updateBoost mutated _controller.mode BEFORE calling _persist, so a failed write left it diverged from both the UI and disk.
+
+AC#2 (MedicationMode + MealLibrary, same semantics): unlike illness mode these don't have a separate controller -- dosing math and the UI both already read the same  field, so the only gap was state silently drifting from disk within the same session. Both notifiers' mutating methods now capture  before mutating, and _persist(previous) reverts state to it on a failed write.
+
+AC#3: added 4 new tests in test/persisted_state_corruption_test.dart (IllnessMode activate + deactivate failure, MedicationMode start failure, MealLibrary add failure). Fault injection needed 2 attempts -- a CLOSED in-memory AppDatabase does NOT throw on write (drift/sqlite3 silently accepts it), discovered via a throwaway probe test; switched to pointing KvStore at a database file with a 300-character filename, which reliably fails to open on both Windows/NTFS and Linux/ext4's ~255-byte filename limits (portable for CI).
+
+Rigor check: temporarily removed each of the 4 revert lines -- all 4 corresponding tests correctly failed. Reverted; git diff clean.
+
+Verified: flutter analyze clean, flutter test --coverage green (1175 tests, 67.77% >= 65% floor, up from 67.58%), flutter build apk --debug succeeds. No native Kotlin, no user-guide update (internal state-consistency fix, no new user-visible surface).
+---
+
+author: Claude
+created: 2026-07-08 05:13
+---
+Correction to comment #2: two backtick-quoted spans were eaten by bash. AC#2 in full: unlike illness mode these dont have a separate controller -- dosing math and the UI both already read the same "state" field, so the only gap was state silently drifting from disk within the same session. Both notifiers mutating methods now capture "previous = state" before mutating, and _persist(previous) reverts state to it on a failed write.
+---
+<!-- COMMENTS:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible with screenshots
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #6 doc/user-guide.html updated when the change is user-visible with screenshots
 - [ ] #7 Integration test added or extended when a screen/flow changed
 - [ ] #8 backlog item updated with comments
 <!-- DOD:END -->

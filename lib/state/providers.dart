@@ -1121,6 +1121,12 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
       state = _controller.mode;
     } catch (e) {
       appLog.error('persistence', 'IllnessMode persist failed', error: e);
+      // TASK-260: activate/deactivate/etc. already mutated _controller.mode (what
+      // dosing math reads) BEFORE this ran; `state` (what the UI reads) is only
+      // ever set on the successful write above, so on failure it's still the OLD
+      // value. Revert the controller to match -- otherwise dosing silently applies
+      // a boost/change the UI shows as off and disk never recorded.
+      _controller.mode = state;
     }
   }
 
@@ -1210,17 +1216,24 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
     if (restored != null) state = restored;
   }
 
-  Future<void> _persist() async {
+  /// TASK-260: [previous] is the state before the caller's mutation -- reverted to
+  /// on a failed write so a change that was never actually saved doesn't keep
+  /// feeding dosing math in-session (it would otherwise silently diverge from disk
+  /// until the next restart, unlike illness mode this doesn't split dosing from the
+  /// UI too, since both read `state` here, but it's the same class of gap).
+  Future<void> _persist(MedicationMode previous) async {
     // TASK-198: this mode feeds dosing math too — same rationale as illness mode's
     // _persist above.
     try {
       await KvStore.setString(_key, jsonEncode(state.toJson()));
     } catch (e) {
       appLog.error('persistence', 'MedicationMode persist failed', error: e);
+      state = previous;
     }
   }
 
   Future<void> start(MedicationIntensity intensity, {String name = 'Steroid'}) async {
+    final previous = state;
     final now = DateTime.now();
     state = MedicationMode(
       active: true,
@@ -1230,12 +1243,13 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
       intensity: intensity,
       name: name,
     );
-    await _persist();
+    await _persist(previous);
   }
 
   Future<void> stop() async {
+    final previous = state;
     state = state.copyWith(active: false, startedAt: null, expiresAt: null);
-    await _persist();
+    await _persist(previous);
   }
 
   /// Deactivates if the auto-expiry has passed (TASK-197). Called at startup
@@ -1244,14 +1258,16 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
   /// inflating dosing across a restart or an open-ended session.
   Future<void> deactivateIfExpired(DateTime now) async {
     if (!state.isExpired(now)) return;
+    final previous = state;
     state = state.copyWith(active: false, startedAt: null, expiresAt: null);
-    await _persist();
+    await _persist(previous);
   }
 
   /// Remember the intensity choice without (de)activating.
   Future<void> setIntensity(MedicationIntensity intensity) async {
+    final previous = state;
     state = state.copyWith(intensity: intensity);
-    await _persist();
+    await _persist(previous);
   }
 }
 
@@ -1531,7 +1547,11 @@ class MealLibraryNotifier extends StateNotifier<MealLibrary> {
     }
   }
 
-  Future<void> _persist() async {
+  /// TASK-260: [previous] is reverted to on a failed write so an add/learned-outcome
+  /// that was never actually saved doesn't keep claiming to exist for the rest of
+  /// the session, only to vanish on the next restart -- same reconcile-on-failure
+  /// semantics as illness/medication mode.
+  Future<void> _persist(MealLibrary previous) async {
     // TASK-198: add/learnFromOutcome call this unawaited -- log rather than let a
     // failed write disappear silently.
     try {
@@ -1541,12 +1561,14 @@ class MealLibraryNotifier extends StateNotifier<MealLibrary> {
       );
     } catch (e) {
       appLog.error('persistence', 'MealLibrary persist failed', error: e);
+      state = previous;
     }
   }
 
   void add(SavedMeal meal) {
+    final previous = state;
     state = state.add(meal);
-    unawaited(_persist());
+    unawaited(_persist(previous));
   }
 
   void learnFromOutcome(
@@ -1554,8 +1576,9 @@ class MealLibraryNotifier extends StateNotifier<MealLibrary> {
     MealOutcome outcome,
     List<CgmSample> postMealCgm,
   ) {
+    final previous = state;
     state = state.learnFromOutcome(meal, outcome, postMealCgm).library;
-    unawaited(_persist());
+    unawaited(_persist(previous));
   }
 }
 

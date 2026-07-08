@@ -4,12 +4,15 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bgdude/analytics/therapy_settings.dart';
+import 'package:bgdude/data/database.dart';
 import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/feedback/pending_confirmation.dart';
 import 'package:bgdude/insights/alert_thresholds.dart';
+import 'package:bgdude/insights/medication_mode.dart';
 import 'package:bgdude/insights/notification_prefs.dart';
 import 'package:bgdude/integrations/glucose_meter.dart';
 import 'package:bgdude/integrations/glucose_meter_controller.dart';
@@ -24,6 +27,7 @@ import 'package:bgdude/pump/pump_events.dart';
 import 'package:bgdude/state/persisted_state_notifier.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:bgdude/weather/weather_history.dart';
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _corrupt = '{"truncated": '; // invalid JSON — the classic torn write
@@ -291,6 +295,94 @@ void main() {
       expect(
           loggedError('persistence', 'corrupt glucose-meter pairing state'),
           isTrue);
+    });
+  });
+
+  // TASK-260: a WRITE failure (not corrupt-on-read, the rest of this file's focus)
+  // must not leave dosing math and the UI (or, for meal library, in-session state
+  // and disk) disagreeing about what actually happened. Points KvStore at a database
+  // file whose name is too long to open (fails identically on Windows/NTFS and
+  // Linux/ext4's ~255-byte filename limit) so setString/setStringList reliably
+  // throw, standing in for any real write failure. A CLOSED in-memory database was
+  // tried first and does not work -- drift/sqlite3 accepts writes against it
+  // silently rather than throwing, so it wouldn't actually exercise this path.
+  group('TASK-260: persist-failure reconciliation', () {
+    Future<void> poisonKvStore() async {
+      final unopenable = File('${Directory.systemTemp.path}/${'x' * 300}.db');
+      KvStore.init(AppDatabase(NativeDatabase(unopenable)));
+    }
+
+    test(
+        'IllnessMode: a failed activate() write reverts dosing math to match '
+        'the still-off UI state', () async {
+      final n = IllnessModeNotifier();
+      await _settle();
+      await poisonKvStore();
+
+      n.activate(boost: 1.8);
+      await _settle();
+
+      expect(n.state.active, isFalse,
+          reason: 'the write failed, so the UI-visible state never changed');
+      expect(n.overlay(SensitivityContext.neutral), SensitivityContext.neutral,
+          reason: 'dosing math must not apply a boost that was never saved '
+              'and that the UI still shows as off');
+    });
+
+    test(
+        'IllnessMode: a failed deactivate() write reverts dosing math to '
+        'match the still-on UI state', () async {
+      final n = IllnessModeNotifier();
+      await _settle();
+      n.activate(boost: 1.5);
+      await _settle();
+      expect(n.state.active, isTrue); // precondition: really on before poisoning
+
+      await poisonKvStore();
+      n.deactivate();
+      await _settle();
+
+      expect(n.state.active, isTrue,
+          reason: 'the write failed, so the UI-visible state is still on');
+      expect(n.overlay(SensitivityContext.neutral) == SensitivityContext.neutral,
+          isFalse,
+          reason: 'dosing math must still apply the boost -- deactivation was '
+              'never actually saved, and the UI still shows illness mode on');
+    });
+
+    test(
+        'MedicationMode: a failed start() write reverts state so it does not '
+        'keep claiming to be active for the rest of the session', () async {
+      final n = MedicationModeNotifier();
+      await _settle();
+      await poisonKvStore();
+
+      await n.start(MedicationIntensity.high);
+
+      expect(n.state.active, isFalse,
+          reason: 'the write failed -- state must revert, not keep claiming '
+              'a change that was never saved (it would otherwise silently '
+              'diverge from disk for the rest of the session)');
+    });
+
+    test(
+        'MealLibrary: a failed add() write reverts state so the meal does '
+        'not appear to exist for the rest of the session', () async {
+      final n = MealLibraryNotifier();
+      await _settle();
+      await poisonKvStore();
+
+      n.add(const SavedMeal(
+        id: 'm1',
+        name: 'Toast',
+        emoji: '🍞',
+        carbsGrams: 30,
+      ));
+      await _settle();
+
+      expect(n.state.meals, isEmpty,
+          reason: 'the write failed -- the meal must not appear to exist '
+              'in-session when it was never actually saved');
     });
   });
 }
