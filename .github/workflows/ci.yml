@@ -128,6 +128,7 @@ jobs:
       - name: Merge shard coverage
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq lcov
+          mkdir -p coverage
           args=()
           for f in shard-coverage/*/lcov.info; do args+=(--add-tracefile "$f"); done
           lcov "${args[@]}" -o coverage/lcov.info --ignore-errors inconsistent,corrupt,empty
