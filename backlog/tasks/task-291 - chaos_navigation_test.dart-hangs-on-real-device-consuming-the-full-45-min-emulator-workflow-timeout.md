@@ -7,7 +7,7 @@ status: Done
 assignee:
   - Claude
 created_date: '2026-07-08 02:54'
-updated_date: '2026-07-08 02:56'
+updated_date: '2026-07-08 03:25'
 labels: []
 milestone: m-8
 dependencies: []
@@ -59,6 +59,27 @@ Partial fix (AC#3 done; AC#1/#2 -- the actual root cause -- need emulator access
 Not attempting a guess-fix at the actual blocking call without evidence of which step it is -- that's AC#1/#2, tracked open. My working theory (documented in the task notes, not applied as a fix): app_test.dart's scripted taps only ever hit mocked-plugin paths and passed cleanly, so the chaos walk's case 5 ('tap a random InkWell', unscripted) is the most likely to reach a real platform-channel/permission-dialog interaction (camera/OCR, Bluetooth) that never resolves on-device the way it does against a mocked test double.
 
 Verified: flutter analyze clean, flutter test test/ green (1156, unaffected -- integration_test/-only change). No native/build/coverage impact.
+---
+
+author: Claude
+created: 2026-07-08 03:25
+---
+New evidence from dispatch 28914262834 (with the TASK-291 bounded-timeout + step-counter fix now live): the job completed as a clean FAILURE in ~20 min total instead of silently burning the full 45 -- a real CI-signal improvement on its own. Log:
+
+  --- flutter test integration_test/app_test.dart -d emulator-5554 ---
+  (03:03:42 -> 03:12:07, 8.5 min) 13 tests passed.
+  --- flutter test integration_test/chaos_navigation_test.dart -d emulator-5554 ---
+  chaos walk: step 0/150
+  TimeoutException after 0:10:00.000000: Test timed out after 10 minutes.
+
+Only 'step 0/150' printed -- the hang is somewhere in steps 0-24 (before the next step-25 marker would fire), not deep in the walk. Since the chaos walk uses a fixed-seed Random(20260706), I computed the exact early action sequence offline (no device needed) by replicating the RNG consumption per action case:
+
+  step 0: tab tap -> home tab
+  step 1: tab tap -> meals/restaurant tab
+  step 2: open Settings
+  step 3: tap a random InkWell (index depends on the live widget tree -- likely something inside Settings, since that's what step 2 just opened; RNG state becomes unrecoverable from here without a live device)
+
+Working theory, NOT yet confirmed: the hang is most likely at or shortly after step 3's random InkWell tap inside the Settings screen -- e.g. tapping something that opens a real platform-channel dialog (camera/OCR permission, Bluetooth) that blocks tester.pump() because nothing ever resolves it on an automated run with no human to dismiss a system dialog. This narrows the search space substantially from 'anywhere in 150 steps' to 'Settings screen, first few taps' for whoever picks up the actual root-cause fix next.
 ---
 <!-- COMMENTS:END -->
 
