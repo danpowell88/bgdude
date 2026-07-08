@@ -124,21 +124,29 @@ class PumpCommHandler(
      */
     private val timeoutHandler = Handler(Looper.getMainLooper())
 
-    /** TASK-277: scheduled/cancelled from three different threads (the pairing executor
-     *  via [start], the BLE callback thread via [onWaitingForPairingCode]/[onPumpConnected]/
-     *  etc., and the main looper when the timeout itself expires) -- @Volatile so a cancel on
-     *  one thread reliably sees the schedule from another instead of racing on a stale read. */
-    @Volatile
+    /**
+     * TASK-290: [scheduleTimeout]/[cancelTimeout] are called from three different
+     * threads (the pairing executor via [start], the BLE callback thread via
+     * [onWaitingForPairingCode]/[onPumpConnected]/etc., and the main looper when the
+     * timeout itself expires). TASK-277's `@Volatile` fixed visibility on the linear
+     * path but not atomicity: two schedules (or a schedule racing a cancel) from
+     * different threads could still both run their read-modify-write sequence
+     * interleaved, leaving a stale Runnable queued that [pendingTimeout] no longer
+     * references -- it would fire later and tear down an already-live connection.
+     * [timeoutLock] makes each function's body a single atomic unit instead, so no
+     * caller can observe or produce that half-updated state.
+     */
+    private val timeoutLock = Any()
     private var pendingTimeout: Runnable? = null
 
-    private fun scheduleTimeout(timeoutMs: Long, onExpire: () -> Unit) {
-        cancelTimeout()
+    private fun scheduleTimeout(timeoutMs: Long, onExpire: () -> Unit) = synchronized(timeoutLock) {
+        pendingTimeout?.let(timeoutHandler::removeCallbacks)
         val runnable = Runnable { onExpire() }
         pendingTimeout = runnable
         timeoutHandler.postDelayed(runnable, timeoutMs)
     }
 
-    private fun cancelTimeout() {
+    private fun cancelTimeout() = synchronized(timeoutLock) {
         pendingTimeout?.let(timeoutHandler::removeCallbacks)
         pendingTimeout = null
     }
