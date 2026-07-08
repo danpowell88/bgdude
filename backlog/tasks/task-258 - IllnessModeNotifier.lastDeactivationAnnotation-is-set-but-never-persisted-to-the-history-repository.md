@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-07 16:00'
-updated_date: '2026-07-07 16:27'
+updated_date: '2026-07-08 05:27'
 labels:
   - dosing-math
 milestone: m-8
@@ -48,6 +48,12 @@ author: Claude
 created: 2026-07-07 16:27
 ---
 Recent-code review 2026-07-08 (TASK-197): note that restart_recovery_test.dart:163 asserts expect(lastDeactivationAnnotation, isNotNull), which only proves the field was set, not that the annotation reached the history repository. AC number 2 here already targets the real fix; flagging that the existing assertion is mild false confidence and should be replaced/augmented by the repository-presence assertion, not kept alongside it as if it were coverage.
+---
+
+author: Claude
+created: 2026-07-08 05:27
+---
+Recent-code review 2026-07-08 (verifying TASK-260): when you wire lastDeactivationAnnotation to actually persist to the history repository, also handle the persist-FAILURE case. Today TASK-260 reverts _controller.mode on a failed deactivate() write but does NOT revert lastDeactivationAnnotation (set at providers.dart:1146), so the field holds an annotation for a deactivation that never persisted. Harmless now (no live reader), but once this ticket makes the field authoritative it would record a sick-day-ended annotation the mode never actually made -- so set/save the annotation only after the mode change persists, or revert it in the same catch that reverts _controller.mode.
 ---
 <!-- COMMENTS:END -->
 
