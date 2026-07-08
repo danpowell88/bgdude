@@ -310,8 +310,7 @@ class SettingsScreen extends ConsumerWidget {
               // this Android version) must re-prompt, not silently fail to scan.
               final ble = await requestBlePermissions();
               if (!ble.granted) {
-                messenger.showSnackBar(SnackBar(
-                    content: Text(blePermissionDeniedMessage(ble.requirement))));
+                messenger.showSnackBar(bleDeniedSnackBar(ble));
                 return;
               }
               await ref.read(pumpClientProvider).startScan();

@@ -170,8 +170,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (!ble.granted) {
       if (mounted) {
         setState(() => _pairing = false);
-        messenger.showSnackBar(
-            SnackBar(content: Text(blePermissionDeniedMessage(ble.requirement))));
+        messenger.showSnackBar(bleDeniedSnackBar(ble));
       }
       return;
     }
