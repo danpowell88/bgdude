@@ -3,10 +3,11 @@ id: TASK-258
 title: >-
   IllnessModeNotifier.lastDeactivationAnnotation is set but never persisted to
   the history repository
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-07 16:00'
-updated_date: '2026-07-08 05:27'
+updated_date: '2026-07-08 05:51'
 labels:
   - dosing-math
 milestone: m-8
@@ -25,14 +26,14 @@ ordinal: 705200
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
 - [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
 - [ ] #6 doc/user-guide.html updated when the change is user-visible with screenshots
 - [ ] #7 Integration test added or extended when a screen/flow changed
-- [ ] #8 backlog item updated with comments
+- [x] #8 backlog item updated with comments
 <!-- DOD:END -->
 
 ## Comments
@@ -55,11 +56,23 @@ created: 2026-07-08 05:27
 ---
 Recent-code review 2026-07-08 (verifying TASK-260): when you wire lastDeactivationAnnotation to actually persist to the history repository, also handle the persist-FAILURE case. Today TASK-260 reverts _controller.mode on a failed deactivate() write but does NOT revert lastDeactivationAnnotation (set at providers.dart:1146), so the field holds an annotation for a deactivation that never persisted. Harmless now (no live reader), but once this ticket makes the field authoritative it would record a sick-day-ended annotation the mode never actually made -- so set/save the annotation only after the mode change persists, or revert it in the same catch that reverts _controller.mode.
 ---
+
+author: Claude
+created: 2026-07-08 05:40
+---
+Started: wiring IllnessModeNotifier.lastDeactivationAnnotation to actually save into the history repository, and handling the persist-failure interaction flagged in comment #3 (don't record/save an annotation for a mode change that never persisted).
+---
+
+author: Claude
+created: 2026-07-08 05:51
+---
+Done. lastDeactivationAnnotation is now saved via HistoryRepository.saveAnnotation in IllnessModeNotifier._persist, once the mode change it belongs to has actually persisted (constructor now takes an optional HistoryRepository, wired from historyRepositoryProvider). On a failed persist write, the annotation field is cleared alongside the controller-mode revert (comment #3), so a deactivation that never stuck cannot later ride along on some unrelated successful persist. Two new tests in test/persisted_state_corruption_test.dart cover the save-on-success and clear-on-failure paths; restart_recovery_test.dart TASK-197 case now asserts the annotation actually lands in the repository (sim.repo.annotations(...)) instead of only checking the transient field. Both new-logic paths rigor-checked (temp-bug reintroduced, confirmed the exact test failure, reverted). No existing reader of the field was found (AC3) -- this was genuinely dead output before this change. Full pipeline green: analyze clean, 1185 tests pass, coverage 67.92% (floor 65%), flutter build apk --debug succeeds. No native Kotlin touched, no user-visible UI change, no new screen/flow -- DoD 5/6/7 not applicable.
+---
 <!-- COMMENTS:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A caller (a Riverpod ref.listen, or the notifier itself) saves lastDeactivationAnnotation into the history repository via saveAnnotation when it's set
-- [ ] #2 A regression test: deactivating (manually or via auto-expiry) results in the annotation actually present in the repository, not just held in a field
-- [ ] #3 Confirm no existing annotation-save path already covers this (e.g. a UI screen reading the field) before assuming it's fully missing
+- [x] #1 A caller (a Riverpod ref.listen, or the notifier itself) saves lastDeactivationAnnotation into the history repository via saveAnnotation when it's set
+- [x] #2 A regression test: deactivating (manually or via auto-expiry) results in the annotation actually present in the repository, not just held in a field
+- [x] #3 Confirm no existing annotation-save path already covers this (e.g. a UI screen reading the field) before assuming it's fully missing
 <!-- AC:END -->

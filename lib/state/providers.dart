@@ -1085,19 +1085,29 @@ final pendingConfirmationsProvider =
 
 /// Illness ("sick day") mode with shared_preferences persistence.
 final illnessModeProvider =
-    StateNotifierProvider<IllnessModeNotifier, IllnessMode>(
-        (ref) => IllnessModeNotifier());
+    StateNotifierProvider<IllnessModeNotifier, IllnessMode>((ref) =>
+        IllnessModeNotifier(historyRepository: ref.read(historyRepositoryProvider)));
 
 class IllnessModeNotifier extends StateNotifier<IllnessMode> {
-  IllnessModeNotifier() : super(IllnessMode.inactive) {
+  IllnessModeNotifier({HistoryRepository? historyRepository})
+      : _historyRepository = historyRepository,
+        super(IllnessMode.inactive) {
     _restore();
   }
 
   static const _prefsKey = 'illness_mode_v1';
   final IllnessModeController _controller = IllnessModeController();
 
+  /// TASK-258: where the deactivation annotation actually gets saved once the
+  /// mode change it belongs to has genuinely persisted. Nullable/optional so
+  /// tests that construct this notifier directly (with no repository to hand)
+  /// keep working -- those don't exercise the save path.
+  final HistoryRepository? _historyRepository;
+
   /// The annotation emitted by the most recent deactivation, for the data layer to
-  /// persist into the feedback store.
+  /// persist into the feedback store. Set by [deactivate]/[deactivateIfExpired] and
+  /// consumed (saved, then cleared) by [_persist] once that deactivation's mode
+  /// change has actually persisted -- see TASK-258.
   Annotation? lastDeactivationAnnotation;
 
   Future<void> _restore() async {
@@ -1119,6 +1129,20 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
     try {
       await KvStore.setString(_prefsKey, _controller.mode.encode());
       state = _controller.mode;
+      // TASK-258: a pending deactivation annotation (built by deactivate() /
+      // deactivateIfExpired(), for the retraining pipeline to tag the sick period
+      // rather than mislearn it as normal glucose behaviour) is only safe to save
+      // now that ITS mode change genuinely persisted -- previously the field was
+      // built and set but nothing ever read/saved it at all.
+      final annotation = lastDeactivationAnnotation;
+      if (annotation != null) {
+        lastDeactivationAnnotation = null;
+        try {
+          await _historyRepository?.saveAnnotation(annotation);
+        } catch (e) {
+          appLog.error('persistence', 'illness annotation save failed', error: e);
+        }
+      }
     } catch (e) {
       appLog.error('persistence', 'IllnessMode persist failed', error: e);
       // TASK-260: activate/deactivate/etc. already mutated _controller.mode (what
@@ -1127,6 +1151,10 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
       // value. Revert the controller to match -- otherwise dosing silently applies
       // a boost/change the UI shows as off and disk never recorded.
       _controller.mode = state;
+      // TASK-258: a deactivation annotation must not survive a failed persist --
+      // saving it later (on some future unrelated successful persist) would record
+      // a sick-day-ended event for a deactivation that never actually stuck.
+      lastDeactivationAnnotation = null;
     }
   }
 

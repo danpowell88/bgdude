@@ -10,6 +10,7 @@ import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/data/database.dart';
 import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/data/kv_store.dart';
+import 'package:bgdude/feedback/annotations.dart';
 import 'package:bgdude/feedback/pending_confirmation.dart';
 import 'package:bgdude/insights/alert_thresholds.dart';
 import 'package:bgdude/insights/medication_mode.dart';
@@ -383,6 +384,62 @@ void main() {
       expect(n.state.meals, isEmpty,
           reason: 'the write failed -- the meal must not appear to exist '
               'in-session when it was never actually saved');
+    });
+  });
+
+  // TASK-258: lastDeactivationAnnotation was built by deactivate()/
+  // deactivateIfExpired() but nothing ever read/saved it into the history
+  // repository -- the retraining pipeline's sick-day tagging silently never
+  // happened. The auto-expiry path is covered end-to-end in
+  // restart_recovery_test.dart; this covers the manual deactivate() path plus
+  // the persist-failure interaction TASK-260's reconciliation raised.
+  group('TASK-258: illness deactivation annotation persistence', () {
+    test('a manual deactivate() saves the annotation to the history repository',
+        () async {
+      final repo = InMemoryHistoryRepository();
+      final n = IllnessModeNotifier(historyRepository: repo);
+      await _settle();
+      n.activate(boost: 1.5, notes: 'flu');
+      await _settle();
+
+      n.deactivate();
+      await _settle();
+
+      final saved = await repo.annotations(DateTime(2020), DateTime(2030));
+      expect(saved, isNotEmpty,
+          reason: 'the deactivation annotation must reach the history '
+              'repository, not just sit in the transient field');
+      expect(saved.single.kind, AnnotationKind.illness);
+      expect(n.lastDeactivationAnnotation, isNull,
+          reason: 'consumed (saved) annotations must be cleared, not linger '
+              'as if still pending');
+    });
+
+    test(
+        'a failed deactivate() write does not save a stale annotation for a '
+        'deactivation that never actually persisted', () async {
+      final repo = InMemoryHistoryRepository();
+      final n = IllnessModeNotifier(historyRepository: repo);
+      await _settle();
+      n.activate(boost: 1.5, notes: 'flu');
+      await _settle();
+
+      final unopenable = File('${Directory.systemTemp.path}/${'y' * 300}.db');
+      KvStore.init(AppDatabase(NativeDatabase(unopenable)));
+
+      n.deactivate();
+      await _settle();
+
+      expect(n.state.active, isTrue,
+          reason: 'the write failed -- the UI-visible state must still show '
+              'illness mode on (TASK-260)');
+      final saved = await repo.annotations(DateTime(2020), DateTime(2030));
+      expect(saved, isEmpty,
+          reason: 'no annotation should be saved for a deactivation that '
+              'never actually persisted -- illness mode is still active');
+      expect(n.lastDeactivationAnnotation, isNull,
+          reason: 'a failed persist must not leave a stale pending '
+              'annotation for some future unrelated persist to pick up');
     });
   });
 }

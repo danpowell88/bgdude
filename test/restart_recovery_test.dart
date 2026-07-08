@@ -196,17 +196,26 @@ void main() {
       // Force construction (so the unawaited _restore() actually starts) before
       // waiting for it to land -- Riverpod builds a provider's value lazily on
       // first read.
-      final notifier = c.read(illnessModeProvider.notifier);
+      c.read(illnessModeProvider.notifier);
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(c.read(illnessModeProvider).active, isTrue,
           reason: 'restored active, not yet expiry-checked');
 
       await c.read(appJobsProvider).checkModeExpiry();
+      // Let the unawaited _persist() -> saveAnnotation() chain land.
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       expect(c.read(illnessModeProvider).active, isFalse);
-      expect(notifier.lastDeactivationAnnotation, isNotNull);
-      expect(
-          notifier.lastDeactivationAnnotation!.kind, AnnotationKind.illness);
+      // TASK-258: the annotation must actually reach the history repository (what
+      // the retraining pipeline reads), not just sit in the notifier's own
+      // transient field -- lastDeactivationAnnotation is cleared once consumed, so
+      // checking it here would only prove it was built, not that it was saved.
+      final saved = await sim.repo.annotations(
+          DateTime(2020), DateTime(2030));
+      expect(saved, isNotEmpty,
+          reason: 'the deactivation annotation must be saved to the history '
+              'repository, not dropped after being built');
+      expect(saved.single.kind, AnnotationKind.illness);
     });
 
     test(
