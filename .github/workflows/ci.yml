@@ -61,9 +61,21 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
+  # TASK-297: the unit-test suite (1185+ tests, one process) was the test
+  # job's dominant cost. Sharded across 4 matrix jobs by test/ subdirectory
+  # (test/ is grouped by feature area since TASK-276) so the dominant cost
+  # runs in parallel; each shard uploads its own coverage, and a separate
+  # coverage-gate job merges them with `lcov --add-tracefile` (which sums
+  # per-line hit counts for files touched by more than one shard, so the
+  # merged percentage is exact, not a naive/double-counted concatenation)
+  # before running the same floor check as before sharding.
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -81,13 +93,44 @@ jobs:
       - name: Run code generation
         run: dart run build_runner build --delete-conflicting-outputs
 
-      # Unit tests with line-coverage measurement (TASK-159). The
-      # integration_test/ suite needs an emulator and is DELIBERATELY
-      # manual-only: run it locally per CLAUDE.md ("Emulator (integration)
-      # tests for every feature") — an emulator job on hosted runners is
-      # slow/flaky and this is a personal, single-device project.
-      - name: Unit tests (with coverage)
-        run: flutter test --coverage test/
+      # Unit tests with line-coverage measurement (TASK-159), sharded
+      # (TASK-297). The integration_test/ suite needs an emulator and is
+      # DELIBERATELY manual-only: run it locally per CLAUDE.md ("Emulator
+      # (integration) tests for every feature") — an emulator job on hosted
+      # runners is slow/flaky and this is a personal, single-device project.
+      - name: Unit tests (with coverage) — shard ${{ matrix.shard }}
+        run: |
+          case ${{ matrix.shard }} in
+            1) dirs="test/insights test/core test/weather test/profile test/onboarding test/feedback" ;;
+            2) dirs="test/ml test/data test/meals test/dev" ;;
+            3) dirs="test/state test/analytics test/support test/logging test/timeline" ;;
+            4) dirs="test/ui test/reports test/pump test/integrations test/food" ;;
+          esac
+          flutter test --coverage $dirs
+
+      - name: Upload shard coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-shard-${{ matrix.shard }}
+          path: coverage/lcov.info
+
+  coverage-gate:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download shard coverage
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-shard-*
+          path: shard-coverage
+
+      - name: Merge shard coverage
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lcov
+          args=()
+          for f in shard-coverage/*/lcov.info; do args+=(--add-tracefile "$f"); done
+          lcov "${args[@]}" -o coverage/lcov.info --ignore-errors inconsistent,corrupt,empty
 
       # Coverage gate (TASK-159): fail on a coverage collapse. Threshold is
       # a floor, not a target — raise it as coverage grows (67.6% on
