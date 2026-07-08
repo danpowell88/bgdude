@@ -5,18 +5,19 @@
 # main. The integration_test/ suite is manual-only (needs an emulator; see
 # CLAUDE.md) — everything here must stay green for main to be green.
 #
-# TASK-287: analyze / unit tests / APK build / native tests run as four
-# independent parallel jobs instead of one sequential job, since the APK
-# build in particular does not depend on the test result and was previously
-# sitting on the critical path behind it for no reason. Each job re-resolves
-# dependencies (and regenerates code where needed) independently rather than
-# sharing an artifact — simpler and lower-risk than a shared-cache scheme,
-# at the cost of some duplicated `pub get`/`build_runner` work across jobs
-# that parallelism more than pays back in wall-clock. Codegen caching
-# (skipping regeneration when inputs are unchanged) is deliberately NOT
-# attempted here — getting that invalidation wrong could let stale
-# generated code silently pass a run, which is a correctness risk worth its
-# own careful, separately-verified change.
+# TASK-287: analyze / unit tests (TASK-297: sharded) / APK build / native
+# tests run as independent parallel jobs instead of one sequential job,
+# since the APK build in particular does not depend on the test result and
+# was previously sitting on the critical path behind it for no reason. Each
+# job re-resolves dependencies and re-invokes build_runner independently
+# rather than sharing a generated-output artifact — simpler and lower-risk
+# than making jobs depend on a prior codegen job. TASK-298 primes each
+# job's build_runner run with a cache of its own incremental-build state
+# (`.dart_tool/build`, keyed on a hash of pubspec.lock + all Dart sources)
+# so an unchanged run is fast, but `build_runner build` is still ALWAYS
+# invoked for real in every job — never skipped on a cache hit — so a
+# stale or partial cache can only cost time, never silently pass stale
+# generated code.
 name: CI
 
 on:
@@ -54,6 +55,22 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # TASK-298: build_runner's own incremental-build/asset-digest cache
+      # (not final output -- this repo commits only one generated file,
+      # lib/data/database.g.dart; everything else here is drift_dev's
+      # per-file analysis cache). Priming it lets build_runner's own
+      # digest comparison skip re-analyzing ~1400 unchanged inputs; the
+      # real command below still ALWAYS runs, so a stale/partial cache can
+      # only cost time, never correctness -- build_runner itself detects
+      # and rebuilds whatever actually changed.
+      - name: Cache build_runner state
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/build
+          key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
+          restore-keys: |
+            ${{ runner.os }}-build-runner-
+
       # MUST run before analyze since generated files are not committed.
       - name: Run code generation
         run: dart run build_runner build --delete-conflicting-outputs
@@ -89,6 +106,18 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      # TASK-298: see the analyze job's identically-keyed cache step for
+      # rationale. Every shard hits the same cache key (all 4 benefit from
+      # one another's cache writes across runs); build_runner still always
+      # runs for real, so this only affects speed.
+      - name: Cache build_runner state
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/build
+          key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
+          restore-keys: |
+            ${{ runner.os }}-build-runner-
 
       - name: Run code generation
         run: dart run build_runner build --delete-conflicting-outputs
@@ -190,6 +219,16 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      # TASK-298: see the analyze job's identically-keyed cache step for
+      # rationale.
+      - name: Cache build_runner state
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/build
+          key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
+          restore-keys: |
+            ${{ runner.os }}-build-runner-
 
       - name: Run code generation
         run: dart run build_runner build --delete-conflicting-outputs
