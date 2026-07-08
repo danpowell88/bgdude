@@ -79,6 +79,7 @@ import '../ml/health_features.dart';
 import '../ml/sensitivity_model.dart';
 import '../ml/sensitivity_training.dart';
 import '../ml/time_of_day_sensitivity.dart';
+import '../ml/training_census.dart';
 import '../ml/uncertainty_calibrator.dart';
 import '../pump/battery_drain.dart';
 import '../pump/battery_history.dart';
@@ -839,6 +840,13 @@ final homeWidgetServiceProvider = Provider<HomeWidgetService>((ref) {
 /// nightly analysis job has ≥14 days of data to learn from.
 final timeOfDayProfileProvider =
     StateProvider<TimeOfDayProfile?>((ref) => null);
+
+/// TASK-140: what the daily-sensitivity + time-of-day trainers saw and used on
+/// the last run — surfaced on the Advanced diagnostics screen so a user can see
+/// why a model declined to train, or why a bucket stayed low-confidence, instead
+/// of the counts being computed and silently discarded.
+final sensitivityCensusProvider =
+    StateProvider<TrainingCensus>((ref) => const TrainingCensus());
 
 /// Insulin delivered so far today (since local midnight): bolus + integrated basal.
 /// Derived from our own history — a TDD-style running total for the Pump screen.
@@ -2333,12 +2341,25 @@ class AppJobs {
     // off the UI isolate and bring back just the fitted models.
     final trained = await Isolate.run(() {
       const svc = SensitivityTrainingService();
-      return (profile: svc.trainTimeOfDay(days), model: svc.train(days));
+      return (
+        profile: svc.trainTimeOfDay(days),
+        model: svc.train(days),
+        census: svc.census(days),
+      );
     });
     final profile = trained.profile;
     if (profile != null) {
       _ref.read(timeOfDayProfileProvider.notifier).state = profile;
     }
+    // TASK-140: the TOD profile's per-bucket observation minutes are folded into
+    // the same census as the daily-sensitivity days/usable counts -- both models
+    // train from this same `days` list, so one combined view is more useful than
+    // two separate ones.
+    _ref.read(sensitivityCensusProvider.notifier).state = TrainingCensus(
+      totalDays: trained.census.totalDays,
+      usableDays: trained.census.usableDays,
+      perBucketMinutes: profile?.observationMinutesByBucket ?? const {},
+    );
     final model = trained.model;
     if (model != null) {
       final todayCtx = ContextBuilder.build(

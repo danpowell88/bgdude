@@ -286,6 +286,14 @@ class TimeOfDayProfile {
           ),
       ];
 
+  /// TASK-140: total carb-free observation minutes accumulated per bucket, keyed
+  /// by the same start-minute as [buckets] — explains a low-confidence/neutral
+  /// bucket (not enough observation time yet) instead of the count being computed
+  /// in [TimeOfDaySensitivityAnalyzer.learn] and then discarded.
+  Map<int, int> get observationMinutesByBucket => {
+        for (var b = 0; b < bucketCount; b++) b * bucketMinutes: _observationMinutes[b],
+      };
+
   /// Total carb-free observation minutes behind each bucket (advanced UI).
   List<int> get observationMinutes => _observationMinutes;
 

@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/core/samples.dart';
+import 'package:bgdude/data/health_sync.dart';
 import 'package:bgdude/ml/forecaster_training.dart';
+import 'package:bgdude/ml/health_features.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -52,6 +54,54 @@ void main() {
 
       // And on an event-free flat trace the deterministic baseline is near-exact.
       expect(withFuture.baselineEval.rmseMgdl, lessThan(1.0));
+    });
+  });
+
+  group('census (TASK-140)', () {
+    final start = DateTime(2026, 7, 1, 0, 0);
+    final cgm = [
+      for (var i = 0; i <= 259; i++) // 00:00 .. 21:35
+        CgmSample(time: start.add(Duration(minutes: 5 * i)), mgdl: 150),
+    ];
+    final settings = TherapySettings.placeholder();
+    final asOf = DateTime(2026, 7, 1, 22, 0);
+
+    ForecasterTrainingResult? train({HealthFeatureSampler? health}) =>
+        ForecasterTrainer(horizons: const [30], strideSamples: 1).train(
+          cgm: cgm,
+          boluses: const [],
+          basal: const [],
+          carbs: const [],
+          settings: settings,
+          annotations: const [],
+          asOf: asOf,
+          health: health,
+        );
+
+    test('perHorizonSamples matches trainSamples for a single-horizon run', () {
+      final result = train();
+      expect(result, isNotNull);
+      expect(result!.census.perHorizonSamples[30], result.trainSamples);
+    });
+
+    test('healthFeatureCoverage is 0 with no health data supplied (not null -- '
+        'there were training rows, just none with a signal)', () {
+      final result = train();
+      expect(result!.census.healthFeatureCoverage, 0.0);
+    });
+
+    test('healthFeatureCoverage reflects the fraction of rows with a real '
+        'health signal', () {
+      final health = HealthFeatureSampler([
+        for (var i = 0; i <= 259; i++)
+          HealthSample(
+            time: start.add(Duration(minutes: 5 * i)),
+            type: HealthMetric.steps,
+            value: 200,
+          ),
+      ]);
+      final result = train(health: health);
+      expect(result!.census.healthFeatureCoverage, greaterThan(0.0));
     });
   });
 }

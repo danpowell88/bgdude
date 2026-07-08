@@ -18,6 +18,7 @@ import 'forecaster.dart';
 import 'health_features.dart';
 import 'model_registry.dart';
 import 'residual_gbm_model.dart';
+import 'training_census.dart';
 
 class ForecasterTrainingResult {
   const ForecasterTrainingResult({
@@ -30,6 +31,7 @@ class ForecasterTrainingResult {
     this.baselineByHorizon = const {},
     this.candidateByHorizon = const {},
     this.incumbentByHorizon,
+    this.census = const TrainingCensus(),
   });
 
   final ResidualGbmModel model;
@@ -53,6 +55,9 @@ class ForecasterTrainingResult {
   final Map<int, ModelEvaluation> baselineByHorizon;
   final Map<int, ModelEvaluation> candidateByHorizon;
   final Map<int, ModelEvaluation>? incumbentByHorizon;
+
+  /// TASK-140: per-horizon training-sample counts and health-feature coverage.
+  final TrainingCensus census;
 }
 
 class ForecasterTrainer {
@@ -112,6 +117,12 @@ class ForecasterTrainer {
     final rawByHorizon = {for (final h in horizons) h: <_Raw>[]};
     final heldOut = <int, List<_Held>>{for (final h in horizons) h: []};
 
+    // TASK-140: fraction of TRAINING timesteps with a real (non-zero) health
+    // signal -- explains why health-dependent features aren't helping if the
+    // user's wearable coverage is thin, instead of that being invisible.
+    var trainingTimesteps = 0;
+    var trainingTimestepsWithHealth = 0;
+
     for (var i = 1; i < samples.length; i += strideSamples) {
       final cur = samples[i];
       final prev = samples[i - 1];
@@ -139,6 +150,9 @@ class ForecasterTrainer {
         settings: settings,
       );
       final line = _predictor.predict(state);
+      final healthFeats = health?.featuresAt(cur.time) ?? HealthFeatureSampler.zeros;
+      final hasHealthSignal = healthFeats.any((v) => v != 0.0);
+      var countedTimestep = false;
 
       for (final h in horizons) {
         final target = cur.time.add(Duration(minutes: h));
@@ -154,10 +168,15 @@ class ForecasterTrainer {
           basal: basal,
           carbs: knownCarbs,
           horizonMinutes: h,
-          health: health?.featuresAt(cur.time) ?? HealthFeatureSampler.zeros,
+          health: healthFeats,
         );
         if (cur.time.isBefore(splitTime)) {
           rawByHorizon[h]!.add(_Raw(cur.time, feats, residual));
+          if (!countedTimestep) {
+            countedTimestep = true;
+            trainingTimesteps++;
+            if (hasHealthSignal) trainingTimestepsWithHealth++;
+          }
         } else {
           heldOut[h]!.add(_Held(feats, baseline, actual));
         }
@@ -246,6 +265,14 @@ class ForecasterTrainer {
           : null,
       trainSamples: trainCount,
       heldOutSamples: heldCount,
+      census: TrainingCensus(
+        perHorizonSamples: {
+          for (final h in horizons) h: trainingByHorizon[h]!.length,
+        },
+        healthFeatureCoverage: trainingTimesteps == 0
+            ? null
+            : trainingTimestepsWithHealth / trainingTimesteps,
+      ),
     );
   }
 

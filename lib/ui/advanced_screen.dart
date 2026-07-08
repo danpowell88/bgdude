@@ -21,6 +21,7 @@ class AdvancedScreen extends ConsumerWidget {
     final residualTrained = ref.watch(forecasterModelProvider).isTrained;
     final lastOutcome =
         ref.watch(forecasterModelProvider.notifier).lastOutcome;
+    final census = ref.watch(sensitivityCensusProvider);
     final unit = ref.watch(glucoseUnitProvider);
     final points = ref.watch(errorGridPointsProvider);
 
@@ -76,10 +77,40 @@ class AdvancedScreen extends ConsumerWidget {
                             context,
                             '${(b.startMinute ~/ 60).toString().padLeft(2, '0')}:00',
                             '×${b.multiplier.toStringAsFixed(2)} '
-                                '(${(b.confidence * 100).round()}%)',
+                                '(${(b.confidence * 100).round()}%) · '
+                                '${census.perBucketMinutes[b.startMinute] ?? 0} min observed',
                           ),
                       ],
                     ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          Text('Training data', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _kv(context, 'Sensitivity days',
+                      '${census.usableDays} usable / ${census.totalDays} considered'),
+                  if (lastOutcome.census.perHorizonSamples.isNotEmpty)
+                    _kv(
+                        context,
+                        'Forecaster samples',
+                        lastOutcome.census.perHorizonSamples.entries
+                            .map((e) => '${e.key}m: ${e.value}')
+                            .join(', ')),
+                  if (lastOutcome.census.healthFeatureCoverage != null)
+                    _kv(
+                        context,
+                        'Health data coverage',
+                        '${(lastOutcome.census.healthFeatureCoverage! * 100).round()}% '
+                            'of training rows'),
+                ],
+              ),
             ),
           ),
 

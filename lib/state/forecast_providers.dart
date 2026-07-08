@@ -115,6 +115,7 @@ class ForecasterModelController extends StateNotifier<ResidualModel> {
       candidateRmse: result.candidateEval.rmseMgdl,
       incumbentRmse: incumbentEval?.rmseMgdl,
       trainSamples: result.trainSamples,
+      census: result.census,
     );
     return lastOutcome;
   }

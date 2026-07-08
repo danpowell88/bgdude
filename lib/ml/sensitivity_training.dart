@@ -14,6 +14,7 @@ import '../core/samples.dart';
 import 'autotune.dart';
 import 'sensitivity_model.dart';
 import 'time_of_day_sensitivity.dart';
+import 'training_census.dart';
 
 /// One historical day's inputs: the CGM/insulin/carb slice plus the contextual
 /// features and therapy settings that were in force that day.
@@ -85,6 +86,14 @@ class SensitivityTrainingService {
     }
     return examples;
   }
+
+  /// TASK-140: how much of [days] actually qualified for the daily sensitivity
+  /// model — explains a decline-to-train (fewer usable days than [minDays]) or a
+  /// low-confidence example without re-deriving Autotune's own per-day gate.
+  TrainingCensus census(List<SensitivityDayInput> days) => TrainingCensus(
+        totalDays: days.length,
+        usableDays: buildExamples(days).length,
+      );
 
   /// Fit a [SensitivityModel] from history. Returns null when there aren't enough
   /// usable days, or when the model itself declined to train (its own

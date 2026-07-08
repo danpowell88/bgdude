@@ -124,6 +124,18 @@ void main() {
       expect(profile.buckets[3].multiplier, 1.0); // never observed
     });
 
+    test(
+        'observationMinutesByBucket explains WHY an unobserved bucket stayed '
+        'neutral (TASK-140)', () {
+      final minutes = profile.observationMinutesByBucket;
+      expect(minutes.length, 8);
+      // Bucket 1 (03:00) is well-observed and non-neutral -- real minutes logged.
+      expect(minutes[180], greaterThan(0));
+      // Bucket 3 (never observed, stays neutral) has zero observation minutes --
+      // the number that explains the neutral multiplier above.
+      expect(minutes[540], 0);
+    });
+
     test('confidence is higher in well-observed buckets', () {
       final observed = profile.confidenceAt(DateTime(2026, 7, 4, 4, 30));
       final unobserved = profile.confidenceAt(DateTime(2026, 7, 4, 10, 30));

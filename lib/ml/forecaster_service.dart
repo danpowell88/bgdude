@@ -14,6 +14,7 @@ import '../logging/app_log.dart';
 import 'forecast_features.dart';
 import 'forecaster.dart';
 import 'residual_gbm_model.dart';
+import 'training_census.dart';
 
 class TrainingOutcome {
   const TrainingOutcome({
@@ -24,6 +25,7 @@ class TrainingOutcome {
     this.candidateRmse,
     this.incumbentRmse,
     this.trainSamples = 0,
+    this.census = const TrainingCensus(),
   });
 
   final bool trained;
@@ -36,6 +38,11 @@ class TrainingOutcome {
   /// forecast was still baseline-only).
   final double? incumbentRmse;
   final int trainSamples;
+
+  /// TASK-140: per-horizon training-sample counts and health-feature coverage
+  /// from this run, so the diagnostics screen can explain why a horizon (or the
+  /// whole run) declined to train.
+  final TrainingCensus census;
 
   static const TrainingOutcome notEnoughData =
       TrainingOutcome(trained: false, promoted: false, reasons: ['not enough data']);

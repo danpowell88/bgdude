@@ -262,6 +262,25 @@ void main() {
     });
   });
 
+  group('census (TASK-140)', () {
+    test('totalDays counts everything considered, usableDays only what '
+        'buildExamples kept', () {
+      final usable = _usableDays(24);
+      final shorts = [
+        for (var i = 0; i < 3; i++)
+          _day(
+            day: DateTime(2026, 8, 1).add(Duration(days: i)),
+            sleepHours: 5.0,
+            resistant: true,
+            carbFree: false,
+          ),
+      ];
+      final census = service.census([...usable, ...shorts]);
+      expect(census.totalDays, 27);
+      expect(census.usableDays, 24);
+    });
+  });
+
   group('trainTimeOfDay', () {
     test('returns a profile from >= analyzer minDays of history', () {
       final profile = service.trainTimeOfDay(_usableDays(24));
