@@ -225,7 +225,7 @@ final panelModelProvider =
 
 class PanelModelController extends StateNotifier<PanelModelStatus> {
   PanelModelController(this._ref, {PanelModelManager? manager})
-      : _mgr = manager ?? const PanelModelManager(),
+      : _mgr = manager ?? PanelModelManager(),
         super(const PanelModelStatus(installed: false)) {
     _restore();
   }

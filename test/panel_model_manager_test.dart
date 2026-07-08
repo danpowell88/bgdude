@@ -1,5 +1,7 @@
 import 'package:bgdude/food/panel_model_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 void main() {
   group('PanelModelManager.fileNameFor', () {
@@ -79,6 +81,74 @@ void main() {
     test('withholds a null token regardless of host', () {
       final uri = Uri.parse('https://huggingface.co/x.task');
       expect(PanelModelManager.tokenForHost(uri, null), isNull);
+    });
+  });
+
+  group('PanelModelManager.resolveWithSafeRedirects (TASK-246)', () {
+    test('withholds the token after a redirect to a non-allowlisted host',
+        () async {
+      final requests = <http.BaseRequest>[];
+      final client = MockClient((request) async {
+        requests.add(request);
+        if (request.url.host == 'huggingface.co') {
+          return http.Response('', 302,
+              headers: {'location': 'https://cdn-lfs.huggingface.co/x.task'});
+        }
+        return http.Response('model bytes', 200);
+      });
+
+      final manager = PanelModelManager(httpClient: client);
+      final response = await manager.resolveWithSafeRedirects(
+          Uri.parse('https://huggingface.co/x.task'), 'secret-token');
+
+      expect(response.statusCode, 200);
+      expect(requests, hasLength(2));
+      expect(requests[0].url.host, 'huggingface.co');
+      expect(requests[0].headers['Authorization'], 'Bearer secret-token',
+          reason: 'the first, allowlisted hop should carry the token');
+      expect(requests[1].url.host, 'cdn-lfs.huggingface.co');
+      expect(requests[1].headers.containsKey('Authorization'), isFalse,
+          reason: 'a redirect off the allowlist must not carry the token '
+              'forward -- this is the exact leak AC#1 guards against');
+    });
+
+    test('keeps the token attached across a redirect that stays within the '
+        'allowlist', () async {
+      final requests = <http.BaseRequest>[];
+      final client = MockClient((request) async {
+        requests.add(request);
+        if (request.url.host == 'huggingface.co') {
+          return http.Response('', 302,
+              headers: {'location': 'https://www.huggingface.co/x.task'});
+        }
+        return http.Response('model bytes', 200);
+      });
+
+      final manager = PanelModelManager(httpClient: client);
+      await manager.resolveWithSafeRedirects(
+          Uri.parse('https://huggingface.co/x.task'), 'secret-token');
+
+      expect(requests[1].url.host, 'www.huggingface.co');
+      expect(requests[1].headers['Authorization'], 'Bearer secret-token',
+          reason: 'both hops are allowlisted, so the token should still '
+              'reach the final host');
+    });
+
+    test('gives up after too many redirects rather than looping forever',
+        () async {
+      var hop = 0;
+      final client = MockClient((request) async {
+        hop++;
+        return http.Response('', 302,
+            headers: {'location': 'https://huggingface.co/x$hop.task'});
+      });
+
+      final manager = PanelModelManager(httpClient: client);
+      await expectLater(
+        manager.resolveWithSafeRedirects(
+            Uri.parse('https://huggingface.co/x0.task'), 'secret-token'),
+        throwsA(isA<StateError>()),
+      );
     });
   });
 }
