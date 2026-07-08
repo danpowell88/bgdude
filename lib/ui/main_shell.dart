@@ -144,9 +144,18 @@ class _MainShellState extends ConsumerState<MainShell>
 
     return Scaffold(
       appBar: AppBar(
+        // TASK-219: on a narrow AppBar (the demo-mode "Exit demo" action plus the
+        // quick-log/settings icons can squeeze the title area well under 100px), an
+        // unwrapped title + DEMO chip overflowed -- caught by the new nightly
+        // emulator suite, never by a unit test since RenderFlex overflow needs a
+        // real layout pass. Flexible+ellipsis lets the title shrink instead of
+        // erroring; the DEMO chip (the more important cue in demo mode) always
+        // stays fully visible.
         title: Row(
           children: [
-            Text(_titles[_index]),
+            Flexible(
+              child: Text(_titles[_index], overflow: TextOverflow.ellipsis),
+            ),
             if (devMode) ...[
               const SizedBox(width: 8),
               const Chip(
