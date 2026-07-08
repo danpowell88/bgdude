@@ -86,18 +86,25 @@ class MedicationMode {
         'name': name,
       };
 
-  factory MedicationMode.fromJson(Map<String, dynamic> j) => MedicationMode(
-        active: j['active'] as bool? ?? false,
-        startedAt: j['startedAt'] == null
-            ? null
-            : DateTime.parse(j['startedAt'] as String),
-        expiresAt: j['expiresAt'] == null
-            ? null
-            : DateTime.parse(j['expiresAt'] as String),
-        intensity: MedicationIntensity.values.asNameMap()[j['intensity']] ??
-            MedicationIntensity.moderate,
-        name: j['name'] as String? ?? 'Steroid',
-      );
+  factory MedicationMode.fromJson(Map<String, dynamic> j) {
+    final startedAt = j['startedAt'] == null
+        ? null
+        : DateTime.parse(j['startedAt'] as String);
+    return MedicationMode(
+      // TASK-304: mirrors IllnessMode.fromJson -- a corrupt/tampered
+      // active=true + startedAt=null combo must not decode as active, since
+      // deactivateIfExpired's annotation builder reads startedAt! unconditionally
+      // once a mode is both active and expired.
+      active: (j['active'] as bool? ?? false) && startedAt != null,
+      startedAt: startedAt,
+      expiresAt: j['expiresAt'] == null
+          ? null
+          : DateTime.parse(j['expiresAt'] as String),
+      intensity: MedicationIntensity.values.asNameMap()[j['intensity']] ??
+          MedicationIntensity.moderate,
+      name: j['name'] as String? ?? 'Steroid',
+    );
+  }
 
   static const _sentinel = Object();
 }

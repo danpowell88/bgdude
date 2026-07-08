@@ -1133,7 +1133,11 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
     }
   }
 
-  Future<void> _persist() async {
+  /// Returns whether the write actually landed (TASK-304) — [deactivateIfExpired]
+  /// gates its mode-ended notification on this so a failed persist (mode reverted
+  /// to still-active below) can never tell the user dosing hints reverted when
+  /// they didn't.
+  Future<bool> _persist() async {
     // TASK-198: not caller-observable (activate/deactivate/etc. call this
     // unawaited), but a failed write must not disappear silently — this mode
     // feeds dosing math, so a write that fails and later reverts on restart
@@ -1155,6 +1159,7 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
           appLog.error('persistence', 'illness annotation save failed', error: e);
         }
       }
+      return true;
     } catch (e) {
       appLog.error('persistence', 'IllnessMode persist failed', error: e);
       // TASK-260: activate/deactivate/etc. already mutated _controller.mode (what
@@ -1167,6 +1172,7 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
       // saving it later (on some future unrelated successful persist) would record
       // a sick-day-ended event for a deactivation that never actually stuck.
       lastDeactivationAnnotation = null;
+      return false;
     }
   }
 
@@ -1195,18 +1201,25 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
   /// notifies too -- unlike [deactivate] (the user just tapped "stop", so they
   /// already know), an AUTO-expiry silently reverting dosing hints with nothing
   /// else acting on it is exactly the "the user relied on the elevated hints
-  /// and got no signal they reverted" gap this closes.
-  void deactivateIfExpired(DateTime now) {
+  /// and got no signal they reverted" gap this closes. TASK-304: the notification
+  /// is gated on [_persist] actually succeeding -- firing it unconditionally (the
+  /// original TASK-261 bug) told the user dosing hints reverted even when the
+  /// write failed and _persist reverted the controller back to still-active,
+  /// which is both false and safety-relevant (the user would stop compensating
+  /// for a boost that's still being applied).
+  Future<void> deactivateIfExpired(DateTime now) async {
     final annotation = _controller.deactivateIfExpired(now);
     if (annotation != null) {
       lastDeactivationAnnotation = annotation;
-      unawaited(_persist());
-      unawaited(_notificationService?.show(
-        NotificationCategory.modeExpired,
-        'Illness mode ended',
-        'Your 7-day sick-day period ended automatically — dosing hints have '
-            'reverted to normal.',
-      ));
+      final persisted = await _persist();
+      if (persisted) {
+        unawaited(_notificationService?.show(
+          NotificationCategory.modeExpired,
+          'Illness mode ended',
+          'Your 7-day sick-day period ended automatically — dosing hints have '
+              'reverted to normal.',
+        ));
+      }
     }
   }
 
@@ -1308,7 +1321,11 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
   /// feeding dosing math in-session (it would otherwise silently diverge from disk
   /// until the next restart, unlike illness mode this doesn't split dosing from the
   /// UI too, since both read `state` here, but it's the same class of gap).
-  Future<void> _persist(MedicationMode previous) async {
+  ///
+  /// Returns whether the write actually landed (TASK-304) — [deactivateIfExpired]
+  /// gates its mode-ended notification on this, same rationale as
+  /// IllnessModeNotifier._persist.
+  Future<bool> _persist(MedicationMode previous) async {
     // TASK-198: this mode feeds dosing math too — same rationale as illness mode's
     // _persist above.
     try {
@@ -1324,12 +1341,14 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
           appLog.error('persistence', 'medication annotation save failed', error: e);
         }
       }
+      return true;
     } catch (e) {
       appLog.error('persistence', 'MedicationMode persist failed', error: e);
       state = previous;
       // TASK-261: a deactivation annotation must not survive a failed persist --
       // same rationale as IllnessModeNotifier._persist.
       _lastDeactivationAnnotation = null;
+      return false;
     }
   }
 
@@ -1369,13 +1388,18 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
     final previous = state;
     _lastDeactivationAnnotation = _buildAnnotation(previous, now);
     state = state.copyWith(active: false, startedAt: null, expiresAt: null);
-    await _persist(previous);
-    unawaited(_notificationService?.show(
-      NotificationCategory.modeExpired,
-      'Medication mode ended',
-      '${previous.name} mode ended automatically — dosing hints have reverted '
-          'to normal.',
-    ));
+    // TASK-304: gate the notification on the persist actually landing -- firing it
+    // unconditionally told the user dosing hints reverted even when the write
+    // failed and _persist reverted state back to still-active above.
+    final persisted = await _persist(previous);
+    if (persisted) {
+      unawaited(_notificationService?.show(
+        NotificationCategory.modeExpired,
+        'Medication mode ended',
+        '${previous.name} mode ended automatically — dosing hints have reverted '
+            'to normal.',
+      ));
+    }
   }
 
   /// Remember the intensity choice without (de)activating.
@@ -2336,7 +2360,7 @@ class AppJobs {
   /// stay open for days between launches.
   Future<void> checkModeExpiry() async {
     final now = DateTime.now();
-    _ref.read(illnessModeProvider.notifier).deactivateIfExpired(now);
+    await _ref.read(illnessModeProvider.notifier).deactivateIfExpired(now);
     await _ref.read(medicationModeProvider.notifier).deactivateIfExpired(now);
     await _ref.read(exercisePlanProvider.notifier).clearIfExpired(now);
   }

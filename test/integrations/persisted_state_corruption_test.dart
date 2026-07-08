@@ -13,6 +13,7 @@ import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/feedback/annotations.dart';
 import 'package:bgdude/feedback/pending_confirmation.dart';
 import 'package:bgdude/insights/alert_thresholds.dart';
+import 'package:bgdude/insights/illness_mode.dart';
 import 'package:bgdude/insights/medication_mode.dart';
 import 'package:bgdude/insights/notification_prefs.dart';
 import 'package:bgdude/integrations/glucose_meter.dart';
@@ -522,6 +523,93 @@ void main() {
       expect(saved, isEmpty,
           reason: 'no annotation should be saved for a deactivation that '
               'never actually persisted -- medication mode is still active');
+    });
+  });
+
+  // TASK-304: the mode-ended notification was firing unconditionally, even when
+  // the auto-expiry's persist failed and the state reverted back to active --
+  // telling the user dosing hints reverted when the mode was, in fact, still on
+  // and still boosting dosing. It must be gated on the persist actually landing.
+  group('auto-expiry notification is gated on a successful persist (TASK-304)',
+      () {
+    test(
+        'illness deactivateIfExpired does not notify when the persist fails, '
+        'and the mode stays active', () async {
+      final past = DateTime(2020, 1, 1);
+      final expired = IllnessMode(
+        active: true,
+        startedAt: past,
+        expiresAt: past.add(const Duration(days: 7)),
+        notes: 'flu',
+      );
+      await KvStore.setString('illness_mode_v1', expired.encode());
+
+      final repo = InMemoryHistoryRepository();
+      final notifications = NoopNotificationService();
+      final n = IllnessModeNotifier(
+          historyRepository: repo, notificationService: notifications);
+      await _settle();
+      expect(n.state.active, isTrue, reason: 'restored, not yet expiry-checked');
+
+      final unopenable = File('${Directory.systemTemp.path}/${'w' * 300}.db');
+      KvStore.init(AppDatabase(NativeDatabase(unopenable)));
+
+      await n.deactivateIfExpired(DateTime.now()); // now-ok: production reads the wall clock here too
+
+      expect(n.state.active, isTrue,
+          reason: 'the write failed -- illness mode must still show as on');
+      expect(notifications.shown, isEmpty,
+          reason: 'a mode-ended notification while the mode is still active '
+              'is a false, safety-relevant signal');
+    });
+
+    test(
+        'medication deactivateIfExpired does not notify when the persist fails, '
+        'and the mode stays active', () async {
+      final past = DateTime(2020, 1, 1);
+      final expired = MedicationMode(
+        active: true,
+        startedAt: past,
+        expiresAt: past.add(const Duration(days: 14)),
+        intensity: MedicationIntensity.high,
+        name: 'Prednisolone',
+      );
+      await KvStore.setString('medication_mode_v1', jsonEncode(expired.toJson()));
+
+      final repo = InMemoryHistoryRepository();
+      final notifications = NoopNotificationService();
+      final n = MedicationModeNotifier(
+          historyRepository: repo, notificationService: notifications);
+      await _settle();
+      expect(n.state.active, isTrue, reason: 'restored, not yet expiry-checked');
+
+      final unopenable = File('${Directory.systemTemp.path}/${'v' * 300}.db');
+      KvStore.init(AppDatabase(NativeDatabase(unopenable)));
+
+      await n.deactivateIfExpired(DateTime.now()); // now-ok: production reads the wall clock here too
+
+      expect(n.state.active, isTrue,
+          reason: 'the write failed -- medication mode must still show as on');
+      expect(notifications.shown, isEmpty,
+          reason: 'a mode-ended notification while the mode is still active '
+              'is a false, safety-relevant signal');
+    });
+  });
+
+  group('MedicationMode.fromJson (TASK-304)', () {
+    test('a corrupt active=true + startedAt=null blob decodes as inactive, '
+        'mirroring IllnessMode.fromJson', () {
+      final decoded = MedicationMode.fromJson(const {
+        'active': true,
+        'startedAt': null,
+        'expiresAt': null,
+        'intensity': 'high',
+        'name': 'Prednisolone',
+      });
+      expect(decoded.active, isFalse,
+          reason: 'active with no start time is nonsensical and must not '
+              'reach deactivateIfExpired, which reads startedAt! unconditionally '
+              'once a mode is both active and expired');
     });
   });
 }
