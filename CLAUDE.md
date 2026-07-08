@@ -89,6 +89,21 @@ backlog task edit 42 --comment "Started: <approach in one line>" --comment-autho
   right now** — never a parked, waiting, or half-done task. Before ending a work session,
   sweep your `In Progress` tasks and re-status any you are not still actively progressing
   (`Done` if finished, `Blocked` if stuck, `To Do` if not really started).
+- **Log friction as you hit it** — whenever something slows you down or trips you up while
+  working a task, drop a one-line comment on that task tagged **`friction:<category>`** so the
+  review/meta loops can aggregate them later and turn the recurring ones into fixes or
+  conventions. This is the raw material those loops mine — capturing it is the point, so err
+  toward logging. Categories: `build` (CI/gradle/codegen/APK breakage), `env` (emulator/SDK/
+  device/platform limits), `deps` (package/version/pub conflicts), `code` (a language/API/
+  framework footgun or a pattern that bit you), `test` (a flaky/hollow/hard-to-write test),
+  `tooling` (the `backlog` CLI, git, this harness, editors). Format:
+  `friction:<category> — <what bit you> — <root cause and the fix/workaround, if known>`.
+  One comment per distinct issue; skip the trivial; include the fix so the trail is
+  actionable, not just a complaint. Example:
+  `backlog task edit 42 --comment "friction:env — emulator VM-service WebSocket fails for ANY integration_test file here (pre-existing, not test-specific); workaround: run unit tests only, leave on-device ACs Blocked" --comment-author "Claude"`.
+  If the friction isn't tied to one task, log it on the closest related task (or the one you
+  were on when it happened). The tag is greppable across `backlog/tasks` + `backlog/completed`,
+  which is how the loops find them.
 
 ### `detail-needed` label
 If a task lacks the information needed to implement it properly (unclear requirement,
