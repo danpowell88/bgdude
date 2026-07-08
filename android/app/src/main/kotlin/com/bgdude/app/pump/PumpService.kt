@@ -146,14 +146,14 @@ class PumpService : Service(), PumpCommHandler.Listener {
     }
     fun submitPairingCode(code: String, type: PairingCodeType) =
         commHandler?.submitPairingCode(code, type)
-    fun unpair() {
-        commHandler?.unpair()
-        // TASK-236: no more pump data is coming -- the periodic staleness re-render
-        // alarm has nothing left to do until a future re-pair (PumpService.onCreate /
-        // BgWidgetProvider.onEnabled re-arm it, if a widget still exists, on the next
-        // service start or widget placement).
-        WidgetNativePush.cancelStalenessRenders(applicationContext)
-    }
+    // TASK-284: unpair() must NOT cancel the staleness alarm -- a widget can still be
+    // placed on the home screen with no new data ever coming again, and grey-out is
+    // driven ENTIRELY by this periodic re-render (TASK-177). Cancelling it here would
+    // freeze the widget at its last live-looking value forever (the exact bug TASK-177
+    // fixed, reintroduced for the unpair path specifically). onDisabled (the last
+    // widget actually being removed) is the only correct cancellation trigger; unpair
+    // leaves it alone regardless of whether a widget still exists.
+    fun unpair() = commHandler?.unpair()
     fun snapshotJson(): String = commHandler?.snapshotJson() ?: "{}"
 
     // --- PumpCommHandler.Listener → forward to bridge + refresh notification ---
