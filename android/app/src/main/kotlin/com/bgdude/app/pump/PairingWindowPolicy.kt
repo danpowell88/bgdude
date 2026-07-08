@@ -16,4 +16,13 @@ object PairingWindowPolicy {
 
     /** No pairing code submitted within this long of being prompted: give up. */
     const val PAIRING_CODE_TIMEOUT_MS = 5 * 60_000L // 5 minutes
+
+    /**
+     * TASK-278: bounds the bonding/authentication phase from the moment a pairing code is
+     * submitted (or an auto-repair with a saved code kicks off) through CONNECTED. A JPAKE
+     * handshake normally finishes in a few seconds when the pump is in range; a minute is
+     * generous headroom for a slow handshake while still giving up on a pump that has gone
+     * silent (BLE drop / out of range mid-bonding) rather than hanging forever.
+     */
+    const val BONDING_TIMEOUT_MS = 60_000L // 1 minute
 }

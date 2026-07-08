@@ -198,6 +198,22 @@ class PumpCommHandler(
         emitState(ConnectionStage.ERROR, "Pairing code entry timed out — try again")
     }
 
+    /**
+     * TASK-278: [submitPairingCode] cancelled the entry-timeout and started bonding, but
+     * scheduled no replacement -- relying on success, [onInvalidPairingCode], or
+     * [onPumpCriticalError] always reaching a terminal state. If the pump goes silent after
+     * the code is submitted (BLE drop / out of range during JPAKE/bonding), none of those
+     * callbacks fire and the connection hangs in BONDING/JPAKE_IN_PROGRESS forever with no
+     * user feedback -- the exact wait-forever state TASK-33 AC#5 eliminated for scan/entry,
+     * just not for this phase. [stopBluetooth] is the same safe, idempotent teardown path
+     * every other timeout/error callback here already uses.
+     */
+    private fun onBondingTimedOut() {
+        Log.w(TAG, "Bonding/authentication timed out — pump went silent after pairing code")
+        stopBluetooth()
+        emitState(ConnectionStage.ERROR, "Lost connection to pump while pairing — try again")
+    }
+
     fun stop() {
         stopBluetooth()
         emitState(ConnectionStage.IDLE)
@@ -312,10 +328,13 @@ class PumpCommHandler(
 
     fun submitPairingCode(code: String, type: PairingCodeType) {
         val p = peripheral ?: return
-        // TASK-33 (AC#5): the user acted within the window -- whatever happens next
-        // (success, onInvalidPairingCode, onPumpCriticalError) reaches its own terminal
-        // state, so the entry-timeout no longer applies.
+        // TASK-33 (AC#5): the user acted within the window -- the entry-timeout no longer
+        // applies. TASK-278: it is replaced, not just cancelled -- bonding/authentication is
+        // itself a wait that must be bounded, since success/onInvalidPairingCode/
+        // onPumpCriticalError all cancel this new timeout on their own terminal path, but a
+        // pump that goes silent mid-handshake reaches none of them.
         cancelTimeout()
+        scheduleTimeout(PairingWindowPolicy.BONDING_TIMEOUT_MS) { onBondingTimedOut() }
         PumpState.setPairingCode(context, code)
         // JPAKE (6-digit) pumps supply no CentralChallenge, so pendingChallenge is null —
         // pair() must still be called to drive the JPAKE handshake. Only the legacy 16-char
@@ -424,6 +443,10 @@ class PumpCommHandler(
         // JPAKE too, where centralChallengeResponse is null.
         val saved = PumpState.getPairingCodeCached()
         if (!saved.isNullOrEmpty()) {
+            // TASK-278: same wait-forever gap as the manual-submit path -- an auto-repair
+            // with a saved code drives the same bonding/JPAKE handshake, so it needs the
+            // same bound.
+            scheduleTimeout(PairingWindowPolicy.BONDING_TIMEOUT_MS) { onBondingTimedOut() }
             pair(peripheral, centralChallengeResponse, saved)
             return@safe
         }
