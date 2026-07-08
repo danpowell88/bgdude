@@ -1,4 +1,5 @@
 import 'package:bgdude/data/health_sync.dart';
+import 'package:bgdude/insights/notifications.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:bgdude/ui/settings_screen.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +16,16 @@ class _ThrowingHealthSync extends HealthSyncService {
       throw Exception('Health Connect not installed');
 }
 
+/// TASK-239: SettingsScreen now also reads notificationServiceProvider (the
+/// exact-alarm tile) -- that provider deliberately `throw`s by default
+/// outside main(), so any test rendering SettingsScreen must override it too.
+/// `canScheduleExactAlarms` returning true keeps the new tile hidden, so it
+/// doesn't interfere with this test's own target (the health-sync tile).
+class _FakeNotificationService extends NotificationService {
+  @override
+  Future<bool> canScheduleExactAlarms() async => true;
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
   tearDown(() => TestWidgetsFlutterBinding.instance.reset());
@@ -26,6 +37,8 @@ void main() {
       ProviderScope(
         overrides: [
           healthSyncServiceProvider.overrideWithValue(_ThrowingHealthSync()),
+          notificationServiceProvider
+              .overrideWithValue(_FakeNotificationService()),
         ],
         child: const MaterialApp(home: SettingsScreen()),
       ),

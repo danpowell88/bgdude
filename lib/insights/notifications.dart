@@ -176,6 +176,21 @@ class NotificationService {
           ? AndroidScheduleMode.exactAllowWhileIdle
           : AndroidScheduleMode.inexactAllowWhileIdle;
 
+  /// TASK-239: whether the OS currently allows exact-alarm scheduling — the
+  /// same check [schedulePreBolusTimer] gates on, exposed so a Settings tile
+  /// can show the current state without having to schedule a real timer.
+  Future<bool> canScheduleExactAlarms() async =>
+      await _android?.canScheduleExactNotifications() ?? false;
+
+  /// Opens the system's exact-alarm settings screen for this app (Android 12+
+  /// requires navigating there — unlike most permissions there is no simple
+  /// runtime consent dialog). Returns whatever the plugin reports; the caller
+  /// re-checks [canScheduleExactAlarms] on return since the OS doesn't fire a
+  /// callback when the user grants/denies from that screen.
+  Future<void> requestExactAlarmPermission() async {
+    await _android?.requestExactAlarmsPermission();
+  }
+
   /// Schedule a one-shot pre-bolus timer that survives the app being backgrounded.
   /// TASK-182: in Doze an inexact alarm can fire 30–40 min late — a pre-bolus
   /// timer that fires after the meal is useless, so this one path asks for

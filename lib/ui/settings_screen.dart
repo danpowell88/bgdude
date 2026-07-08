@@ -184,6 +184,7 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => AppRoutes.push(context, AppRoute.medicationMode),
           ),
           const _BatteryExemptionTile(), // TASK-183
+          const _ExactAlarmExemptionTile(), // TASK-239
           ListTile(
             leading: const Icon(Icons.bloodtype_outlined),
             title: const Text('Pump'),
@@ -398,6 +399,63 @@ class _BatteryExemptionTileState extends State<_BatteryExemptionTile> {
                   await Permission.ignoreBatteryOptimizations.request();
               if (mounted) setState(() => _granted = status.isGranted);
             },
+    );
+  }
+}
+
+/// TASK-239: exact-alarm permission. TASK-182's pre-bolus timer falls back to
+/// an inexact alarm when this is denied (Android 13 makes it user-revocable;
+/// Android 14+ denies it by default for new installs), which can fire 30-40
+/// minutes late in Doze -- late enough that a pre-bolus timer meant to fire
+/// before a meal fires after it instead, making the timer useless. Mirrors
+/// [_BatteryExemptionTile]'s pattern: shows the current state (no nagging),
+/// only prompts when tapped, and hides itself entirely once granted so it
+/// never asks again after being addressed.
+class _ExactAlarmExemptionTile extends ConsumerStatefulWidget {
+  const _ExactAlarmExemptionTile();
+
+  @override
+  ConsumerState<_ExactAlarmExemptionTile> createState() =>
+      _ExactAlarmExemptionTileState();
+}
+
+class _ExactAlarmExemptionTileState
+    extends ConsumerState<_ExactAlarmExemptionTile> {
+  bool? _canExact;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final canExact =
+        await ref.read(notificationServiceProvider).canScheduleExactAlarms();
+    if (mounted) setState(() => _canExact = canExact);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canExact = _canExact;
+    // AC#2: this tile only ever appears in the denied state -- once granted
+    // (or on a platform/OS version where it's simply not applicable and the
+    // plugin reports true), it disappears entirely rather than sitting there
+    // as a permanent "all good" row nobody needs to see again.
+    if (canExact != false) return const SizedBox.shrink();
+    return ListTile(
+      leading: Icon(Icons.alarm_off,
+          color: Theme.of(context).colorScheme.error),
+      title: const Text('Allow exact alarms'),
+      subtitle: const Text(
+          'Without this, the pre-bolus timer can fire 30-40 minutes late '
+          'while the phone is idle. Tap to grant it in system settings.'),
+      onTap: () async {
+        await ref.read(notificationServiceProvider).requestExactAlarmPermission();
+        // The OS doesn't callback on grant/deny from its settings screen --
+        // re-check after the user returns to this screen.
+        await _refresh();
+      },
     );
   }
 }
