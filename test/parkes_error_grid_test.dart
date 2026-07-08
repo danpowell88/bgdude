@@ -39,6 +39,38 @@ void main() {
       expect(grid.classify(10, 200), ParkesZone.e);
     });
 
+    // TASK-245: the lower half (predicted < reference -- under-prediction, i.e.
+    // missing a real high) had zero pinned points despite being the subtlest
+    // extrapolated boundary. Points below are chosen directly from the same Table 1
+    // polygon vertices already cited above the class (_zoneBLower/_zoneCLower/
+    // _zoneDLower), the same source the already-verified upper-half points use --
+    // this environment has no R/ega access to independently re-run getParkesZones,
+    // so this pins the port's own internal consistency and guards the boundary
+    // coefficients against a silent future regression, per AC#3.
+    group('lower half (under-prediction)', () {
+      test('a benign under-read is zone B', () {
+        // B-lower's diagonal boundary ((50,30)-(170,145)) is at y=77.9 when x=100;
+        // predicted=20 is well below it, and x=100 is well short of C-lower's own
+        // start (x=120), so nothing nested further overwrites B.
+        expect(grid.classify(100, 20), ParkesZone.b);
+      });
+
+      test('a moderate under-read is zone C', () {
+        // C-lower's diagonal boundary ((120,30)-(260,130)) is at y=87.1 when
+        // x=200; predicted=50 is well below it. x=200 is short of D-lower's own
+        // start (x=250), so nothing nested further overwrites C.
+        expect(grid.classify(200, 50), ParkesZone.c);
+      });
+
+      test('a dangerous under-read (missed high) is zone D', () {
+        // D-lower's boundary ((250,40)-(1000,326.3), the far anchor extrapolated
+        // from the (410,110)/(550,150) Table 1 points) is at y=59.1 when x=300;
+        // predicted=20 is well below it, and there's no further-nested "E-lower"
+        // zone in this direction (E only covers the opposite, over-read pattern).
+        expect(grid.classify(300, 20), ParkesZone.d);
+      });
+    });
+
     test('evaluate() pools zone counts and fractions', () {
       final result = grid.evaluate(const [
         (reference: 100.0, predicted: 100.0), // A
