@@ -67,7 +67,14 @@ Future<void> _run() async {
     repository = result.repository;
     dbOpenDiagnosis = result.diagnosis;
     openDb = result.db;
-    if (openDb != null) KvStore.init(openDb); // encrypted key-value store for app state
+    // TASK-253: only initialise the encrypted KV store against a DB that actually
+    // passed its integrity check. On corruptedData (or any other diagnosed failure
+    // that still left `db` open, e.g. an ioError mid quick_check) the recovery screen
+    // is about to offer resetting this exact file -- reading/writing app settings
+    // against it in the meantime is neither safe nor useful. KvStore's own doc
+    // comment already anticipates this: it falls back to an in-memory map when
+    // never initialised, same as history already does via InMemoryHistoryRepository.
+    if (openDb != null && dbOpenDiagnosis == null) KvStore.init(openDb);
     if (dbOpenDiagnosis != null) {
       debugPrint('DB open diagnosis: $dbOpenDiagnosis — running in-memory '
           '(data will NOT persist)');
@@ -124,17 +131,17 @@ String _dbOpenErrorMessage(DbOpenDiagnosis diagnosis) => switch (diagnosis) {
       DbOpenDiagnosis.keyOrHeaderCorrupt =>
         'Storage couldn\'t be unlocked — the saved key no longer matches (e.g. after '
             'restoring a backup) or the file is damaged. The app is running without '
-            'saving; open Settings to reset storage.',
+            'saving; tap this banner to reset storage.',
       DbOpenDiagnosis.corruptedData =>
         'Storage opened but a data-integrity check failed. The app is running without '
-            'saving; open Settings to export what\'s still readable and reset storage.',
+            'saving; tap this banner to export what\'s still readable and reset storage.',
       DbOpenDiagnosis.ioError =>
         'Storage failed to open — the app is running without saving. Restart the app; '
             'if it keeps happening, check available storage space.',
       DbOpenDiagnosis.keyReadFailure =>
         'Storage\'s saved key couldn\'t be read — often temporary (e.g. right after '
             'an OS update). The database file itself is untouched. The app is '
-            'running without saving; open Settings and retry.',
+            'running without saving; tap this banner to retry.',
       DbOpenDiagnosis.schemaNewerThanApp =>
         'This app build is OLDER than your existing data (likely from sideloading '
             'an older version). Nothing is damaged; reinstall the newer version to '
