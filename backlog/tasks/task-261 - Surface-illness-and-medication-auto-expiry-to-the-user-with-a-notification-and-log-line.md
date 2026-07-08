@@ -3,11 +3,11 @@ id: TASK-261
 title: >-
   Surface illness and medication auto-expiry to the user with a notification and
   log line
-status: In Progress
+status: Done
 assignee:
   - Claude
 created_date: '2026-07-07 16:27'
-updated_date: '2026-07-08 10:16'
+updated_date: '2026-07-08 10:17'
 labels: []
 milestone: m-8
 dependencies: []
@@ -28,8 +28,6 @@ When a 7-day illness or 14-day medication mode auto-expires via checkModeExpiry,
 - [x] #3 Confirm whether medication-mode days should be annotated for retraining like illness days; wire it or record the decision
 <!-- AC:END -->
 
-
-
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
@@ -45,6 +43,12 @@ author: Claude
 created: 2026-07-08 10:16
 ---
 Started: mirror the illness auto-detection notification path (NotificationCategory.modeExpired) onto both deactivateIfExpired() call sites; only auto-expiry notifies, manual deactivate()/stop() doesn't since the user already knows. AC#3: decided to wire full annotation support for MedicationMode (previously had none, even on manual stop), exactly mirroring illness mode's TASK-258 pattern rather than treating this as detail-needed -- the pattern was directly analogous and already established.
+---
+
+author: Claude
+created: 2026-07-08 10:17
+---
+Done: NotificationCategory.modeExpired added (index appended last per persistence convention), fired from IllnessModeNotifier/MedicationModeNotifier.deactivateIfExpired() only (manual deactivate/stop deliberately silent). AnnotationKind.medication appended last; MedicationModeNotifier rewritten to build+persist a deactivation annotation exactly like TASK-258's illness pattern (build before KvStore write, save after durable write, clear on failure). Fixed 2 regressions found via full-suite run: RestartSimulation's real NotificationService() default and forecast_charts_widget_test's transitive notificationServiceProvider dependency (via effectiveSensitivityProvider -> medicationModeProvider) both needed the new NoopNotificationService test fake. Rigor-checked (temp-bug + revert) the medication annotation-build and notification-fire paths. doc/user-guide.html updated: new notification-category table row, illness/medication section notes on auto-expiry notification + medication annotation tagging. Full pipeline green: flutter analyze clean, flutter test --coverage 1347 passing, coverage 68.73% (floor 65%), flutter build apk --debug succeeded. No native Kotlin changed. Commit f484fcc.
 ---
 <!-- COMMENTS:END -->
 
