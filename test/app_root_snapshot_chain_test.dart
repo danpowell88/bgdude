@@ -152,15 +152,33 @@ void main() {
           .setMockMethodCallHandler(channel, null);
     });
 
+    test('pushUpdate genuinely contains the widget-channel throw (not just an '
+        'untested unawaited drop)', () async {
+      appLog.clear();
+      // TASK-270: unlike app.dart's fire-and-forget unawaited() call, AWAIT this
+      // directly so the test actually observes what pushUpdate does with the
+      // injected MissingPluginException -- if HomeWidgetService's own try/catch
+      // (TASK-208) were removed, this await would throw and the test would fail
+      // outright, instead of the unawaited-drop silently hiding it either way.
+      await HomeWidgetService().pushUpdate(urgentLowSnapshot(), GlucoseUnit.mmol);
+      expect(
+        appLog.entries
+            .any((e) => e.tag == 'home_widget' && e.level == LogLevel.error),
+        isTrue,
+        reason: 'the injected MethodChannel throw should have been caught and '
+            'logged, not silently swallowed with no trace',
+      );
+    });
+
     test('pushUpdate throwing (fire-and-forget, unawaited like app.dart) does not '
         'block the following ingest+alerts call', () async {
       final env = build(FaultInjectingHistoryRepository());
       await env.container.read(pumpSnapshotProvider.future);
 
       // app.dart calls this WITHOUT awaiting it before the ingest/alerts chain --
-      // reproduce that exact ordering. HomeWidgetService's own internal try/catch
-      // (TASK-208) means this never actually throws, but the point is structural:
-      // even a dropped Future here cannot delay or abort what follows.
+      // reproduce that exact ordering. The test above already proves pushUpdate
+      // contains the throw for real; this test is purely structural (unawaited()
+      // can never block by definition, regardless of what's inside the Future).
       unawaited(HomeWidgetService().pushUpdate(urgentLowSnapshot(), GlucoseUnit.mmol));
 
       await ingestThenEvaluateAlerts(
@@ -173,50 +191,75 @@ void main() {
   });
 
   group('AC3: a Nightscout upload throw is contained', () {
-    test('uploadEntries with a throwing http client does not throw', () async {
-      final client = NightscoutClient(
-        const NightscoutConfig(
-            baseUrl: 'https://example.invalid',
-            apiSecret: 'xxxxxxxxxxxx',
-            enabled: true),
-        httpClient: _ThrowingHttpClient(),
-      );
+    NightscoutClient throwingHttpClient() => NightscoutClient(
+          const NightscoutConfig(
+              baseUrl: 'https://example.invalid',
+              apiSecret: 'xxxxxxxxxxxx',
+              enabled: true),
+          httpClient: _ThrowingHttpClient(),
+        );
 
-      // NightscoutClient._postJson already catches internally ("uploads are
-      // best-effort background work") -- this pins that guarantee at the public
-      // uploadEntries() entry point app.dart actually calls.
+    test('a network-level failure is contained inside NightscoutClient itself '
+        '(the internal swallow -- _postJson\'s own try/catch)', () async {
+      // This layer's guarantee: uploadEntries() never throws for an HTTP-level
+      // failure. It does NOT exercise app.dart's unawaitedLogged wrapper at all --
+      // _postJson's catch fires first every time, so this alone can't tell whether
+      // the wrapper actually does anything. See the next test for that.
       await expectLater(
-        client.uploadEntries(
+        throwingHttpClient().uploadEntries(
             [CgmSample(time: now, mgdl: 100, trend: GlucoseTrend.flat)]),
         completes,
       );
     });
 
-    test('wrapped in unawaitedLogged (as app.dart does), no unhandled error escapes',
-        () async {
+    test(
+        'a serialisation failure reaches unawaitedLogged\'s catchError -- the '
+        'app-root wrapper, not the client\'s internal swallow', () async {
       appLog.clear();
-      final client = NightscoutClient(
-        const NightscoutConfig(
-            baseUrl: 'https://example.invalid',
-            apiSecret: 'xxxxxxxxxxxx',
-            enabled: true),
-        httpClient: _ThrowingHttpClient(),
-      );
+      // TASK-270: entryFromCgm calls sample.mgdl.round(), which throws
+      // UnsupportedError for NaN -- this happens in uploadEntries' own List.map,
+      // BEFORE _postJson's try/catch is ever reached (the http client here is
+      // irrelevant; the request is never even built). A genuine caller-side bug
+      // like this is exactly the class the ticket calls out: the OLD test's
+      // _ThrowingHttpClient could never reach this path, so unawaitedLogged's own
+      // containment was never actually pinned.
+      final badSample =
+          CgmSample(time: now, mgdl: double.nan, trend: GlucoseTrend.flat);
 
-      unawaitedLogged(
-          client.uploadEntries(
-              [CgmSample(time: now, mgdl: 100, trend: GlucoseTrend.flat)]),
-          'nightscout',
-          'entry upload failed');
+      unawaitedLogged(throwingHttpClient().uploadEntries([badSample]),
+          'nightscout', 'entry upload failed');
       await Future<void>.delayed(Duration.zero);
 
-      // No error surfaces through unawaitedLogged's catchError either, since the
-      // client already swallowed it -- confirms the double containment app.dart
-      // relies on (client-internal AND the wrapper) rather than just one layer.
       expect(
-          appLog.entries
-              .where((e) => e.level == LogLevel.error && e.tag == 'nightscout'),
-          isEmpty);
+        appLog.entries.where((e) =>
+            e.level == LogLevel.error &&
+            e.tag == 'nightscout' &&
+            e.message == 'entry upload failed'),
+        isNotEmpty,
+        reason: 'unawaitedLogged\'s catchError should have caught the round() '
+            'throw from the malformed sample -- if it didn\'t, this would be an '
+            'unhandled async error instead',
+      );
+    });
+
+    test('the sibling ingest+alerts chain still fires even when a concurrent '
+        'Nightscout upload throws', () async {
+      final env = build(FaultInjectingHistoryRepository());
+      await env.container.read(pumpSnapshotProvider.future);
+      final badSample =
+          CgmSample(time: now, mgdl: double.nan, trend: GlucoseTrend.flat);
+
+      // Same ordering as app.dart: fire the (failing) upload, unawaited, then run
+      // the ingest/alerts chain -- the point is that this independent subsystem
+      // is provably unaffected, not just that the outer call "completed".
+      unawaitedLogged(throwingHttpClient().uploadEntries([badSample]),
+          'nightscout', 'entry upload failed');
+      await ingestThenEvaluateAlerts(
+        ingest: () => env.controller.ingestSnapshot(urgentLowSnapshot()),
+        evaluateAlerts: () => env.container.read(alertServiceProvider).onSnapshot(),
+      );
+
+      expect(env.notifier.shown, contains(NotificationCategory.urgentLow));
     });
   });
 }
