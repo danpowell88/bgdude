@@ -273,6 +273,11 @@ void main() {
     // "needs a live CGM" fallback). "Learned curve" appears as both the section
     // header and a coach working line.
     expect(find.text('Learned curve'), findsWidgets);
+    // TASK-283-class fix: the meal detail body is a lazy ListView too -- "What this
+    // meal does to you" isn't necessarily built yet without scrolling to it first.
+    await tester.scrollUntilVisible(
+        find.text('What this meal does to you'), 200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('What this meal does to you'), findsOneWidget);
     expect(find.textContaining('needs a live CGM reading'), findsNothing);
   });
