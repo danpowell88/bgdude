@@ -54,6 +54,87 @@ void main() {
     });
   });
 
+  // TASK-265: isUnhealthy alone can't see the most common and most dangerous
+  // background-failure mode -- a job that silently stops being scheduled at all
+  // never throws, so consecutiveFailures never increments and the row would show a
+  // permanent green check with an ever-growing "last success N days ago".
+  group('SubsystemHealth.isStale', () {
+    test(
+        'a subsystem with an old last-success and no recent attempt reads stale, '
+        'not healthy', () {
+      final now = DateTime(2026, 7, 8);
+      final longAgo = now.subtract(const Duration(hours: 72));
+      final h = SubsystemHealth.unknown.withSuccess(longAgo);
+
+      expect(h.isUnhealthy, isFalse,
+          reason: 'no recorded failure -- this is exactly the silent-stall case '
+              'isUnhealthy cannot see on its own');
+      expect(h.isStale(now, const Duration(hours: 48)), isTrue);
+    });
+
+    test('a recent success within the cadence is not stale', () {
+      final now = DateTime(2026, 7, 8);
+      final recent = now.subtract(const Duration(hours: 2));
+      final h = SubsystemHealth.unknown.withSuccess(recent);
+
+      expect(h.isStale(now, const Duration(hours: 48)), isFalse);
+    });
+
+    test('a null cadence never reads stale, no matter how old the success', () {
+      final now = DateTime(2026, 7, 8);
+      final longAgo = now.subtract(const Duration(days: 365));
+      final h = SubsystemHealth.unknown.withSuccess(longAgo);
+
+      expect(h.isStale(now, null), isFalse,
+          reason: 'no real schedule to compare against (e.g. weather, '
+              'modelDownload) -- must not invent one');
+    });
+
+    test('never having succeeded is never "stale" (that is isUnhealthy\'s case)',
+        () {
+      final now = DateTime(2026, 7, 8);
+      expect(
+          SubsystemHealth.unknown.isStale(now, const Duration(hours: 48)),
+          isFalse,
+          reason: 'no lastSuccessAt at all means "never run", a distinct state '
+              'from "ran, but too long ago"');
+    });
+
+    test('a real recorded failure takes priority over mere staleness', () {
+      final now = DateTime(2026, 7, 8);
+      final longAgo = now.subtract(const Duration(hours: 72));
+      final h = SubsystemHealth.unknown
+          .withSuccess(longAgo)
+          .withFailure(now, 'boom');
+
+      expect(h.isUnhealthy, isTrue);
+      expect(h.isStale(now, const Duration(hours: 48)), isFalse,
+          reason: 'isUnhealthy already covers this and is worse -- isStale must '
+              'not ALSO fire, or a caller checking both independently could show '
+              'conflicting amber-and-red state for the same row');
+    });
+  });
+
+  group('Subsystem.expectedCadence', () {
+    test('the three app-open-driven subsystems have a real, non-null cadence', () {
+      expect(Subsystem.healthSync.expectedCadence, isNotNull);
+      expect(Subsystem.predictionReconciliation.expectedCadence, isNotNull);
+      expect(Subsystem.forecasterTraining.expectedCadence, isNotNull);
+    });
+
+    test(
+        'subsystems with no real periodic schedule are excluded, not given a '
+        'guessed number', () {
+      expect(Subsystem.weather.expectedCadence, isNull,
+          reason: 'no periodic refresh exists anywhere in the codebase');
+      expect(Subsystem.modelDownload.expectedCadence, isNull,
+          reason: 'one-shot, user-triggered, not a recurring job');
+      expect(Subsystem.garminDelivery.expectedCadence, isNull,
+          reason: 'reported via a separate native path -- this enum entry in '
+              'SystemHealthReport is never populated at all');
+    });
+  });
+
   group('SystemHealthReport', () {
     test('of() returns unknown for a subsystem never recorded', () {
       const report = SystemHealthReport();

@@ -24,6 +24,43 @@ enum Subsystem {
         Subsystem.weather => 'Weather',
         Subsystem.modelDownload => 'Nutrition-label model download',
       };
+
+  /// TASK-265: how long since the last SUCCESS is expected before a subsystem with
+  /// zero recorded failures still deserves a second look — the most common and most
+  /// dangerous background-failure mode is a job that silently stops being scheduled
+  /// at all (an OS kill, a cancelled task): it never throws, so [SubsystemHealth.
+  /// isUnhealthy] never fires, and the row shows a permanent green check. null means
+  /// this subsystem has no real periodic schedule to compare against at all — see
+  /// each case below for why — so it's excluded from the staleness check entirely
+  /// rather than guessing a number that has no basis.
+  ///
+  /// There is no single global job driving these (confirmed by reading the actual
+  /// trigger sites, not assumed): healthSync/predictionReconciliation/
+  /// forecasterTraining all run via `AppJobs.runStartup()` on app cold-start and
+  /// resume (`main_shell.dart`) — there is no fixed clock interval, only "the user
+  /// opened the app". 48h is generous headroom above that reality (forecasterTraining
+  /// additionally self-throttles to ~20h internally, `_forecasterTrainingDue`) so a
+  /// single ordinary day without reopening the app never false-flags, while a
+  /// genuine multi-day silent stall does.
+  Duration? get expectedCadence => switch (this) {
+        Subsystem.healthSync => const Duration(hours: 48),
+        Subsystem.predictionReconciliation => const Duration(hours: 48),
+        Subsystem.forecasterTraining => const Duration(hours: 48),
+        // Reported via a separate native platform-channel path (garminHealthProvider
+        // / PumpClient.garminHealth(), see the class doc above) with its own
+        // dedicated staleness check in the UI (SystemHealthScreen's _GarminTile) --
+        // this enum's own SubsystemHealth entry for garminDelivery is never
+        // populated at all, so there is nothing here for a cadence to apply to.
+        Subsystem.garminDelivery => null,
+        // No periodic refresh exists anywhere in the codebase -- weatherProvider is
+        // a plain FutureProvider with no TTL, invalidated only when the user edits
+        // their city. There is no real schedule to derive a threshold from.
+        Subsystem.weather => null,
+        // One-shot, user-tap-triggered download, not a recurring job -- a user who
+        // downloaded the model once, successfully, months ago and never revisits
+        // that screen is not "unhealthy" or "stale", just done.
+        Subsystem.modelDownload => null,
+      };
 }
 
 /// A subsystem's health at a point in time. [consecutiveFailures] resets to 0 on
@@ -59,6 +96,20 @@ class SubsystemHealth {
   /// row, or has never succeeded despite having been attempted.
   bool get isUnhealthy =>
       consecutiveFailures > 0 || (lastAttemptAt != null && lastSuccessAt == null);
+
+  /// TASK-265: whether it's been longer than [cadence] since the last success, with
+  /// zero recorded failures in that time -- the silent-stall case [isUnhealthy]
+  /// can't see (a job that stopped being scheduled entirely never throws, so
+  /// consecutiveFailures never increments). Deliberately does NOT fire when
+  /// [isUnhealthy] already does (a real recorded failure is worse than "just old",
+  /// and the caller should check [isUnhealthy] first) or when [cadence] is null (no
+  /// real schedule to compare against, see [Subsystem.expectedCadence]) or when
+  /// there's no [lastSuccessAt] at all yet (that's "never run", not "stale").
+  bool isStale(DateTime now, Duration? cadence) =>
+      !isUnhealthy &&
+      cadence != null &&
+      lastSuccessAt != null &&
+      now.difference(lastSuccessAt!) > cadence;
 
   SubsystemHealth withSuccess(DateTime at) => SubsystemHealth(
         lastSuccessAt: at,

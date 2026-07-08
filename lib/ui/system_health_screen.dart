@@ -25,7 +25,10 @@ class SystemHealthScreen extends ConsumerWidget {
           const Text(
               'Background subsystems and when each last succeeded. A row in red '
               'has failed at least once since its last success — usually still '
-              'harmless on its own, but worth noticing if it stays red.'),
+              'harmless on its own, but worth noticing if it stays red. A row in '
+              'amber hasn\'t failed, but hasn\'t succeeded recently either — the '
+              'most common way a background job actually breaks is by silently no '
+              'longer being scheduled at all, which never shows up as a failure.'),
           const SizedBox(height: 16),
           for (final s in Subsystem.values) _SubsystemTile(s, report.of(s)),
           const Divider(),
@@ -48,29 +51,43 @@ class _SubsystemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unhealthy = health.isUnhealthy;
+    // TASK-265: stale (amber) is checked only when NOT already unhealthy (red) --
+    // a real recorded failure is worse than "just old", so it takes priority.
+    final stale =
+        !unhealthy && health.isStale(DateTime.now(), subsystem.expectedCadence);
     return Card(
       color: unhealthy
           ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.4)
-          : null,
+          : stale
+              ? Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.4)
+              : null,
       child: ListTile(
         leading: Icon(
-          unhealthy ? Icons.error_outline : Icons.check_circle_outline,
+          unhealthy
+              ? Icons.error_outline
+              : stale
+                  ? Icons.warning_amber_rounded
+                  : Icons.check_circle_outline,
           color: unhealthy
               ? Theme.of(context).colorScheme.error
-              : Colors.green,
+              : stale
+                  ? Colors.amber.shade800
+                  : Colors.green,
         ),
         title: Text(subsystem.label),
-        subtitle: Text(_subtitle(health)),
+        subtitle: Text(_subtitle(health, stale)),
       ),
     );
   }
 
-  String _subtitle(SubsystemHealth h) {
+  String _subtitle(SubsystemHealth h, bool stale) {
     if (h.lastAttemptAt == null) return 'Never run yet';
     final last = h.lastSuccessAt == null
         ? 'Never succeeded'
         : 'Last success: ${_relative(h.lastSuccessAt!)}';
-    if (h.consecutiveFailures == 0) return last;
+    if (h.consecutiveFailures == 0) {
+      return stale ? '$last · no recent activity, worth checking' : last;
+    }
     final times = h.consecutiveFailures == 1 ? 'time' : 'times';
     return '$last · failed ${h.consecutiveFailures} $times in a row'
         '${h.lastError != null ? ' (${h.lastError})' : ''}';
@@ -90,11 +107,25 @@ class _GarminTile extends StatelessWidget {
   final Map<String, dynamic>? health;
   final bool loading;
 
+  /// TASK-265: Garmin delivery is CGM-push-triggered at ~5 minutes (GarminSender.kt
+  /// debounces to a 60s floor, but the real drive rate is every CGM reading) --
+  /// generous 3x headroom above that before a run with no recorded failures still
+  /// gets flagged. Only meaningful once a success has landed at least once THIS
+  /// session (this health is session-only, never persisted), so a fresh launch
+  /// correctly reads "no send attempted yet", not stale.
+  static const _staleAfter = Duration(minutes: 15);
+
   @override
   Widget build(BuildContext context) {
     final lastSuccessMs = health?['lastSuccessAtMs'] as int?;
     final failures = (health?['consecutiveFailures'] as int?) ?? 0;
     final unhealthy = !loading && failures > 0;
+    final stale = !loading &&
+        !unhealthy &&
+        lastSuccessMs != null &&
+        DateTime.now()
+                .difference(DateTime.fromMillisecondsSinceEpoch(lastSuccessMs)) >
+            _staleAfter;
     final subtitle = loading
         ? 'Checking…'
         : health == null
@@ -104,19 +135,28 @@ class _GarminTile extends StatelessWidget {
                     ? 'Never succeeded — failed $failures time(s) in a row'
                     : 'No send attempted yet this session')
                 : 'Last success: ${_SubsystemTile._relative(DateTime.fromMillisecondsSinceEpoch(lastSuccessMs))}'
-                    '${failures > 0 ? ' · failed $failures time(s) in a row since' : ''}';
+                    '${failures > 0 ? ' · failed $failures time(s) in a row since' : ''}'
+                    '${stale ? ' · no recent activity, worth checking' : ''}';
     return Card(
       color: unhealthy
           ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.4)
-          : null,
+          : stale
+              ? Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.4)
+              : null,
       child: ListTile(
         leading: Icon(
           loading
               ? Icons.hourglass_empty
               : unhealthy
                   ? Icons.error_outline
-                  : Icons.check_circle_outline,
-          color: unhealthy ? Theme.of(context).colorScheme.error : Colors.green,
+                  : stale
+                      ? Icons.warning_amber_rounded
+                      : Icons.check_circle_outline,
+          color: unhealthy
+              ? Theme.of(context).colorScheme.error
+              : stale
+                  ? Colors.amber.shade800
+                  : Colors.green,
         ),
         title: const Text('Garmin watch delivery'),
         subtitle: Text('$subtitle\n(this session only — not persisted across restarts)'),
