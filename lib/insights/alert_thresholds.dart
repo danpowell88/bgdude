@@ -29,13 +29,46 @@ enum AlertSegment { overnight, day, postMeal }
 /// -5, or 1.79e308) must not silently become this app's real alert threshold --
 /// AlertThresholds drives real-time low/high/urgent-low firing, so a bad value here
 /// could suppress a genuine alert or fire spuriously. REJECT (fall back to
-/// [fallback], never clamp toward a fabricated in-range number) outside the
-/// physiologically sane glucose band -- same 20-600 mg/dL bound and reject-not-clamp
-/// rationale as pump_snapshot.dart's _rejectOutOfRangeDouble (TASK-273): clamping -5
-/// to 20 would still be a plausible-looking, actionable threshold for a value that
-/// was never legitimately set.
+/// [fallback], never clamp toward a fabricated in-range number) outside a plausible
+/// THRESHOLD band -- reject-not-clamp rationale as pump_snapshot.dart's
+/// _rejectOutOfRangeDouble (TASK-273): clamping -5 to the floor would still be a
+/// plausible-looking, actionable threshold for a value that was never legitimately
+/// set. TASK-303: tightened from 20-600 (a plausible-BG-READING band, borrowed from
+/// pump_snapshot's cgmMgdl bound) to 40-400 -- a THRESHOLD is a value someone
+/// deliberately configured, not a raw sensor reading, so it should sit inside a
+/// clinically-plausible range, not merely inside "somewhere a CGM could ever report".
 double _sanitizeMgdl(double? v, double fallback) =>
-    v == null || v.isNaN || v < 20 || v > 600 ? fallback : v;
+    v == null || v.isNaN || v < 40 || v > 400 ? fallback : v;
+
+/// TASK-303: per-field range sanitising ([_sanitizeMgdl]) alone isn't enough -- a
+/// corrupt-but-individually-in-range triple (e.g. a persisted low corrupted to 40,
+/// which passes the per-field band unchanged, paired with the default urgentLow=55)
+/// can still violate urgentLow < low < high. AlertMonitor.evaluate's low branch used
+/// to gate the ENTIRE low/urgentLow decision on `minF.mgdl < lowMgdl`, so a lower-
+/// than-urgentLow lowMgdl made urgentLow unreachable -- a genuine hypo at ~50 mg/dL
+/// would fire NEITHER alert. (AlertMonitor now also evaluates urgentLow
+/// independently as defense-in-depth, but this layer -- rejecting a mis-ordered
+/// triple at the persistence boundary -- is the one that should normally catch it.)
+/// Checked on the fully-sanitised triple, not per-field: a mix of one sanitised
+/// value and two untouched defaults could just as easily violate ordering on its
+/// own. On violation, the WHOLE triple falls back to [fallbackLow]/[fallbackHigh]/
+/// [fallbackUrgentLow] -- never a partial mix that could itself be mis-ordered.
+({double low, double high, double urgentLow}) _sanitizeThresholdTriple({
+  required double? rawLow,
+  required double? rawHigh,
+  required double? rawUrgentLow,
+  required double fallbackLow,
+  required double fallbackHigh,
+  required double fallbackUrgentLow,
+}) {
+  final low = _sanitizeMgdl(rawLow, fallbackLow);
+  final high = _sanitizeMgdl(rawHigh, fallbackHigh);
+  final urgentLow = _sanitizeMgdl(rawUrgentLow, fallbackUrgentLow);
+  if (urgentLow < low && low < high) {
+    return (low: low, high: high, urgentLow: urgentLow);
+  }
+  return (low: fallbackLow, high: fallbackHigh, urgentLow: fallbackUrgentLow);
+}
 
 /// One low/high/urgent-low triple, typed [Mgdl] (TASK-119). The constructor takes
 /// plain doubles (values arrive from JSON/steppers) and wraps once here.
@@ -64,14 +97,20 @@ class AlertBand {
 
   /// Missing keys fall back to [fallback] (the all-day row), so a partial override only
   /// changes the fields the user actually set. TASK-302: an out-of-range value (not
-  /// just a missing one) falls back the same way -- see [_sanitizeMgdl].
-  factory AlertBand.fromJson(Map<String, dynamic> j, {required AlertBand fallback}) =>
-      AlertBand(
-        lowMgdl: _sanitizeMgdl((j['low'] as num?)?.toDouble(), fallback.lowMgdl),
-        highMgdl: _sanitizeMgdl((j['high'] as num?)?.toDouble(), fallback.highMgdl),
-        urgentLowMgdl:
-            _sanitizeMgdl((j['urgentLow'] as num?)?.toDouble(), fallback.urgentLowMgdl),
-      );
+  /// just a missing one) falls back the same way -- see [_sanitizeMgdl]. TASK-303: a
+  /// mis-ordered triple (even if every field is individually in-range) falls back to
+  /// [fallback] entirely -- see [_sanitizeThresholdTriple].
+  factory AlertBand.fromJson(Map<String, dynamic> j, {required AlertBand fallback}) {
+    final t = _sanitizeThresholdTriple(
+      rawLow: (j['low'] as num?)?.toDouble(),
+      rawHigh: (j['high'] as num?)?.toDouble(),
+      rawUrgentLow: (j['urgentLow'] as num?)?.toDouble(),
+      fallbackLow: fallback.lowMgdl,
+      fallbackHigh: fallback.highMgdl,
+      fallbackUrgentLow: fallback.urgentLowMgdl,
+    );
+    return AlertBand(lowMgdl: t.low, highMgdl: t.high, urgentLowMgdl: t.urgentLow);
+  }
 }
 
 class AlertThresholds {
@@ -151,13 +190,21 @@ class AlertThresholds {
   /// Migration (§4-2.3 AC#2): old flat JSON (no `segments`) parses into the all-day row
   /// with no overrides, so existing users keep their exact thresholds all day. TASK-302:
   /// an out-of-range value (not just a missing one) falls back to the shipped default --
-  /// see [_sanitizeMgdl].
+  /// see [_sanitizeMgdl]. TASK-303: a mis-ordered triple falls back to the shipped
+  /// defaults entirely -- see [_sanitizeThresholdTriple].
   factory AlertThresholds.fromJson(Map<String, dynamic> j) {
+    final t = _sanitizeThresholdTriple(
+      rawLow: (j['low'] as num?)?.toDouble(),
+      rawHigh: (j['high'] as num?)?.toDouble(),
+      rawUrgentLow: (j['urgentLow'] as num?)?.toDouble(),
+      fallbackLow: defaultLowMgdl,
+      fallbackHigh: defaultHighMgdl,
+      fallbackUrgentLow: defaultUrgentLowMgdl,
+    );
     final base = AlertThresholds(
-      lowMgdl: Mgdl(_sanitizeMgdl((j['low'] as num?)?.toDouble(), defaultLowMgdl)),
-      highMgdl: Mgdl(_sanitizeMgdl((j['high'] as num?)?.toDouble(), defaultHighMgdl)),
-      urgentLowMgdl: Mgdl(
-          _sanitizeMgdl((j['urgentLow'] as num?)?.toDouble(), defaultUrgentLowMgdl)),
+      lowMgdl: Mgdl(t.low),
+      highMgdl: Mgdl(t.high),
+      urgentLowMgdl: Mgdl(t.urgentLow),
     );
     final segJson = j['segments'] as Map<String, dynamic>?;
     if (segJson == null || segJson.isEmpty) return base;

@@ -62,21 +62,35 @@ class AlertMonitor {
     final maxF = forecasts.reduce((a, b) => a.mgdl > b.mgdl ? a : b);
     String g(double m) => '${Mgdl(m).display(unit)} ${unit.label}';
 
-    // Predicted-low handling: pick the severity, gate on THAT kind's cooldown, and do
-    // not cascade to a lesser low alert (avoids double-alerting the same dip).
-    if (minF.mgdl < lowMgdl && currentMgdl > lowMgdl) {
-      final urgent = minF.mgdl < urgentLowMgdl && currentMgdl > urgentLowMgdl;
-      final kind =
-          urgent ? GlucoseAlertKind.urgentLow : GlucoseAlertKind.predictedLow;
-      if (!cool(kind)) return null;
+    // TASK-303: urgentLow is checked FIRST, independently of the predictedLow branch
+    // below -- defense-in-depth against a mis-ordered/corrupt threshold config
+    // (lowMgdl <= urgentLowMgdl) that would otherwise make urgentLow unreachable by
+    // nesting it inside a `minF.mgdl < lowMgdl` gate a too-low lowMgdl could already
+    // fail. Deliberately keeps the SAME `currentMgdl > lowMgdl` outer gate the old
+    // nested check used (not `currentMgdl > urgentLowMgdl` on its own) -- for a
+    // correctly-ordered config (urgentLowMgdl < lowMgdl, the only legitimate one)
+    // this fires in EXACTLY the same cases as before; only a mis-ordered config's
+    // behaviour changes (from "fires nothing" to "fires the urgent alert it should").
+    if (minF.mgdl < urgentLowMgdl && currentMgdl > lowMgdl) {
+      if (!cool(GlucoseAlertKind.urgentLow)) return null;
       return GlucoseAlert(
-        kind: kind,
-        title: urgent ? 'Low predicted soon' : 'Low ahead',
-        body: urgent
-            ? 'Heading to ${g(minF.mgdl)} in ~${minF.horizonMinutes} min — '
-                'consider ${rescueCarbsGrams.round()}g fast carbs now.'
-            : 'Predicted ${g(minF.mgdl)} in ~${minF.horizonMinutes} min. '
-                '~${rescueCarbsGrams.round()}g would head it off.',
+        kind: GlucoseAlertKind.urgentLow,
+        title: 'Low predicted soon',
+        body: 'Heading to ${g(minF.mgdl)} in ~${minF.horizonMinutes} min — '
+            'consider ${rescueCarbsGrams.round()}g fast carbs now.',
+      );
+    }
+
+    // Predicted-low (non-urgent): gate on the low threshold and that kind's cooldown.
+    // Reaching here means the urgent check above didn't fire, so this never cascades
+    // into a lesser low alert on top of an urgent one for the same dip.
+    if (minF.mgdl < lowMgdl && currentMgdl > lowMgdl) {
+      if (!cool(GlucoseAlertKind.predictedLow)) return null;
+      return GlucoseAlert(
+        kind: GlucoseAlertKind.predictedLow,
+        title: 'Low ahead',
+        body: 'Predicted ${g(minF.mgdl)} in ~${minF.horizonMinutes} min. '
+            '~${rescueCarbsGrams.round()}g would head it off.',
       );
     }
 

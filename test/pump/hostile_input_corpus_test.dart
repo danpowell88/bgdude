@@ -311,21 +311,68 @@ void main() {
           // restoreJsonGuarded in production, acceptable here too.
         }
         if (t != null) {
-          // TASK-302: AlertThresholds drives real-time alert firing -- a
+          // TASK-302/303: AlertThresholds drives real-time alert firing -- a
           // corrupt low/high/urgentLow REJECTS to the shipped default rather
           // than becoming the real threshold, at the top level and per
           // segment. A per-segment override that doesn't structurally fit
           // (not a Map) is silently skipped rather than corrupting the whole
-          // table.
-          expect(t.lowMgdl, inInclusiveRange(20, 600));
-          expect(t.highMgdl, inInclusiveRange(20, 600));
-          expect(t.urgentLowMgdl, inInclusiveRange(20, 600));
+          // table. Range tightened to 40-400 (a plausible THRESHOLD band, not
+          // merely a plausible CGM reading). Ordering (urgentLow < low < high)
+          // must ALSO hold -- a per-field-sanitised-but-mis-ordered triple is
+          // just as dangerous as an out-of-range one (TASK-303): it can make
+          // AlertMonitor's urgentLow branch unreachable and silently suppress
+          // a genuine hypo alert.
+          expect(t.lowMgdl, inInclusiveRange(40, 400));
+          expect(t.highMgdl, inInclusiveRange(40, 400));
+          expect(t.urgentLowMgdl, inInclusiveRange(40, 400));
+          expect(t.urgentLowMgdl.value, lessThan(t.lowMgdl.value));
+          expect(t.lowMgdl.value, lessThan(t.highMgdl.value));
           for (final band in t.segments.values) {
-            expect(band.lowMgdl, inInclusiveRange(20, 600));
-            expect(band.highMgdl, inInclusiveRange(20, 600));
-            expect(band.urgentLowMgdl, inInclusiveRange(20, 600));
+            expect(band.lowMgdl, inInclusiveRange(40, 400));
+            expect(band.highMgdl, inInclusiveRange(40, 400));
+            expect(band.urgentLowMgdl, inInclusiveRange(40, 400));
+            expect(band.urgentLowMgdl.value, lessThan(band.lowMgdl.value));
+            expect(band.lowMgdl.value, lessThan(band.highMgdl.value));
           }
         }
+      });
+    }
+
+    // TASK-303: dedicated cases beyond the generic hostileVariantsOf table --
+    // each individual field is comfortably in-range, but the TRIPLE is
+    // mis-ordered, which the per-field-only checks above could never catch
+    // (hostileVariantsOf mutates one field at a time against an already-valid
+    // triple, so it never produces this specific "all fields plausible, order
+    // wrong" shape).
+    final misorderedCases = <String, Map<String, dynamic>>{
+      'low below urgentLow (the exact suppress-a-hypo bug)': {
+        'low': 40.0, 'high': 200.0, 'urgentLow': 55.0,
+      },
+      'urgentLow equal to low (not strictly less)': {
+        'low': 55.0, 'high': 200.0, 'urgentLow': 55.0,
+      },
+      'high below low': {
+        'low': 150.0, 'high': 100.0, 'urgentLow': 55.0,
+      },
+    };
+    for (final entry in misorderedCases.entries) {
+      test('mis-ordered triple (${entry.key}) decodes to the safe, '
+          'correctly-ordered defaults', () {
+        final t = AlertThresholds.fromJson(entry.value);
+
+        expect(t.lowMgdl.value, AlertThresholds.defaultLowMgdl);
+        expect(t.highMgdl.value, AlertThresholds.defaultHighMgdl);
+        expect(t.urgentLowMgdl.value, AlertThresholds.defaultUrgentLowMgdl);
+      });
+
+      test('the same mis-ordered triple, as a per-segment override, decodes '
+          'to the all-day fallback band (${entry.key})', () {
+        final fallback = AlertBand(lowMgdl: 70, highMgdl: 200, urgentLowMgdl: 55);
+        final band = AlertBand.fromJson(entry.value, fallback: fallback);
+
+        expect(band.lowMgdl, fallback.lowMgdl);
+        expect(band.highMgdl, fallback.highMgdl);
+        expect(band.urgentLowMgdl, fallback.urgentLowMgdl);
       });
     }
   });
