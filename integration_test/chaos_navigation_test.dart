@@ -1,19 +1,23 @@
 /// TASK-195 AC#1: a repeatable chaos run — random cross-screen navigation, rotation,
 /// and background/foreground churn against the live demo app — asserting nothing
-/// escapes as an uncaught exception. bgdude installs its own zone/Flutter/platform
-/// error handlers (main.dart, TASK-187) specifically so a framework hiccup can't take
-/// the alerting path down with it, which means a chaos run can't just rely on the test
-/// framework failing loudly on an exception — those get caught and logged, not
-/// rethrown. So this checks the app's OWN crash log (lib/logging/app_log.dart) for
-/// anything landing under the 'crash' tag during the run, which is exactly what
-/// main.dart's handlers record on every caught error.
+/// escapes as an uncaught exception.
+///
+/// TASK-293: an earlier version of this file (TASK-257) tried to detect crashes via
+/// the app's own `crash`-tagged log (main.dart's `_captureCrash`, wired through a
+/// FlutterError.onError chained in the harness). That never worked: flutter_test's
+/// `TestWidgetsFlutterBinding` installs its OWN `FlutterError.onError` for the
+/// duration of the whole test body (restored only afterwards), so a handler installed
+/// in `setUp` is always overridden the moment the test starts — the crash-tag
+/// assertion was silently vacuous. The framework's own supported mechanism for this
+/// is [WidgetTester.takeException] — checked after every step here so an early
+/// exception can't be silently overwritten by a later one (the framework only holds
+/// one pending exception at a time).
 ///
 /// Run with: flutter test integration_test/chaos_navigation_test.dart -d <device-id>
 library;
 
 import 'dart:math';
 
-import 'package:bgdude/logging/app_log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -115,9 +119,19 @@ void main() {
         }
       } catch (_) {
         // A widget-finder mismatch (e.g. tapped something that just navigated away)
-        // is an expected hazard of a RANDOM walk, not the app crashing — the actual
-        // pass/fail signal is the crash-log check below, not this loop staying
-        // exception-free.
+        // is an expected hazard of a RANDOM walk, not the app crashing -- these never
+        // reach the framework's own exception capture (below), which is the real
+        // pass/fail signal.
+      }
+
+      // TASK-293: takeException() both retrieves AND clears the framework's single
+      // pending-exception slot, so checking here (every step, not just at the end)
+      // means an early build/layout/gesture exception can't be silently overwritten
+      // by a later one, and the failure message pinpoints which step caused it.
+      final exception = tester.takeException();
+      if (exception != null) {
+        fail('chaos walk step $step (action $action) triggered an uncaught '
+            'exception:\n$exception');
       }
     }
 
@@ -127,11 +141,11 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await settleBounded();
 
-    final crashes =
-        appLog.entries.where((e) => e.tag == 'crash').toList();
-    expect(crashes, isEmpty,
-        reason: 'the chaos walk must never trip main.dart\'s crash handlers:\n'
-            '${crashes.map((e) => e.line).join('\n')}');
+    final trailingException = tester.takeException();
+    if (trailingException != null) {
+      fail('chaos walk triggered an uncaught exception during final cleanup:\n'
+          '$trailingException');
+    }
   },
       // TASK-291: two real-device dispatches saw this file run to the surrounding
       // CI job's full 45-min timeout with zero progress -- bound it here instead so
