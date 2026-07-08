@@ -5,6 +5,10 @@
 # main. The integration_test/ suite is manual-only (needs an emulator; see
 # CLAUDE.md) — everything here must stay green for main to be green.
 #
+# (TASK-298 cache-hit verification commit: this comment-only edit does not
+# touch any file the build_runner cache key hashes, so the next run should
+# hit the cache populated by the previous run.)
+#
 # TASK-287: analyze / unit tests (TASK-297: sharded) / APK build / native
 # tests run as independent parallel jobs instead of one sequential job,
 # since the APK build in particular does not depend on the test result and
