@@ -59,6 +59,14 @@ void main() {
     }
 
     for (var step = 0; step < _chaosSteps; step++) {
+      // TASK-291: two real-device dispatches hung somewhere in this file with zero
+      // further log output until the job's own 45-min timeout killed it -- this
+      // periodic marker is the cheapest way to bisect which step it's stuck on from
+      // a future run's log, since the loop itself has no other progress output.
+      if (step % 25 == 0) {
+        // ignore: avoid_print
+        print('chaos walk: step $step/$_chaosSteps');
+      }
       final action = rnd.nextInt(6);
       try {
         switch (action) {
@@ -124,5 +132,11 @@ void main() {
     expect(crashes, isEmpty,
         reason: 'the chaos walk must never trip main.dart\'s crash handlers:\n'
             '${crashes.map((e) => e.line).join('\n')}');
-  });
+  },
+      // TASK-291: two real-device dispatches saw this file run to the surrounding
+      // CI job's full 45-min timeout with zero progress -- bound it here instead so
+      // a hang fails fast with a real TimeoutException/stack trace pointing at the
+      // stuck step, rather than silently consuming the whole job's budget and every
+      // other step that would have run after it.
+      timeout: const Timeout(Duration(minutes: 10)));
 }
