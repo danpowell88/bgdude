@@ -99,6 +99,12 @@ void main() {
     await openSettingsScreen(tester, 'Model internals');
     expect(find.text('Effective sensitivity'), findsOneWidget);
     expect(find.text('Forecaster'), findsOneWidget);
+    // TASK-283 class of bug (sibling occurrence): the Advanced screen's body is a
+    // lazy ListView -- "Clarke error grid" isn't necessarily built yet without
+    // scrolling to it first, unlike the two checks above which happen to fit the
+    // initial viewport.
+    await tester.scrollUntilVisible(find.text('Clarke error grid'), 200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('Clarke error grid'), findsOneWidget);
     // The forecaster card always states whether the learned residual is live;
     // after a training run it also shows candidate/baseline (and, once an

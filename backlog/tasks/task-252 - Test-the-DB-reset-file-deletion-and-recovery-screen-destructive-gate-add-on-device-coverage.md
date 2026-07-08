@@ -3,11 +3,11 @@ id: TASK-252
 title: >-
   Test the DB reset file deletion and recovery-screen destructive gate, add
   on-device coverage
-status: Blocked
+status: Done
 assignee:
   - Claude
 created_date: '2026-07-07 14:28'
-updated_date: '2026-07-08 03:01'
+updated_date: '2026-07-08 04:16'
 labels:
   - detail-needed
 milestone: m-8
@@ -70,6 +70,12 @@ author: Claude
 created: 2026-07-08 03:01
 ---
 Found + fixed a related gap while checking this ticket's blocker: integration_test/db_recovery_screen_test.dart (AC#3's on-device test, already written) was never actually added to tools/run_functional_integration_tests.sh/.ps1 -- the canonical file list TASK-219's nightly emulator workflow drives. It would never have run in CI even once the workflow itself was proven functional. Added it to both scripts (kept in sync per their own header comment). Confirmed it's deterministic/network-free (ProviderScope overrides only, no OCR/network) so it belongs in the list alongside the others. Staying Blocked until a dispatch that includes it in the run actually reports a result -- the run in flight now (28914262834) was dispatched before this fix landed, so it won't pick this file up; the next one will.
+---
+
+author: Claude
+created: 2026-07-08 04:16
+---
+Unblocked and confirmed for real: dispatch 28915351919 (with TASK-292's continue-past-failures fix) ran integration_test/db_recovery_screen_test.dart to completion -- 1/1 test passed. AC#3 genuinely verified on-device now, not just written.
 ---
 <!-- COMMENTS:END -->
 

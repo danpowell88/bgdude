@@ -146,7 +146,13 @@ class _Row extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          Text(value, style: style),
+          const SizedBox(width: 8),
+          // A longer value (e.g. Control-IQ's "Active · Sleep") can overflow this
+          // fixed-width row on a narrow card; ellipsize rather than clip off-screen.
+          Flexible(
+            child: Text(value,
+                style: style, textAlign: TextAlign.end, overflow: TextOverflow.ellipsis),
+          ),
         ],
       ),
     );

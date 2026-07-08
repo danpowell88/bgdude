@@ -52,6 +52,12 @@ void main() {
         scrollable: find.byType(Scrollable).first);
     expect(whatIf, findsOneWidget);
     expect(find.byType(Slider), findsWidgets);
+    // TASK-234 class of bug: scrollUntilVisible stops once the label enters the
+    // viewport, but the Slider itself (further down the same section) can still sit
+    // at the edge -- ensureVisible brings it fully on-screen before drag() derives a
+    // hit-test offset against it.
+    await tester.ensureVisible(find.byType(Slider).first);
+    await tester.pumpAndSettle();
 
     // TASK-167: raising carbs must move the projection UP, not merely re-render.
     double? endingMgdl() {
