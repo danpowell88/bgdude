@@ -61,6 +61,12 @@ abstract interface class ResidualModel {
   });
 
   bool get isTrained;
+
+  /// The trained 1-sigma uncertainty at [horizonMinutes], or null if this horizon
+  /// has no learned sigma (untrained model, or a horizon that was never trained).
+  /// TASK-138's drift check compares live RMSE against this — a null means
+  /// there's nothing trained to drift FROM, so the horizon is skipped.
+  double? trainingSigma(int horizonMinutes);
 }
 
 /// Deterministic-only residual: no correction, uncertainty widens with horizon.
@@ -77,6 +83,9 @@ class NoResidualModel implements ResidualModel {
   }) {
     return (residual: 0.0, sigma: fallbackSigma(horizonMinutes));
   }
+
+  @override
+  double? trainingSigma(int horizonMinutes) => null;
 }
 
 class Forecaster {

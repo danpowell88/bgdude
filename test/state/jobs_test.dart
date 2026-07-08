@@ -1,13 +1,51 @@
+import 'dart:convert';
+
 import 'package:bgdude/data/history_repository.dart';
+import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/dev/sim_data.dart';
 import 'package:bgdude/insights/notifications.dart';
+import 'package:bgdude/ml/drift_detector.dart';
+import 'package:bgdude/ml/forecaster.dart';
 import 'package:bgdude/ml/health_features.dart';
+import 'package:bgdude/state/forecast_providers.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/faults.dart';
+
+/// A [ResidualModel] with a fixed, known-in-advance per-horizon trained sigma, so
+/// the TASK-138 drift-ratio tests below don't depend on what a real training run
+/// happens to converge to.
+class _FixedResidualModel implements ResidualModel {
+  const _FixedResidualModel(this._sigmas);
+  final Map<int, double> _sigmas;
+
+  @override
+  bool get isTrained => true;
+
+  @override
+  ({double residual, double sigma}) correct({
+    required List<double> features,
+    required int horizonMinutes,
+  }) =>
+      (residual: 0.0, sigma: _sigmas[horizonMinutes] ?? fallbackSigma(horizonMinutes));
+
+  @override
+  double? trainingSigma(int horizonMinutes) => _sigmas[horizonMinutes];
+}
+
+/// Wraps a [_FixedResidualModel] as the live model without waiting on (or racing)
+/// the real async restore-from-disk -- mirrors the exact seam
+/// ForecasterModelController exposes for this in forecaster_service_test.dart's
+/// "a late restore never clobbers a newer in-memory model" test.
+class _FixedModelController extends ForecasterModelController {
+  _FixedModelController(ResidualModel model) {
+    debugMarkNewerLocalModel();
+    state = model;
+  }
+}
 
 /// Exercises the background jobs (AppJobs) end-to-end against an in-memory repository
 /// seeded with a simulated day — verifying they run without throwing and that the
@@ -120,6 +158,83 @@ void main() {
       // sampler built from no data, which resolves to the exact same zero contract as
       // no sampler at all (HealthFeatureSampler([]).featuresAt(t) == zeros).
       expect(state!.healthFeatures, HealthFeatureSampler.zeros);
+    });
+  });
+
+  group('forecast drift detection (TASK-138)', () {
+    setUp(() => KvStore.useMemory());
+
+    ProviderContainer buildContainer(ResidualModel model) =>
+        ProviderContainer(overrides: [
+          historyRepositoryProvider.overrideWithValue(repo),
+          notificationServiceProvider.overrideWithValue(NotificationService()),
+          devModeProvider.overrideWith((ref) => false),
+          therapySettingsProvider.overrideWith((ref) => TherapyNotifier()),
+          forecasterModelProvider
+              .overrideWith((ref) => _FixedModelController(model)),
+        ]);
+
+    // 25 same-horizon predictions with a fixed, large error -- comfortably above
+    // both UncertaintyCalibrator's minSamples floor (20) and the drift threshold
+    // once compared against the small fixed trainingSigma used by these tests.
+    Future<void> seedDriftingPredictions() async {
+      for (var i = 0; i < 25; i++) {
+        await repo.savePrediction(StoredPrediction(
+          madeAt: now.subtract(Duration(hours: 1, minutes: i)),
+          horizonMinutes: 30,
+          predictedMgdl: 200,
+          lowerMgdl: 180,
+          upperMgdl: 220,
+          modelId: 'test',
+          actualMgdl: 100,
+        ));
+      }
+    }
+
+    test('a single drifting run raises the ratio but does not sustain the flag',
+        () async {
+      final c = buildContainer(const _FixedResidualModel({30: 5.0}));
+      addTearDown(c.dispose);
+      await seedDriftingPredictions();
+
+      await c.read(appJobsProvider).updateRecentForecastError();
+
+      final drift = c.read(forecastDriftProvider);
+      expect(drift.ratios[30], greaterThanOrEqualTo(kDriftRatioThreshold));
+      expect(drift.consecutiveDriftRuns, 1);
+      expect(drift.sustained, isFalse);
+    });
+
+    test(
+        'kSustainedDriftRuns consecutive drifting runs flags sustained drift, '
+        'requests an out-of-band retrain, and the next model run logs the ratio',
+        () async {
+      final c = buildContainer(const _FixedResidualModel({30: 5.0}));
+      addTearDown(c.dispose);
+      await seedDriftingPredictions();
+      final jobs = c.read(appJobsProvider);
+
+      for (var i = 0; i < kSustainedDriftRuns; i++) {
+        await jobs.updateRecentForecastError();
+      }
+
+      final drift = c.read(forecastDriftProvider);
+      expect(drift.consecutiveDriftRuns, kSustainedDriftRuns);
+      expect(drift.sustained, isTrue);
+
+      // Out-of-band retrain requested: AppJobs._forecasterTrainStampKey reset so
+      // runStartup's throttled trainForecaster job won't wait out its cooldown.
+      final stamp = await KvStore.getString('forecaster_last_trained_at');
+      expect(DateTime.parse(stamp!).year, 2000);
+
+      // AC#3: the drift ratio that (potentially) triggered this training run is
+      // logged into the saved model-run record.
+      await jobs.trainForecaster();
+      final runs = await repo.modelRuns();
+      final metrics = jsonDecode(runs.last.metricsJson) as Map<String, dynamic>;
+      expect(metrics['driftTriggered'], isTrue);
+      expect((metrics['driftRatios'] as Map)['30'],
+          greaterThanOrEqualTo(kDriftRatioThreshold));
     });
   });
 }

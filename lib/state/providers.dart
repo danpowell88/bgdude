@@ -69,6 +69,7 @@ import '../meals/meal_log.dart';
 import '../meals/meal_outcome_service.dart';
 import '../meals/prebolus_coach.dart';
 import '../ml/basal_recommender.dart';
+import '../ml/drift_detector.dart';
 import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
 import '../ml/forecaster_service.dart';
@@ -1796,6 +1797,13 @@ class DeviceChangeNotifier extends StateNotifier<DeviceState> {
 final recentHorizonErrorProvider =
     StateProvider<Map<int, double>>((ref) => const {});
 
+/// TASK-138: whether the live forecaster's recent accuracy has sustained-drifted
+/// from its trained sigma — a visible flag distinct from [systemHealthProvider]
+/// (which tracks job success/failure, not forecast accuracy). Updated alongside
+/// [recentHorizonErrorProvider] by the jobs runner after prediction reconciliation.
+final forecastDriftProvider =
+    StateProvider<ForecastDriftState>((ref) => const ForecastDriftState());
+
 /// Alerts the user when the pump has been disconnected for a sustained period.
 final connectionAlertServiceProvider =
     Provider<ConnectionAlertService>((ref) => ConnectionAlertService(ref));
@@ -2198,8 +2206,41 @@ class AppJobs {
           (horizon: p.horizonMinutes, predicted: p.predictedMgdl, actual: p.actualMgdl!),
     ];
     if (pairs.isEmpty) return;
-    _ref.read(recentHorizonErrorProvider.notifier).state =
-        const UncertaintyCalibrator().perHorizonRmse(pairs);
+    final rmse = const UncertaintyCalibrator().perHorizonRmse(pairs);
+    _ref.read(recentHorizonErrorProvider.notifier).state = rmse;
+    await _checkForecastDrift(rmse);
+  }
+
+  static const _driftStreakKey = 'forecast_drift_streak';
+
+  /// TASK-138: compares [recentRmse] to the active model's trained per-horizon
+  /// sigma. A single noisy run doesn't flag anything -- only [kSustainedDriftRuns]
+  /// consecutive drifting runs sets [forecastDriftProvider]'s sustained flag and
+  /// requests an out-of-band retrain, by resetting `trainForecaster`'s throttle
+  /// stamp so the `trainForecaster` startup job later in this SAME run (see
+  /// [runStartup]'s job order) retrains now instead of waiting out its ~20h cooldown.
+  Future<void> _checkForecastDrift(Map<int, double> recentRmse) async {
+    const detector = DriftDetector();
+    final model = _ref.read(forecasterModelProvider);
+    final sigmas = <int, double>{
+      for (final h in recentRmse.keys)
+        if (model.trainingSigma(h) case final sigma?) h: sigma,
+    };
+    final ratios = detector.ratios(recentRmse, sigmas);
+    final driftingNow = detector.isDriftingNow(ratios);
+    final priorStreak = (await KvStore.getDouble(_driftStreakKey))?.toInt() ?? 0;
+    final streak = driftingNow ? priorStreak + 1 : 0;
+    await KvStore.setDouble(_driftStreakKey, streak.toDouble());
+    final sustained = streak >= kSustainedDriftRuns;
+    _ref.read(forecastDriftProvider.notifier).state = ForecastDriftState(
+      ratios: ratios,
+      consecutiveDriftRuns: streak,
+      sustained: sustained,
+    );
+    if (sustained) {
+      await KvStore.setString(
+          _forecasterTrainStampKey, DateTime(2000).toIso8601String());
+    }
   }
 
   /// Backfill historical pump data from the History Log (best-effort; no-op in dev/sim).
@@ -2495,6 +2536,10 @@ class AppJobs {
         );
     if (outcome.trained) {
       try {
+        // TASK-138: the drift check that ran earlier this session (updateRecentForecastError,
+        // reconcilePredictions job) may be why this run happened out-of-band -- carry its
+        // ratios into the run record so the training-run history explains itself.
+        final drift = _ref.read(forecastDriftProvider);
         await repo.saveModelRun(ModelRunRecord(
           id: now.microsecondsSinceEpoch.toString(),
           stage: outcome.promoted ? 'active' : 'candidate',
@@ -2506,6 +2551,10 @@ class AppJobs {
             'trainSamples': outcome.trainSamples,
             'promoted': outcome.promoted,
             'reasons': outcome.reasons,
+            'driftRatios': {
+              for (final e in drift.ratios.entries) '${e.key}': e.value
+            },
+            'driftTriggered': drift.sustained,
           }),
         ));
       } catch (_) {}

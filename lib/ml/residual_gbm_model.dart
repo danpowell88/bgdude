@@ -50,6 +50,13 @@ class ResidualGbmModel implements ResidualModel {
     return (residual: residual, sigma: sigma);
   }
 
+  @override
+  double? trainingSigma(int horizonMinutes) {
+    final model = _models[horizonMinutes];
+    if (model == null || !model.isTrained) return null;
+    return _sigmas[horizonMinutes];
+  }
+
   /// Bump when THIS serialization shape changes (independent of the feature
   /// layout, which [ForecastFeatures.version] tracks). Bumped to 2 by TASK-135:
   /// GbmRegressor's `minSamplesLeaf` (int) became `minLeafWeight` (double), an

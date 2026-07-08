@@ -15,10 +15,12 @@ class ModelReportScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(modelReportProvider);
+    final drift = ref.watch(forecastDriftProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Model performance')),
       body: Column(
         children: [
+          if (drift.sustained) const _DriftBanner(),
           const ReportRangePicker(),
           Expanded(
             child: async.when(
@@ -36,6 +38,36 @@ class ModelReportScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// TASK-138: the visible "forecast accuracy drifting" flag — recent live error has
+/// sustained-exceeded the model's trained sigma, and an out-of-band retrain has
+/// been requested (see AppJobs._checkForecastDrift).
+class _DriftBanner extends StatelessWidget {
+  const _DriftBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      color: scheme.errorContainer,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Icon(Icons.trending_down, color: scheme.onErrorContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Forecast accuracy is drifting — recent predictions are missing by '
+              'more than the model expects. A retrain has been requested.',
+              style: TextStyle(color: scheme.onErrorContainer),
             ),
           ),
         ],
