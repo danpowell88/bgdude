@@ -4,13 +4,26 @@
 # debug APK build, and BLOCKING native Kotlin unit tests on every push / PR to
 # main. The integration_test/ suite is manual-only (needs an emulator; see
 # CLAUDE.md) — everything here must stay green for main to be green.
+#
+# TASK-287: analyze / unit tests / APK build / native tests run as four
+# independent parallel jobs instead of one sequential job, since the APK
+# build in particular does not depend on the test result and was previously
+# sitting on the critical path behind it for no reason. Each job re-resolves
+# dependencies (and regenerates code where needed) independently rather than
+# sharing an artifact — simpler and lower-risk than a shared-cache scheme,
+# at the cost of some duplicated `pub get`/`build_runner` work across jobs
+# that parallelism more than pays back in wall-clock. Codegen caching
+# (skipping regeneration when inputs are unchanged) is deliberately NOT
+# attempted here — getting that invalidation wrong could let stale
+# generated code silently pass a run, which is a correctness risk worth its
+# own careful, separately-verified change.
 name: CI
 
 on:
   push:
     branches: [main]
-    # Docs and backlog files cannot break the build; skip the ~12-min pipeline
-    # for commits that touch nothing else.
+    # Docs and backlog files cannot break the build; skip the pipeline for
+    # commits that touch nothing else.
     paths-ignore:
       - 'backlog/**'
       - 'doc/**'
@@ -24,34 +37,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  analyze:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 15
     steps:
-      # 1. Check out the repository.
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. JDK 17 is required for the Android/Gradle build (compileSdk 36).
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      # 2b. Cache Gradle dependencies + wrapper (TASK-218). `flutter build apk` and
-      #     `./gradlew :app:testDebugUnitTest` below both invoke Gradle under android/;
-      #     without this, every run re-resolves AGP/Kotlin/JitPack deps and re-downloads
-      #     the wrapper distribution from scratch. Keys off gradle/build files, so a
-      #     dependency-only change reuses the cache and only a wrapper/lockfile change
-      #     busts it.
-      - name: Set up Gradle (cache)
-        uses: gradle/actions/setup-gradle@v4
-
-      # 3. Install Flutter. Pin to the stable channel version used locally
-      #    (3.44.4). If this exact version ever becomes unavailable, drop the
-      #    `flutter-version` line and rely on `channel: stable` alone.
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -59,42 +51,55 @@ jobs:
           flutter-version: 3.44.4
           cache: true
 
-      # 4. Print the toolchain versions for debugging.
-      - name: Flutter version
-        run: flutter --version
-
-      # 5. Resolve Dart/Flutter package dependencies.
       - name: Install dependencies
         run: flutter pub get
 
-      # 6. Generate code (drift, freezed, json_serializable, riverpod). This
-      #    MUST run before analyze/test since generated files are not committed.
+      # MUST run before analyze since generated files are not committed.
       - name: Run code generation
         run: dart run build_runner build --delete-conflicting-outputs
 
-      # 7. Static analysis.
       - name: Analyze
         run: flutter analyze
 
-      # 8. Unit tests with line-coverage measurement (TASK-159). The
-      #    integration_test/ suite needs an emulator and is DELIBERATELY
-      #    manual-only: run it locally per CLAUDE.md ("Emulator (integration)
-      #    tests for every feature") — an emulator job on hosted runners is
-      #    slow/flaky and this is a personal, single-device project.
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.4
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # Unit tests with line-coverage measurement (TASK-159). The
+      # integration_test/ suite needs an emulator and is DELIBERATELY
+      # manual-only: run it locally per CLAUDE.md ("Emulator (integration)
+      # tests for every feature") — an emulator job on hosted runners is
+      # slow/flaky and this is a personal, single-device project.
       - name: Unit tests (with coverage)
         run: flutter test --coverage test/
 
-      # 9. Coverage gate (TASK-159): fail on a coverage collapse. Threshold is
-      #    a floor, not a target — raise it as coverage grows (67.4% on
-      #    2026-07-08, TASK-275; 63% on 2026-07-07). Generated files
-      #    (lib/data/database.g.dart -- drift's generated schema/query code,
-      #    the one *.g.dart committed to the repo, see SETUP.md) are excluded
-      #    (TASK-274): most of its lines are boilerplate the app never calls,
-      #    and it dilutes the score without reflecting real hand-written-code
-      #    coverage. UI screens (lib/ui/**) are deliberately NOT chased here —
-      #    they're covered by integration_test/ (see CLAUDE.md), not unit
-      #    tests; the floor leaves headroom for that gap rather than
-      #    penalizing it.
+      # Coverage gate (TASK-159): fail on a coverage collapse. Threshold is
+      # a floor, not a target — raise it as coverage grows (67.6% on
+      # 2026-07-08, TASK-245; 67.4% on 2026-07-08, TASK-275). Generated
+      # files (lib/data/database.g.dart -- drift's generated schema/query
+      # code, the one *.g.dart committed to the repo, see SETUP.md) are
+      # excluded (TASK-274): most of its lines are boilerplate the app
+      # never calls, and it dilutes the score without reflecting real
+      # hand-written-code coverage. UI screens (lib/ui/**) are deliberately
+      # NOT chased here — they're covered by integration_test/ (see
+      # CLAUDE.md), not unit tests; the floor leaves headroom for that gap
+      # rather than penalizing it.
       - name: Coverage gate
         run: |
           read -r hit total <<< "$(awk -F: '
@@ -107,16 +112,86 @@ jobs:
           echo "Line coverage: $pct% ($hit/$total lines, excluding generated files)"
           awk "BEGIN {exit !($pct >= 65.0)}" || { echo "::error::Line coverage $pct% is below the 65% minimum"; exit 1; }
 
-      # 10. Debug APK build. Pulls pumpx2/blessed from JitPack (network available).
+  apk-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Required for the Android/Gradle build (compileSdk 36).
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Cache Gradle dependencies + wrapper (TASK-218).
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.4
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # Pulls pumpx2/blessed from JitPack (network available).
       - name: Build debug APK
         run: flutter build apk --debug
 
-      # 11. Native Kotlin unit tests (android/app/src/test) — BLOCKING (TASK-159):
-      #     ProtocolProbeTest guards the read-only-pump guarantee and
-      #     PumpResponseMapperTest guards the mU→U conversions; a red native
-      #     suite must fail the build. local.properties is written
-      #     deterministically first (flutter-action exports FLUTTER_ROOT;
-      #     ANDROID_HOME / ANDROID_SDK_ROOT is set on the hosted runner).
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bgdude-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+
+  native-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.4
+          cache: true
+
+      # No build_runner here: the native Kotlin suite (android/app/src/test)
+      # does not consume any Dart-generated (*.g.dart) output -- this project
+      # uses plain MethodChannel, not Pigeon codegen, for the Dart/Kotlin
+      # bridge. `pub get` alone is still required: it writes
+      # .flutter-plugins/.flutter-plugins-dependencies, which the Flutter
+      # Gradle plugin reads to register plugin modules even for a
+      # Kotlin-only test run.
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Native Kotlin unit tests (android/app/src/test) — BLOCKING
+      # (TASK-159): ProtocolProbeTest guards the read-only-pump guarantee
+      # and PumpResponseMapperTest guards the mU→U conversions; a red
+      # native suite must fail the build. local.properties is written
+      # deterministically first (flutter-action exports FLUTTER_ROOT;
+      # ANDROID_HOME / ANDROID_SDK_ROOT is set on the hosted runner).
       - name: Native unit tests
         run: |
           FLUTTER_SDK="${FLUTTER_ROOT:-$(dirname "$(dirname "$(command -v flutter)")")}"
@@ -126,10 +201,3 @@ jobs:
           fi
           printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_SDK" "$ANDROID_SDK" > android/local.properties
           cd android && ./gradlew :app:testDebugUnitTest --no-daemon
-
-      # 12. Publish the debug APK as a build artifact.
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: bgdude-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
