@@ -3,11 +3,11 @@ id: TASK-301
 title: >-
   Harden the sharded CI so it cannot mask a native-test flake or silently drop a
   test
-status: In Progress
+status: Done
 assignee:
   - Claude
 created_date: '2026-07-08 07:27'
-updated_date: '2026-07-08 07:46'
+updated_date: '2026-07-08 07:52'
 labels: []
 milestone: m-8
 dependencies: []
@@ -51,17 +51,23 @@ created: 2026-07-08 07:46
 ---
 Implemented all 4. Verified what is locally verifiable before pushing: (a) --total-shards=4/--shard-index sharding sums to exactly 1314 across all 4 shards (full suite, no gaps/overlap); (b) both halves of the native-tests split run correctly in sequence locally -- the warm-up (PairingWindowTimeoutTest alone) succeeds, then the full gradlew :app:testDebugUnitTest succeeds as a separate invocation; (c) analyze clean. Could NOT test the lcov --ignore-errors empty removal locally (no lcov on this Windows dev box, same limitation as TASK-297) -- watching the live CI dispatch closely for the coverage-gate job specifically.
 ---
+
+author: Claude
+created: 2026-07-08 07:52
+---
+Done, confirmed green via live CI dispatch 28926389770 (all 8 jobs succeeded). Confirmed each fix actually worked as designed from the live logs, not just "build passed": coverage-gate merged all 4 shards with empty dropped from --ignore-errors and still computed 68.0% (7919/11653) correctly -- no shard silently missing; native-tests job log shows the exact intended step sequence (Write local.properties -> Warm the Robolectric SDK-jar cache (retried) -> Native unit tests (unretried)) all succeeding independently. Files: .github/workflows/ci.yml.
+---
 <!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test --coverage test/ green
-- [ ] #4 Line coverage did not drop -- at or above the ci.yml floor; any new testable code ships with its tests in the same change
-- [ ] #5 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #6 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test --coverage test/ green
+- [x] #4 Line coverage did not drop -- at or above the ci.yml floor; any new testable code ships with its tests in the same change
+- [x] #5 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #6 gradlew :app:testDebugUnitTest green when native Kotlin changed
 - [ ] #7 doc/user-guide.html updated when the change is user-visible with screenshots
 - [ ] #8 Integration test added or extended when a screen/flow changed
-- [ ] #9 backlog item updated with comments
+- [x] #9 backlog item updated with comments
 <!-- DOD:END -->
