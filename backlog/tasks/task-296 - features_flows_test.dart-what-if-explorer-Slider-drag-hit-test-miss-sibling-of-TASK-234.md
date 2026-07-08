@@ -7,7 +7,7 @@ status: Blocked
 assignee:
   - Claude
 created_date: '2026-07-08 04:15'
-updated_date: '2026-07-08 04:16'
+updated_date: '2026-07-08 06:15'
 labels: []
 milestone: m-8
 dependencies: []
@@ -48,6 +48,12 @@ author: Claude
 created: 2026-07-08 04:16
 ---
 AC#1 done. AC#2 staying Blocked pending one more dispatch verification. Pipeline verified locally (unaffected by this integration_test/-only change).
+---
+
+author: Claude
+created: 2026-07-08 06:15
+---
+New evidence from the nightly emulator dispatch 28920416983 (2026-07-08 06:02): still failing, but the SYMPTOM has changed since the AC#1 ensureVisible fix landed -- this is no longer a hit-test miss (which would show as the Slider/widget not found or an unmoved value), its a genuine wrong-direction numeric result: expected withMoreCarbs greater than withSomeCarbs (>20.6), actual 16.8 -- LOWER, not just insufficiently higher. The test does two sequential drag() calls on the SAME find.byType(Slider).first with growing offsets (60,0) then (120,0) -- each drag() call re-derives its hit-test offset from the sliders CURRENT on-screen position, which shifts after the first drag moves the thumb. Plausible causes worth checking with device access: (a) the second drag lands past the sliders max extent and the drag gesture (down-move-up) registers as a smaller or reversed delta once clamped, (b) pumpAndSettle is not enough for a debounced/async what-if recompute so the second reading races a stale first-drag value, or (c) the slider is a RangeSlider/has snapping behaviour where a large single-gesture jump does not move monotonically with offset. Leaving Blocked (unchanged) -- this needs actual emulator interaction to diagnose which of these it is; I do not have working emulator access in this session (confirmed pre-existing limitation, see memory integration-test-emulator-limitation). AC#2 must NOT be checked -- the fix did not resolve the flake, it just changed its failure mode.
 ---
 <!-- COMMENTS:END -->
 
