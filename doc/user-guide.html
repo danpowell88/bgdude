@@ -241,6 +241,11 @@
   </ul>
   <h3>Sleep &amp; glucose</h3>
   <p>How your sleep length relates to overnight steadiness, learned from your own nights.</p>
+  <h3>Models</h3>
+  <ul class="tight">
+    <li><b>BG forecaster</b> — status of the glucose-forecast model: a deterministic baseline runs from day one; a learned personal correction trains overnight once roughly two weeks of data pass the safety gate.</li>
+    <li><b>Sensitivity model</b> — status of the model behind Insulin sensitivity above: learns how sleep, HRV, exercise, cycle and illness shift your insulin needs, using a transparent heuristic until it's trained.</li>
+  </ul>
   <p class="note"><b>Illness mode</b> no longer lives here — it's auto-suggested in <a href="#confirm">Confirm events</a> and toggled from <a href="#quicklog">Quick-log</a>. See <a href="#illness">Illness mode</a>.</p>
 </section>
 
@@ -258,6 +263,7 @@
     <li>Every looked-up value lands in an <b>editable field</b> — correct anything the database got wrong, or adjust to your portion. Fat/Protein (optional) feed the fat-protein-unit coach.</li>
   </ul>
   <div class="note">Food lookup uses Open Food Facts (free, public). A one-time notice explains that only the barcode/text is sent — no health data. Turn it off in <b>Settings → Barcode food lookup</b> to stay fully offline. The <b>nutrition-label scan</b> is always fully on-device.</div>
+  <div class="shot"><img src="screenshots/06-meal-add.png" alt="Add a meal"><div class="cap">The add-meal sheet: lookup + editable fields</div></div>
   <h3>Meal detail &amp; pre-bolus coach</h3>
   <div class="shot"><img src="screenshots/07-meal-detail.png" alt="Meal detail"><div class="cap">Learned curve, insights &amp; coach</div></div>
   <ul class="tight">
@@ -310,6 +316,7 @@
   <ul class="tight">
     <li>Pick a <b>type</b> (aerobic / resistance / mixed), a <b>duration</b>, and when it <b>starts</b>.</li>
     <li>It raises the <b>low-alert threshold</b> for the session plus a recovery tail (longer for aerobic), so lows are caught earlier during and after.</li>
+    <li>Predicted-<b>high</b> nudges are <b>muted</b> during an announced workout (glucose commonly drifts down while exercising, so a predicted-high alert is just noise) — low and urgent-low alerts are <b>never</b> suppressed.</li>
     <li>It suggests a <b>pre-exercise snack</b> from your live glucose / insulin-on-board, and arms the overnight-low watch.</li>
     <li>Tap <b>End exercise mode</b> when you're done (it also expires on its own).</li>
   </ul>
@@ -366,7 +373,7 @@
     <tr><td><b>Low predicted</b> †</td><td>A low is predicted within the forecast horizon.</td><td>High</td></tr>
     <tr><td><b>Rescue carbs</b> †</td><td>You're low/heading low and should take fast carbs now — with a gram estimate.</td><td>High</td></tr>
     <tr><td><b>High predicted</b></td><td>Glucose is trending above your high line.</td><td>Normal</td></tr>
-    <tr><td><b>Missed bolus?</b></td><td>A meal-sized rise with no bolus logged.</td><td>High</td></tr>
+    <tr><td><b>Missed bolus</b></td><td>A meal-sized rise with no bolus logged.</td><td>High</td></tr>
     <tr><td><b>Stubborn high / site issue</b></td><td>High for hours with insulin doing little — possible infusion-set failure.</td><td>Normal</td></tr>
     <tr><td><b>Check ketones (sick day)</b> †</td><td>A sustained high plus a ketone risk factor (illness, likely site failure, or very high with little insulin on board).</td><td>High · re-reminds hourly</td></tr>
     <tr><td><b>Unusual pattern</b></td><td>The catch-all: glucose is moving faster than your carbs and insulin explain, and none of the named alerts above fit — an early heads-up that something out of the norm is happening (unannounced meal, sensor/site trouble, stress, illness onset).</td><td>Normal</td></tr>
@@ -392,7 +399,7 @@
     <tr><td><b>Pre-bolus timer</b></td><td>The pre-bolus countdown you started for a meal is up — time to eat. Survives the app being backgrounded, and fires <b>exactly on time</b> when Android's “Alarms &amp; reminders” permission is allowed (otherwise it may drift a few minutes in deep sleep).</td><td>High</td></tr>
   </table>
   <div class="note">These are all <b>additive</b> to your CGM/pump alarms, never a replacement — and the app is read-only, so a notification is a prompt to act, never an automatic dose.</div>
-  <div class="note"><b>Reliability limitation.</b> The forecast-based alerts above are decided inside the app. If Android kills bgdude to reclaim memory while the screen is off, those richer alerts can be delayed or missed until it next runs — <b>always keep your CGM/pump's own alarms on</b>. As a safety net, a <b>dumb urgent-low backstop</b> runs in the background pump service and will notify you if a live reading is critically low (≤ 55 mg/dL) even when the app itself has been killed. A full always-on background alerting engine is planned.</div>
+  <div class="note"><b>Reliability limitation.</b> The forecast-based alerts above are decided inside the app. If Android kills bgdude to reclaim memory while the screen is off, those richer alerts can be delayed or missed until it next runs — <b>always keep your CGM/pump's own alarms on</b>. As a safety net, a <b>dumb urgent-low backstop</b> runs in the background pump service and will notify you if a live reading is critically low (below 55 mg/dL) even when the app itself has been killed. A full always-on background alerting engine is planned.</div>
 </section>
 
 <section id="reports">

@@ -3,9 +3,11 @@ id: TASK-216
 title: >-
   User-guide currency nits (Models cards, exercise alert muting,
   table/screenshot fixes)
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - Claude
 created_date: '2026-07-06 21:32'
+updated_date: '2026-07-08 02:23'
 labels:
   - docs
   - cleanup
@@ -31,7 +33,7 @@ ordinal: 113000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 All five items fixed
+- [x] #1 All five items fixed
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -49,6 +51,29 @@ ordinal: 113000
 - Where: doc/user-guide.html, doc/screenshots/
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-08 02:21
+---
+Started: applying the 5 documented doc/user-guide.html fixes (Models cards, exercise-alert muting, notification-table label, backstop wording, orphan screenshot).
+---
+
+author: Claude
+created: 2026-07-08 02:23
+---
+Fixed all 5 items in doc/user-guide.html:
+- Added the Models subsection to Insights (BG forecaster + Sensitivity model status cards, matching insights_screen.dart:143-163)
+- Exercise mode section now documents that predicted-high alerts are muted during a workout while lows are never suppressed (alert_monitor.dart:46-48)
+- Notification table: 'Missed bolus?' -> 'Missed bolus' (matches notification_prefs.dart's enum label exactly)
+- Backstop wording: '<= 55 mg/dL' -> 'below 55 mg/dL' (PumpService.kt's maybeFireUrgentLowBackstop fires strictly below 55, at-or-above returns early)
+- Wired the orphan doc/screenshots/06-meal-add.png into the Meals section, between the add-meal field list and the meal-detail screenshot
+
+No Dart/Kotlin files touched (doc-only), so analyze/test/build are unaffected -- verified via git diff --stat.
+---
+<!-- COMMENTS:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
@@ -56,6 +81,6 @@ ordinal: 113000
 - [ ] #3 flutter test test/ green
 - [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
 - [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #6 doc/user-guide.html updated when the change is user-visible
 - [ ] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->
