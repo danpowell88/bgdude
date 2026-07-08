@@ -82,6 +82,15 @@ void main() {
       final uri = Uri.parse('https://huggingface.co/x.task');
       expect(PanelModelManager.tokenForHost(uri, null), isNull);
     });
+
+    test(
+        'TASK-300: withholds the token from an allowlisted host over plain '
+        'HTTP (a scheme downgrade)', () {
+      final uri = Uri.parse('http://huggingface.co/x.task');
+      expect(PanelModelManager.tokenForHost(uri, 'secret'), isNull,
+          reason: 'the host is trusted but the connection is not encrypted -- '
+              'the token must never go out over cleartext');
+    });
   });
 
   group('PanelModelManager.resolveWithSafeRedirects (TASK-246)', () {
@@ -149,6 +158,36 @@ void main() {
             Uri.parse('https://huggingface.co/x0.task'), 'secret-token'),
         throwsA(isA<StateError>()),
       );
+    });
+
+    test(
+        'TASK-300: withholds the token after a redirect downgrades to plain '
+        'HTTP on an otherwise-allowlisted host', () async {
+      final requests = <http.BaseRequest>[];
+      final client = MockClient((request) async {
+        requests.add(request);
+        if (request.url.scheme == 'https') {
+          return http.Response('', 302,
+              headers: {'location': 'http://huggingface.co/x.task'});
+        }
+        return http.Response('model bytes', 200);
+      });
+
+      final manager = PanelModelManager(httpClient: client);
+      final response = await manager.resolveWithSafeRedirects(
+          Uri.parse('https://huggingface.co/x.task'), 'secret-token');
+
+      expect(response.statusCode, 200);
+      expect(requests, hasLength(2));
+      expect(requests[0].headers['Authorization'], 'Bearer secret-token',
+          reason: 'the first hop is https and allowlisted');
+      expect(requests[1].url.scheme, 'http');
+      expect(requests[1].url.host, 'huggingface.co',
+          reason: 'the host itself did not change -- only the scheme did');
+      expect(requests[1].headers.containsKey('Authorization'), isFalse,
+          reason: 'a scheme downgrade must strip the token even though the '
+              'host is still nominally trusted -- this is the exact leak '
+              'AC#1/#2 guard against');
     });
   });
 }

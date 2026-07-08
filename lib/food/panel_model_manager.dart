@@ -44,9 +44,14 @@ class PanelModelManager {
   }
 
   /// The token to actually send with the request, withheld (null) unless [uri]'s
-  /// host is in [tokenAllowedHosts] (TASK-16 AC#2).
+  /// host is in [tokenAllowedHosts] (TASK-16 AC#2) AND [uri] is still https
+  /// (TASK-300): a redirect from an allowlisted host down to a cleartext
+  /// `http://` URI must not carry the token over the wire in plain text, even
+  /// though the host itself is unchanged and still nominally trusted.
   static String? tokenForHost(Uri uri, String? token) =>
-      token != null && tokenAllowedHosts.contains(uri.host) ? token : null;
+      token != null && uri.scheme == 'https' && tokenAllowedHosts.contains(uri.host)
+          ? token
+          : null;
 
   /// The filename flutter_gemma stores/keys the model under — the last URL path segment.
   static String fileNameFor(String url) {
