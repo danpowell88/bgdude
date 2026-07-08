@@ -123,6 +123,12 @@ class PumpCommHandler(
      * Looper.prepare() pitfall for why an implicit current-thread Handler is unsafe here.
      */
     private val timeoutHandler = Handler(Looper.getMainLooper())
+
+    /** TASK-277: scheduled/cancelled from three different threads (the pairing executor
+     *  via [start], the BLE callback thread via [onWaitingForPairingCode]/[onPumpConnected]/
+     *  etc., and the main looper when the timeout itself expires) -- @Volatile so a cancel on
+     *  one thread reliably sees the schedule from another instead of racing on a stale read. */
+    @Volatile
     private var pendingTimeout: Runnable? = null
 
     private fun scheduleTimeout(timeoutMs: Long, onExpire: () -> Unit) {

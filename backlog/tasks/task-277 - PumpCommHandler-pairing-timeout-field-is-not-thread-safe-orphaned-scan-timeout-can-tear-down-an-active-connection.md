@@ -3,10 +3,11 @@ id: TASK-277
 title: >-
   PumpCommHandler pairing-timeout field is not thread-safe -- orphaned scan
   timeout can tear down an active connection
-status: To Do
+status: Done
 assignee:
   - Claude
 created_date: '2026-07-07 23:27'
+updated_date: '2026-07-08 02:07'
 labels: []
 milestone: m-8
 dependencies: []
@@ -22,9 +23,9 @@ The pairing-window timeout added in TASK-33 stores its pending Runnable in a pla
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 pendingTimeout is @Volatile or both scheduleTimeout/cancelTimeout are guarded by a lock so a cross-thread cancel reliably removes the queued Runnable
-- [ ] #2 A cancel from the BLE-callback thread of a timeout scheduled on the executor thread always removes it (no orphaned Runnable)
-- [ ] #3 Test or reasoning demonstrates a connect during the scan-timeout window does not later trigger a spurious teardown
+- [x] #1 pendingTimeout is @Volatile or both scheduleTimeout/cancelTimeout are guarded by a lock so a cross-thread cancel reliably removes the queued Runnable
+- [x] #2 A cancel from the BLE-callback thread of a timeout scheduled on the executor thread always removes it (no orphaned Runnable)
+- [x] #3 Test or reasoning demonstrates a connect during the scan-timeout window does not later trigger a spurious teardown
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -35,14 +36,34 @@ The pairing-window timeout added in TASK-33 stores its pending Runnable in a pla
 - Same class as TASK-267 (Done) which volatilised bluetoothHandler/macFilter; this field was added by TASK-33 and missed
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-08 02:04
+---
+Started: making pendingTimeout @Volatile per AC #1, same fix class as TASK-267's sibling fields. Will add a Robolectric test pinning the cross-thread cancel race per AC #2/#3.
+---
+
+author: Claude
+created: 2026-07-08 02:07
+---
+Fixed: pendingTimeout is now @Volatile (PumpCommHandler.kt:130), matching the sibling fields TASK-267 already volatilised -- a cancel on the BLE-callback/main-looper thread now reliably observes a schedule made on the pairing-executor thread instead of risking a stale null read.
+
+AC#2/#3 (deterministic concurrency test): investigated writing a real multi-thread race test in the style of PumpCommHandlerConcurrencyTest, but concluded it can't cleanly isolate this specific bug -- every clean way to hand off between two JVM threads (Thread.start(), CountDownLatch.await/countDown, Handler.post) itself establishes a JMM happens-before edge, so a test built that way would pass whether or not the field were volatile, proving nothing. A genuinely unsynchronized visibility race is not deterministically reproducible in a JUnit test. Going with reasoning per AC#3's 'test or reasoning': the existing PairingWindowTimeoutTest suite already pins the functional cancel/schedule sequencing (e.g. 'submitting a code before the window expires cancels the timeout'); @Volatile is the established, minimal fix this codebase already uses for the identical cross-thread pattern on sibling fields (TASK-267), so it's applied for consistency and correctness rather than re-litigated with a bespoke test harness.
+
+Verified: gradlew :app:testDebugUnitTest green (com.bgdude.app.pump.* suite), flutter analyze clean, flutter test --coverage green (1150 tests, 67.56% >= 65% floor), flutter build apk --debug succeeds. No Dart/user-guide changes needed (native-only, no user-visible surface).
+---
+<!-- COMMENTS:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test --coverage test/ green
-- [ ] #4 Line coverage did not drop -- at or above the ci.yml floor; any new testable code ships with its tests in the same change
-- [ ] #5 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #6 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test --coverage test/ green
+- [x] #4 Line coverage did not drop -- at or above the ci.yml floor; any new testable code ships with its tests in the same change
+- [x] #5 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #6 gradlew :app:testDebugUnitTest green when native Kotlin changed
 - [ ] #7 doc/user-guide.html updated when the change is user-visible with screenshots
 - [ ] #8 Integration test added or extended when a screen/flow changed
 - [ ] #9 backlog item updated with comments
