@@ -18,13 +18,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// same on-disk database") and the SAME now-cleared KvStore backing (standing in for
 /// "the same on-disk prefs/settings file"). Call [buildContainer] once per simulated
 /// process lifetime; each call models a fresh app launch over persisted state.
+///
+/// TASK-256: [repo] is typed as the plain [HistoryRepository] interface (not
+/// [InMemoryHistoryRepository]) so a scenario can pass a
+/// [FaultInjectingHistoryRepository] wrapping an [InMemoryHistoryRepository] delegate
+/// -- a mid-write crash is simulated by making one call throw with `throwOnce`, then
+/// disposing the container (no graceful shutdown, matching a real crash); the SAME
+/// [repo] instance is reused for the "restarted" container, exactly as the underlying
+/// on-disk database itself would still be the same file after a real crash. throwOnce
+/// self-clears after firing, so the restarted container's calls behave normally
+/// again without any extra reset step.
 class RestartSimulation {
-  RestartSimulation({InMemoryHistoryRepository? repo})
+  RestartSimulation({HistoryRepository? repo})
       : repo = repo ?? InMemoryHistoryRepository() {
     KvStore.useMemory();
   }
 
-  final InMemoryHistoryRepository repo;
+  final HistoryRepository repo;
 
   /// Builds a fresh container — a new "process" — over the same [repo]/KvStore.
   /// [extraOverrides] lets a test add scenario-specific overrides on top of the

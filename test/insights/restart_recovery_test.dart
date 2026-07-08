@@ -6,6 +6,8 @@ import 'dart:convert';
 
 import 'package:bgdude/alerts/alert_orchestrator.dart';
 import 'package:bgdude/core/samples.dart';
+import 'package:bgdude/data/health_sync.dart';
+import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/feedback/annotations.dart';
 import 'package:bgdude/feedback/pending_confirmation.dart';
@@ -17,6 +19,7 @@ import 'package:bgdude/insights/workout_classifier.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/faults.dart';
 import '../support/restart_simulation.dart';
 
 void main() {
@@ -282,6 +285,89 @@ void main() {
       await c2.read(dayHistoryControllerProvider.notifier).reload();
 
       expect(c2.read(dayDataProvider).cgm, isNotEmpty);
+    });
+  });
+
+  // TASK-256: every scenario above awaits its write (or a settle delay) before
+  // crashing, so none of them ever hit the app mid-write -- the torn/partial-state
+  // path a crash-restart ticket implies was never actually exercised. These
+  // interrupt an in-flight multi-step write on purpose and assert what survives is
+  // consistent (never a half-applied or duplicated state), not just "some data".
+  group('Mid-write crash interruption leaves consistent state, not torn state', () {
+    test(
+        'a crash mid-DB-write while saving the illness-deactivation annotation '
+        'leaves the mode change durable but the annotation cleanly absent -- '
+        'never a half-saved one', () async {
+      final delegate = InMemoryHistoryRepository();
+      final faulty = FaultInjectingHistoryRepository(delegate);
+      final sim = RestartSimulation(repo: faulty);
+      final c1 = sim.buildContainer();
+      c1.read(illnessModeProvider.notifier).activate(notes: 'flu');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      // The process dies WHILE the deactivation annotation write is in flight --
+      // it never reaches durable storage. IllnessModeNotifier._persist saves the
+      // KvStore mode change FIRST, then attempts the annotation save separately
+      // (TASK-258), so this models the write that was genuinely in-flight at the
+      // moment of the crash, not the whole operation.
+      faulty.throwOnce('saveAnnotation');
+      c1.read(illnessModeProvider.notifier).deactivate();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      c1.dispose(); // no graceful shutdown -- a real crash doesn't get one either
+
+      // Restart over the SAME delegate -- throwOnce already self-cleared, so this
+      // models "the fault is gone" (a fresh process wouldn't inherit an in-flight
+      // failure), leaving only whatever was durably written before the crash.
+      final c2 = sim.buildContainer();
+      addTearDown(c2.dispose);
+      c2.read(illnessModeProvider.notifier);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(c2.read(illnessModeProvider).active, isFalse,
+          reason: 'the KvStore mode write is a separate, already-durable step -- '
+              'it must survive even though the LATER annotation write crashed');
+      final saved = await delegate.annotations(DateTime(2020), DateTime(2030));
+      expect(saved, isEmpty,
+          reason: 'the annotation write never completed -- it must be cleanly '
+              'ABSENT after restart, never a torn/partial entry');
+    });
+
+    test(
+        'a crash right as the exercise-hypo-risk notification fires leaves the '
+        'dedup flag unset, so the next check re-evaluates rather than silently '
+        'skipping a real warning forever', () async {
+      final sim = RestartSimulation();
+      // ThrowingNotificationService models the crash: the notification call
+      // itself is where the process dies (throws), so checkExerciseHypoRisk's
+      // `if (fired) await KvStore.setBool(key, true)` -- the step that would
+      // record "already warned today" -- never runs. This is the same bias as
+      // the alert loop's own TASK-38 pattern (mark-fired only AFTER a successful
+      // send): a crash here must land on the side of re-checking, never on the
+      // side of a warning silently never firing again.
+      final c1 = sim.buildContainer(extraOverrides: [
+        notificationServiceProvider.overrideWithValue(ThrowingNotificationService()),
+      ]);
+      final now = DateTime.now(); // now-ok: checkExerciseHypoRisk reads the wall clock
+      final samples = [
+        HealthSample(
+          time: now,
+          type: HealthMetric.exercise,
+          value: 45,
+          meta: const {'activity': 'RUNNING', 'source': 'test'},
+        ),
+      ];
+
+      await expectLater(
+        c1.read(appJobsProvider).checkExerciseHypoRisk(samples),
+        throwsA(isA<StateError>()),
+      );
+      c1.dispose(); // no graceful shutdown -- a real crash doesn't get one either
+
+      final key = 'exercise_hypo_warned_${now.year}-${now.month}-${now.day}';
+      expect(await KvStore.getBool(key), isNot(true),
+          reason: 'the dedup flag must be unset after a crash mid-flow -- if it '
+              'were set here, a genuine daily hypo-risk warning would be silently '
+              'skipped forever, the exact torn-state this scenario guards against');
     });
   });
 }
