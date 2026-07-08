@@ -30,7 +30,7 @@ void main() {
         context: ctx,
       );
 
-  group('TASK-190: zero ISF/CR never produces a NaN/Infinity dose', () {
+  group('zero ISF/CR never produces a NaN/Infinity dose', () {
     const zeroSettings = TherapySettings(
       segments: [
         TherapySegment(
@@ -241,7 +241,7 @@ void main() {
     });
   });
 
-  // TASK-101: the pure compute step is asserted on directly — numeric fields, no strings.
+  // The pure compute step is asserted on directly — numeric fields, no strings.
   group('computeBolus (pure numeric result)', () {
     test('correction and total without touching display strings', () {
       final c = BolusAdvisor().computeBolus(state(bg: 200));
@@ -282,7 +282,7 @@ void main() {
       expect(c.fpuExtendHours, inInclusiveRange(3, 8));
     });
 
-    test('extend hours follow the published Pankowska table (TASK-162)', () {
+    test('extend hours follow the published Pankowska table', () {
       // 1 FPU -> 3 h, 2 -> 4 h, 3 -> 5 h, >= 4 -> 8 h; partial FPU rounds up.
       expect(BolusAdvisor.pankowskaExtendHours(1), 3);
       expect(BolusAdvisor.pankowskaExtendHours(2), 4);
@@ -307,7 +307,7 @@ void main() {
     });
   });
 
-  group('rounding direction (TASK-161)', () {
+  group('rounding direction', () {
     test('the final suggestion rounds DOWN to 0.01 U: computed 1.238 -> 1.23', () {
       // 12.38 g / CR 10 = 1.238 U, no correction (at target). Nearest-rounding
       // would show 1.24 — the advisory dose must never round upward.

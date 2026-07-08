@@ -2,7 +2,7 @@ import 'package:bgdude/insights/system_health.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('SubsystemHealth (TASK-201)', () {
+  group('SubsystemHealth', () {
     test('unknown/never-observed is not unhealthy', () {
       expect(SubsystemHealth.unknown.isUnhealthy, isFalse);
       expect(SubsystemHealth.unknown.lastAttemptAt, isNull);
@@ -54,7 +54,7 @@ void main() {
     });
   });
 
-  group('SystemHealthReport (TASK-201)', () {
+  group('SystemHealthReport', () {
     test('of() returns unknown for a subsystem never recorded', () {
       const report = SystemHealthReport();
       expect(report.of(Subsystem.weather), SubsystemHealth.unknown);

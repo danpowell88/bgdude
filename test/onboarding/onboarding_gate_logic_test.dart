@@ -1,7 +1,7 @@
 import 'package:bgdude/onboarding/onboarding_gate.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Pure unit tests for the extracted onboarding-advance logic (TASK-106).
+/// Pure unit tests for the extracted onboarding-advance logic.
 void main() {
   const gate = OnboardingGate(pageCount: 4);
 

@@ -4,7 +4,7 @@ import 'package:bgdude/state/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-204: a controllable double for PanelModelManager -- lets tests simulate a
+/// A controllable double for PanelModelManager -- lets tests simulate a
 /// "truncated model file" (installed==true per a bare file-existence check, exactly
 /// what flutter_gemma's real isModelInstalled does) without touching the real
 /// ~0.5 GB flutter_gemma download/native path.
@@ -39,7 +39,7 @@ class _FakeModelManager extends PanelModelManager {
 void main() {
   setUp(KvStore.useMemory);
 
-  group('PanelModelController restore (TASK-204 AC#1)', () {
+  group('PanelModelController restore', () {
     test(
         'an in-flight-download marker left from a crashed session deletes the '
         'partial file and does not mark installed', () async {
@@ -82,7 +82,7 @@ void main() {
     });
   });
 
-  group('PanelModelController.download (TASK-204)', () {
+  group('PanelModelController.download', () {
     test('clears the in-flight marker on both success and failure', () async {
       const url = 'https://huggingface.co/model.task';
       final mgr = _FakeModelManager();
@@ -106,7 +106,7 @@ void main() {
     });
   });
 
-  group('PanelModelController.markLoadFailed (TASK-204 AC#2)', () {
+  group('PanelModelController.markLoadFailed', () {
     test('clears installed and deletes the file', () async {
       const url = 'https://huggingface.co/model.task';
       final mgr = _FakeModelManager(installedUrls: {url});

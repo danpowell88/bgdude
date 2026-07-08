@@ -5,8 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'faults.dart';
 
-/// TASK-210: each fault-injecting double gets adopted by at least one test here;
-/// tickets that need a specific failure scenario (alert loop, snapshot chain,
+/// Each fault-injecting double gets adopted by at least one test here;
+/// tests that need a specific failure scenario (alert loop, snapshot chain,
 /// runStartup, ...) build on top of these instead of writing another ad-hoc double.
 void main() {
   group('FaultInjectingHistoryRepository', () {

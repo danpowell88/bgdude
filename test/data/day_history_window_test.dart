@@ -1,4 +1,4 @@
-/// TASK-179: the live day window must stay bounded and honest — `state.cgm` trims
+/// The live day window must stay bounded and honest — `state.cgm` trims
 /// to the rolling 24 h window on every ingest (the persisted repository keeps the
 /// full history), and crossing local midnight re-anchors the window so "today"
 /// never quietly becomes "since app launch".

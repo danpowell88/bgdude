@@ -1,4 +1,4 @@
-/// TASK-123: the startup pipeline runs every job in order, survives a failing
+/// The startup pipeline runs every job in order, survives a failing
 /// job, records the failure, and summarises the run into the diagnostics log.
 library;
 

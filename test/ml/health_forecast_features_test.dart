@@ -53,7 +53,7 @@ void main() {
       expect(withFuture, closeTo(before, 1e-9));
     });
 
-    test('TASK-132: a FUTURE-only heart-rate sample is never used (hr_rel = 0)',
+    test('a FUTURE-only heart-rate sample is never used (hr_rel = 0)',
         () {
       // The old bidirectional ±15 min lookup would happily read this reading
       // from 5 minutes in the future — information live serving never has.
@@ -71,7 +71,7 @@ void main() {
           reason: 'backward-only: no past reading -> no hr_rel signal');
     });
 
-    test('TASK-132: a past reading within the window still counts', () {
+    test('a past reading within the window still counts', () {
       final s = HealthFeatureSampler([
         HealthSample(
             time: t0.subtract(const Duration(days: 1)),
@@ -172,7 +172,7 @@ void main() {
 
   group('ForecastFeatures with health', () {
     test('vector length and names include the health features (v5)', () {
-      // v5: hr_rel became backward-only (TASK-132).
+      // v5: hr_rel became backward-only.
       expect(ForecastFeatures.version, 5);
       final v = ForecastFeatures.build(
         now: DateTime(2026, 7, 4, 9),

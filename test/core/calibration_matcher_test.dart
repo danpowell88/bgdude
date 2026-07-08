@@ -2,7 +2,7 @@ import 'package:bgdude/analytics/calibration_matcher.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-63 AC#1: the ±15-min / ±20% calibration matching heuristic.
+/// The ±15-min / ±20% calibration matching heuristic.
 void main() {
   const matcher = CalibrationMatcher();
   final t = DateTime(2026, 7, 7, 8);

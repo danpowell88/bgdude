@@ -1,4 +1,4 @@
-/// TASK-188: every KV restore path must survive corrupt JSON — no uncaught error,
+/// Every KV restore path must survive corrupt JSON — no uncaught error,
 /// defaults active, a loud log entry, the raw value quarantined at `<key>.corrupt`,
 /// and (for the clinical settings) a user-visible reset notice.
 library;
@@ -164,10 +164,10 @@ void main() {
     expect(await KvStore.getString('user_profile_v1.corrupt'), '[1,2,3]');
   });
 
-  // TASK-206: the same unguarded-restore pattern outside providers.dart, across 6
+  // The same unguarded-restore pattern outside providers.dart, across 6
   // stores. These log loudly (appLog) rather than fully quarantine — a proportionate
   // response for secondary caches/history logs, not clinical settings.
-  group('TASK-206 stores outside providers.dart', () {
+  group('stores outside providers.dart', () {
     bool loggedError(String tag, String messageContains) => appLog.entries.any((e) =>
         e.level == LogLevel.error &&
         e.tag == tag &&
@@ -299,7 +299,7 @@ void main() {
     });
   });
 
-  // TASK-260: a WRITE failure (not corrupt-on-read, the rest of this file's focus)
+  // A WRITE failure (not corrupt-on-read, the rest of this file's focus)
   // must not leave dosing math and the UI (or, for meal library, in-session state
   // and disk) disagreeing about what actually happened. Points KvStore at a database
   // file whose name is too long to open (fails identically on Windows/NTFS and
@@ -307,7 +307,7 @@ void main() {
   // throw, standing in for any real write failure. A CLOSED in-memory database was
   // tried first and does not work -- drift/sqlite3 accepts writes against it
   // silently rather than throwing, so it wouldn't actually exercise this path.
-  group('TASK-260: persist-failure reconciliation', () {
+  group('persist-failure reconciliation', () {
     Future<void> poisonKvStore() async {
       final unopenable = File('${Directory.systemTemp.path}/${'x' * 300}.db');
       KvStore.init(AppDatabase(NativeDatabase(unopenable)));
@@ -387,13 +387,13 @@ void main() {
     });
   });
 
-  // TASK-258: lastDeactivationAnnotation was built by deactivate()/
+  // lastDeactivationAnnotation was built by deactivate()/
   // deactivateIfExpired() but nothing ever read/saved it into the history
   // repository -- the retraining pipeline's sick-day tagging silently never
   // happened. The auto-expiry path is covered end-to-end in
   // restart_recovery_test.dart; this covers the manual deactivate() path plus
-  // the persist-failure interaction TASK-260's reconciliation raised.
-  group('TASK-258: illness deactivation annotation persistence', () {
+  // the persist-failure interaction the reconciliation above raised.
+  group('illness deactivation annotation persistence', () {
     test('a manual deactivate() saves the annotation to the history repository',
         () async {
       final repo = InMemoryHistoryRepository();
@@ -432,7 +432,7 @@ void main() {
 
       expect(n.state.active, isTrue,
           reason: 'the write failed -- the UI-visible state must still show '
-              'illness mode on (TASK-260)');
+              'illness mode on');
       final saved = await repo.annotations(DateTime(2020), DateTime(2030));
       expect(saved, isEmpty,
           reason: 'no annotation should be saved for a deactivation that '

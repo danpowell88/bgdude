@@ -1,4 +1,4 @@
-/// TASK-180: notification startup must never brick boot. Every step is guarded
+/// Notification startup must never brick boot. Every step is guarded
 /// individually — a throwing init is logged, the remaining steps still run, and
 /// the bootstrap completes so main() reaches runApp.
 library;

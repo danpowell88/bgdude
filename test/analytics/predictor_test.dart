@@ -1,9 +1,9 @@
-/// TASK-248: predictor.dart:356 clamps a NaN/Infinite forecast point back to
+/// predictor.dart:356 clamps a NaN/Infinite forecast point back to
 /// currentMgdl -- a NaN fails both the floor/ceiling comparisons that follow it (any
 /// comparison against NaN is false), so without this clamp it would slip through
-/// unchanged and reach the forecast chart as a broken point. TASK-190 added the guard
+/// unchanged and reach the forecast chart as a broken point. The guard was added
 /// but no test drove it directly; the bolus/carb/therapy-settings guards from that same
-/// task all got negative tests, this one didn't.
+/// change all got negative tests, this one didn't.
 library;
 
 import 'package:bgdude/analytics/predictor.dart';
@@ -24,7 +24,7 @@ void main() {
         settings: testTherapySettings(),
       );
 
-  group('TASK-190/248: NaN/Infinite forecast clamp', () {
+  group('NaN/Infinite forecast clamp', () {
     test(
         'an infinite recent ROC would blow momentum up to Infinity without the clamp '
         '-- every point stays finite, and clamps back to currentMgdl while momentum '

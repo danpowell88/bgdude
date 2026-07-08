@@ -1,4 +1,4 @@
-/// TASK-195: report/metrics/training over a realistic multi-year CGM history
+/// Report/metrics/training over a realistic multi-year CGM history
 /// (~365 days × 288 samples/day ≈ 105k rows) — several of these paths recompute over
 /// the full list, and none had been exercised past a single simulated day.
 ///
@@ -30,7 +30,7 @@ void main() {
 
     expect(metrics.readingCount, greaterThan(100000));
     expect(sw.elapsedMilliseconds, lessThan(2000),
-        reason: 'BOUND (TASK-195): metrics over ~105k rows should be near-instant; '
+        reason: 'BOUND: metrics over ~105k rows should be near-instant; '
             'a regression past 2s likely means an accidental O(n²) pass');
   });
 
@@ -45,7 +45,7 @@ void main() {
 
     expect(report.metrics.readingCount, greaterThan(100000));
     expect(sw.elapsedMilliseconds, lessThan(5000),
-        reason: 'BOUND (TASK-195): a full report (metrics + AGP + episode '
+        reason: 'BOUND: a full report (metrics + AGP + episode '
             'detection) over ~105k rows should stay well under 5s');
   });
 }

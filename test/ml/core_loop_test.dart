@@ -200,7 +200,7 @@ void main() {
       expect(report.byHorizon[30], isNotNull);
       expect(report.byHorizon[30]!.eval.abFraction, 1.0); // within 20%
 
-      // TASK-17: predicted is always 2 mg/dL under actual (bias), and only the
+      // Predicted is always 2 mg/dL under actual (bias), and only the
       // last point (actual 141 > upper 140) falls outside the band.
       expect(report.byHorizon[30]!.biasMgdl, closeTo(-2.0, 1e-9));
       expect(report.byHorizon[30]!.coverageFraction, closeTo(19 / 20, 1e-9));

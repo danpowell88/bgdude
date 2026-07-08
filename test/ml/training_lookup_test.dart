@@ -1,4 +1,4 @@
-/// TASK-134: the binary-search lookups must be EXACTLY equivalent to the old
+/// The binary-search lookups must be EXACTLY equivalent to the old
 /// linear scans (including tie rules), and training output on the fixture must
 /// be unchanged. The old scans are re-implemented here as the reference.
 library;
@@ -11,7 +11,7 @@ import 'package:bgdude/dev/sim_data.dart';
 import 'package:bgdude/ml/forecaster_training.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The pre-TASK-134 linear `_nearest` (tie -> later sample via `<=`).
+/// The old linear `_nearest` (tie -> later sample via `<=`).
 double? _linearNearest(List<CgmSample> samples, DateTime t) {
   CgmSample? best;
   var bestDelta = const Duration(minutes: 6);
@@ -25,7 +25,7 @@ double? _linearNearest(List<CgmSample> samples, DateTime t) {
   return best?.mgdl;
 }
 
-/// The pre-TASK-134 linear `_valueAt` (tie -> earlier point via `<`).
+/// The old linear `_valueAt` (tie -> earlier point via `<`).
 double _linearValueAt(PredictionLine line, DateTime t) {
   var best = line.points.first;
   var bestDelta = best.time.difference(t).inSeconds.abs();

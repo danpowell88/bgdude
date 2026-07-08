@@ -1,4 +1,4 @@
-/// TASK-147: the one composed low-line policy — each modifier alone, their
+/// The one composed low-line policy — each modifier alone, their
 /// composition (max, not stacking), and the reasons trail.
 library;
 

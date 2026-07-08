@@ -129,7 +129,7 @@ void main() {
 
     test(
         'minLeafWeight blocks a split whose child passes on raw row count '
-        'alone under heavy weight imbalance (TASK-135)', () {
+        'alone under heavy weight imbalance', () {
       // Two clusters, 5 rows each, separated by a single feature threshold — the
       // ONLY candidate split available. Left cluster's rows carry a near-zero
       // weight (0.001); right cluster's carry full weight (1.0). Left weight sum

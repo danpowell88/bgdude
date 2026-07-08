@@ -1,4 +1,4 @@
-/// TASK-124: the illness severity→boost mapping and mood note strings are domain
+/// The illness severity→boost mapping and mood note strings are domain
 /// policy — pinned here so a widget refactor can't silently change a clinical
 /// multiplier.
 library;

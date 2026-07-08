@@ -53,7 +53,7 @@ void main() {
     });
 
     test(
-        'TASK-171: the same rise with a recent MANUAL bolus is announced — no '
+        'the same rise with a recent MANUAL bolus is announced — no '
         'unannounced-meal confirmation', () {
       final items = svc.scan(
         now: noon.add(const Duration(hours: 1)),
@@ -71,7 +71,7 @@ void main() {
     });
 
     test(
-        'TASK-171: an AUTOMATIC microbolus near the rise does NOT count as an '
+        'an AUTOMATIC microbolus near the rise does NOT count as an '
         'announcement', () {
       final items = svc.scan(
         now: noon.add(const Duration(hours: 1)),
@@ -215,7 +215,7 @@ void main() {
       expect(decided['compressionLow:7'], ConfirmationDecision.dismissed);
     });
 
-    // TASK-269: record()'s cap-sort (once the store exceeds 1000 entries) decodes
+    // record()'s cap-sort (once the store exceeds 1000 entries) decodes
     // the raw blob directly, not via load()'s per-entry-guarded path -- a
     // valid-JSON entry whose value isn't a Map, or lacks 't', used to throw
     // straight out of the sort comparator.
@@ -269,7 +269,7 @@ void main() {
     expect(a.id, b.id); // same 30-min bucket
   });
 
-  group('site failure (TASK-149)', () {
+  group('site failure', () {
     final noon = DateTime(2026, 7, 4, 12);
     // Flat 250 mg/dL for 2.5 h with recent insulin on board -> stubborn high.
     List<CgmSample> flatHigh() => [

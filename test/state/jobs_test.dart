@@ -23,8 +23,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     repo = InMemoryHistoryRepository();
     // Anchor the simulated day to real "now" so it lands in the trainer's read
-    // window — AppJobs uses the wall clock internally until TASK-39 injects it.
-    now = DateTime.now(); // now-ok: production reads the wall clock (TASK-39)
+    // window — AppJobs uses the wall clock internally until it's injected.
+    now = DateTime.now(); // now-ok: production reads the wall clock
     final day = SimulatedDay.generate(now: now, seed: 5);
     await repo.saveCgm(day.cgm);
     for (final b in day.boluses) {
@@ -73,7 +73,7 @@ void main() {
     await expectLater(jobs.runStartup(), completes);
   });
 
-  // TASK-213: runStartup's per-job try/catch isolation (lib/state/startup_jobs.dart) is
+  // runStartup's per-job try/catch isolation (lib/state/startup_jobs.dart) is
   // load-bearing but was only ever pinned at the "completes without throwing" level --
   // nothing proved that a failing job's INDEPENDENT neighbours still did their real work.
   group('per-job failure isolation', () {

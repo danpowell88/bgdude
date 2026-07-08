@@ -103,7 +103,7 @@ void main() {
     expect(methods, isEmpty);
   });
 
-  group('TASK-238: seedUnit', () {
+  group('seedUnit', () {
     test('persists just the unit key before any snapshot has arrived', () async {
       await service().seedUnit(GlucoseUnit.mgdl);
       expect(saved, {'bg_unit': 'mg/dL'});
@@ -153,7 +153,7 @@ void main() {
     expect(saved['cgm_epoch_ms'], isNull);
   });
 
-  group('TASK-208(b): plugin failures degrade to a logged skip', () {
+  group('plugin failures degrade to a logged skip', () {
     setUp(appLog.clear);
 
     test('a MissingPluginException from saveWidgetData is logged, not thrown',

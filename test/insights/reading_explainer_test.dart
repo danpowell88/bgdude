@@ -88,7 +88,7 @@ void main() {
     expect(topTwo, contains(ExplanationKind.siteFailure));
   });
 
-  // TASK-247: a zero ISF (a placeholder/copyWith-built segment that bypassed
+  // A zero ISF (a placeholder/copyWith-built segment that bypassed
   // TherapySegment.fromJson's own guard) used to turn absorbedUnits into Infinity,
   // rendering literally "roughly Infinity U of insulin was absorbed" in the UI.
   test('a zero-ISF segment suppresses the site-failure story instead of emitting '

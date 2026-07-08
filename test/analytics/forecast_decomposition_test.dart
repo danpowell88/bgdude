@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/samples.dart';
 
-/// TASK-59 AC#1: the forecast is attributed to insulin / carbs / momentum by re-running
+/// The forecast is attributed to insulin / carbs / momentum by re-running
 /// with each input zeroed.
 void main() {
   final predictor = GlucosePredictor();

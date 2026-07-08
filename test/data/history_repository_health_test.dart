@@ -7,11 +7,11 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-207: one health-sample row with empty/non-JSON `meta` must not abort the
+/// One health-sample row with empty/non-JSON `meta` must not abort the
 /// whole range read — every other row's context (context builder, reports,
 /// training features) would silently vanish along with it.
 ///
-/// TASK-268 extends the same class of guard to annotations() (out-of-range
+/// A related guard extends the same class of protection to annotations() (out-of-range
 /// AnnotationKind index), below.
 void main() {
   setUp(() => appLog.clear());
@@ -82,7 +82,7 @@ void main() {
     expect(samples.single.value, 7.5);
   });
 
-  group('annotations (TASK-268)', () {
+  group('annotations', () {
     test('an out-of-range kind index is skipped; other annotations survive',
         () async {
       final db = AppDatabase(NativeDatabase.memory());
@@ -105,7 +105,7 @@ void main() {
       ));
       // Insert a THIRD row directly with a kind index past the end of
       // AnnotationKind.values -- simulating an enum removed/reordered since this
-      // row was written (the exact TASK-207 class of drift), or plain corruption.
+      // row was written (the exact same class of drift as the meta guard above), or plain corruption.
       await db.into(db.annotations).insert(AnnotationsCompanion.insert(
             id: 'a3',
             kind: AnnotationKind.values.length + 5,

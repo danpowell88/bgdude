@@ -4,7 +4,7 @@ import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/state/persisted_state_notifier.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-35 AC#1: the restore-then-save race. A save that lands before the async restore
+/// The restore-then-save race. A save that lands before the async restore
 /// finishes must win — the stale stored value must never clobber the user's write.
 class _IntNotifier extends PersistedStateNotifier<int> {
   _IntNotifier() : super(0);
@@ -19,7 +19,7 @@ class _IntNotifier extends PersistedStateNotifier<int> {
   Future<void> store(int v) => KvStore.setString(_key, '$v');
 }
 
-/// TASK-198 AC#4: a store() that always fails, to exercise persist()'s failure path.
+/// A store() that always fails, to exercise persist()'s failure path.
 class _ThrowingIntNotifier extends PersistedStateNotifier<int> {
   _ThrowingIntNotifier() : super(0);
   static const _key = 'test_int_throwing';
@@ -38,7 +38,7 @@ class _ThrowingIntNotifier extends PersistedStateNotifier<int> {
   }
 }
 
-/// TASK-259: a `load()` that blocks on an externally-controlled gate, so a test can
+/// A `load()` that blocks on an externally-controlled gate, so a test can
 /// force a `persist()` failure to land WHILE the initial restore is still in flight.
 class _SlowLoadIntNotifier extends PersistedStateNotifier<int> {
   _SlowLoadIntNotifier(this._loadGate) : super(0);
@@ -95,7 +95,7 @@ void main() {
     expect(n.state, 0);
   });
 
-  group('persist() failure handling (TASK-198)', () {
+  group('persist() failure handling', () {
     test('a throwing store() causes persist() to return false', () async {
       final n = _ThrowingIntNotifier();
       await n.restored;
@@ -112,7 +112,7 @@ void main() {
       await n.persist(42);
       // The failed write must NOT leave the in-memory state looking saved —
       // otherwise the rest of the app keeps using a value that will silently
-      // revert on the next restart (the exact bug TASK-198 fixes).
+      // revert on the next restart.
       expect(n.state, 0);
       expect(await KvStore.getString(_ThrowingIntNotifier._key), isNull);
     });
@@ -132,7 +132,7 @@ void main() {
     });
 
     test('a persist failure racing an in-flight restore does not suppress the '
-        'real disk value once load() completes (TASK-259)', () async {
+        'real disk value once load() completes', () async {
       await KvStore.setString(_SlowLoadIntNotifier._key, '55'); // the real disk value
       final loadGate = Completer<void>();
       final n = _SlowLoadIntNotifier(loadGate); // _restore() is now blocked on loadGate

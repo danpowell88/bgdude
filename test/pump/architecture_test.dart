@@ -1,4 +1,4 @@
-/// TASK-41: turns two structural promises into build-breaking checks instead of relying
+/// Turns two structural promises into build-breaking checks instead of relying
 /// on discipline alone — `lib/ui/**` may only use plain data types, never reach directly
 /// into services/storage, and native code never imports a pump write/control request.
 library;
@@ -59,7 +59,7 @@ List<String> _controlImportViolations() {
 /// Every concrete request class in pumpx2-messages' `request.control` package —
 /// verified against the cached jar (`unzip -l pumpx2-messages-1.9.0.jar`, 2026-07-08):
 /// this package holds ONLY pump write/command requests (bolus, factory reset, IDP
-/// edits, temp rates, cartridge/tubing modes, etc.), never a read. TASK-243: the
+/// edits, temp rates, cartridge/tubing modes, etc.), never a read. The
 /// import-line guard above misses a write invoked by fully-qualified name (no import
 /// line exists to match, e.g. `sendCommand(p,
 /// com.jwoglom.pumpx2.pump.messages.request.control.InitiateBolusRequest())`) — since
@@ -181,7 +181,7 @@ void main() {
   });
 
   test('no Kotlin source constructs a pump write/control request, imported, '
-      'star-imported, or fully-qualified (TASK-243)', () {
+      'star-imported, or fully-qualified', () {
     final violations = _controlConstructionViolations();
     expect(violations, isEmpty,
         reason: 'The native layer must never send a pump write/control command:\n'
@@ -189,9 +189,9 @@ void main() {
   });
 
   test(
-      'sanity: the guard flags a real simulated write call with NO import line '
-      '(TASK-243, AC#3)', () {
-    // Exactly the gap TASK-243 closes: a fully-qualified construction inside a
+      'sanity: the guard flags a real simulated write call with NO import line',
+      () {
+    // Exactly the gap being closed here: a fully-qualified construction inside a
     // sendCommand(...) call, with no `import ...control...` line for the old guard
     // to match.
     const fakeSource = '''
@@ -211,7 +211,7 @@ void main() {
   });
 
   test('sanity: the guard flags a plain sendCommand write reached via a star '
-      'import (TASK-243, AC#2)', () {
+      'import', () {
     const fakeSource = '''
       import com.jwoglom.pumpx2.pump.messages.request.control.*
 

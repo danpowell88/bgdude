@@ -4,9 +4,9 @@ import 'package:bgdude/data/history_repository.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-42: prediction reconciliation runs off one CGM query + batched updates, and scores
+/// Prediction reconciliation runs off one CGM query + batched updates, and scores
 /// each due prediction against the nearest reading. Exercises DriftHistoryRepository on an
-/// in-memory DB (AC#3, AC#4).
+/// in-memory DB.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -61,7 +61,7 @@ void main() {
     expect(updated, 0);
   });
 
-  test('TASK-133: a compression-low nadir is never chosen as ground truth',
+  test('a compression-low nadir is never chosen as ground truth',
       () async {
     final base = DateTime(2026, 7, 7, 2); // overnight — the classic case
     final target = base.add(const Duration(minutes: 30));
@@ -83,7 +83,7 @@ void main() {
         reason: 'the artifact must be skipped, not scored against');
   });
 
-  test('TASK-133: reconciliation is skipped when only artifact rows exist',
+  test('reconciliation is skipped when only artifact rows exist',
       () async {
     final base = DateTime(2026, 7, 7, 2);
     final target = base.add(const Duration(minutes: 30));

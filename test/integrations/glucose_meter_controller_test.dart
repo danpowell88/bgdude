@@ -7,7 +7,7 @@ import 'package:bgdude/integrations/glucose_meter_transport.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// A transport whose [fetchRecords] always fails the way a real BLE transport does when
-/// the paired device isn't a standard glucose meter (TASK-191).
+/// the paired device isn't a standard glucose meter.
 class _NoGlucoseServiceTransport implements GlucoseMeterTransport {
   @override
   Future<bool> isAvailable() async => true;
@@ -26,8 +26,8 @@ void main() {
   setUp(KvStore.useMemory);
 
   test(
-      'pairing an incompatible BLE device surfaces a clean message, not a raw StateError '
-      '(TASK-191)', () async {
+      'pairing an incompatible BLE device surfaces a clean message, not a raw StateError',
+      () async {
     final controller = GlucoseMeterController(
       service: GlucoseMeterService(
         transport: _NoGlucoseServiceTransport(),

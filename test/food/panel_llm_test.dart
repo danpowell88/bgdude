@@ -90,7 +90,7 @@ void main() {
     expect(p.carbs.per100g, 64);
   });
 
-  group('GemmaPanelExtractor (TASK-204)', () {
+  group('GemmaPanelExtractor', () {
     test(
         'a model-load failure calls onModelLoadFailed and still returns null '
         '(falls back to the deterministic parser)', () async {

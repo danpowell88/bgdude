@@ -7,7 +7,7 @@ import 'package:bgdude/pump/pump_snapshot.dart';
 import 'package:bgdude/widget/widget_keys.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Cross-language contract tests (TASK-111). These pin the Dart side of the boundaries;
+/// Cross-language contract tests. These pin the Dart side of the boundaries;
 /// the Kotlin side has mirror tests (SnapshotContractTest, WidgetContractTest).
 void main() {
   group('§ snapshot JSON contract', () {

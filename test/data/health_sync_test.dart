@@ -2,7 +2,7 @@ import 'package:bgdude/data/health_sync.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:health/health.dart';
 
-/// TASK-275: HealthSyncService.fetch() has real per-type transformation and sleep-
+/// HealthSyncService.fetch() has real per-type transformation and sleep-
 /// aggregation logic (16 numeric mappings, nutrition-carb extraction, workout activity
 /// naming, sleep-stage minute accumulation, pre-noon night-key grouping) that was
 /// entirely uncovered -- fetch() only ever runs against the real Health Connect plugin
@@ -49,7 +49,7 @@ Future<List<HealthSample>> _fetch(List<HealthDataPoint> points) =>
         .fetch(DateTime(2026, 7, 1), DateTime(2026, 7, 2));
 
 void main() {
-  group('HealthSyncService.fetch numeric mappings (TASK-275)', () {
+  group('HealthSyncService.fetch numeric mappings', () {
     final at = DateTime(2026, 7, 1, 8);
 
     final cases = <HealthDataType, HealthMetric>{
@@ -89,7 +89,7 @@ void main() {
     });
   });
 
-  group('HealthSyncService.fetch nutrition (TASK-275)', () {
+  group('HealthSyncService.fetch nutrition', () {
     test('a nutrition point with carbs becomes a dietaryCarbsG sample', () async {
       final at = DateTime(2026, 7, 1, 12);
       final point = HealthDataPoint(
@@ -131,7 +131,7 @@ void main() {
     });
   });
 
-  group('HealthSyncService.fetch workouts (TASK-275)', () {
+  group('HealthSyncService.fetch workouts', () {
     test('a workout becomes an exercise sample with duration and activity meta',
         () async {
       final start = DateTime(2026, 7, 1, 7);
@@ -182,7 +182,7 @@ void main() {
     });
   });
 
-  group('HealthSyncService.fetch sleep aggregation (TASK-275)', () {
+  group('HealthSyncService.fetch sleep aggregation', () {
     HealthDataPoint sleepStage(
       HealthDataType type,
       DateTime from,
@@ -258,7 +258,7 @@ void main() {
     });
   });
 
-  group('HealthMetric.fromDbString (TASK-275)', () {
+  group('HealthMetric.fromDbString', () {
     test('round-trips every enum value through its persisted db string', () {
       for (final m in HealthMetric.values) {
         expect(HealthMetric.fromDbString(m.dbString), m);

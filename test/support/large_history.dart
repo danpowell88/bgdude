@@ -1,4 +1,4 @@
-/// TASK-195: a large CGM history generator for stress-testing report/metrics/training
+/// A large CGM history generator for stress-testing report/metrics/training
 /// paths at realistic multi-year scale (a year of 5-minute CGM is ~105k rows) — several
 /// of those paths recompute over the full list, and nothing had exercised them past a
 /// single simulated day until now.

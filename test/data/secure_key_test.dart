@@ -3,7 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// TASK-8: the DB passphrase lives in Keystore-backed secure storage, migrating any legacy
+/// The DB passphrase lives in Keystore-backed secure storage, migrating any legacy
 /// SharedPreferences key so an existing encrypted DB stays readable.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -36,7 +36,7 @@ void main() {
     expect(again.getOrCreatePassphrase(), legacy);
   });
 
-  group('SecureKeyReadFailure (TASK-249)', () {
+  group('SecureKeyReadFailure', () {
     test('a null secure read after a key already existed throws instead of '
         'silently generating a new key', () async {
       final first = await SecureKeyStore.open();

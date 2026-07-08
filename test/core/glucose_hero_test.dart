@@ -13,7 +13,7 @@ void main() {
       mgdl: 120,
       trend: GlucoseTrend.flat,
       unit: GlucoseUnit.mmol,
-      time: DateTime(2026, 7, 4, 12), // fixed instant (TASK-170)
+      time: DateTime(2026, 7, 4, 12), // fixed instant
       dayTrend: List<double>.generate(288, (i) => 90 + (i % 60).toDouble()),
     )));
 
@@ -47,7 +47,7 @@ void main() {
     expect(find.text('100'), findsOneWidget);
   });
 
-  group('screen-reader semantics (TASK-150)', () {
+  group('screen-reader semantics', () {
     test('the composed label reads value, unit, trend words and range', () {
       expect(
         GlucoseHero.semanticLabelFor(

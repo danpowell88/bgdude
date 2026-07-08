@@ -1,4 +1,4 @@
-/// Shared test fixtures (TASK-108): CGM trace builders and a canonical therapy profile,
+/// Shared test fixtures: CGM trace builders and a canonical therapy profile,
 /// so tests stop hand-rolling subtly-different copies. Each builder documents the exact
 /// cadence/endpoint semantics of the historical private helper it replaces, so migrated
 /// tests keep identical sample sets (and therefore identical assertions).

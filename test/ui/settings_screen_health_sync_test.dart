@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// TASK-208(a): the manual "Sync health data now" tap awaited two unguarded plugin
+/// The manual "Sync health data now" tap awaited two unguarded plugin
 /// calls with no try/catch — a PlatformException from Health Connect used to escape
 /// as an unhandled exception instead of surfacing to the user.
 class _ThrowingHealthSync extends HealthSyncService {

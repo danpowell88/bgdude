@@ -12,7 +12,7 @@ void main() {
       expect(model.iobFraction(400), 0.0);
     });
 
-    test('pins hand-computed curve values (TASK-160)', () {
+    test('pins hand-computed curve values', () {
       // Model-independent anchors for DIA=360 / peak=75 (LoopKit exponential):
       //   tau = 75*(1-75/360)/(1-2*75/360) = 101.7857
       //   a = 2*tau/360 = 0.565476, S = 1/(1-a+(1+a)e^{-360/tau})
@@ -21,7 +21,7 @@ void main() {
       expect(model.iobFraction(180), closeTo(0.2082, 5e-4));
     });
 
-    test('activity is maximal exactly at t = peak (TASK-160)', () {
+    test('activity is maximal exactly at t = peak', () {
       final atPeak = model.activity(75);
       expect(atPeak, greaterThan(model.activity(74)));
       expect(atPeak, greaterThan(model.activity(76)));

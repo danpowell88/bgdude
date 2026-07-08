@@ -100,7 +100,7 @@ void main() {
     expect(r.hasResult, isFalse);
   });
 
-  // TASK-208(e): ocr.readText() used to run outside scan()'s try block — safe only
+  // ocr.readText() used to run outside scan()'s try block — safe only
   // because the sole caller (meal_library_screen.dart) happens to wrap the whole call.
   // Guarding at the source means PanelScanService is safe regardless of the caller.
   test('a throwing OCR degrades to "no result" instead of propagating', () async {
@@ -110,7 +110,7 @@ void main() {
     expect(r.ocrText, isEmpty);
   });
 
-  // TASK-214(1): the LLM extract() throw path (scan()'s catch falling back to
+  // The LLM extract() throw path (scan()'s catch falling back to
   // whatever the deterministic parser managed) had no test.
   test('a throwing LLM falls back to the parser result, usedLlm false, no throw',
       () async {

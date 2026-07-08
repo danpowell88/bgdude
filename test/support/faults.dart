@@ -1,4 +1,4 @@
-/// Shared, hand-written fault-injecting test doubles (TASK-210).
+/// Shared, hand-written fault-injecting test doubles.
 ///
 /// Every key dependency in the app is already injectable (a provider override or a
 /// constructor seam), but before this file the only throwing double in the suite was a

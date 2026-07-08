@@ -5,7 +5,7 @@ import 'package:bgdude/data/history_repository.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-9: CGM calibration/source flag, the v2→v3 migration, and the guarantee that a
+/// CGM calibration/source flag, the v2→v3 migration, and the guarantee that a
 /// finger-prick reading never overwrites a sensor row and calibrations don't reach stats.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +25,7 @@ void main() {
             UNIQUE(time)
           );
         ''');
-        // The v4 (TASK-10) step dedupes these tables, so they must exist at v2 too.
+        // The v4 dedupe step touches these tables, so they must exist at v2 too.
         raw.execute('''
           CREATE TABLE bolus_events (
             id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, time INTEGER NOT NULL,

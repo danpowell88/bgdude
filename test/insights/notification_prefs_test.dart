@@ -99,7 +99,7 @@ void main() {
       expect(next.sound, base.sound);
     });
 
-    test('the acute act-now alerts bypass quiet hours (TASK-144)', () {
+    test('the acute act-now alerts bypass quiet hours', () {
       for (final c in [
         NotificationCategory.urgentLow,
         NotificationCategory.predictedLow,
@@ -114,11 +114,11 @@ void main() {
     test(
         'every acute (high/urgent default) category bypasses quiet hours or is '
         'explicitly excluded here', () {
-      // Reviewed exclusions (TASK-144) — safe to hold until quiet hours end:
+      // Reviewed exclusions — safe to hold until quiet hours end:
       //  * missedBolus — a retrospective care nudge, not an emergency; overnight the
       //    stubborn-high / ketone paths cover the dangerous continuation.
       //  * preBolusTimer — a user-initiated meal timer; it isn't fired while asleep.
-      //  * dataStale (TASK-176) — the pump/CGM's own alarms remain the primary
+      //  * dataStale — the pump/CGM's own alarms remain the primary
       //    overnight safety net; this flags the companion app going blind.
       const reviewedExclusions = {
         NotificationCategory.missedBolus,
@@ -149,7 +149,7 @@ void main() {
       }
     });
 
-    test('scheduled/summary notification ids are distinct (TASK-145)', () {
+    test('scheduled/summary notification ids are distinct', () {
       // Colliding ids make Android silently replace one notification with the
       // other (the weekly digest used to clobber the weekly-report nudge).
       final ids = {

@@ -4,7 +4,7 @@ import 'package:bgdude/state/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-201 AC#3: force one subsystem to fail and assert the surface reflects it,
+/// Force one subsystem to fail and assert the surface reflects it,
 /// while the caller's own error handling (the rethrow) is unaffected -- this is
 /// meant to ADD observability, never change existing behaviour.
 void main() {

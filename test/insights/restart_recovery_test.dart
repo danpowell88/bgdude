@@ -1,4 +1,4 @@
-/// TASK-194: crash-restart recovery invariants, pinned so behaviour after a process
+/// Crash-restart recovery invariants, pinned so behaviour after a process
 /// death is a deliberate choice rather than whatever the code happens to do.
 library;
 
@@ -22,8 +22,8 @@ import '../support/restart_simulation.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('CooldownGate / alert re-fire across a restart (TASK-194 AC#3)', () {
-    // DECISION (documented per AC#3): AlertService's cooldown state
+  group('CooldownGate / alert re-fire across a restart', () {
+    // DECISION: AlertService's cooldown state
     // (CooldownGate._lastFired, alert_orchestrator.dart:38) is deliberately NEVER
     // persisted. A crash mid-cooldown means the next launch's fresh gate has no
     // memory of the earlier fire, so a still-active urgent-low re-fires once more.
@@ -73,7 +73,7 @@ void main() {
     });
   });
 
-  group('Pending-confirmation decisions survive a restart (TASK-194 AC#2)', () {
+  group('Pending-confirmation decisions survive a restart', () {
     test('a decision recorded before the crash is still applied after', () async {
       final sim = RestartSimulation();
       final c1 = sim.buildContainer();
@@ -93,8 +93,7 @@ void main() {
     });
   });
 
-  group('Illness and exercise mode both survive a restart (TASK-194 AC#2, '
-      'TASK-200)', () {
+  group('Illness and exercise mode both survive a restart', () {
     test('illness mode is still active after restart', () async {
       final sim = RestartSimulation();
       final c1 = sim.buildContainer();
@@ -116,14 +115,14 @@ void main() {
     });
 
     test(
-        'an in-window exercise plan survives a restart (TASK-200 — previously '
+        'an in-window exercise plan survives a restart (previously '
         'documented as deliberately NOT persisted; that was wrong: losing the '
         'raised low-alert threshold mid-workout makes alerts fire LATER exactly '
         'during the highest hypo-risk window, not a safe default)', () async {
       final sim = RestartSimulation();
       final c1 = sim.buildContainer();
       // ExercisePlanNotifier.load()/affectsAt() compare against the wall clock
-      // (TASK-39 hasn't injected a clock yet), so this anchors to real "now".
+      // (no injected clock yet), so this anchors to real "now".
       final now = DateTime.now(); // now-ok: see comment above
       final plan = ExercisePlan(
           startAt: now, durationMinutes: 45, type: WorkoutType.aerobic);
@@ -175,7 +174,7 @@ void main() {
     });
   });
 
-  group('Illness/medication mode auto-expiry across a restart (TASK-197 AC#4)', () {
+  group('Illness/medication mode auto-expiry across a restart', () {
     test(
         'an illness mode activated with a since-elapsed expiry is deactivated at '
         'startup, and the annotation is emitted', () async {
@@ -206,7 +205,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
       expect(c.read(illnessModeProvider).active, isFalse);
-      // TASK-258: the annotation must actually reach the history repository (what
+      // The annotation must actually reach the history repository (what
       // the retraining pipeline reads), not just sit in the notifier's own
       // transient field -- lastDeactivationAnnotation is cleared once consumed, so
       // checking it here would only prove it was built, not that it was saved.
@@ -266,8 +265,7 @@ void main() {
     });
   });
 
-  group('Day history rebuilds from the repository after a restart (TASK-194 AC#2)',
-      () {
+  group('Day history rebuilds from the repository after a restart', () {
     test('today\'s CGM data is present after an explicit reload', () async {
       final sim = RestartSimulation();
       final c1 = sim.buildContainer();

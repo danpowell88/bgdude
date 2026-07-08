@@ -14,7 +14,7 @@ void main() {
     expect(const Mgdl(18.0182).inUnit(GlucoseUnit.mmol), closeTo(1.0, 1e-9));
   });
 
-  test('Mgdl behaves as a double: arithmetic and comparison work (TASK-119)', () {
+  test('Mgdl behaves as a double: arithmetic and comparison work', () {
     const a = Mgdl(120);
     const b = Mgdl(20);
     expect(a + b, 140);

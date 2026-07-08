@@ -271,7 +271,7 @@ void main() {
           [CgmSample(time: t, mgdl: 120, trend: GlucoseTrend.flat)]);
     });
 
-    // TASK-214(3): uploadDeviceStatus/testConnection go through the same http.Client
+    // uploadDeviceStatus/testConnection go through the same http.Client
     // seam but weren't individually pinned -- only uploadEntries was.
     test('uploadDeviceStatus with a throwing client is swallowed', () async {
       final client = NightscoutClient(

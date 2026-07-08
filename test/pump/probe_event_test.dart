@@ -1,7 +1,7 @@
 import 'package:bgdude/pump/probe_event.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-275: ProbeEvent/ProbeCatalog's model + dedup logic was entirely uncovered
+/// ProbeEvent/ProbeCatalog's model + dedup logic was entirely uncovered
 /// (only exercised end-to-end via the native bridge in production).
 void main() {
   group('ProbeEvent.fromMap', () {

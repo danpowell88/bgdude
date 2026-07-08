@@ -6,19 +6,19 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/hostile_inputs.dart';
 
-/// TASK-193: applies the shared hostile-input corpus to every parser named in the
-/// ticket. None of these should ever let an exception escape past a synchronous
+/// Applies the shared hostile-input corpus to every parser these tests cover.
+/// None of these should ever let an exception escape past a synchronous
 /// throw-and-catch — that's exactly what each parser's real call site already does
 /// (PumpClient._onEvent's try/catch, restoreJsonGuarded, meal-library's per-item
-/// try/catch — see TASK-181/188/190/191), so "survives" here means: parses to a
+/// try/catch), so "survives" here means: parses to a
 /// sane value, or throws synchronously (never hangs, never corrupts silently).
 ///
-/// Nightscout entry/treatment parsing (also named in the ticket) has no test here:
+/// Nightscout entry/treatment parsing (also part of the shared corpus) has no test here:
 /// the app only ever uploads to Nightscout and checks HTTP status codes — it never
 /// deserializes a Nightscout response body into domain data, so there is no parser
 /// to target yet. Flagged in the closing comment rather than silently dropped.
 void main() {
-  group('PumpSnapshot.fromJson survives the hostile corpus (TASK-193)', () {
+  group('PumpSnapshot.fromJson survives the hostile corpus', () {
     const good = {
       'schemaVersion': 1,
       'timestampEpochMs': 1751800000000,
@@ -37,7 +37,7 @@ void main() {
       'activeAlarms': <String>[],
     };
 
-    // TASK-250: on success, assert the physically-sane invariants fromJson's clamps
+    // On success, assert the physically-sane invariants fromJson's clamps
     // guarantee — the previous version wrapped the try/catch INSIDE the
     // returnsNormally closure, so it always passed regardless of whether the parser
     // threw or produced garbage (e.g. batteryPercent -81, reservoirUnits 1.79e308).
@@ -53,7 +53,7 @@ void main() {
         expect(s.iobUnits, greaterThanOrEqualTo(0));
         expect(s.iobUnits!.isFinite, isTrue);
       }
-      // TASK-273: glucose and dosing fields are reject-to-null, not clamped (a
+      // Glucose and dosing fields are reject-to-null, not clamped (a
       // fabricated in-range value here is worse than "no reading" -- see
       // pump_snapshot.dart's _rejectOutOfRange* doc comment) -- so the invariant is
       // simply that a non-null value is never outside the physiologically-sane band.
@@ -106,8 +106,8 @@ void main() {
     }
   });
 
-  group('TherapySegment/TherapySettings.fromJson survive the hostile corpus '
-      '(TASK-193)', () {
+  group('TherapySegment/TherapySettings.fromJson survive the hostile corpus',
+      () {
     const goodSegment = {
       'startMinuteOfDay': 0,
       'isf': 50,
@@ -118,7 +118,7 @@ void main() {
 
     for (final v in hostileVariantsOf(goodSegment)) {
       test('TherapySegment: ${v.name}', () {
-        // TASK-250: the parse (try) and the invariant assertion must not share a
+        // The parse (try) and the invariant assertion must not share a
         // catch -- an expect() failure is itself a thrown exception, so catching it
         // alongside a genuine parse throw would silently swallow a real invariant
         // violation instead of failing the test.
@@ -129,7 +129,7 @@ void main() {
           // Caught by restoreJsonGuarded in production — acceptable here too.
         }
         if (s != null) {
-          // TASK-190: whenever it DOES parse, isf/carbRatio must stay sanitized
+          // Whenever it DOES parse, isf/carbRatio must stay sanitized
           // positive no matter how the rest of the row was mutated.
           expect(s.isf, greaterThan(0));
           expect(s.carbRatio, greaterThan(0));
@@ -143,7 +143,7 @@ void main() {
     });
   });
 
-  group('SavedMeal.fromJson survives the hostile corpus (TASK-193)', () {
+  group('SavedMeal.fromJson survives the hostile corpus', () {
     const goodMeal = {
       'id': 'abc123',
       'name': 'Toast',
@@ -158,7 +158,7 @@ void main() {
       'outcomes': <Map<String, dynamic>>[],
     };
 
-    // TASK-250: on success, assert the physically-sane invariants fromJson's clamps
+    // On success, assert the physically-sane invariants fromJson's clamps
     // guarantee, instead of swallowing the exception inside the returnsNormally
     // closure (which passed regardless of whether the parser threw or produced a
     // negative/astronomical meal). The parse (fallible) and the assertion (must
@@ -185,7 +185,7 @@ void main() {
     }
   });
 
-  group('NutritionPanelParser.parse survives hostile OCR text (TASK-193)', () {
+  group('NutritionPanelParser.parse survives hostile OCR text', () {
     const parser = NutritionPanelParser();
     for (final text in hostileTextInputs) {
       test('"${text.length > 30 ? '${text.substring(0, 30)}…' : text}"', () {

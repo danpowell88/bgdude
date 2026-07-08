@@ -1,4 +1,4 @@
-/// TASK-125: the app-root snapshot chain must keep alerting when ingest fails, and
+/// The app-root snapshot chain must keep alerting when ingest fails, and
 /// best-effort background pushes must log instead of raising unhandled async errors.
 library;
 
@@ -61,7 +61,7 @@ void main() {
       expect(appLog.entries, isEmpty);
     });
 
-    // TASK-208(c): app.dart's glucoseUnitProvider listener fires setGarminUnit
+    // app.dart's glucoseUnitProvider listener fires setGarminUnit
     // fire-and-forget, and PumpClient._invoke rethrows PlatformException — this must
     // land as a logged 'garmin' entry, not an unhandled async error.
     test('a failing Garmin unit push is logged instead of unhandled', () async {

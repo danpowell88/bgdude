@@ -89,7 +89,7 @@ void main() {
 
     test(
         'training IMMEDIATELY after construction still A/Bs the on-disk '
-        'incumbent (TASK-129)', () async {
+        'incumbent', () async {
       final incumbent = ForecasterTrainer().train(
         cgm: day.cgm,
         boluses: day.boluses,
@@ -112,7 +112,7 @@ void main() {
           reason: 'the restored incumbent stays live');
     });
 
-    test('a late restore never clobbers a newer in-memory model (TASK-129)',
+    test('a late restore never clobbers a newer in-memory model',
         () async {
       // A trained model sits on disk, but by the time the restore lands the
       // controller has already promoted something newer (simulated via the

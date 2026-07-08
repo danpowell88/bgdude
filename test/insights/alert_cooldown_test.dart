@@ -1,4 +1,4 @@
-/// TASK-184: alert cooldowns must survive wall-clock discontinuities. A DST
+/// Alert cooldowns must survive wall-clock discontinuities. A DST
 /// fall-back makes `now - lastFired` negative for an hour; the gate must fail OPEN
 /// (re-alert eligible) — a suppressed urgent low during the repeated hour is a
 /// safety failure. All times injected.

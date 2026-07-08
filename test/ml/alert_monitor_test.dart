@@ -2,7 +2,7 @@ import 'package:bgdude/insights/alert_monitor.dart';
 import 'package:bgdude/ml/forecaster.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-37 AC#1: matrix tests for the pure alert decision core. Given a forecast + current
+/// Matrix tests for the pure alert decision core. Given a forecast + current
 /// reading, [AlertMonitor.evaluate] must pick the right alert (or none), deterministically.
 void main() {
   const monitor = AlertMonitor(
@@ -46,7 +46,7 @@ void main() {
     }
   });
 
-  group('§4-x TASK-93: exercise suppresses highs, never lows', () {
+  group('§4-x exercise suppresses highs, never lows', () {
     GlucoseAlert? decideEx({
       required double current,
       required double forecastExtreme,

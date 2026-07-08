@@ -148,7 +148,7 @@ void main() {
     });
   });
 
-  group('SensitivityModel guardrails (TASK-21)', () {
+  group('SensitivityModel guardrails', () {
     test('a coefficient confounded to the wrong physiological sign is clamped to 0',
         () {
       // Illness is deliberately confounded with long sleep here (co-occurs on the
@@ -205,7 +205,7 @@ void main() {
 
     test(
         'a fit that passes the gate unconstrained but loses after sign-constraining '
-        'is NOT adopted (TASK-244)', () {
+        'is NOT adopted', () {
       // label = 1.0 + heuristic's OWN sleep bump (so the heuristic is a genuinely
       // decent baseline here) + a small, WRONGLY-signed spo2 offset (spo2 delta
       // should REDUCE resistance per _expectedSign, but here it's rigged to

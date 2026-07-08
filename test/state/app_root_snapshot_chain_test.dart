@@ -1,6 +1,6 @@
-/// TASK-212: the app-root per-snapshot chain in `lib/app.dart` fires three independent,
+/// The app-root per-snapshot chain in `lib/app.dart` fires three independent,
 /// contained side effects on every pump snapshot -- widget push, ingest+alerts (via the
-/// TASK-125 `ingestThenEvaluateAlerts` seam), and a Nightscout upload. This exercises each
+/// `ingestThenEvaluateAlerts` seam), and a Nightscout upload. This exercises each
 /// with a REAL component (not a fake closure) so a failure in one is proven not to drop the
 /// reading, block alert evaluation, or escape as an unhandled error.
 library;
@@ -93,7 +93,7 @@ void main() {
       livePredictionStateProvider.overrideWithValue(urgentLowState()),
       calibratedForecastsProvider.overrideWithValue(urgentForecast),
       rescueCarbAdviceProvider.overrideWithValue(null),
-      // TASK-231: effectiveLowThresholdProvider (now read directly by onSnapshot)
+      // effectiveLowThresholdProvider (now read directly by onSnapshot)
       // otherwise pulls in recentAnnotationsProvider -> the real
       // dayHistoryControllerProvider, which outlives a single onSnapshot() call and
       // trips over container.dispose().
@@ -115,7 +115,7 @@ void main() {
 
       // Mirrors lib/app.dart's exact composition: ingest (real controller, real
       // failing repo) chained with alert evaluation (real AlertService) via the
-      // TASK-125 seam -- neither stage's failure should propagate, and a failed
+      // ingestThenEvaluateAlerts seam -- neither stage's failure should propagate, and a failed
       // ingest must not suppress the alert.
       await ingestThenEvaluateAlerts(
         ingest: () => env.controller.ingestSnapshot(urgentLowSnapshot()),
@@ -155,10 +155,10 @@ void main() {
     test('pushUpdate genuinely contains the widget-channel throw (not just an '
         'untested unawaited drop)', () async {
       appLog.clear();
-      // TASK-270: unlike app.dart's fire-and-forget unawaited() call, AWAIT this
+      // Unlike app.dart's fire-and-forget unawaited() call, AWAIT this
       // directly so the test actually observes what pushUpdate does with the
       // injected MissingPluginException -- if HomeWidgetService's own try/catch
-      // (TASK-208) were removed, this await would throw and the test would fail
+      // were removed, this await would throw and the test would fail
       // outright, instead of the unawaited-drop silently hiding it either way.
       await HomeWidgetService().pushUpdate(urgentLowSnapshot(), GlucoseUnit.mmol);
       expect(
@@ -216,7 +216,7 @@ void main() {
         'a serialisation failure reaches unawaitedLogged\'s catchError -- the '
         'app-root wrapper, not the client\'s internal swallow', () async {
       appLog.clear();
-      // TASK-270: entryFromCgm calls sample.mgdl.round(), which throws
+      // entryFromCgm calls sample.mgdl.round(), which throws
       // UnsupportedError for NaN -- this happens in uploadEntries' own List.map,
       // BEFORE _postJson's try/catch is ever reached (the http client here is
       // irrelevant; the request is never even built). A genuine caller-side bug

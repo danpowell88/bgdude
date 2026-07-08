@@ -74,7 +74,7 @@ void main() {
     expect(out.lastSeq, 2);
   });
 
-  test('TASK-94: a reading stamped in the future flags meter clock skew', () async {
+  test('a reading stamped in the future flags meter clock skew', () async {
     final repo = InMemoryHistoryRepository();
     // Newest reading is at 18:00 while the phone thinks it's 10:00 → meter clock ~8h fast.
     final transport = _FakeTransport([_r(1, 8, 100), _r(2, 18, 140)]);
@@ -85,7 +85,7 @@ void main() {
     expect(out.imported, 2); // still imported
   });
 
-  test('TASK-94: readings within tolerance report no clock skew', () async {
+  test('readings within tolerance report no clock skew', () async {
     final repo = InMemoryHistoryRepository();
     final transport = _FakeTransport([_r(1, 8, 100), _r(2, 18, 140)]);
     final svc = GlucoseMeterService(transport: transport, repository: repo);

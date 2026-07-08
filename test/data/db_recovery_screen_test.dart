@@ -1,4 +1,4 @@
-/// TASK-252: the recovery screen's export-visibility gate and destructive
+/// The recovery screen's export-visibility gate and destructive
 /// double-confirm dialog had no test coverage at all. openHistoryRepository() itself
 /// can't be exercised on this desktop host (it always routes through
 /// sqlcipher_flutter_libs' openCipherOnAndroid, which needs a real Android device --
@@ -23,7 +23,7 @@ void main() {
         child: const MaterialApp(home: DbRecoveryScreen()),
       );
 
-  group('salvage export visibility (TASK-252 AC#2)', () {
+  group('salvage export visibility', () {
     testWidgets(
         'corruptedData with an open salvage db exposes the export button',
         (tester) async {
@@ -63,7 +63,7 @@ void main() {
       expect(find.text('Export what\'s still readable'), findsNothing);
     });
 
-    testWidgets('schemaNewerThanApp never offers reset (TASK-199) or export',
+    testWidgets('schemaNewerThanApp never offers reset or export',
         (tester) async {
       await tester.pumpWidget(harness([
         dbOpenDiagnosisProvider.overrideWithValue(DbOpenDiagnosis.schemaNewerThanApp),
@@ -75,7 +75,7 @@ void main() {
     });
   });
 
-  group('destructive reset requires two confirmations (TASK-252 AC#3)',
+  group('destructive reset requires two confirmations',
       () {
     Future<void> pumpKeyOrHeaderCorrupt(WidgetTester tester) => tester.pumpWidget(
         harness([

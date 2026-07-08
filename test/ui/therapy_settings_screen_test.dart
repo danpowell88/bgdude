@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-198 AC#2: a save whose write fails must surface an error to the user instead
+/// A save whose write fails must surface an error to the user instead
 /// of silently looking saved (and then reverting on the next restart). [shouldThrow]
 /// is flipped mid-test so the same notifier can demonstrate both a normal save (to
 /// get a second segment on screen) and a failing one.

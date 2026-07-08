@@ -110,7 +110,7 @@ void main() {
       // 120 was never trained.
       final c120 = model.correct(features: const [1.0, 1.0], horizonMinutes: 120);
       expect(c120.residual, 0.0);
-      // TASK-136: the untrained-horizon path delegates to the single shared
+      // The untrained-horizon path delegates to the single shared
       // fallbackSigma, not its own copy of the widening formula.
       expect(c120.sigma, closeTo(fallbackSigma(120), 1e-9));
 
@@ -169,7 +169,7 @@ void main() {
     });
   });
 
-  group('persistence hardening (TASK-128)', () {
+  group('persistence hardening', () {
     Map<String, dynamic> trainedBlob() {
       final samples = _samples((x0, x1) => 8 * x0 * x0 - 4 * x1);
       final model = const ResidualGbmTrainer().train({30: samples});

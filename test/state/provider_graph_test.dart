@@ -1,4 +1,4 @@
-/// TASK-166: provider-graph regression tests for the P2-9 rebuild fixes. The
+/// Provider-graph regression tests for the P2-9 rebuild fixes. The
 /// report providers must WATCH the repository (a demo toggle swaps it, and a
 /// `ref.read` would freeze reports on the old store), and the confirmation
 /// inbox must re-scan on a new CGM reading but NOT on an IOB-only snapshot tick.
@@ -29,7 +29,7 @@ void main() {
 
   test('a repository swap re-runs the report providers (guards ref.watch)',
       () async {
-    // reportRange/pending-confirmations read the wall clock (TASK-39).
+    // reportRange/pending-confirmations read the wall clock.
     final now = DateTime.now(); // now-ok: providers are wall-clock internally
     final repoA = InMemoryHistoryRepository();
     await repoA.saveCgm([

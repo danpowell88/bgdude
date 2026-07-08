@@ -1,4 +1,4 @@
-/// TASK-226: below API 31, BLE scanning legally requires runtime ACCESS_FINE_LOCATION
+/// Below API 31, BLE scanning legally requires runtime ACCESS_FINE_LOCATION
 /// (the split bluetoothScan/bluetoothConnect permissions don't exist pre-31 and are
 /// auto-granted no-ops) -- pump discovery was silently broken on API 29/30 because
 /// the app never requested it. Pins the SDK-gated decision (the actual bug/fix);

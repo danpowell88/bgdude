@@ -28,7 +28,7 @@ void main() {
     });
   });
 
-  group('PanelModelManager.validateHttps (TASK-16 AC#1)', () {
+  group('PanelModelManager.validateHttps', () {
     test('accepts an HTTPS URL', () {
       expect(
           PanelModelManager.validateHttps('https://huggingface.co/x.task').scheme,
@@ -56,7 +56,7 @@ void main() {
     });
   });
 
-  group('PanelModelManager.tokenForHost (TASK-16 AC#2)', () {
+  group('PanelModelManager.tokenForHost', () {
     test('sends the token to Hugging Face', () {
       final uri = Uri.parse('https://huggingface.co/x.task');
       expect(PanelModelManager.tokenForHost(uri, 'secret'), 'secret');
@@ -84,7 +84,7 @@ void main() {
     });
 
     test(
-        'TASK-300: withholds the token from an allowlisted host over plain '
+        'withholds the token from an allowlisted host over plain '
         'HTTP (a scheme downgrade)', () {
       final uri = Uri.parse('http://huggingface.co/x.task');
       expect(PanelModelManager.tokenForHost(uri, 'secret'), isNull,
@@ -93,7 +93,7 @@ void main() {
     });
   });
 
-  group('PanelModelManager.resolveWithSafeRedirects (TASK-246)', () {
+  group('PanelModelManager.resolveWithSafeRedirects', () {
     test('withholds the token after a redirect to a non-allowlisted host',
         () async {
       final requests = <http.BaseRequest>[];
@@ -161,7 +161,7 @@ void main() {
     });
 
     test(
-        'TASK-300: withholds the token after a redirect downgrades to plain '
+        'withholds the token after a redirect downgrades to plain '
         'HTTP on an otherwise-allowlisted host', () async {
       final requests = <http.BaseRequest>[];
       final client = MockClient((request) async {

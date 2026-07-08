@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/faults.dart';
 
-/// TASK-33 (AC#2): the pairing dialog's error SnackBar is transient — a user who
+/// The pairing dialog's error SnackBar is transient — a user who
 /// dismisses it, or isn't looking at the screen when a scan/pairing-window timeout
 /// fires, has no persistent indication the pump is disconnected/errored. PumpScreen's
 /// new banner (independent of the snackbar) must appear for `error`/`disconnected` and

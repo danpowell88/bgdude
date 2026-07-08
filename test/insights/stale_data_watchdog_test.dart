@@ -1,4 +1,4 @@
-/// TASK-176: the stale-data watchdog fires when readings stop while the link looks
+/// The stale-data watchdog fires when readings stop while the link looks
 /// healthy, once per stall, and recovers when data flows again. Pure monitor —
 /// every time is injected.
 library;
@@ -63,7 +63,7 @@ void main() {
         const Duration(minutes: 12));
   });
 
-  // TASK-230: reset() is used when a caller hands staleness off to a different
+  // reset() is used when a caller hands staleness off to a different
   // alert (a BLE disconnect) -- a later reconnect must start fresh, not
   // immediately re-flag on the age that accrued while disconnected.
   test('reset forgets the last snapshot and any stale flag', () {

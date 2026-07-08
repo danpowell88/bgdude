@@ -1,4 +1,4 @@
-/// TASK-187: uncaught errors must be captured and persisted locally. Exercises the
+/// Uncaught errors must be captured and persisted locally. Exercises the
 /// CrashLog sink with an injected directory, including a real uncaught async error
 /// flowing through runZonedGuarded, and the log-viewer surface.
 library;

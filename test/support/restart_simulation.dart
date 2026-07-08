@@ -1,4 +1,4 @@
-/// TASK-194: a reusable harness for simulating a process crash-and-restart over the
+/// A reusable harness for simulating a process crash-and-restart over the
 /// same persistence. `KvStore` (lib/data/kv_store.dart) holds its in-memory fallback
 /// in a static map that survives across `ProviderContainer`s as long as
 /// `KvStore.useMemory()` isn't called again — call it exactly ONCE per test, then

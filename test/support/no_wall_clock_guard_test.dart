@@ -1,13 +1,13 @@
-/// TASK-170 convention guard: tests must be deterministic regardless of when
+/// Convention guard: tests must be deterministic regardless of when
 /// they run. `DateTime.now()` in a test couples behaviour to the wall clock
 /// (and DST/local-midnight edges) and rots into flakiness.
 ///
 /// Convention: anchor to a fixed instant (e.g. `DateTime(2026, 7, 4, 12)`).
-/// When production code itself reads the wall clock (until TASK-39 injects
-/// clocks) a relative `now` is unavoidable — mark the line with a justification
+/// When production code itself reads the wall clock (until clocks are
+/// injected) a relative `now` is unavoidable — mark the line with a justification
 /// comment: `DateTime.now(); // now-ok: <why>`.
 ///
-/// TASK-237: walks both `test/` and `integration_test/` (demo mode advances
+/// Walks both `test/` and `integration_test/` (demo mode advances
 /// on real time there, the highest-risk spot) and every `.dart` file in each
 /// (not just `*_test.dart`) — a stray `DateTime.now()` in a support/fixture
 /// file couples every test that imports it.

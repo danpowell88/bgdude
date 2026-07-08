@@ -1,4 +1,4 @@
-/// TASK-185: the main isolate (read/write) and the WorkManager summary backstop
+/// The main isolate (read/write) and the WorkManager summary backstop
 /// (read-only, see `background_summary.dart`) open independent connections to the
 /// same encrypted WAL file. WAL lets readers and a writer proceed concurrently, but
 /// a reader can still collide briefly with a writer mid-checkpoint; without

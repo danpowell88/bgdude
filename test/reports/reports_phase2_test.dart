@@ -34,7 +34,7 @@ void main() {
       expect(report.basalFraction, greaterThan(0.8)); // basal-dominant
     });
 
-    test('TASK-148: Control-IQ auto-boluses are NOT manual corrections', () {
+    test('Control-IQ auto-boluses are NOT manual corrections', () {
       final report = const InsulinReportBuilder().build(
         boluses: [
           BolusEvent(time: DateTime(2026, 7, 4, 8), units: 5, carbsGrams: 40),

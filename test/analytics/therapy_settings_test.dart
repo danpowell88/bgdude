@@ -2,7 +2,7 @@ import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('SensitivityContext.withResistanceOverlay (TASK-146)', () {
+  group('SensitivityContext.withResistanceOverlay', () {
     test('multiplies the base multiplier by boost and floors confidence', () {
       const base = SensitivityContext(
           resistanceMultiplier: 1.1, confidence: 0.3, reasons: ['sleep']);
@@ -50,7 +50,7 @@ void main() {
     });
   });
 
-  group('TherapySegment.fromJson (TASK-190)', () {
+  group('TherapySegment.fromJson', () {
     test('round-trips a normal segment unchanged', () {
       final s = TherapySegment.fromJson(const {
         'startMinuteOfDay': 360,
@@ -86,7 +86,7 @@ void main() {
     });
   });
 
-  group('TherapySettings.fromJson (TASK-191)', () {
+  group('TherapySettings.fromJson', () {
     test('an empty segments list from a corrupted blob falls back to the placeholder, '
         'not left empty', () {
       final settings = TherapySettings.fromJson(const {'segments': []});

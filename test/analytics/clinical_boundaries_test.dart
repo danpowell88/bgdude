@@ -1,4 +1,4 @@
-/// TASK-169: parameterized boundary probes at the clinical thresholds (54/70/180/250).
+/// Parameterized boundary probes at the clinical thresholds (54/70/180/250).
 /// Off-by-comparison errors at these cut points are the most common clinical-logic
 /// bug class; each case documents which side the EXACT threshold belongs to.
 ///

@@ -1,9 +1,9 @@
-/// TASK-220: the demo seam must be deterministic given a fixed `now` -- this is what
+/// The demo seam must be deterministic given a fixed `now` -- this is what
 /// makes an on-device displayed-value assertion (integration_test/) safe to write at
 /// all, instead of flaking depending on when the suite happens to run. This proves the
 /// underlying claim at the pure-Dart level (runs here, no emulator needed); the actual
-/// on-device stability proof (AC#4's "run twice on a device") is a separate,
-/// emulator-blocked verification step -- see the TASK-220 backlog comment.
+/// on-device stability proof ("run twice on a device") is a separate,
+/// emulator-blocked verification step -- see the backlog task's comment.
 library;
 
 import 'package:bgdude/data/kv_store.dart';
@@ -52,9 +52,9 @@ void main() {
     });
   });
 
-  // TASK-272: DemoHistory.demoMeals seeds the demo meal library (via
+  // DemoHistory.demoMeals seeds the demo meal library (via
   // MealLibraryNotifier._restore, providers.dart) -- this was the one demo-seed path
-  // TASK-220 missed routing through demoClockProvider, so a fixed-now integration test
+  // that missed routing through demoClockProvider, so a fixed-now integration test
   // checking a meal's "logged X ago"/outcome time still flaked by wall-clock run time.
   group('DemoHistory.demoMeals is deterministic for a fixed now', () {
     test('two independent calls with the same now produce identical meals '
@@ -87,7 +87,7 @@ void main() {
     });
   });
 
-  // TASK-272: DemoHistory.demoMeals was always deterministic as a pure function --
+  // DemoHistory.demoMeals was always deterministic as a pure function --
   // the actual bug was one caller (MealLibraryNotifier._restore) passing the raw
   // wall clock instead of the injected one. This exercises the REAL fix site, not
   // just the already-correct pure function -- and specifically checks the notifier's

@@ -5,7 +5,7 @@ import 'package:bgdude/data/history_repository.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-62: pruneOldData drops stale predictions (>90d) and health (>180d) but keeps all
+/// pruneOldData drops stale predictions (>90d) and health (>180d) but keeps all
 /// glucose/insulin history (the training corpus).
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

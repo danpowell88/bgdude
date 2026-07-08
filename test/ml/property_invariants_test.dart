@@ -1,4 +1,4 @@
-/// TASK-168: cheap, safety-relevant invariants that were previously unguarded
+/// Cheap, safety-relevant invariants that were previously unguarded
 /// against sign/clamp/summation bugs:
 ///  1. Calibrated forecast bands never cross: lower <= point <= upper.
 ///  2. COB conservation: absorptionRate integrates to the entry's grams.

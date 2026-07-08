@@ -1,4 +1,4 @@
-/// Per-decision tests of the pure alert brain (TASK-116): every path that used to be
+/// Per-decision tests of the pure alert brain: every path that used to be
 /// inlined in `AlertService.onSnapshot` — pump alarms, reservoir, battery, predicted
 /// low/high, post-meal walk, rescue carbs, missed bolus, stubborn high, ketone check,
 /// anomaly catch-all — plus the composed threshold policy, exercised as plain values
@@ -62,7 +62,7 @@ void main() {
 
   // Matches the default AlertThresholds' lowMgdl (70) with no active modifiers --
   // the "nothing special going on" coaching-path line these glucose-cycle tests are
-  // set up around; TASK-231's own dedicated wiring test
+  // set up around; the effective-low threshold's own dedicated wiring test
   // (alert_effective_low_wiring_test.dart) covers a modifier actually changing this.
   const defaultEffectiveLow = EffectiveLowThreshold(mgdl: 70, reasons: []);
 
@@ -96,7 +96,7 @@ void main() {
       [for (final d in r.decisions) d.category];
 
   group('resolveEffectiveThresholds', () {
-    // TASK-231: the low-line MODIFIER composition (impaired-awareness, alcohol,
+    // The low-line MODIFIER composition (impaired-awareness, alcohol,
     // exercise, weather, compose-via-max) is no longer this function's job -- it's
     // done once, upstream, by effectiveLowThresholdProvider (same policy as the
     // coaching path) and handed in as `effectiveLow`. That composition is pinned at
@@ -267,7 +267,7 @@ void main() {
       expect(categories(r), [NotificationCategory.predictedHigh]);
     });
 
-    test('predicted-high is muted during an active workout (TASK-93)', () {
+    test('predicted-high is muted during an active workout', () {
       final r = orch.evaluate(glucoseInput(
         state: stateAt(150),
         day: dayData(),

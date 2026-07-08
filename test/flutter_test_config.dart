@@ -1,4 +1,4 @@
-/// Global test harness hook (TASK-172): flutter_test discovers this file and
+/// Global test harness hook: flutter_test discovers this file and
 /// routes every test main() through [testExecutable].
 ///
 /// KvStore is all-static with a shared memory map, so isolation used to rely on

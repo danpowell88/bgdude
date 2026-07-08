@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/samples.dart';
 
-/// TASK-10: bolus/carb/basal inserts dedupe, and a live snapshot after a restart doesn't
+/// Bolus/carb/basal inserts dedupe, and a live snapshot after a restart doesn't
 /// re-insert the pump's already-saved last bolus.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

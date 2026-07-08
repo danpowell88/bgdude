@@ -1,4 +1,4 @@
-/// TASK-230: StaleDataWatchdogService must own only the connected-but-silent case --
+/// StaleDataWatchdogService must own only the connected-but-silent case --
 /// ConnectionAlertService already owns a genuine BLE disconnect (connectionLost). Before
 /// this gate, a real disconnect fired BOTH connectionLost (10 min) and a
 /// factually-wrong dataStale ("even though the connection looks healthy", 15 min).

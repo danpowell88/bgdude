@@ -56,7 +56,7 @@ void main() {
     expect(carbSensitivityFactor(isf: 50, carbRatio: 10), closeTo(5.0, 1e-9));
   });
 
-  test('TASK-190: zero carb ratio returns 0, not Infinity/NaN', () {
+  test('zero carb ratio returns 0, not Infinity/NaN', () {
     expect(carbSensitivityFactor(isf: 50, carbRatio: 0), 0.0);
   });
 }

@@ -2,7 +2,7 @@ import 'package:bgdude/core/time_format.dart';
 import 'package:bgdude/ui/widgets/glucose_colors.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Logic in the TASK-107 shared helpers: the glucose colour thresholds and the time
+/// Logic in the shared helpers: the glucose colour thresholds and the time
 /// formatters. The pure-presentation widgets (StatTile, chart axes) have no logic to test.
 void main() {
   group('GlucoseColors.forMgdl', () {

@@ -50,7 +50,7 @@ void main() {
     });
   });
 
-  group('MedicationMode.isExpired (TASK-197)', () {
+  group('MedicationMode.isExpired', () {
     test('is false while inactive, even past the expiry instant', () {
       final mode = MedicationMode(
           active: false, expiresAt: DateTime(2026, 7, 4));

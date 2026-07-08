@@ -1,4 +1,4 @@
-/// TASK-175: scheduled notifications must fire at the LOCAL wall-clock time.
+/// Scheduled notifications must fire at the LOCAL wall-clock time.
 /// These tests pin the schedule computation under a non-UTC location (Sydney,
 /// UTC+10/+11) — before the fix `tz.local` stayed UTC, so the 07:00 morning
 /// summary fired at 17:00 AEST.
@@ -72,7 +72,7 @@ void main() {
     });
   });
 
-  group('schedule modes per path (TASK-182)', () {
+  group('schedule modes per path', () {
     test('the pre-bolus timer is EXACT when permitted, inexact otherwise', () {
       expect(NotificationService.preBolusScheduleMode(canExact: true),
           AndroidScheduleMode.exactAllowWhileIdle);

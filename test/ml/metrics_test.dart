@@ -26,7 +26,7 @@ GlucoseMetrics _metrics({
     );
 
 void main() {
-  group('TirBands (TASK-105)', () {
+  group('TirBands', () {
     test('decomposes cumulative fractions into exclusive bands that sum to ~1', () {
       // Cumulative: <54 3%, <70 8%, in-range 70%, >180 22%, >250 7%.
       final m = _metrics(
@@ -46,7 +46,7 @@ void main() {
     });
 
     test('gri pins to a hand-calculated literal, not re-derived weights', () {
-      // TASK-160: the old expectation re-derived the Klonoff weights from the
+      // The old expectation re-derived the Klonoff weights from the
       // production code, proving nothing. Hand calculation:
       //   VLow 3% -> 3.0*3 = 9;  Low 5% -> 2.4*5 = 12;
       //   VHigh 7% -> 1.6*7 = 11.2;  High 15% -> 0.8*15 = 12.
@@ -101,8 +101,8 @@ void main() {
       expect(m.sufficient, isFalse);
     });
 
-    test('a CGM gap lowers active fraction/sufficiency but never corrupts TIR '
-        '(TASK-94 AC#1)', () {
+    test('a CGM gap lowers active fraction/sufficiency but never corrupts TIR',
+        () {
       final start = DateTime(2026, 6, 1);
       // 12 real days of readings spread across a 19-day span (an 8-day sensor
       // gap in the middle) — every reading in range.
@@ -160,7 +160,7 @@ void main() {
       expect(grid.classify(250, 320), ClarkeZone.b);
     });
 
-    test('pins the published boundary segments (TASK-160)', () {
+    test('pins the published boundary segments', () {
       // Upper-C ceiling: pred >= ref+110 applies only while ref <= 290.
       expect(grid.classify(290, 400), ClarkeZone.c);
       expect(grid.classify(291, 401), ClarkeZone.b);
@@ -230,7 +230,7 @@ void main() {
     });
   });
 
-  group('CV boundary and AGP percentile pins (TASK-160)', () {
+  group('CV boundary and AGP percentile pins', () {
     List<CgmSample> alternating(double lo, double hi, {int count = 40}) => [
           for (var i = 0; i < count; i++)
             CgmSample(

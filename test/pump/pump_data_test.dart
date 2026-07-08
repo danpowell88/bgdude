@@ -83,7 +83,7 @@ void main() {
     });
   });
 
-  group('PumpSnapshot.controlIqState (TASK-126)', () {
+  group('PumpSnapshot.controlIqState', () {
     PumpSnapshot snapshot({bool? closedLoopEnabled, bool? controlIqActive,
         ControlIqMode mode = ControlIqMode.unknown}) =>
         PumpSnapshot(
@@ -221,7 +221,7 @@ void main() {
     });
   });
 
-  group('snapshot decode guard (TASK-181)', () {
+  group('snapshot decode guard', () {
     testWidgets('a malformed event is skipped and the next good one processes',
         (tester) async {
       const events = EventChannel('bgdude/pump_events');

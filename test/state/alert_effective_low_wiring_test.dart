@@ -1,4 +1,4 @@
-/// TASK-231: the alert cycle and the coaching path (pre-bolus guard, rescue-carb
+/// The alert cycle and the coaching path (pre-bolus guard, rescue-carb
 /// advice) both used to independently re-derive the composed low line from their own
 /// carbs/profile/annotations/exercise/weather bundles -- two sites, one
 /// `Duration(hours: 2)` post-meal literal each, free to silently diverge if only one

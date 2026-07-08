@@ -1,7 +1,7 @@
 import 'package:bgdude/analytics/band_coverage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-56 AC#1: 7-day band coverage from reconciled predictions.
+/// 7-day band coverage from reconciled predictions.
 void main() {
   ({double? actual, double lower, double upper}) p(double? a, double lo, double hi) =>
       (actual: a, lower: lo, upper: hi);

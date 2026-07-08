@@ -35,7 +35,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
   tearDown(() => TestWidgetsFlutterBinding.instance.reset());
 
-  // TASK-209: leaving the screen mid-scan used to throw setState-after-dispose when a
+  // Leaving the screen mid-scan used to throw setState-after-dispose when a
   // scan result (or the isAvailable() check itself) resolved after the widget was gone.
   testWidgets('disposing mid-scan then delivering a result does not throw', (tester) async {
     final transport = _FakeTransport();

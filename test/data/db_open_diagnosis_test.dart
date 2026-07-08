@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' as sqlite3;
 
-/// TASK-192: classifyDbOpenFailure is unit-tested directly against synthetic
+/// classifyDbOpenFailure is unit-tested directly against synthetic
 /// exceptions shaped exactly like what SQLCipher/sqlite3 actually raise (same result
 /// codes, same exception type) — the decision logic under test either way.
 ///
@@ -20,7 +20,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite3;
 /// needs a real Android device/emulator to exercise; classifyDbOpenFailure is the
 /// actual decision logic driving the recovery screen's branch, and that IS covered.
 void main() {
-  group('classifyDbOpenFailure (TASK-192)', () {
+  group('classifyDbOpenFailure', () {
     test('SQLITE_NOTADB on the very first read = wrong key or header corrupt', () {
       final e = SqliteException(26, 'file is not a database');
       expect(classifyDbOpenFailure(e, keyConfirmed: false),
@@ -63,7 +63,7 @@ void main() {
           DbOpenDiagnosis.unknown);
     });
 
-    test('a DatabaseDowngradeException is schemaNewerThanApp (TASK-199)', () {
+    test('a DatabaseDowngradeException is schemaNewerThanApp', () {
       expect(
           classifyDbOpenFailure(const DatabaseDowngradeException(from: 5, to: 4),
               keyConfirmed: false),
@@ -77,7 +77,7 @@ void main() {
     });
   });
 
-  group('DbOpenDiagnosis.salvageable (TASK-192)', () {
+  group('DbOpenDiagnosis.salvageable', () {
     test('only corruptedData is salvageable', () {
       expect(DbOpenDiagnosis.corruptedData.salvageable, isTrue);
       expect(DbOpenDiagnosis.keyOrHeaderCorrupt.salvageable, isFalse);
@@ -88,7 +88,7 @@ void main() {
     });
   });
 
-  group('DbOpenDiagnosis.resetIsSensible (TASK-199)', () {
+  group('DbOpenDiagnosis.resetIsSensible', () {
     test('false only for schemaNewerThanApp -- the data there is not corrupt', () {
       expect(DbOpenDiagnosis.schemaNewerThanApp.resetIsSensible, isFalse);
       expect(DbOpenDiagnosis.keyOrHeaderCorrupt.resetIsSensible, isTrue);
@@ -99,7 +99,7 @@ void main() {
     });
   });
 
-  group('retireDatabaseFile (TASK-249)', () {
+  group('retireDatabaseFile', () {
     late Directory dir;
 
     setUp(() async {
@@ -111,7 +111,7 @@ void main() {
     });
 
     test('a wrong-key open against an intact file never results in file deletion '
-        '(TASK-252: all three sidecars -- wal, shm AND journal)', () async {
+        '(all three sidecars -- wal, shm AND journal)', () async {
       final dbFile = File(p.join(dir.path, 'bgdude_encrypted.db'));
       await dbFile.writeAsBytes([1, 2, 3, 4]); // stand-in for real encrypted bytes
       final wal = File('${dbFile.path}-wal')..writeAsBytesSync([5]);
@@ -163,7 +163,7 @@ void main() {
     });
 
     test(
-        'TASK-254: a repeated reset keeps only the latest backup, not every '
+        'a repeated reset keeps only the latest backup, not every '
         'past one', () async {
       final dbFile = File(p.join(dir.path, 'bgdude_encrypted.db'));
 
@@ -192,7 +192,7 @@ void main() {
     });
   });
 
-  group('database downgrade guard (TASK-199)', () {
+  group('database downgrade guard', () {
     late Directory dir;
 
     setUp(() async {
@@ -243,7 +243,7 @@ void main() {
     });
   });
 
-  group('salvageExportJson (TASK-192)', () {
+  group('salvageExportJson', () {
     // Uses a plain unencrypted in-memory AppDatabase — this exercises the real
     // per-table dump logic without needing SQLCipher (which can't run on this host;
     // see the file-level note above).
@@ -269,7 +269,7 @@ void main() {
     });
   });
 
-  group('writeSalvageExportFile (TASK-254)', () {
+  group('writeSalvageExportFile', () {
     late Directory dir;
 
     setUp(() async {
@@ -325,7 +325,7 @@ void main() {
     });
   });
 
-  group('quick_check gating (TASK-254)', () {
+  group('quick_check gating', () {
     late Directory dir;
 
     setUp(() async {
@@ -351,7 +351,7 @@ void main() {
         () async {
       final dbFile = File(p.join(dir.path, 'bgdude_encrypted.db'));
       // 8 days ago -- past the 7-day interval. quickCheckDue itself compares
-      // against the real wall clock (TASK-39 hasn't injected a clock yet), so
+      // against the real wall clock (no injected clock yet), so
       // anchoring this to a fixed instant wouldn't actually test the real
       // comparison -- this is genuinely relative-to-now on purpose.
       final stale = DateTime.now() // now-ok: quickCheckDue reads the real clock

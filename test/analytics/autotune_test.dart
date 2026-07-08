@@ -109,7 +109,7 @@ void main() {
 
     test(
         'a hand-specified linear glucose fall (independent of InsulinModel) '
-        'recovers a multiplier near the hand-derived expected value (TASK-174)',
+        'recovers a multiplier near the hand-derived expected value',
         () {
       // The other cases above build their "ground truth" CGM trace by calling
       // the SAME InsulinModel Autotune later compares against (`iob.total(...)`),

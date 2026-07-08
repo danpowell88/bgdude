@@ -32,7 +32,7 @@ void main() {
       expect(calc.compute(cgm).gri, closeTo(30, 1e-6));
     });
 
-    test('a mixed trace pins GRI to a hand-calculated literal (TASK-160)', () {
+    test('a mixed trace pins GRI to a hand-calculated literal', () {
       // 100 readings: 5 at 50 (<54), 5 at 60 (54-69), 60 at 120 (in range),
       // 20 at 200 (181-250), 10 at 300 (>250).
       // GRI = 3.0*5 + 2.4*5 + 1.6*10 + 0.8*20 = 15 + 12 + 16 + 16 = 59.
@@ -48,7 +48,7 @@ void main() {
   });
 
   group('LBGI / HBGI', () {
-    // TASK-160: hand-computed, MODEL-INDEPENDENT anchors (the old test copied the
+    // Hand-computed, MODEL-INDEPENDENT anchors (the old test copied the
     // production expression verbatim and compared it to itself, so a constant
     // regression like 1.084 -> 1.026 passed). Derivations:
     //   f(bg) = 1.509*(ln(bg)^1.084 - 5.381); risk = 10*f^2 on the matching side.

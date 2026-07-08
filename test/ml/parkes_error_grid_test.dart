@@ -1,13 +1,13 @@
 import 'package:bgdude/ml/parkes_error_grid.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// TASK-26: reference points for each Parkes (Consensus) zone, Type 1 diabetes,
+/// Reference points for each Parkes (Consensus) zone, Type 1 diabetes,
 /// hand-verified against the zone polygons ported from the peer-reviewed `ega` R
 /// package (github.com/cran/ega — itself citing Parkes et al. 2000 and Pfützner et
 /// al. 2013). Mirrors the pinning style already used for the Clarke grid
-/// (metrics_test.dart, TASK-160).
+/// (metrics_test.dart).
 void main() {
-  group('ParkesErrorGrid (TASK-26)', () {
+  group('ParkesErrorGrid', () {
     const grid = ParkesErrorGrid();
 
     test('the identity line is zone A', () {
@@ -39,7 +39,7 @@ void main() {
       expect(grid.classify(10, 200), ParkesZone.e);
     });
 
-    // TASK-245: the lower half (predicted < reference -- under-prediction, i.e.
+    // The lower half (predicted < reference -- under-prediction, i.e.
     // missing a real high) had zero pinned points despite being the subtlest
     // extrapolated boundary. Points below are chosen directly from the same Table 1
     // polygon vertices already cited above the class (_zoneBLower/_zoneCLower/

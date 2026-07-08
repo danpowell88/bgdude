@@ -1,6 +1,6 @@
-/// TASK-211: pins the failure-handling behaviour of `AlertService.onSnapshot` (see
+/// Pins the failure-handling behaviour of `AlertService.onSnapshot` (see
 /// `lib/state/providers.dart`) that today only exists as an unpinned convention — a
-/// refactor (e.g. another TASK-116-style extraction) could silently invert the
+/// refactor (e.g. another similar extraction) could silently invert the
 /// show/markFired order, or let one category's exception abort the rest of the cycle,
 /// without any test failing. Nothing here changes behaviour; every assertion documents
 /// what already happens.
@@ -70,7 +70,7 @@ void main() {
           .overrideWithValue(includeGlucoseState ? urgentLowState() : null),
       calibratedForecastsProvider.overrideWithValue(forecasts),
       // rescueCarbAdviceProvider (unused by these tests) and effectiveLowThresholdProvider
-      // (TASK-231: now read directly by onSnapshot) both otherwise pull in
+      // (now read directly by onSnapshot) both otherwise pull in
       // recentAnnotationsProvider -> the real dayHistoryControllerProvider, which
       // outlives a single onSnapshot() call and trips over container.dispose().
       rescueCarbAdviceProvider.overrideWithValue(null),

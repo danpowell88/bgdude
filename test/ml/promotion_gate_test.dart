@@ -1,4 +1,4 @@
-/// TASK-130: the promotion gate judges each horizon on its own evidence — pooled
+/// The promotion gate judges each horizon on its own evidence — pooled
 /// stats let a candidate that improves the short horizon but regresses the
 /// clinically important long one ship. Promotion is all-pass across trained
 /// horizons (one persisted blob; no per-horizon promotion).

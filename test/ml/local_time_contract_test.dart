@@ -1,4 +1,4 @@
-/// TASK-131: the local wall-clock contract for time-of-day features. UTC
+/// The local wall-clock contract for time-of-day features. UTC
 /// timestamps (e.g. parsed Nightscout ISO strings) must be converted ONCE at
 /// ingest; the ml boundary asserts against leaks; and bucketing is by wall
 /// clock, so the same local time lands in the same bucket across a DST change.

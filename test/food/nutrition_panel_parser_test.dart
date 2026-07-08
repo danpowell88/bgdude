@@ -143,7 +143,7 @@ Protein 5.0g
     expect(p.sugars.per100g, closeTo(9.0, 0.01));
   });
 
-  test('TASK-27: a %DV column is not read as a macro value', () {
+  test('a %DV column is not read as a macro value', () {
     // US single-column with a Daily Value % after the grams. The 15% must be ignored.
     const text = '''
 Nutrition Facts
@@ -157,7 +157,7 @@ Total Fat 3g 4%
     expect(p.fat.perServe, closeTo(3.0, 0.01)); // 3g, NOT 4%
   });
 
-  test('TASK-27: an ml serving size is captured', () {
+  test('an ml serving size is captured', () {
     const text = '''
 Nutrition Information
 Serving size: 250ml
@@ -167,7 +167,7 @@ Carbohydrate 11.0g
     expect(p.servingSizeG, closeTo(250.0, 0.01)); // 1 ml ≈ 1 g
   });
 
-  test('TASK-27: EU salt (grams) is converted to sodium (mg) ×400', () {
+  test('EU salt (grams) is converted to sodium (mg) ×400', () {
     const text = '''
 Nutrition (per 100g)
 Carbohydrate 60g
@@ -177,7 +177,7 @@ Salt 0.5g
     expect(p.sodiumMg.per100g, closeTo(200.0, 0.5)); // 0.5 g salt × 400
   });
 
-  test('TASK-27: combined kJ/kcal energy prefers kJ', () {
+  test('combined kJ/kcal energy prefers kJ', () {
     const text = '''
 Nutrition (per 100g)
 Energy 1200kJ 287kcal

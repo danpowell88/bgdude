@@ -180,7 +180,7 @@ void main() {
     });
   });
 
-  group('DayEvent.copyWith (TASK-275)', () {
+  group('DayEvent.copyWith', () {
     final base = DayEvent(
       id: '9',
       type: DayEventType.high,
@@ -218,7 +218,7 @@ void main() {
     });
   });
 
-  group('DayEventType.label / emoji (TASK-275)', () {
+  group('DayEventType.label / emoji', () {
     test('every type has a distinct, non-empty label and emoji', () {
       final labels = <String>{};
       final emojis = <String>{};
@@ -233,7 +233,7 @@ void main() {
     });
   });
 
-  group('IgnoreReason.label / annotationKind (TASK-275)', () {
+  group('IgnoreReason.label / annotationKind', () {
     test('every reason has a distinct, non-empty label', () {
       final labels = IgnoreReason.values.map((r) => r.label).toSet();
       expect(labels, hasLength(IgnoreReason.values.length));
@@ -255,7 +255,7 @@ void main() {
     });
   });
 
-  group('relevantReasons coverage for every type (TASK-275)', () {
+  group('relevantReasons coverage for every type', () {
     test('every DayEventType has at least one relevant reason, and "other" is '
         'always offered', () {
       for (final t in DayEventType.values) {
