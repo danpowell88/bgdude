@@ -5,7 +5,7 @@ status: Done
 assignee:
   - Claude
 created_date: '2026-07-06 22:12'
-updated_date: '2026-07-08 00:17'
+updated_date: '2026-07-08 02:57'
 labels:
   - testing
   - infra
@@ -80,6 +80,12 @@ AC#3: the file list lives in tools/run_functional_integration_tests.sh (TASK-220
 AC#4: documented on this task (this comment + the workflow's own header comment). Could NOT add a reciprocal comment on TASK-159 -- it's archived/completed and  returns 'not found' (the CLI doesn't reach backlog/completed/*.md), and CLAUDE.md forbids hand-editing backlog files directly. Documenting fully on the reachable task rather than hand-editing the archived one.
 
 Pipeline: flutter analyze clean (workflow/script/README changes only -- no Dart/native code touched by TASK-219 itself, verified separately for TASK-280's actual code fix).
+---
+
+author: Claude
+created: 2026-07-08 02:57
+---
+Final confirmation: run 28912128406 (dispatched fresh, left completely untouched to its own 45-min timeout) shows app_test.dart's full 13-test suite genuinely passing (🎉 13 tests passed. at 02:16:35) on GitHub's real cloud emulator. The workflow is proven functional end-to-end, not just written. Separately, that same run's log surfaced a genuine new finding -- integration_test/chaos_navigation_test.dart hangs after installing with zero output, consuming the rest of the 45-min budget -- filed as TASK-291 with a first mitigation (bounded timeout + step logging) rather than blocking this ticket on it, since TASK-219's own ACs (the workflow infrastructure itself) are fully met.
 ---
 <!-- COMMENTS:END -->
 
