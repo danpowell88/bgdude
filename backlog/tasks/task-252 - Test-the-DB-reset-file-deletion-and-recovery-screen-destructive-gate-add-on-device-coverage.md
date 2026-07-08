@@ -7,7 +7,7 @@ status: Blocked
 assignee:
   - Claude
 created_date: '2026-07-07 14:28'
-updated_date: '2026-07-07 22:40'
+updated_date: '2026-07-08 03:01'
 labels:
   - detail-needed
 milestone: m-8
@@ -64,6 +64,12 @@ author: Claude
 created: 2026-07-07 22:40
 ---
 Blocked: AC#3's integration_test/db_recovery_screen_test.dart is already written but genuinely unexecuted -- needs a real emulator run to confirm the two-dialog destructive-reset gate on-device. AC#1/#2 are done. Unblocked by: working emulator connectivity.
+---
+
+author: Claude
+created: 2026-07-08 03:01
+---
+Found + fixed a related gap while checking this ticket's blocker: integration_test/db_recovery_screen_test.dart (AC#3's on-device test, already written) was never actually added to tools/run_functional_integration_tests.sh/.ps1 -- the canonical file list TASK-219's nightly emulator workflow drives. It would never have run in CI even once the workflow itself was proven functional. Added it to both scripts (kept in sync per their own header comment). Confirmed it's deterministic/network-free (ProviderScope overrides only, no OCR/network) so it belongs in the list alongside the others. Staying Blocked until a dispatch that includes it in the run actually reports a result -- the run in flight now (28914262834) was dispatched before this fix landed, so it won't pick this file up; the next one will.
 ---
 <!-- COMMENTS:END -->
 

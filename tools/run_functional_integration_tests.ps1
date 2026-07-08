@@ -31,6 +31,7 @@ Write-Host "Using device: $Device"
 $Files = @(
   "integration_test/app_test.dart",
   "integration_test/chaos_navigation_test.dart",
+  "integration_test/db_recovery_screen_test.dart",
   "integration_test/features_flows_test.dart",
   "integration_test/features_protocol_explorer_test.dart",
   "integration_test/features_reports_test.dart",

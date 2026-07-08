@@ -1,10 +1,10 @@
 ---
 id: TASK-235
 title: Fix the three sibling tap-miss sites; extract a tapListTile helper
-status: Blocked
+status: Done
 assignee: []
 created_date: '2026-07-07 07:48'
-updated_date: '2026-07-07 23:28'
+updated_date: '2026-07-08 02:59'
 labels:
   - code-health
   - testing
@@ -61,6 +61,12 @@ Related finding, NOT fixed here (would touch many pre-existing passing tests wit
 
 Pipeline: build_runner build, flutter analyze clean, flutter test test/ 1150/1150 green (integration_test/ isnt in that scope), flutter build apk --debug succeeded. No native Kotlin, no user-guide update (test-only change).
 ---
+
+author: Claude
+created: 2026-07-08 02:59
+---
+Unblocked: TASK-219's nightly emulator workflow is now proven genuinely functional via real cloud dispatches (this session's earlier local emulator-connectivity limitation doesn't apply there). Run 28912128406 (untouched, ran to its own natural conclusion) shows app_test.dart's 13 tests passing cleanly, including 'settings exposes accuracy, health sync and nightscout', 'therapy profile editor opens and lists a segment', and 'advanced/model internals screen renders sections' -- the three sites this ticket routed through the new tapListTile helper (plus the already-fixed Diagnostics log site). No native Kotlin in this change, so DoD#5 is vacuously satisfied (nothing to test).
+---
 <!-- COMMENTS:END -->
 
 ## Definition of Done
@@ -69,7 +75,7 @@ Pipeline: build_runner build, flutter analyze clean, flutter test test/ 1150/115
 - [x] #2 flutter analyze clean
 - [x] #3 flutter test test/ green
 - [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
 - [ ] #6 doc/user-guide.html updated when the change is user-visible
 - [ ] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->
