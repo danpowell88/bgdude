@@ -42,4 +42,85 @@ class GarminSenderTest {
         assertNull(health["lastSuccessAtMs"])
         assertEquals(0, health["consecutiveFailures"])
     }
+
+    // TASK-264: a typical user installs only ONE of the three watch targets --
+    // send() pushes to all three every cycle, so the other two structurally
+    // fail every time ("app not installed"). Before this fix that shared one
+    // consecutiveFailures counter, so the row flapped red purely on async
+    // callback ordering even though delivery to the installed target was
+    // working perfectly. These exercise the aggregation in health() directly
+    // (recordSendSuccess/recordSendFailure are internal for exactly this --
+    // send() itself can't be driven without a real Connect IQ SDK handshake).
+
+    @Test
+    fun `one succeeding target plus two not-installed targets reads healthy`() {
+        val sender = GarminSender(app)
+
+        sender.recordSendSuccess(GarminSender.WATCH_FACE_UUID)
+        sender.recordSendFailure(GarminSender.WATCH_APP_UUID)
+        sender.recordSendFailure(GarminSender.DATA_FIELD_UUID)
+        val health = sender.health()
+
+        assertEquals(0, health["consecutiveFailures"])
+        assertEquals(
+            "the row must report the installed target's success, not stay null "
+                + "because two other targets never succeeded",
+            true, health["lastSuccessAtMs"] != null,
+        )
+    }
+
+    @Test
+    fun `it stays healthy across repeated cycles of one success, two not-installed`() {
+        val sender = GarminSender(app)
+
+        repeat(5) {
+            sender.recordSendSuccess(GarminSender.WATCH_FACE_UUID)
+            sender.recordSendFailure(GarminSender.WATCH_APP_UUID)
+            sender.recordSendFailure(GarminSender.DATA_FIELD_UUID)
+        }
+
+        assertEquals(0, sender.health()["consecutiveFailures"])
+    }
+
+    @Test
+    fun `all three targets failing together is a real problem, not masked`() {
+        val sender = GarminSender(app)
+
+        sender.recordSendFailure(GarminSender.WATCH_APP_UUID)
+        sender.recordSendFailure(GarminSender.WATCH_FACE_UUID)
+        sender.recordSendFailure(GarminSender.DATA_FIELD_UUID)
+
+        assertEquals(
+            "when EVERY target fails, that's a genuine send-path problem and "
+                + "must still surface as unhealthy",
+            1, sender.health()["consecutiveFailures"],
+        )
+        assertNull(sender.health()["lastSuccessAtMs"])
+    }
+
+    @Test
+    fun `recordSendFailureAllTargets advances every target's streak together`() {
+        val sender = GarminSender(app)
+
+        sender.recordSendFailureAllTargets()
+        sender.recordSendFailureAllTargets()
+
+        assertEquals(2, sender.health()["consecutiveFailures"])
+    }
+
+    @Test
+    fun `a later failure on the previously-healthy target does not erase its prior success time`() {
+        val sender = GarminSender(app)
+
+        sender.recordSendSuccess(GarminSender.WATCH_FACE_UUID)
+        val afterSuccess = sender.health()["lastSuccessAtMs"]
+        sender.recordSendFailure(GarminSender.WATCH_FACE_UUID)
+        val afterFailure = sender.health()["lastSuccessAtMs"]
+
+        assertEquals(
+            "a target's own failure only resets ITS OWN streak, not the "
+                + "recorded time of its last real success",
+            afterSuccess, afterFailure,
+        )
+    }
 }

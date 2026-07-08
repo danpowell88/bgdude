@@ -41,24 +41,65 @@ class GarminSender(private val context: Context) {
      * failure count, exposed to Dart via PumpBridge's "garminHealth" method call so
      * the system-health screen can show whether watch delivery is actually working
      * instead of only ever logging failures.
+     *
+     * TASK-264: tracked PER TARGET (keyed by [IQApp.getApplicationId]), not as one
+     * shared counter. [send] pushes to all three watchTargets (widget/watch face/data
+     * field) every cycle, but a typical user has only ONE installed -- with a single
+     * shared counter, that produces one success plus two app-not-installed failures
+     * per cycle, and the final value depended purely on async callback ordering
+     * (Connect IQ's IQMessageStatus has no distinct "not installed" value to filter
+     * on instead -- confirmed via the SDK jar, see backlog comment). [health] then
+     * aggregates across targets so one consistently-working target reads as healthy
+     * regardless of how many of the others aren't installed. [targetLock] guards the
+     * map since callbacks for different targets can land on different threads.
+     *
+     * `internal` (not `private`): [send] can't be driven in a Robolectric unit test
+     * without a real Connect IQ SDK handshake (see GarminSenderTest's file doc), so
+     * these are exposed for tests to call directly and assert the aggregation in
+     * [health] -- same pattern as PumpCommHandler's `internal var bluetoothHandler`.
      */
-    @Volatile private var lastSuccessAtMs: Long? = null
-    @Volatile private var consecutiveFailures: Int = 0
+    internal data class TargetHealth(var lastSuccessAtMs: Long? = null, var consecutiveFailures: Int = 0)
 
-    private fun recordSendSuccess() {
-        lastSuccessAtMs = System.currentTimeMillis()
-        consecutiveFailures = 0
+    private val targetLock = Any()
+    // Populated lazily, one entry per applicationId the first time it actually records
+    // an event -- NOT eagerly pre-populated from watchTargets at construction. An eager
+    // pre-population would leave a permanent zero-failure entry for a target that has
+    // never actually been recorded through (e.g. under a key that doesn't exactly match
+    // what a later caller uses), silently pulling the aggregate's minOf down to 0 even
+    // when the intended target genuinely never sent. Before any send, an empty map
+    // correctly yields the same "nothing sent yet" default (null / 0) as before.
+    private val targetHealth: MutableMap<String, TargetHealth> = LinkedHashMap()
+
+    internal fun recordSendSuccess(applicationId: String) = synchronized(targetLock) {
+        val t = targetHealth.getOrPut(applicationId) { TargetHealth() }
+        t.lastSuccessAtMs = System.currentTimeMillis()
+        t.consecutiveFailures = 0
     }
 
-    private fun recordSendFailure() {
-        consecutiveFailures += 1
+    internal fun recordSendFailure(applicationId: String) = synchronized(targetLock) {
+        val t = targetHealth.getOrPut(applicationId) { TargetHealth() }
+        t.consecutiveFailures += 1
     }
 
-    /** Current health snapshot for the Dart-side system-health surface. */
-    fun health(): Map<String, Any?> = mapOf(
-        "lastSuccessAtMs" to lastSuccessAtMs,
-        "consecutiveFailures" to consecutiveFailures,
-    )
+    internal fun recordSendFailureAllTargets() = synchronized(targetLock) {
+        watchTargets.forEach { targetHealth.getOrPut(it.applicationId) { TargetHealth() }.consecutiveFailures += 1 }
+    }
+
+    /**
+     * Current health snapshot for the Dart-side system-health surface. lastSuccessAtMs
+     * is the most recent successful delivery to ANY target; consecutiveFailures is the
+     * MINIMUM across targets, so it stays 0 as long as at least one target's most
+     * recent send succeeded -- it only goes nonzero when EVERY target failed together,
+     * which is a real send-path problem (SDK/BLE/device issue), not "most targets
+     * aren't installed" (AC#1/#2/#3).
+     */
+    fun health(): Map<String, Any?> = synchronized(targetLock) {
+        val states = targetHealth.values
+        mapOf(
+            "lastSuccessAtMs" to states.mapNotNull { it.lastSuccessAtMs }.maxOrNull(),
+            "consecutiveFailures" to (states.minOfOrNull { it.consecutiveFailures } ?: 0),
+        )
+    }
 
     fun initialize() {
         if (initialized) return
@@ -105,23 +146,27 @@ class GarminSender(private val context: Context) {
                 for (app in watchTargets) {
                     ciq.sendMessage(device, app, payload) { _, _, status ->
                         if (status == ConnectIQ.IQMessageStatus.SUCCESS) {
-                            recordSendSuccess()
+                            recordSendSuccess(app.applicationId)
                         } else {
-                            recordSendFailure()
+                            recordSendFailure(app.applicationId)
                         }
                         Log.d(TAG, "watch send ${app.applicationId} → $status")
                     }
                 }
             }
             lastSentAtMs = now
+            // These three catches are SDK-level failures before any per-app message was
+            // even attempted (e.g. ciq.connectedDevices itself throwing) -- there is no
+            // per-target result to attribute, so every target's streak advances together,
+            // same as a genuinely down send path should.
         } catch (e: InvalidStateException) {
-            recordSendFailure()
+            recordSendFailureAllTargets()
             Log.i(TAG, "Connect IQ not in a sendable state", e)
         } catch (e: ServiceUnavailableException) {
-            recordSendFailure()
+            recordSendFailureAllTargets()
             Log.i(TAG, "Garmin Connect service unavailable", e)
         } catch (t: Throwable) {
-            recordSendFailure()
+            recordSendFailureAllTargets()
             Log.w(TAG, "watch send failed", t)
         }
     }
