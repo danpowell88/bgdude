@@ -292,6 +292,32 @@ Future<void> retireDatabaseFile({File? file}) async {
     final side = File('${file.path}$suffix');
     if (await side.exists()) await side.rename('${side.path}.bak-$stamp');
   }
+  await _pruneOldBackups(file, keepStamp: stamp);
+}
+
+/// TASK-254: a reset the user repeats (e.g. still troubleshooting) would otherwise
+/// leave every past `.bak-<epoch>` copy of the (large, years-of-CGM-data) encrypted
+/// DB on disk forever. Keeps only the just-created backup set (identified by
+/// [keepStamp]) and deletes every OLDER `.bak-*` file for [file]'s base name and its
+/// WAL/shm/journal sidecars -- one retained backup is enough to recover from the
+/// most recent reset without accumulating unbounded copies.
+Future<void> _pruneOldBackups(File file, {required int keepStamp}) async {
+  final dir = file.parent;
+  if (!await dir.exists()) return;
+  final baseName = p.basename(file.path);
+  final keepSuffix = '.bak-$keepStamp';
+  await for (final entry in dir.list()) {
+    if (entry is! File) continue;
+    final name = p.basename(entry.path);
+    if (!name.startsWith(baseName) || !name.contains('.bak-')) continue;
+    if (name.endsWith(keepSuffix)) continue;
+    try {
+      await entry.delete();
+    } catch (_) {
+      // Best-effort cleanup -- a locked/already-gone file must not block the reset
+      // that's already succeeded.
+    }
+  }
 }
 
 /// Opens the encrypted database. The passphrase is stored in the platform keystore via

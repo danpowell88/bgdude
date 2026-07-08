@@ -13,6 +13,7 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import 'database.dart';
@@ -114,21 +115,66 @@ class DbOpenResult {
   final AppDatabase? db;
 }
 
+/// TASK-254: `PRAGMA quick_check` is a page-by-page scan and every page is
+/// SQLCipher-decrypted -- for a tool that accumulates years of CGM data (~288
+/// rows/day) that's a real, growing launch cost, and it ran on EVERY cold start
+/// (including the healthy path) even though the cheap `select 1` read just above it
+/// already catches the key/header failure modes the recovery flow most needs. Gate
+/// the deeper scan to once every [_quickCheckInterval] instead.
+const _quickCheckInterval = Duration(days: 7);
+
+/// A plain sentinel file (not DB-backed -- this runs before `KvStore.init`, and it
+/// must survive independently of whether the DB itself is healthy) recording when
+/// `quick_check` last completed cleanly. Missing (first run, or the DB file itself
+/// is new/was reset) or stale means "due"; a corrupted result never updates it, so a
+/// known-bad DB keeps being re-checked every launch until it's fixed, not just once
+/// every [_quickCheckInterval]. Not private (unlike the app's usual convention) so
+/// the pure file-based gating logic is directly testable without needing a real
+/// SQLCipher-backed database, which this test host can't run.
+@visibleForTesting
+File quickCheckMarker(File dbFile) => File('${dbFile.path}.quick_check_at');
+
+@visibleForTesting
+Future<bool> quickCheckDue(File dbFile) async {
+  final marker = quickCheckMarker(dbFile);
+  if (!await marker.exists()) return true;
+  final lastMs = int.tryParse((await marker.readAsString()).trim());
+  if (lastMs == null) return true;
+  final last = DateTime.fromMillisecondsSinceEpoch(lastMs);
+  return DateTime.now().difference(last) > _quickCheckInterval;
+}
+
+@visibleForTesting
+Future<void> recordQuickCheckPassed(File dbFile) async {
+  try {
+    await quickCheckMarker(dbFile)
+        .writeAsString(DateTime.now().millisecondsSinceEpoch.toString());
+  } catch (_) {
+    // Best-effort -- a failed write just means quick_check runs again next launch,
+    // which is the safe direction to fail in.
+  }
+}
+
 /// Opens the encrypted database at [passphrase], running a first real read (proves the
-/// key) and then `PRAGMA quick_check` (proves deeper integrity) before handing back a
-/// ready-to-use repository. On any failure, classifies why via [classifyDbOpenFailure]
-/// and returns an in-memory fallback so the app still runs. [file] overrides the on-disk
-/// location for tests.
+/// key) and then, when due (TASK-254), `PRAGMA quick_check` (proves deeper integrity)
+/// before handing back a ready-to-use repository. On any failure, classifies why via
+/// [classifyDbOpenFailure] and returns an in-memory fallback so the app still runs.
+/// [file] overrides the on-disk location for tests.
 Future<DbOpenResult> openHistoryRepository(String passphrase, {File? file}) async {
+  final dbFile = file ?? await defaultDatabaseFile();
   AppDatabase? db;
   try {
     db = AppDatabase(openEncryptedDatabase(passphrase, file: file));
     await db.customSelect('select 1').get(); // first real read — proves the key
+    if (!await quickCheckDue(dbFile)) {
+      return DbOpenResult(repository: DriftHistoryRepository(db), db: db);
+    }
     try {
       final rows = await db.customSelect('PRAGMA quick_check').get();
       final ok = rows.isNotEmpty &&
           rows.first.data.values.first.toString().toLowerCase() == 'ok';
       if (ok) {
+        await recordQuickCheckPassed(dbFile);
         return DbOpenResult(repository: DriftHistoryRepository(db), db: db);
       }
       return DbOpenResult(
@@ -175,13 +221,59 @@ Future<Map<String, dynamic>> salvageExportJson(AppDatabase db) async {
   return out;
 }
 
-/// Writes [salvageExportJson]'s result to a file under [directory] and returns its
-/// path, ready to hand to the share sheet.
+/// Writes a table-by-table dump (the same shape [salvageExportJson] returns) to a
+/// file under [directory] and returns its path, ready to hand to the share sheet.
+///
+/// TASK-254: streams each table's rows directly to disk instead of building the
+/// same data as an in-memory Map (via [salvageExportJson]) and then encoding the
+/// WHOLE multi-table result as one big string -- for years of CGM history that
+/// held the entire dump in memory twice over. Peak memory here is bounded to one
+/// table's row list at a time, not the sum of every table plus its encoded copy.
+/// Also prunes any previous `bgdude_salvage_*.json` export left in [directory] --
+/// each recovery attempt otherwise leaves another full copy behind indefinitely.
 Future<File> writeSalvageExportFile(AppDatabase db,
     {required Directory directory}) async {
-  final data = await salvageExportJson(db);
+  await _pruneOldSalvageExports(directory);
   final stamp = DateTime.now().millisecondsSinceEpoch;
   final file = File('${directory.path}/bgdude_salvage_$stamp.json');
-  await file.writeAsString(const JsonEncoder.withIndent('  ').convert(data));
+  final sink = file.openWrite();
+  try {
+    sink.write('{\n');
+    var firstTable = true;
+    for (final table in db.allTables) {
+      final name = table.actualTableName;
+      sink.write(firstTable ? '  ' : ',\n  ');
+      firstTable = false;
+      sink.write('${jsonEncode(name)}: ');
+      try {
+        final rows = await db.customSelect('SELECT * FROM $name').get();
+        sink.write('[');
+        for (var i = 0; i < rows.length; i++) {
+          if (i > 0) sink.write(',');
+          sink.write(jsonEncode(rows[i].data));
+        }
+        sink.write(']');
+      } catch (e) {
+        sink.write(jsonEncode({'error': e.toString()}));
+      }
+    }
+    sink.write('\n}\n');
+  } finally {
+    await sink.close();
+  }
   return file;
+}
+
+/// Deletes any `bgdude_salvage_*.json` files already in [directory] -- best-effort,
+/// a locked/already-gone file must not block a fresh export from being written.
+Future<void> _pruneOldSalvageExports(Directory directory) async {
+  if (!await directory.exists()) return;
+  await for (final entry in directory.list()) {
+    if (entry is! File) continue;
+    final name = entry.uri.pathSegments.last;
+    if (!name.startsWith('bgdude_salvage_') || !name.endsWith('.json')) continue;
+    try {
+      await entry.delete();
+    } catch (_) {}
+  }
 }

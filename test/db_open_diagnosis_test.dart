@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:bgdude/data/database.dart';
@@ -160,6 +161,35 @@ void main() {
       await retireDatabaseFile(file: dbFile); // must not throw
       expect(dir.listSync(), isEmpty);
     });
+
+    test(
+        'TASK-254: a repeated reset keeps only the latest backup, not every '
+        'past one', () async {
+      final dbFile = File(p.join(dir.path, 'bgdude_encrypted.db'));
+
+      // Three resets in a row -- each time the file exists again by the point a
+      // real reset would happen (a fresh empty DB re-created after the previous
+      // retire, matching production: the app re-opens and re-creates the file).
+      for (var i = 0; i < 3; i++) {
+        await dbFile.writeAsBytes([i]);
+        await retireDatabaseFile(file: dbFile);
+        // Timestamps are millisecond-granularity; without a real gap, the 2nd
+        // and 3rd calls in the same test could land on the identical stamp as
+        // the 1st and "prune" would have nothing distinct to keep vs delete.
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+      }
+
+      final survivors = dir
+          .listSync()
+          .whereType<File>()
+          .where((f) => p.basename(f.path).startsWith('bgdude_encrypted.db.bak-'))
+          .toList();
+      expect(survivors, hasLength(1),
+          reason: 'only the most recent backup should remain -- three past '
+              'resets must not leave three full copies of the DB on disk');
+      // And it's genuinely the LATEST one (byte content from the 3rd write).
+      expect(await survivors.single.readAsBytes(), [2]);
+    });
   });
 
   group('database downgrade guard (TASK-199)', () {
@@ -236,6 +266,106 @@ void main() {
       // A table with no rows still dumps as an empty list, not an error.
       expect(dump, contains('bolus_events'));
       expect(dump['bolus_events'], isEmpty);
+    });
+  });
+
+  group('writeSalvageExportFile (TASK-254)', () {
+    late Directory dir;
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('bgdude_export_test');
+    });
+
+    tearDown(() async {
+      if (await dir.exists()) await dir.delete(recursive: true);
+    });
+
+    test('streams the same data salvageExportJson would, as valid JSON',
+        () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      await db.into(db.cgmReadings).insert(
+            CgmReadingsCompanion.insert(
+              time: DateTime(2026, 7, 4, 8),
+              mgdl: 120,
+            ),
+          );
+
+      final file = await writeSalvageExportFile(db, directory: dir);
+      final decoded = jsonDecode(await file.readAsString()) as Map;
+
+      expect(decoded, contains('cgm_readings'));
+      final cgmRows = decoded['cgm_readings'] as List;
+      expect(cgmRows, hasLength(1));
+      expect((cgmRows.single as Map)['mgdl'], 120);
+      expect(decoded, contains('bolus_events'));
+      expect(decoded['bolus_events'], isEmpty);
+    });
+
+    test(
+        'a second export prunes the first -- repeated recovery attempts do '
+        'not accumulate full DB copies', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+
+      final first = await writeSalvageExportFile(db, directory: dir);
+      expect(await first.exists(), isTrue);
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      final second = await writeSalvageExportFile(db, directory: dir);
+
+      expect(await first.exists(), isFalse,
+          reason: 'the previous export must be cleaned up, not left behind');
+      expect(await second.exists(), isTrue);
+      final exports = dir
+          .listSync()
+          .whereType<File>()
+          .where((f) => p.basename(f.path).startsWith('bgdude_salvage_'))
+          .toList();
+      expect(exports, hasLength(1));
+    });
+  });
+
+  group('quick_check gating (TASK-254)', () {
+    late Directory dir;
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('bgdude_quickcheck_test');
+    });
+
+    tearDown(() async {
+      if (await dir.exists()) await dir.delete(recursive: true);
+    });
+
+    test('due on first run (no marker yet)', () async {
+      final dbFile = File(p.join(dir.path, 'bgdude_encrypted.db'));
+      expect(await quickCheckDue(dbFile), isTrue);
+    });
+
+    test('not due right after a recorded pass', () async {
+      final dbFile = File(p.join(dir.path, 'bgdude_encrypted.db'));
+      await recordQuickCheckPassed(dbFile);
+      expect(await quickCheckDue(dbFile), isFalse);
+    });
+
+    test('due again once the marker is older than the check interval',
+        () async {
+      final dbFile = File(p.join(dir.path, 'bgdude_encrypted.db'));
+      // 8 days ago -- past the 7-day interval. quickCheckDue itself compares
+      // against the real wall clock (TASK-39 hasn't injected a clock yet), so
+      // anchoring this to a fixed instant wouldn't actually test the real
+      // comparison -- this is genuinely relative-to-now on purpose.
+      final stale = DateTime.now() // now-ok: quickCheckDue reads the real clock
+          .subtract(const Duration(days: 8))
+          .millisecondsSinceEpoch;
+      await quickCheckMarker(dbFile).writeAsString('$stale');
+      expect(await quickCheckDue(dbFile), isTrue);
+    });
+
+    test('a corrupt/unparseable marker is treated as due, not a crash',
+        () async {
+      final dbFile = File(p.join(dir.path, 'bgdude_encrypted.db'));
+      await quickCheckMarker(dbFile).writeAsString('not-a-timestamp');
+      expect(await quickCheckDue(dbFile), isTrue);
     });
   });
 }

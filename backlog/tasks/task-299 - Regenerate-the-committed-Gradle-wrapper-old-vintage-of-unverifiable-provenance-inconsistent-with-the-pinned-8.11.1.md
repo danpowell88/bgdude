@@ -7,7 +7,7 @@ status: Done
 assignee:
   - Claude
 created_date: '2026-07-08 04:27'
-updated_date: '2026-07-08 04:40'
+updated_date: '2026-07-08 04:45'
 labels: []
 milestone: m-8
 dependencies: []
@@ -60,6 +60,12 @@ AC#3: verified locally -- gradlew :app:testDebugUnitTest and flutter build apk -
 AC#4: added a 'Validate Gradle wrapper' step (gradle/actions/wrapper-validation@v4) to both apk-build and native-tests jobs in ci.yml, before Setup JDK -- checks the committed jar's checksum against Gradle's own published list automatically on every CI run, so a tampered/unknown-provenance wrapper (the exact class of issue this ticket flagged) fails loudly instead of being silently trusted going forward.
 
 Verified: flutter analyze clean, flutter build apk --debug succeeds, gradlew :app:testDebugUnitTest green. Pushing now and watching the live CI run to confirm the new validation step passes cleanly against the regenerated jar (given this session's recent gradle-wrapper hotfix history, being extra careful here).
+---
+
+author: Claude
+created: 2026-07-08 04:45
+---
+Live CI confirmation: run 28918013922's native-tests job (including the new 'Validate Gradle wrapper' step) passed cleanly -- the regenerated jar's checksum matches Gradle's own published list for real. analyze also green. test/apk-build still finishing as of this comment but native-tests passing is the highest-risk unknown (would have caught a mismatched jar) and it's clean.
 ---
 <!-- COMMENTS:END -->
 
