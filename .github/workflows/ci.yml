@@ -56,8 +56,15 @@ jobs:
           flutter-version: 3.44.4
           cache: true
 
+      # TASK-288: pub.dev resolution is a real network dependency -- retry a
+      # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        run: flutter pub get
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: flutter pub get
 
       # TASK-298: build_runner's own incremental-build/asset-digest cache
       # (not final output -- this repo commits only one generated file,
@@ -108,8 +115,15 @@ jobs:
           flutter-version: 3.44.4
           cache: true
 
+      # TASK-288: pub.dev resolution is a real network dependency -- retry a
+      # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        run: flutter pub get
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: flutter pub get
 
       # TASK-298: see the analyze job's identically-keyed cache step for
       # rationale. Every shard hits the same cache key (all 4 benefit from
@@ -221,8 +235,15 @@ jobs:
           flutter-version: 3.44.4
           cache: true
 
+      # TASK-288: pub.dev resolution is a real network dependency -- retry a
+      # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        run: flutter pub get
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: flutter pub get
 
       # TASK-298: see the analyze job's identically-keyed cache step for
       # rationale.
@@ -237,9 +258,16 @@ jobs:
       - name: Run code generation
         run: dart run build_runner build --delete-conflicting-outputs
 
-      # Pulls pumpx2/blessed from JitPack (network available).
+      # Pulls pumpx2/blessed from JitPack (network available) -- retry-wrapped
+      # (TASK-288) since a Maven/JitPack dependency-resolution blip is a
+      # transient network failure, not a build defect.
       - name: Build debug APK
-        run: flutter build apk --debug
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 15
+          max_attempts: 2
+          retry_wait_seconds: 15
+          command: flutter build apk --debug
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -281,8 +309,15 @@ jobs:
       # .flutter-plugins/.flutter-plugins-dependencies, which the Flutter
       # Gradle plugin reads to register plugin modules even for a
       # Kotlin-only test run.
+      # TASK-288: pub.dev resolution is a real network dependency -- retry a
+      # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        run: flutter pub get
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: flutter pub get
 
       # Native Kotlin unit tests (android/app/src/test) — BLOCKING
       # (TASK-159): ProtocolProbeTest guards the read-only-pump guarantee
@@ -290,12 +325,20 @@ jobs:
       # native suite must fail the build. local.properties is written
       # deterministically first (flutter-action exports FLUTTER_ROOT;
       # ANDROID_HOME / ANDROID_SDK_ROOT is set on the hosted runner).
+      # Retry-wrapped (TASK-288): the first invocation triggers Gradle's own
+      # dependency resolution (Maven/Google), a real network dependency
+      # distinct from the Kotlin compile/test work itself.
       - name: Native unit tests
-        run: |
-          FLUTTER_SDK="${FLUTTER_ROOT:-$(dirname "$(dirname "$(command -v flutter)")")}"
-          ANDROID_SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          if [ -z "$FLUTTER_SDK" ] || [ -z "$ANDROID_SDK" ]; then
-            echo "::error::Could not resolve FLUTTER_SDK ('$FLUTTER_SDK') or ANDROID_SDK ('$ANDROID_SDK')"; exit 1
-          fi
-          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_SDK" "$ANDROID_SDK" > android/local.properties
-          cd android && ./gradlew :app:testDebugUnitTest --no-daemon
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 2
+          retry_wait_seconds: 15
+          command: |
+            FLUTTER_SDK="${FLUTTER_ROOT:-$(dirname "$(dirname "$(command -v flutter)")")}"
+            ANDROID_SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+            if [ -z "$FLUTTER_SDK" ] || [ -z "$ANDROID_SDK" ]; then
+              echo "::error::Could not resolve FLUTTER_SDK ('$FLUTTER_SDK') or ANDROID_SDK ('$ANDROID_SDK')"; exit 1
+            fi
+            printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_SDK" "$ANDROID_SDK" > android/local.properties
+            cd android && ./gradlew :app:testDebugUnitTest --no-daemon

@@ -1,0 +1,9 @@
+# TASK-288: an explicit, documented per-test timeout so a hung test (e.g. a
+# network call that never returns) fails fast with a clear TimeoutException
+# instead of stalling until the CI job's own (much longer) timeout-minutes.
+# 30s matches package:test's own default -- this file makes that an
+# intentional, visible choice rather than an implicit one nothing guards.
+# Slower tests that legitimately need longer (chaos_navigation_test.dart,
+# nutrition_ocr_accuracy_test.dart) already set their own explicit
+# `timeout: const Timeout(...)` per test, which overrides this default.
+timeout: 30s
