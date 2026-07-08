@@ -121,8 +121,23 @@ run-on paragraph, and long prose paragraphs are unreadable there. Rules:
 - Wrap code identifiers/paths in backticks so they don't italicise (underscores).
 
 ## Git
-Commit directly to `main` (no feature branches) and push to `main` when a remote exists.
-See the memory `git-workflow`.
+**Concurrent sessions isolate via worktrees + branches.** When more than one session/agent
+writes to this repo at once (the implementer session, the review/meta loops, any file-mutating
+agent), each works in its **own git worktree on its own short-lived branch off `main`** — this
+is what prevents two sessions racing on one working tree (the "file modified since read" /
+manually-scoped-commit problem). Workflow:
+- `git worktree add ../bgdude-<purpose> -b <purpose>` off the latest `main` (e.g.
+  `../bgdude-review`, `../bgdude-impl`). One branch per worktree — git refuses to check out
+  `main` in two worktrees at once, which is exactly why concurrent writers need branches.
+- Commit to the branch; run the full Verify-the-build pipeline; integrate into `main` by
+  merge/PR when green. Keep branches short-lived — `git worktree remove` + delete the branch
+  after merge.
+- Subagents that **mutate files in parallel** take `isolation: "worktree"` on the Agent tool;
+  read-only reviewers don't need it.
+
+**Solo fast-path:** a single session with no concurrent writer still commits **straight to
+`main`** and pushes — the worktree/branch ceremony exists only to isolate concurrent writers,
+not to add friction when there's one. See the memory `git-workflow` and `backlog/decisions/`.
 
 ## Verify the build after EVERY task (must match CI — CI is the source of truth)
 The GitHub Actions workflow (`.github/workflows/ci.yml`) is what decides if `main` is
