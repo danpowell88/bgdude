@@ -39,12 +39,29 @@ $Files = @(
   "integration_test/nutrition_ocr_accuracy_test.dart"
 )
 
+# TASK-292: run every file regardless of an earlier one failing -- silently stopping
+# at the first failure (or, without explicit $LASTEXITCODE checks, PowerShell not
+# stopping but still claiming "all passed" at the end) would hide pass/fail signal
+# for every file after it.
+$passed = @()
+$failed = @()
 foreach ($f in $Files) {
   if ($SkipNetwork -and $f -like "*nutrition_ocr_accuracy_test.dart") {
     Write-Host "--- skipping $f (-SkipNetwork) ---"
     continue
   }
   Write-Host "--- flutter test $f -d $Device ---"
-  flutter test $f -d $Device
+  & flutter test $f -d $Device
+  if ($LASTEXITCODE -eq 0) { $passed += $f } else { $failed += $f }
+}
+
+Write-Host ""
+Write-Host "=== Summary ==="
+foreach ($f in $passed) { Write-Host "  PASS  $f" -ForegroundColor Green }
+foreach ($f in $failed) { Write-Host "  FAIL  $f" -ForegroundColor Red }
+
+if ($failed.Count -gt 0) {
+  Write-Host "$($failed.Count) of $($passed.Count + $failed.Count) functional integration files failed." -ForegroundColor Red
+  exit 1
 }
 Write-Host "All functional integration tests passed." -ForegroundColor Green

@@ -43,12 +43,36 @@ FILES=(
   "integration_test/nutrition_ocr_accuracy_test.dart"
 )
 
+# TASK-292: run every file regardless of an earlier one failing -- a plain `set -e`
+# loop aborted the whole script on the FIRST failure, silently hiding pass/fail signal
+# for every file scheduled after it (confirmed: a chaos_navigation_test.dart failure
+# meant db_recovery_screen_test.dart, features_*_test.dart never ran at all).
+PASSED=()
+FAILED=()
 for f in "${FILES[@]}"; do
   if [[ -n "$SKIP_NETWORK" && "$f" == *nutrition_ocr_accuracy_test.dart ]]; then
     echo "--- skipping $f (--skip-network) ---"
     continue
   fi
   echo "--- flutter test $f -d $DEVICE ---"
-  flutter test "$f" -d "$DEVICE"
+  if flutter test "$f" -d "$DEVICE"; then
+    PASSED+=("$f")
+  else
+    FAILED+=("$f")
+  fi
 done
+
+echo ""
+echo "=== Summary ==="
+for f in "${PASSED[@]:-}"; do
+  [[ -n "$f" ]] && echo "  PASS  $f"
+done
+for f in "${FAILED[@]:-}"; do
+  [[ -n "$f" ]] && echo "  FAIL  $f"
+done
+
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+  echo "${#FAILED[@]} of $((${#PASSED[@]} + ${#FAILED[@]})) functional integration files failed."
+  exit 1
+fi
 echo "All functional integration tests passed."
