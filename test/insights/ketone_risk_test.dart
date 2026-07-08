@@ -2,7 +2,7 @@ import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/insights/ketone_risk.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/samples.dart';
+import '../support/samples.dart';
 
 List<CgmSample> _sustainedHigh(DateTime now, double mgdl) =>
     sustained(end: now, mgdl: mgdl);

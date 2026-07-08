@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'support/faults.dart';
+import '../support/faults.dart';
 
 /// TASK-33 (AC#2): the pairing dialog's error SnackBar is transient — a user who
 /// dismisses it, or isn't looking at the screen when a scan/pairing-window timeout

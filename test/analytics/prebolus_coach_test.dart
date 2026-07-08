@@ -4,7 +4,7 @@ import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/meals/meal_library.dart';
 import 'package:bgdude/meals/prebolus_coach.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'support/samples.dart';
+import '../support/samples.dart';
 
 void main() {
   final now = DateTime(2026, 7, 4, 18);

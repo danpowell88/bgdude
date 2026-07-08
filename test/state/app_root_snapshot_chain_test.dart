@@ -26,8 +26,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
-import 'support/faults.dart';
-import 'support/samples.dart';
+import '../support/faults.dart';
+import '../support/samples.dart';
 
 class _ThrowingHttpClient extends http.BaseClient {
   @override

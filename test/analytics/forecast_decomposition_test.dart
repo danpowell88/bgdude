@@ -3,7 +3,7 @@ import 'package:bgdude/analytics/predictor.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/samples.dart';
+import '../support/samples.dart';
 
 /// TASK-59 AC#1: the forecast is attributed to insulin / carbs / momentum by re-running
 /// with each input zeroed.

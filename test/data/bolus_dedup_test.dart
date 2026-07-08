@@ -6,7 +6,7 @@ import 'package:bgdude/state/day_history_controller.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/samples.dart';
+import '../support/samples.dart';
 
 /// TASK-10: bolus/carb/basal inserts dedupe, and a live snapshot after a restart doesn't
 /// re-insert the pump's already-saved last bolus.

@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'support/faults.dart';
+import '../support/faults.dart';
 
 /// Exercises the background jobs (AppJobs) end-to-end against an in-memory repository
 /// seeded with a simulated day — verifying they run without throwing and that the

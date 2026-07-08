@@ -13,7 +13,7 @@ import 'package:bgdude/reports/glucose_report.dart';
 import 'package:bgdude/reports/report_range.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/large_history.dart';
+import '../support/large_history.dart';
 
 void main() {
   final start = DateTime(2025, 7, 8);

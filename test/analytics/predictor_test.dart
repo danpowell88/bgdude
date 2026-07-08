@@ -9,7 +9,7 @@ library;
 import 'package:bgdude/analytics/predictor.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/samples.dart';
+import '../support/samples.dart';
 
 void main() {
   final now = DateTime(2026, 7, 4, 12);

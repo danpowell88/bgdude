@@ -11,7 +11,7 @@ import 'package:bgdude/state/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/faults.dart';
+import '../support/faults.dart';
 
 void main() {
   setUp(KvStore.useMemory);

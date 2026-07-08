@@ -17,7 +17,7 @@ import 'package:bgdude/insights/workout_classifier.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/restart_simulation.dart';
+import '../support/restart_simulation.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

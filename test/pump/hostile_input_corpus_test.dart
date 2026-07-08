@@ -4,7 +4,7 @@ import 'package:bgdude/meals/meal_library.dart';
 import 'package:bgdude/pump/pump_snapshot.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/hostile_inputs.dart';
+import '../support/hostile_inputs.dart';
 
 /// TASK-193: applies the shared hostile-input corpus to every parser named in the
 /// ticket. None of these should ever let an exception escape past a synchronous

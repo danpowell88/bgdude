@@ -2,7 +2,7 @@ import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/insights/care_detectors.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/samples.dart';
+import '../support/samples.dart';
 
 void main() {
   final t0 = DateTime(2026, 7, 4, 12);

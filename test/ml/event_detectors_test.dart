@@ -4,7 +4,7 @@ import 'package:bgdude/ml/autotune.dart';
 import 'package:bgdude/ml/event_detectors.dart';
 import 'package:bgdude/ml/time_of_day_sensitivity.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'support/samples.dart';
+import '../support/samples.dart';
 
 void main() {
   final settings = testTherapySettings(maxBolusUnits: 15);

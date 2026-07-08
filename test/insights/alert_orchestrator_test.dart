@@ -22,7 +22,7 @@ import 'package:bgdude/pump/pump_snapshot.dart';
 import 'package:bgdude/state/day_data.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/samples.dart';
+import '../support/samples.dart';
 
 void main() {
   const orch = AlertOrchestrator();

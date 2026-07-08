@@ -3,10 +3,11 @@ id: TASK-276
 title: >-
   Reorganise the test suite by feature with a consistent AAA or Given-When-Then
   structure
-status: To Do
+status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-07 21:47'
+updated_date: '2026-07-08 05:57'
 labels: []
 milestone: m-8
 dependencies: []
@@ -48,6 +49,16 @@ The unit test suite is 131 flat *_test.dart files in the top of test/ (only 2 ar
 - Related: TASK-251 / TASK-257 / TASK-270 (hollow-test findings) -- a clear expected-behaviour structure helps prevent the recurrence
 - Keep the always-update-user-guide and coverage-ratchet DoD in mind; this is test-only so no user-guide impact
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-08 05:57
+---
+Started: this is a large 137-file mechanical reorg, tackling it incrementally per the plan (one AC/slice per commit, verified green each time) rather than one huge change. Slice 1 (this session): AC#1 only -- physical move into feature subfolders mirroring lib/ (alerts, analytics, data, food, insights, ml, onboarding, profile, pump, reports, state, ui, weather, widget, integrations, logging, meals), fixing the ~20 relative support/ imports that break on move, verified with a full analyze+test pass. AC#2 (strip ~246 TASK-nnn mentions across 100 files) and AC#3/4 (AAA/Given-When-Then normalization + WHAT/WHY context on every test) are deliberately deferred to follow-up slices -- AC#3/4 in particular means touching the body of every test in the suite, which is much higher risk to behaviour-preservation (AC#5) than a pure file move, so it needs its own careful pass rather than being rushed alongside the physical reorg.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->

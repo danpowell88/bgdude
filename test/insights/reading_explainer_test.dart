@@ -2,7 +2,7 @@ import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/insights/reading_explainer.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'support/samples.dart';
+import '../support/samples.dart';
 
 void main() {
   final noon = DateTime(2026, 7, 4, 12);
