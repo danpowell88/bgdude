@@ -5,18 +5,54 @@
 /// Not a test file itself (no `_test.dart` suffix), so the runner won't execute it.
 library;
 
+import 'dart:ui';
+
 import 'package:bgdude/app.dart';
 import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/insights/notifications.dart';
+import 'package:bgdude/logging/app_log.dart';
 import 'package:bgdude/state/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// TASK-257: `pumpDemoApp` calls `tester.pumpWidget` directly, bypassing
+/// `main()` entirely -- so none of its crash-capture wiring (`FlutterError.onError`,
+/// `PlatformDispatcher.instance.onError`, `runZonedGuarded`) is ever installed, and any
+/// integration test asserting on `appLog`'s `crash` tag (e.g. the chaos walk) was
+/// checking a log nothing could ever populate. Chains (does not replace) whatever
+/// handler `IntegrationTestWidgetsFlutterBinding` already installed, so the test
+/// framework's own error reporting is unaffected -- this only ADDS the same
+/// `appLog.error('crash', ...)` recording `main.dart`'s `_captureCrash` does.
+/// Installed once per process (guarded), not per test, since `FlutterError.onError`/
+/// `PlatformDispatcher.instance.onError` are process-global statics -- re-wrapping on
+/// every `testWidgets` block in a multi-test file would chain handlers ever deeper.
+bool _crashCaptureInstalled = false;
+void _installCrashCapture() {
+  if (_crashCaptureInstalled) return;
+  _crashCaptureInstalled = true;
+  final previousOnError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    previousOnError?.call(details);
+    appLog.error('crash', '[FlutterError] ${details.exception}');
+  };
+  final previousPlatformOnError = PlatformDispatcher.instance.onError;
+  PlatformDispatcher.instance.onError = (error, stack) {
+    appLog.error('crash', '[PlatformDispatcher] $error');
+    return previousPlatformOnError?.call(error, stack) ?? true;
+  };
+}
+
 /// TASK-220: call from each integration test file's `setUp()`. The process-global
 /// `KvStore` in-memory fallback otherwise leaks app flags/prefs across `testWidgets`
-/// blocks that share the same file/process.
-void setUpDemoHarness() => KvStore.useMemory();
+/// blocks that share the same file/process. TASK-257: also installs crash capture
+/// (once) and clears `appLog` so an earlier `testWidgets` block's entries in the same
+/// file/process can't leak into a later one's crash-log assertion.
+void setUpDemoHarness() {
+  KvStore.useMemory();
+  _installCrashCapture();
+  appLog.clear();
+}
 
 /// TASK-220: unmounts the app widget tree (rather than relying on the *next* test's
 /// `pumpWidget` to do it) so a dev-mode `SimulatedPumpClient`'s 30 s re-emit ticker
