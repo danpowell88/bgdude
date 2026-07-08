@@ -1514,10 +1514,15 @@ final livePredictionStateProvider = Provider<PredictionState?>((ref) {
 /// table is the eventual home once the encrypted DB is wired through the app).
 final mealLibraryProvider =
     StateNotifierProvider<MealLibraryNotifier, MealLibrary>(
-        (ref) => MealLibraryNotifier(demo: ref.watch(devModeProvider)));
+        (ref) => MealLibraryNotifier(
+              demo: ref.watch(devModeProvider),
+              now: ref.watch(demoClockProvider),
+            ));
 
 class MealLibraryNotifier extends StateNotifier<MealLibrary> {
-  MealLibraryNotifier({this.demo = false}) : super(MealLibrary()) {
+  MealLibraryNotifier({this.demo = false, DateTime Function()? now})
+      : _now = now ?? DateTime.now,
+        super(MealLibrary()) {
     _restore();
   }
 
@@ -1525,12 +1530,18 @@ class MealLibraryNotifier extends StateNotifier<MealLibrary> {
   /// so the meal library and Meals report have content without hardware.
   final bool demo;
 
+  /// TASK-272: routed through [demoClockProvider] (TASK-220's determinism seam) so a
+  /// fixed-`now` integration test gets identical seeded-meal outcome timestamps run to
+  /// run, matching the sibling [demoHistoryRepositoryProvider] -- previously this called
+  /// the raw wall clock directly, the one demo-seed path TASK-220 missed.
+  final DateTime Function() _now;
+
   static const _prefsKey = 'meal_library_v1';
 
   Future<void> _restore() async {
     final raw = await KvStore.getStringList(_prefsKey);
     if ((raw == null || raw.isEmpty) && demo) {
-      state = MealLibrary(meals: DemoHistory.demoMeals(now: DateTime.now()));
+      state = MealLibrary(meals: DemoHistory.demoMeals(now: _now()));
       return;
     }
     if (raw != null && raw.isNotEmpty) {
