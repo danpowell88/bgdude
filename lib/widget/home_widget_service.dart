@@ -87,6 +87,22 @@ class HomeWidgetService {
     if (last != null) await pushUpdate(last, unit);
   }
 
+  /// TASK-238: persist just the display-unit key at app boot, independent of any
+  /// snapshot. [setUnit]/[pushUpdate] only write the unit as a side effect of
+  /// formatting a snapshot, so before the first one arrives the native push path
+  /// (`WidgetNativePush.push`, which can run with no Flutter engine alive at all)
+  /// finds no stored unit and silently falls back to mmol — misformatting an
+  /// mg/dL user's very first widget render. Calling this unconditionally as soon
+  /// as the service is created closes that gap.
+  Future<void> seedUnit(GlucoseUnit unit) async {
+    _unit = unit;
+    try {
+      await HomeWidget.saveWidgetData<String>(_keyUnit, unit.label);
+    } catch (e) {
+      appLog.error('home_widget', 'seedUnit failed', error: e);
+    }
+  }
+
   /// Re-render so the minutes-ago text and stale grey-out stay current between
   /// CGM readings. The native provider derives both from the stored epoch, so a
   /// bare render request is enough even before any snapshot has been pushed.

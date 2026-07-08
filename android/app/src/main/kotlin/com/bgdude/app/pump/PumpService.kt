@@ -88,7 +88,7 @@ class PumpService : Service(), PumpCommHandler.Listener {
                     nullIntent = intent == null,
                     autoReconnectExtra =
                         intent?.getBooleanExtra(EXTRA_AUTO_RECONNECT, false) == true,
-                    hasBluetoothPermission = true, // checked by the enclosing branch
+                    hasBluetoothPermission = hasBluetoothPermission(this),
                     hasSavedMac = savedMac != null,
                 )
             ) {

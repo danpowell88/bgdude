@@ -21,6 +21,10 @@ class BgDudeApp extends ConsumerWidget {
     // below) — a forgotten mode must expire even with no pump connected. Riverpod
     // caches the provider, so this is a no-op after the first build.
     ref.read(modeExpiryWatchdogProvider);
+    // TASK-238: construct (and thereby seed the display-unit key) as soon as the
+    // app boots, not lazily on the first pump snapshot — see
+    // HomeWidgetService.seedUnit's doc for why the lazy-construction gap mattered.
+    ref.read(homeWidgetServiceProvider);
     // Mirror every pump snapshot onto the home-screen widget (and re-push when the
     // display unit changes).
     ref.listen(pumpSnapshotProvider, (_, next) {

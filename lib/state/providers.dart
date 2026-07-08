@@ -828,6 +828,9 @@ final preBolusCoachProvider = Provider<PreBolusCoach>(
 final homeWidgetServiceProvider = Provider<HomeWidgetService>((ref) {
   final service = HomeWidgetService()..startStalenessTicker();
   ref.onDispose(service.dispose);
+  // TASK-238: seed the display-unit key immediately, before any snapshot has
+  // arrived to trigger a full pushUpdate — see seedUnit's doc for why.
+  unawaited(service.seedUnit(ref.read(glucoseUnitProvider)));
   return service;
 });
 

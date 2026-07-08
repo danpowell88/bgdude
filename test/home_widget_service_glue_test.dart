@@ -103,6 +103,38 @@ void main() {
     expect(methods, isEmpty);
   });
 
+  group('TASK-238: seedUnit', () {
+    test('persists just the unit key before any snapshot has arrived', () async {
+      await service().seedUnit(GlucoseUnit.mgdl);
+      expect(saved, {'bg_unit': 'mg/dL'});
+      // Unlike pushUpdate, seeding doesn't ask the provider to re-render -- there's
+      // nothing new to show yet, only a unit for a future native push to find.
+      expect(methods, ['saveWidgetData']);
+    });
+
+    test('a later pushUpdate overwrites the seeded unit as normal', () async {
+      final s = service();
+      await s.seedUnit(GlucoseUnit.mgdl);
+      await s.pushUpdate(snapshot(), GlucoseUnit.mmol);
+      expect(saved['bg_unit'], 'mmol/L');
+    });
+
+    test('a MissingPluginException from seedUnit is logged, not thrown', () async {
+      appLog.clear();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        throw MissingPluginException('no implementation for ${call.method}');
+      });
+
+      await service().seedUnit(GlucoseUnit.mmol);
+
+      final logged = appLog.entries
+          .where((e) => e.level == LogLevel.error && e.tag == 'home_widget');
+      expect(logged, hasLength(1));
+      expect(logged.single.message, 'seedUnit failed');
+    });
+  });
+
   test('refreshStaleness with no snapshot only re-renders', () async {
     await service().refreshStaleness();
     expect(saved, isEmpty);
