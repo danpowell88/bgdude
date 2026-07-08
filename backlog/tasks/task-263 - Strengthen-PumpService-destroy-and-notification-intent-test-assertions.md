@@ -1,10 +1,11 @@
 ---
 id: TASK-263
 title: Strengthen PumpService destroy and notification-intent test assertions
-status: To Do
+status: Done
 assignee:
   - Claude
 created_date: '2026-07-07 17:30'
+updated_date: '2026-07-08 03:23'
 labels: []
 milestone: m-8
 dependencies: []
@@ -20,8 +21,8 @@ Two native lifecycle tests under-assert, so half of what the commits added is un
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 PumpServiceDestroyTest verifies the Garmin SDK shutdown and the BLE central close/disconnect happened
-- [ ] #2 PumpServiceNotificationIntentTest asserts the contentIntent is immutable and targets MainActivity
+- [x] #1 PumpServiceDestroyTest verifies the Garmin SDK shutdown and the BLE central close/disconnect happened
+- [x] #2 PumpServiceNotificationIntentTest asserts the contentIntent is immutable and targets MainActivity
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -32,13 +33,37 @@ Two native lifecycle tests under-assert, so half of what the commits added is un
 - The TASK-203 production code is correct (FLAG_IMMUTABLE, singleTop MainActivity, unique request code); this only hardens the tests
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-08 03:15
+---
+Started: strengthening PumpServiceDestroyTest (Garmin shutdown + BLE central close assertions) and PumpServiceNotificationIntentTest (FLAG_IMMUTABLE + MainActivity target) via Robolectric shadows.
+---
+
+author: Claude
+created: 2026-07-08 03:23
+---
+Fixed both:
+
+AC#1 (Garmin/BLE teardown): added a new PumpServiceDestroyTest asserting the ACTUAL teardown, not just its absence-of-crash side effects. Needed two small internal (not private) accessors, matching the existing PumpCommHandler.bluetoothHandler precedent for exactly this class of test: GarminIntegration.hasSender (sender != null) and PumpService.commHandler (was private var, now internal var with private set). The test captures the commHandler reference BEFORE destroy() nulls PumpService's own field, then asserts the CAPTURED handler's own bluetoothHandler is null post-destroy (proving the BLE central was actually closed, not just that the outer reference was dropped) and that GarminIntegration.hasSender flips false (proving shutdown() ran).
+
+AC#2 (notification intent hardening): added assertOpensMainActivityImmutably(), checking shadowOf(intent).isImmutable and shadowOf(intent).savedIntent.component?.className == MainActivity's name via Robolectric's ShadowPendingIntent (confirmed its API via javap on the cached shadows-framework jar first). Applied to both existing tests (ongoing-connection and urgent-low-backstop notifications).
+
+Rigor check (3 separate injected bugs, each reverted after): (1) commented out GarminIntegration.shutdown() in onDestroy -- new test failed exactly as predicted; (2) commented out commHandler?.destroy() -- both the new test AND an existing one (IDLE-emission) correctly failed; (3) flipped FLAG_IMMUTABLE to FLAG_MUTABLE -- both notification tests correctly failed on the isImmutable assertion. git diff on all three production files is clean after reverting.
+
+Verified: gradlew :app:testDebugUnitTest green (full suite), flutter analyze clean, flutter test test/ green (1158, unaffected -- native-only change), flutter build apk --debug succeeds. No user-guide update (internal test hardening, no user-visible surface).
+---
+<!-- COMMENTS:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
-- [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
 - [ ] #6 doc/user-guide.html updated when the change is user-visible with screenshots
 - [ ] #7 Integration test added or extended when a screen/flow changed
 - [ ] #8 backlog item updated with comments

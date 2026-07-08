@@ -33,7 +33,13 @@ import com.bgdude.app.garmin.GarminIntegration
 class PumpService : Service(), PumpCommHandler.Listener {
 
     private val binder = LocalBinder()
-    private var commHandler: PumpCommHandler? = null
+
+    // Internal (not private) so a destroy-teardown test can assert the BLE central was
+    // actually closed by inspecting the captured handler's own state post-destroy,
+    // rather than only inferring it from the absence of a crash (same rationale as
+    // PumpCommHandler.bluetoothHandler being internal -- see TASK-263).
+    internal var commHandler: PumpCommHandler? = null
+        private set
 
     /** Callbacks the bridge registers to receive state/snapshot/pairing events. */
     var callbacks: Callbacks? = null

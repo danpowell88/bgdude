@@ -15,6 +15,12 @@ object GarminIntegration {
     private const val TAG = "GarminIntegration"
 
     private var sender: GarminSender? = null
+
+    /** TASK-263: internal (not private) so a shutdown test can directly confirm
+     *  [shutdown] actually ran, rather than only inferring it from a health() shape
+     *  that's identical whether a sender exists idle or doesn't exist at all. */
+    internal val hasSender: Boolean
+        get() = sender != null
     private var lastBg: Int = -1
     private var lastCgmTs: Long = 0L
     private var lastDelta: Int = 0

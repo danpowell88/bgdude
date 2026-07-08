@@ -1,6 +1,9 @@
 package com.bgdude.app.pump
 
+import com.bgdude.app.garmin.GarminIntegration
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -93,5 +96,45 @@ class PumpServiceDestroyTest {
         // onDestroy's commHandler.stop() would be a second close on the unfixed code path;
         // the service must still finish tearing down (no crash propagates out of onDestroy).
         controller.destroy()
+    }
+
+    /**
+     * TASK-263: the tests above only ever observed teardown INDIRECTLY (an IDLE state
+     * emission, or the absence of a crash) -- neither actually confirms the BLE central
+     * was closed or that GarminIntegration.shutdown() ran, so a regression dropping
+     * either call (half of TASK-202) would stay green.
+     */
+    @Test
+    fun `onDestroy closes the BLE central and shuts down the Garmin SDK`() {
+        val controller = Robolectric.buildService(PumpService::class.java).create()
+        val service = controller.get()
+
+        service.startScan(null)
+        // Capture the handler before destroy nulls PumpService's own reference to it --
+        // PumpCommHandler.destroy() nulls its OWN bluetoothHandler field as part of
+        // tearing down, which is what actually proves the BLE central was closed.
+        val handler = service.commHandler
+        assertTrue(
+            "precondition: starting a scan should have set up a real BLE handler",
+            handler?.bluetoothHandler != null,
+        )
+        assertTrue(
+            "precondition: onCreate's GarminIntegration.init should hold a sender",
+            GarminIntegration.hasSender,
+        )
+
+        controller.destroy()
+
+        assertNull(
+            "onDestroy must close the BLE central (bluetoothHandler nulled by the "
+                + "captured handler's own destroy/stopBluetooth), not just drop the "
+                + "outer reference",
+            handler?.bluetoothHandler,
+        )
+        assertFalse(
+            "onDestroy must call GarminIntegration.shutdown() so watch delivery "
+                + "actually stops, not just leave the sender running unobserved",
+            GarminIntegration.hasSender,
+        )
     }
 }
