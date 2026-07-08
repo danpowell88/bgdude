@@ -1,11 +1,11 @@
 ---
 id: TASK-282
 title: 'Meals-tab tap-miss on a saved meal tile (app_test.dart:267)'
-status: In Progress
+status: Done
 assignee:
   - Claude
 created_date: '2026-07-08 00:16'
-updated_date: '2026-07-08 00:18'
+updated_date: '2026-07-08 02:58'
 labels: []
 milestone: m-8
 dependencies: []
@@ -21,17 +21,17 @@ Found by TASK-219's emulator workflow: tapping a saved meal tile ('Test pasta') 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 app_test.dart:267's meal-tile tap routes through tapListTile or an equivalent ensureVisible fix
-- [ ] #2 Confirmed via the emulator workflow
+- [x] #1 app_test.dart:267's meal-tile tap routes through tapListTile or an equivalent ensureVisible fix
+- [x] #2 Confirmed via the emulator workflow
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test --coverage test/ green
-- [ ] #4 Line coverage did not drop -- at or above the ci.yml floor; any new testable code ships with its tests in the same change
-- [ ] #5 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test --coverage test/ green
+- [x] #4 Line coverage did not drop -- at or above the ci.yml floor; any new testable code ships with its tests in the same change
+- [x] #5 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
 - [ ] #6 gradlew :app:testDebugUnitTest green when native Kotlin changed
 - [ ] #7 doc/user-guide.html updated when the change is user-visible with screenshots
 - [ ] #8 Integration test added or extended when a screen/flow changed
@@ -45,5 +45,11 @@ author: Claude
 created: 2026-07-08 00:18
 ---
 Started: route the meals-tab tap through the shared tapListTile helper, same fix as TASK-235/279.
+---
+
+author: Claude
+created: 2026-07-08 02:58
+---
+Confirmed via run 28912128406 (untouched, ran to its own natural conclusion): app_test.dart's 13 tests pass cleanly, including the meals-tab tile-tap test at app_test.dart:267 this fix targets. Pipeline: flutter analyze clean, flutter test --coverage green, flutter build apk --debug succeeds. No native/user-guide changes needed.
 ---
 <!-- COMMENTS:END -->
