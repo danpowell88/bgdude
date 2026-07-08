@@ -44,12 +44,18 @@ class WeatherSettings {
   Map<String, dynamic> toJson() =>
       {'enabled': enabled, 'city': city, 'lat': lat, 'lon': lon};
 
+  /// TASK-302: a corrupt/tampered stored value that still parses (e.g. lat 1.79e308)
+  /// must not silently pass as a real coordinate -- reject outside the valid
+  /// latitude/longitude range rather than clamp toward a fabricated location.
   factory WeatherSettings.fromJson(Map<String, dynamic> j) => WeatherSettings(
         enabled: j['enabled'] as bool? ?? false,
         city: j['city'] as String? ?? '',
-        lat: (j['lat'] as num?)?.toDouble(),
-        lon: (j['lon'] as num?)?.toDouble(),
+        lat: _sanitizeCoord((j['lat'] as num?)?.toDouble(), 90),
+        lon: _sanitizeCoord((j['lon'] as num?)?.toDouble(), 180),
       );
+
+  static double? _sanitizeCoord(double? v, double bound) =>
+      v == null || v.isNaN || v < -bound || v > bound ? null : v;
 }
 
 class WeatherService {

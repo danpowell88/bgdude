@@ -149,15 +149,25 @@ class CategoryPref {
         'repeatMinutes': repeatMinutes,
       };
 
+  /// TASK-302: a corrupt/tampered repeatMinutes (negative, or an implausibly long
+  /// interval) must not silently become the real re-notify cadence -- reject outside
+  /// a sane 0 (notify once) to 1440 (once a day) range back to 0, never a fabricated
+  /// in-range value.
   factory CategoryPref.fromJson(Map<String, dynamic> j) => CategoryPref(
         enabled: j['enabled'] as bool? ?? true,
         importance: NotifImportance.values.asNameMap()[j['importance']] ??
             NotifImportance.normal,
         vibrate: j['vibrate'] as bool? ?? true,
         sound: j['sound'] as bool? ?? true,
-        repeatMinutes: (j['repeatMinutes'] as num?)?.toInt() ?? 0,
+        repeatMinutes: _sanitizeMinutesOfDay((j['repeatMinutes'] as num?)?.toInt(), 0),
       );
 }
+
+/// TASK-302: shared by [CategoryPref.repeatMinutes] and [QuietHours.startMinute]/
+/// [QuietHours.endMinute] -- all three are "minutes" fields where a corrupt negative
+/// or huge stored value must fall back to [fallback] rather than pass through.
+int _sanitizeMinutesOfDay(int? v, int fallback) =>
+    v == null || v < 0 || v > 1440 ? fallback : v;
 
 extension NotificationCategoryQuietHours on NotificationCategory {
   /// Critical alerts still fire during quiet hours — you can always be woken for these.
@@ -210,10 +220,13 @@ class QuietHours {
   Map<String, dynamic> toJson() =>
       {'enabled': enabled, 'startMinute': startMinute, 'endMinute': endMinute};
 
+  /// TASK-302: see [_sanitizeMinutesOfDay] -- a corrupt negative/huge startMinute or
+  /// endMinute must not silently become the real quiet-hours window.
   factory QuietHours.fromJson(Map<String, dynamic> j) => QuietHours(
         enabled: j['enabled'] as bool? ?? false,
-        startMinute: (j['startMinute'] as num?)?.toInt() ?? 22 * 60,
-        endMinute: (j['endMinute'] as num?)?.toInt() ?? 7 * 60,
+        startMinute:
+            _sanitizeMinutesOfDay((j['startMinute'] as num?)?.toInt(), 22 * 60),
+        endMinute: _sanitizeMinutesOfDay((j['endMinute'] as num?)?.toInt(), 7 * 60),
       );
 }
 

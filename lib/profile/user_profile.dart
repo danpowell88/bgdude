@@ -105,17 +105,27 @@ class UserProfile {
         'diabetesType': diabetesType.name,
       };
 
+  /// TASK-302: a corrupt/tampered stored value that still parses (e.g. birthYear
+  /// 99999999, weightKg 1.79e308) must not silently reach [ageAt]/[bmi]/
+  /// [HypoAwarenessRisk] as a real value -- reject (never clamp toward a fabricated
+  /// plausible-looking number) outside a generously wide but sane human range.
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
         name: j['name'] as String? ?? '',
         sex: BiologicalSex.values.asNameMap()[j['sex']] ??
             BiologicalSex.unspecified,
-        birthYear: (j['birthYear'] as num?)?.toInt(),
-        diagnosisYear: (j['diagnosisYear'] as num?)?.toInt(),
-        weightKg: (j['weightKg'] as num?)?.toDouble(),
-        heightCm: (j['heightCm'] as num?)?.toDouble(),
+        birthYear: _sanitizeYear((j['birthYear'] as num?)?.toInt()),
+        diagnosisYear: _sanitizeYear((j['diagnosisYear'] as num?)?.toInt()),
+        weightKg: _sanitizeRange((j['weightKg'] as num?)?.toDouble(), 1, 500),
+        heightCm: _sanitizeRange((j['heightCm'] as num?)?.toDouble(), 30, 300),
         diabetesType: DiabetesType.values.asNameMap()[j['diabetesType']] ??
             DiabetesType.type1,
       );
+
+  static int? _sanitizeYear(int? v) =>
+      v == null || v < 1900 || v > 2100 ? null : v;
+
+  static double? _sanitizeRange(double? v, double min, double max) =>
+      v == null || v.isNaN || v < min || v > max ? null : v;
 
   static const _sentinel = Object();
 }

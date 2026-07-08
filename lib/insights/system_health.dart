@@ -81,11 +81,16 @@ class SubsystemHealth {
         'lastAttemptAt': lastAttemptAt?.toIso8601String(),
       };
 
+  /// TASK-302: a corrupt/tampered negative consecutiveFailures shouldn't display or
+  /// propagate as a nonsensical negative count (isUnhealthy's `> 0` check already
+  /// treats negative the same as zero, but a bare negative reaching the UI is still a
+  /// display bug waiting to happen) -- clamp to a sane non-negative range.
   factory SubsystemHealth.fromJson(Map<String, dynamic> j) => SubsystemHealth(
         lastSuccessAt: j['lastSuccessAt'] == null
             ? null
             : DateTime.parse(j['lastSuccessAt'] as String),
-        consecutiveFailures: (j['consecutiveFailures'] as num?)?.toInt() ?? 0,
+        consecutiveFailures:
+            ((j['consecutiveFailures'] as num?)?.toInt() ?? 0).clamp(0, 1 << 30),
         lastError: j['lastError'] as String?,
         lastAttemptAt: j['lastAttemptAt'] == null
             ? null

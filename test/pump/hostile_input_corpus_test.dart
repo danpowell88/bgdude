@@ -201,19 +201,13 @@ void main() {
     }
   });
 
-  // TASK-255: the remaining restoreJsonGuarded-wrapped decoders in
-  // providers.dart. Unlike PumpSnapshot/SavedMeal above, most of these have NO
-  // clamp/range validation on their numeric fields at all (see the fromJson
-  // bodies) -- lowMgdl/highMgdl/urgentLowMgdl, lat/lon, repeatMinutes,
-  // consecutiveFailures, birthYear/weightKg/heightCm all pass a hostile
-  // huge/negative number straight through unclamped. That is a real gap, not
-  // a gap in this test: the invariant asserted below for each field is
-  // whatever the class actually guarantees today (a default when missing/
-  // null, a valid enum, a Map that throws cleanly on a structurally wrong
-  // shape) -- asserting a range that doesn't exist in the code would either
-  // fail honestly (good) or require silently expanding this ticket into
-  // fixing seven unrelated settings decoders (out of scope for a test-corpus
-  // extension). Flagged in the closing backlog comment as a follow-up.
+  // TASK-255/302: the remaining restoreJsonGuarded-wrapped decoders in
+  // providers.dart. lowMgdl/highMgdl/urgentLowMgdl, lat/lon, repeatMinutes,
+  // startMinute/endMinute, consecutiveFailures, and birthYear/weightKg/
+  // heightCm now REJECT (never clamp toward a fabricated in-range value) a
+  // hostile out-of-range mutation back to a default/null -- see each class's
+  // fromJson for the exact bounds. The assertions below check the actual
+  // range invariant each field now guarantees, not just isFinite.
 
   group('NotificationPrefs.fromJson survives the hostile corpus', () {
     const good = {
@@ -243,7 +237,14 @@ void main() {
           // mutated -- the loop fills any missing/malformed one with its
           // own default rather than ever leaving a category unset.
           expect(p.byCategory.length, NotificationCategory.values.length);
-          expect(p.quietHours, isNotNull);
+          // TASK-302: repeatMinutes/startMinute/endMinute reject out-of-range
+          // (negative or >1440) back to a sane default rather than pass a
+          // corrupt cadence/window through.
+          for (final pref in p.byCategory.values) {
+            expect(pref.repeatMinutes, inInclusiveRange(0, 1440));
+          }
+          expect(p.quietHours.startMinute, inInclusiveRange(0, 1440));
+          expect(p.quietHours.endMinute, inInclusiveRange(0, 1440));
         }
       });
     }
@@ -275,11 +276,16 @@ void main() {
           expect(p.sex, isNotNull);
           expect(p.diabetesType, isNotNull);
           expect(p.name, isNotNull);
-          // Whenever a numeric field DOES survive as a double, it must at
-          // least be finite -- a huge or NaN-producing mutation must not
-          // silently become "a valid-looking weight/height".
-          if (p.weightKg != null) expect(p.weightKg!.isFinite, isTrue);
-          if (p.heightCm != null) expect(p.heightCm!.isFinite, isTrue);
+          // TASK-302: an out-of-range year/weight/height rejects to null
+          // rather than pass a huge/negative value through as real.
+          if (p.birthYear != null) {
+            expect(p.birthYear, inInclusiveRange(1900, 2100));
+          }
+          if (p.diagnosisYear != null) {
+            expect(p.diagnosisYear, inInclusiveRange(1900, 2100));
+          }
+          if (p.weightKg != null) expect(p.weightKg, inInclusiveRange(1, 500));
+          if (p.heightCm != null) expect(p.heightCm, inInclusiveRange(30, 300));
         }
       });
     }
@@ -305,16 +311,19 @@ void main() {
           // restoreJsonGuarded in production, acceptable here too.
         }
         if (t != null) {
-          // The three top-level thresholds are never null, and a per-segment
-          // override that doesn't structurally fit (not a Map) is silently
-          // skipped rather than corrupting the whole table.
-          expect(t.lowMgdl.isFinite, isTrue);
-          expect(t.highMgdl.isFinite, isTrue);
-          expect(t.urgentLowMgdl.isFinite, isTrue);
+          // TASK-302: AlertThresholds drives real-time alert firing -- a
+          // corrupt low/high/urgentLow REJECTS to the shipped default rather
+          // than becoming the real threshold, at the top level and per
+          // segment. A per-segment override that doesn't structurally fit
+          // (not a Map) is silently skipped rather than corrupting the whole
+          // table.
+          expect(t.lowMgdl, inInclusiveRange(20, 600));
+          expect(t.highMgdl, inInclusiveRange(20, 600));
+          expect(t.urgentLowMgdl, inInclusiveRange(20, 600));
           for (final band in t.segments.values) {
-            expect(band.lowMgdl.isFinite, isTrue);
-            expect(band.highMgdl.isFinite, isTrue);
-            expect(band.urgentLowMgdl.isFinite, isTrue);
+            expect(band.lowMgdl, inInclusiveRange(20, 600));
+            expect(band.highMgdl, inInclusiveRange(20, 600));
+            expect(band.urgentLowMgdl, inInclusiveRange(20, 600));
           }
         }
       });
@@ -351,13 +360,14 @@ void main() {
         in hostileTimestampVariantsOf(good, 'startedAt') +
             hostileTimestampVariantsOf(good, 'expiresAt')) {
       test(v.name, () {
-        // These substitute an int epoch for the ISO-8601 string DateTime.parse
-        // expects -- a TypeError, not a FormatException, but the same "throws
-        // cleanly, never corrupts silently" contract applies.
-        expect(() => MedicationMode.fromJson(v.json), anyOf(
-          returnsNormally,
-          throwsA(anything),
-        ));
+        // TASK-302: fixed a vacuous assertion here (anyOf(returnsNormally,
+        // throwsA(anything)) is a tautology -- true regardless of outcome).
+        // hostileTimestampVariantsOf substitutes an int epoch for the
+        // ISO-8601 string startedAt/expiresAt expects; `j['startedAt'] as
+        // String` throws a TypeError before DateTime.parse is ever reached,
+        // deterministically, every time -- caught by restoreJsonGuarded in
+        // production, a clean rejection rather than a silently-corrupt date.
+        expect(() => MedicationMode.fromJson(v.json), throwsA(isA<TypeError>()));
       });
     }
   });
@@ -382,11 +392,10 @@ void main() {
         if (w != null) {
           expect(w.enabled, isNotNull);
           expect(w.city, isNotNull);
-          // lat/lon have no geo-range clamp in production -- the only
-          // invariant fromJson itself guarantees is "finite double or null",
-          // never NaN/Infinity masquerading as a coordinate.
-          if (w.lat != null) expect(w.lat!.isFinite, isTrue);
-          if (w.lon != null) expect(w.lon!.isFinite, isTrue);
+          // TASK-302: an out-of-range lat/lon rejects to null rather than
+          // pass a fabricated location through.
+          if (w.lat != null) expect(w.lat, inInclusiveRange(-90, 90));
+          if (w.lon != null) expect(w.lon, inInclusiveRange(-180, 180));
         }
       });
     }
@@ -449,8 +458,11 @@ void main() {
           // for" / "empty map" / "all values null" mutations) must be
           // silently DROPPED, not crash the whole report -- of() then
           // reports .unknown for that subsystem rather than a garbage value.
+          // TASK-302: consecutiveFailures rejects negative to 0 rather than
+          // pass a nonsensical negative count through.
           for (final s in Subsystem.values) {
             expect(r.of(s), isNotNull);
+            expect(r.of(s).consecutiveFailures, greaterThanOrEqualTo(0));
           }
         }
       });

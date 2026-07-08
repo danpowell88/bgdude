@@ -25,6 +25,18 @@ bool isPostMealWindow(Iterable<CarbEntry> carbs, DateTime now) => carbs.any(
 /// overnight window; `postMeal` takes precedence over both while a meal is digesting.
 enum AlertSegment { overnight, day, postMeal }
 
+/// TASK-302: a corrupt/tampered stored value that still parses (e.g. urgentLowMgdl =
+/// -5, or 1.79e308) must not silently become this app's real alert threshold --
+/// AlertThresholds drives real-time low/high/urgent-low firing, so a bad value here
+/// could suppress a genuine alert or fire spuriously. REJECT (fall back to
+/// [fallback], never clamp toward a fabricated in-range number) outside the
+/// physiologically sane glucose band -- same 20-600 mg/dL bound and reject-not-clamp
+/// rationale as pump_snapshot.dart's _rejectOutOfRangeDouble (TASK-273): clamping -5
+/// to 20 would still be a plausible-looking, actionable threshold for a value that
+/// was never legitimately set.
+double _sanitizeMgdl(double? v, double fallback) =>
+    v == null || v.isNaN || v < 20 || v > 600 ? fallback : v;
+
 /// One low/high/urgent-low triple, typed [Mgdl] (TASK-119). The constructor takes
 /// plain doubles (values arrive from JSON/steppers) and wraps once here.
 class AlertBand {
@@ -51,12 +63,14 @@ class AlertBand {
       {'low': lowMgdl, 'high': highMgdl, 'urgentLow': urgentLowMgdl};
 
   /// Missing keys fall back to [fallback] (the all-day row), so a partial override only
-  /// changes the fields the user actually set.
+  /// changes the fields the user actually set. TASK-302: an out-of-range value (not
+  /// just a missing one) falls back the same way -- see [_sanitizeMgdl].
   factory AlertBand.fromJson(Map<String, dynamic> j, {required AlertBand fallback}) =>
       AlertBand(
-        lowMgdl: (j['low'] as num?)?.toDouble() ?? fallback.lowMgdl,
-        highMgdl: (j['high'] as num?)?.toDouble() ?? fallback.highMgdl,
-        urgentLowMgdl: (j['urgentLow'] as num?)?.toDouble() ?? fallback.urgentLowMgdl,
+        lowMgdl: _sanitizeMgdl((j['low'] as num?)?.toDouble(), fallback.lowMgdl),
+        highMgdl: _sanitizeMgdl((j['high'] as num?)?.toDouble(), fallback.highMgdl),
+        urgentLowMgdl:
+            _sanitizeMgdl((j['urgentLow'] as num?)?.toDouble(), fallback.urgentLowMgdl),
       );
 }
 
@@ -135,13 +149,15 @@ class AlertThresholds {
       };
 
   /// Migration (§4-2.3 AC#2): old flat JSON (no `segments`) parses into the all-day row
-  /// with no overrides, so existing users keep their exact thresholds all day.
+  /// with no overrides, so existing users keep their exact thresholds all day. TASK-302:
+  /// an out-of-range value (not just a missing one) falls back to the shipped default --
+  /// see [_sanitizeMgdl].
   factory AlertThresholds.fromJson(Map<String, dynamic> j) {
     final base = AlertThresholds(
-      lowMgdl: Mgdl((j['low'] as num?)?.toDouble() ?? defaultLowMgdl),
-      highMgdl: Mgdl((j['high'] as num?)?.toDouble() ?? defaultHighMgdl),
-      urgentLowMgdl:
-          Mgdl((j['urgentLow'] as num?)?.toDouble() ?? defaultUrgentLowMgdl),
+      lowMgdl: Mgdl(_sanitizeMgdl((j['low'] as num?)?.toDouble(), defaultLowMgdl)),
+      highMgdl: Mgdl(_sanitizeMgdl((j['high'] as num?)?.toDouble(), defaultHighMgdl)),
+      urgentLowMgdl: Mgdl(
+          _sanitizeMgdl((j['urgentLow'] as num?)?.toDouble(), defaultUrgentLowMgdl)),
     );
     final segJson = j['segments'] as Map<String, dynamic>?;
     if (segJson == null || segJson.isEmpty) return base;
