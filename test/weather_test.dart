@@ -53,6 +53,30 @@ void main() {
     test('current whose "current" field is not an object → null, not a throw', () {
       expect(WeatherService.parseCurrent('{"current":"unexpected"}'), isNull);
     });
+
+    // TASK-269: jsonDecode itself ran unguarded before the is-Map check -- a
+    // non-JSON body (captive-portal HTML, a truncated/empty HTTP-200 response)
+    // threw FormatException straight out of the parser, the exact
+    // throws-out-of-a-parser-at-the-source case TASK-208(d) above was meant to
+    // close but didn't reach.
+    test('geocode with a non-JSON body (e.g. captive-portal HTML) → null, not a '
+        'throw', () {
+      expect(
+          WeatherService.parseGeocode(
+              '<html><body>Connect to Wi-Fi</body></html>'),
+          isNull);
+      expect(WeatherService.parseGeocode(''), isNull);
+      expect(WeatherService.parseGeocode('{truncated'), isNull);
+    });
+
+    test('current with a non-JSON body → null, not a throw', () {
+      expect(
+          WeatherService.parseCurrent(
+              '<html><body>Connect to Wi-Fi</body></html>'),
+          isNull);
+      expect(WeatherService.parseCurrent(''), isNull);
+      expect(WeatherService.parseCurrent('{truncated'), isNull);
+    });
   });
 
   group('WeatherRiskModifier', () {

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:bgdude/analytics/therapy_settings.dart';
 import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/data/kv_store.dart';
@@ -211,6 +213,39 @@ void main() {
       final decided = await ConfirmationDecisionStore.load();
       expect(decided['unannouncedMeal:42'], ConfirmationDecision.confirmed);
       expect(decided['compressionLow:7'], ConfirmationDecision.dismissed);
+    });
+
+    // TASK-269: record()'s cap-sort (once the store exceeds 1000 entries) decodes
+    // the raw blob directly, not via load()'s per-entry-guarded path -- a
+    // valid-JSON entry whose value isn't a Map, or lacks 't', used to throw
+    // straight out of the sort comparator.
+    test(
+        'a malformed-but-valid-JSON entry does not throw once the store is at '
+        'the cap, and record() still succeeds', () async {
+      final seed = <String, dynamic>{
+        for (var i = 0; i < 1000; i++)
+          'seed:$i': {
+            'd': ConfirmationDecision.confirmed.name,
+            't': DateTime(2026, 7, 1).add(Duration(minutes: i)).toIso8601String(),
+          },
+        // Malformed entries a valid-JSON blob could genuinely contain: wrong
+        // value type, and a Map missing 't'.
+        'malformed:notAMap': 'unexpected string value',
+        'malformed:noTimestamp': {'d': ConfirmationDecision.dismissed.name},
+      };
+      await KvStore.setString('confirmation_decisions_v1', jsonEncode(seed));
+
+      // Recording one more decision pushes the store to 1002 entries, past the
+      // 1000 cap -- this is what triggers the sort. Must not throw.
+      await ConfirmationDecisionStore.record(
+          'newDecision:1', ConfirmationDecision.confirmed,
+          at: DateTime(2026, 7, 5));
+
+      final decided = await ConfirmationDecisionStore.load();
+      expect(decided.length, lessThanOrEqualTo(1000));
+      expect(decided['newDecision:1'], ConfirmationDecision.confirmed,
+          reason: 'the newest decision (most recent timestamp) must survive '
+              'the cap');
     });
   });
 

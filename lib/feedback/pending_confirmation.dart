@@ -116,12 +116,30 @@ class ConfirmationDecisionStore {
     // Cap: keep the most recently decided entries.
     if (map.length > _maxEntries) {
       final entries = map.entries.toList()
-        ..sort((a, b) => ((b.value as Map)['t'] as String)
-            .compareTo((a.value as Map)['t'] as String));
+        // TASK-269: this blob was decoded but never per-entry validated like
+        // load() is (TASK-206) -- a valid-JSON entry whose value isn't a Map, or
+        // lacks 't', would throw straight out of this sort once the store
+        // exceeds _maxEntries. _timestampOf degrades a malformed entry to "no
+        // timestamp" instead, and it sorts as the oldest -- reasonable, since a
+        // malformed entry has no reliable data to prioritise keeping anyway.
+        ..sort((a, b) {
+          final at = _timestampOf(a.value);
+          final bt = _timestampOf(b.value);
+          if (at == null && bt == null) return 0;
+          if (at == null) return 1;
+          if (bt == null) return -1;
+          return bt.compareTo(at);
+        });
       map
         ..clear()
         ..addEntries(entries.take(_maxEntries));
     }
     await KvStore.setString(_key, jsonEncode(map));
+  }
+
+  static String? _timestampOf(dynamic value) {
+    if (value is! Map) return null;
+    final t = value['t'];
+    return t is String ? t : null;
   }
 }

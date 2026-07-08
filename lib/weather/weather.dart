@@ -79,11 +79,15 @@ class WeatherService {
     return parseCurrent(res.body, now: now);
   }
 
-  /// TASK-208: Open-Meteo's shape is stable today, but a hard `as Map` cast on a
-  /// malformed/unexpected body would throw a [TypeError] straight out of a parser
+  /// TASK-208/269: Open-Meteo's shape is stable today, but a hard `as Map` cast on
+  /// a malformed/unexpected body would throw a [TypeError] straight out of a parser
   /// with no caller-side guard — an is-Map check degrades to "no result" instead.
+  /// [jsonDecode] itself must be guarded too: a non-JSON body (captive-portal HTML,
+  /// a truncated or empty response returned with HTTP 200) throws a
+  /// [FormatException] before the is-Map check ever runs, the exact
+  /// throws-out-of-a-parser-at-the-source case this guard exists to prevent.
   static GeoLocation? parseGeocode(String body) {
-    final decoded = jsonDecode(body);
+    final decoded = _tryDecode(body);
     if (decoded is! Map) return null;
     final json = decoded.cast<String, dynamic>();
     final results = (json['results'] as List?) ?? const [];
@@ -102,7 +106,7 @@ class WeatherService {
   }
 
   static Weather? parseCurrent(String body, {DateTime? now}) {
-    final decoded = jsonDecode(body);
+    final decoded = _tryDecode(body);
     if (decoded is! Map) return null;
     final json = decoded.cast<String, dynamic>();
     final curRaw = json['current'];
@@ -114,6 +118,17 @@ class WeatherService {
       humidity: (cur?['relative_humidity_2m'] as num?)?.toDouble(),
       at: now ?? DateTime.now(),
     );
+  }
+
+  /// TASK-269: `jsonDecode` throws [FormatException] on non-JSON input -- null
+  /// degrades to the same "no result" path the is-Map check already uses for a
+  /// wrong-shape (but validly-decoded) body.
+  static Object? _tryDecode(String body) {
+    try {
+      return jsonDecode(body);
+    } on FormatException {
+      return null;
+    }
   }
 }
 
