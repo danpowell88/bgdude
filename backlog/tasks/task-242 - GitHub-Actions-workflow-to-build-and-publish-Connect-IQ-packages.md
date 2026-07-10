@@ -1,9 +1,11 @@
 ---
 id: TASK-242
 title: GitHub Actions workflow to build and publish Connect IQ packages
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-07 12:56'
+updated_date: '2026-07-10 12:22'
 labels:
   - garmin
   - ci
@@ -48,6 +50,16 @@ ordinal: 500500
 - Related: TASK-32 (current-gen devices in manifests), decision-5 (be explicit about manual-only steps)
 - Note: Monkey C compiles on Linux; only the CIQ simulator needs a display, so packaging (unlike the visual-test harness TASK-240) can run on hosted Linux runners
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-10 12:22
+---
+branch: task-242
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
