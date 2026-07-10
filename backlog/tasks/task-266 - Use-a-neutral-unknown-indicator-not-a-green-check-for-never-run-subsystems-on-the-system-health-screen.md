@@ -8,6 +8,11 @@ assignee:
   - Claude
 created_date: '2026-07-07 17:30'
 updated_date: '2026-07-10 12:20'
+status: Needs Review
+assignee:
+  - Claude
+created_date: '2026-07-07 17:30'
+updated_date: '2026-07-10 14:03'
 labels: []
 milestone: m-8
 dependencies: []
@@ -47,6 +52,7 @@ author: Claude
 created: 2026-07-10 12:20
 ---
 implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- code complete and pushed to branch task-266 (commit f827a69).
+implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- code complete and pushed to branch task-266 (commit 22c4c88).
 
 Added a neutral (grey help_outline) state to both _SubsystemTile and _GarminTile in lib/ui/system_health_screen.dart, checked before unhealthy/stale: _SubsystemTile keys off health.lastAttemptAt==null (mirrors the existing 'Never run yet' subtitle logic); _GarminTile keys off lastSuccessMs==null && !unhealthy, which covers both the 'not available' (health==null, e.g. demo mode) and 'no send attempted yet this session' cases the ticket calls out -- both render the same neutral state. A real recorded failure still wins (red), matching the existing unhealthy-over-stale priority rule.
 
