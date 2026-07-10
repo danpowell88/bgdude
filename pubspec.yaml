@@ -20,7 +20,7 @@ dependencies:
   # Storage (encrypted time-series). SQLCipher REPLACES sqlite3_flutter_libs —
   # never depend on both (identical native namespace; the manifest merge fails).
   drift: ^2.20.0
-  sqlcipher_flutter_libs: ^0.6.4
+  sqlcipher_flutter_libs: ^0.7.0+eol
   # Direct dep: database.dart calls sqlite3's open.dart to point drift at the
   # SQLCipher native library.
   sqlite3: ^2.4.0
