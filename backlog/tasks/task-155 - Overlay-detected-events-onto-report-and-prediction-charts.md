@@ -74,6 +74,12 @@ Rigor-checked a real bug: a Stack with only Positioned children collapses to zer
 
 Tests: unit tests for EventMarkerBar, a deterministic PredictionChart widget test (fixed demo clock puts the simulated day's ~03:10 compression low inside the chart's -150..0 history window), an integration test (same fixed-clock technique) + an AGP caption check. flutter analyze clean, flutter test --coverage green (1371 tests), coverage 68.52% (floor 65%), flutter build apk --debug succeeded. doc/user-guide.html updated (Today tab, Predict tab, Glucose report row).
 ---
+
+author: Claude
+created: 2026-07-10 11:53
+---
+friction:tooling — `dart run` on this package crashes (FFI/kernel transform exception) even for Flutter-independent files, so a quick pure-Dart probe script isn't viable here; had to write throwaway `flutter test` files instead (works, just slower). friction:code — a Stack with only Positioned children collapses to zero width under a loose parent constraint: it still PAINTS children outside its bounds via Clip.none, but hit-testing silently fails since RenderBox checks the parent's own size before testing children — caught only because the new widget test's tap() emitted a hit-test-miss warning; worth grepping for other Positioned-only Stacks in lib/ui/ if similar overlay patterns get reused.
+---
 <!-- COMMENTS:END -->
 
 ## Definition of Done
