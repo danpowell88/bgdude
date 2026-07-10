@@ -3,10 +3,11 @@ id: TASK-306
 title: >-
   Drift-triggered retrain has no cooldown -- sustained unfixable drift retrains
   the forecaster every startup
-status: To Do
+status: Needs Review
 assignee:
   - Claude
 created_date: '2026-07-09 18:23'
+updated_date: '2026-07-10 14:03'
 labels: []
 milestone: m-8
 dependencies: []
@@ -36,6 +37,28 @@ TASK-138 drift detection requests an out-of-band forecaster retrain by resetting
 - SAFE (A/B gate prevents adopting a worse model); this is an efficiency/battery issue, not a forecast-correctness one
 - TASK-140 (training-data census) was NOT deeply reviewed this pass (weekly limit); low-risk read-only diagnostics -- flag for a later look
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude Fable 5
+created: 2026-07-10 10:42
+---
+branch: task-306
+---
+
+author: Claude Fable 5
+created: 2026-07-10 10:42
+---
+Moved To Do->In Progress to reflect that work has started: origin/task-306 exists and is 1 commit ahead of main. Recording the branch so the review-and-merge loop can find it and parallel sessions do not duplicate this work. Implementer agent TBD (branch pre-existed this status update).
+---
+
+author: Claude
+created: 2026-07-10 10:44
+---
+branch: task-306 (correcting -- was set to In Progress by 3db552f, but the code is actually complete: commit 97b47bd on that branch)
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->

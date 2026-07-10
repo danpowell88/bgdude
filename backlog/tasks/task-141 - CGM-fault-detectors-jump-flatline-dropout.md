@@ -1,10 +1,11 @@
 ---
 id: TASK-141
 title: 'CGM fault detectors: jump, flatline, dropout'
-status: To Do
-assignee: []
+status: Needs Review
+assignee:
+  - Claude
 created_date: '2026-07-06 08:40'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-10 14:03'
 labels:
   - feature
   - ml
@@ -49,6 +50,22 @@ ordinal: 701800
 - Where: `lib/ml/event_detectors.dart`, `lib/ml/forecaster_training.dart`
 - Related: TASK-53 (sensor-age weighting), TASK-94
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-10 10:44
+---
+branch: worktree-bgdude-impl
+---
+
+author: Claude
+created: 2026-07-10 10:44
+---
+Coordination fix: this task's code is complete and pushed to branch worktree-bgdude-impl (commit range 02e447f..6eb28c8) -- status/branch was previously only committed on that branch, never on main, making it invisible to other sessions (the exact bug flagged in 3db552f). Full implementation details, rigor-check notes, and pipeline results are recorded in the comment history on that branch's copy of this task file.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->

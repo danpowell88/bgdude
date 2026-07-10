@@ -6,6 +6,11 @@ assignee:
   - Claude
 created_date: '2026-07-06 08:43'
 updated_date: '2026-07-10 10:42'
+status: Needs Review
+assignee:
+  - Claude
+created_date: '2026-07-06 08:43'
+updated_date: '2026-07-10 14:03'
 labels:
   - feature
   - insights
@@ -58,6 +63,7 @@ ordinal: 702200
 <!-- COMMENTS:BEGIN -->
 author: Claude
 created: 2026-07-10 10:31
+created: 2026-07-10 10:45
 ---
 branch: task-152
 ---
@@ -72,6 +78,9 @@ author: Claude
 created: 2026-07-10 10:42
 ---
 implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- new lib/reports/site_lifetime_report.dart (SiteLifetimeReportBuilder: for each siteFailure annotation, finds the most recent DeviceKind.site DeviceChange before it and records the age; median requires >=3 data points to avoid calling noise a pattern; TIR-by-set-day buckets in-range CGM samples by day-of-wear relative to the preceding site change, reusing MetricsCalculator for the TIR math per bucket, capped at 14 tracked days since anything older almost certainly means a missed change-log entry, not a genuinely 14-day-old set). New siteLifetimeReportProvider (providers.dart) wires ReportDataset (annotations, cgmInRange) + deviceStateProvider's site-kind changes. UI: new 'Infusion-site lifetime' section on the Therapy report screen (median-age headline + a TIR-by-day bar chart via fl_chart, mirroring the existing TDD/sensitivity chart styles on the same screen). AC#3 (device-reminder nudge): DEFERRED -- filed TASK-308. Reasoning: tuning checkDeviceReminders to the learned median needs it computed/cached cheaply and refreshed periodically (like sensitivityCensusProvider/forecastDriftProvider's pattern), not the on-demand full-history scan this report does when its screen opens -- materially different infrastructure than the reporting feature. Tests: test/reports/site_lifetime_report_test.dart -- failure-age computation, no-preceding-change skip (not counted as age zero), median's >=3 floor, out-of-range exclusion, TIR-by-day bucketing (including a same-day in-range vs next-day-high case), pre-first-change exclusion, and the 14-day tracking cap. Rigor-checked the day-bucketing math (temp-bug forcing every sample into day 1, confirmed the TIR-by-day test fails with 0.5 instead of the predicted 1.0/0.0 split, reverted cleanly). Full pipeline green: analyze clean, 1374 tests passing, coverage 68.52% (floor 65%), apk build succeeded. No native Kotlin changed. Integration test: Therapy report already has integration_test coverage; could not run it live (same emulator VM-service limitation as TASK-141/143/151) -- the new section is additive and conditionally hidden (siteLifetime.hasData) so existing assertions are unaffected.
+created: 2026-07-10 10:45
+---
+Coordination fix: code complete and pushed (commit 0ee337c on branch task-152) -- status/branch previously only committed on that branch, invisible on main. Implementation details recorded in the comment history on that branch's copy of this task file.
 ---
 <!-- COMMENTS:END -->
 
