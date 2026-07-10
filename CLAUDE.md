@@ -97,6 +97,14 @@ backlog task edit 42 --comment "Started: <approach in one line>" --comment-autho
   straight to `Done`. Add a closing comment tagged
   `implemented-by: <your-agent-id> — branch task-<id>, <files, tests, commit hash>`. Leave
   yourself as the assignee so it's clear who did the work.
+  **This closing comment MUST end with a friction line** — a `friction:<category> — …` bullet
+  for anything that tripped you up (build/env/deps/code/test/tooling), or literally
+  `friction:none` if it was genuinely smooth. No task reaches `Review` without one. This is the
+  forcing function that makes the friction trail actually exist: the "log friction as you hit
+  it" bullet below is the ideal (log in the moment), but the Review gate is the *floor* — a
+  task with no friction line is not ready for Review. (Rationale: the friction convention had
+  **zero** logged comments backlog-wide until this rule; the meta loop that mines them was
+  starved. Tying capture to an already-required step fixes adoption.)
 - **Review stage — done by the review loop, a different agent, which also merges.** A task in
   `Review` is picked up by a **different agent than the `implemented-by` one** (normally the
   hourly review loop) — a task must never be reviewed or merged by its own implementer
