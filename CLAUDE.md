@@ -237,6 +237,12 @@ red. If CI is already red on `main`, treat getting it green as part of the curre
 Native code is buildable/testable here (JDK + Android SDK present); verify pumpx2 APIs via
 `javap` on the cached jar before writing.
 
+**Dev-env gotcha — don't reach for `dart run` here.** `dart run <script>` crashes on this
+package (an FFI/kernel-transform exception) *even for pure-Dart, Flutter-independent files*, so a
+throwaway "quick probe" script is not viable. When you want to sanity-check a pure-Dart function
+in isolation, write a throwaway file under `test/` and run it with `flutter test <file>` instead —
+it works, just slightly slower to spin up. (Source: friction:tooling, TASK-155.)
+
 ## Fixing a bug? Sweep the whole surface — don't just patch the reported site
 The single most common defect the review loop finds is a fix that **protects its literal
 target but leaves the symmetric/adjacent path unguarded**. This has recurred repeatedly
