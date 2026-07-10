@@ -1,11 +1,6 @@
 ---
 id: TASK-242
 title: GitHub Actions workflow to build and publish Connect IQ packages
-status: Review
-assignee:
-  - Claude
-created_date: '2026-07-07 12:56'
-updated_date: '2026-07-10 12:34'
 status: Needs Review
 assignee:
   - Claude
