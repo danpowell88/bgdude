@@ -26,7 +26,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Build main AND task-<id> feature branches (decision-8: the review-merge gate needs
+    # green CI on the branch). NB: a branch only picks up this trigger once it contains this
+    # workflow file — branches cut before this change build via their PR (pull_request) instead.
+    branches: [main, 'task-**']
     # Docs and backlog files cannot break the build; skip the pipeline for
     # commits that touch nothing else.
     paths-ignore:
@@ -35,6 +38,8 @@ on:
       - '**/*.md'
   pull_request:
     branches: [main]
+  # Manual trigger — kick a build for any branch/ref that carries this workflow file.
+  workflow_dispatch: {}
 
 # Newer pushes supersede in-flight runs of the same ref.
 concurrency:
