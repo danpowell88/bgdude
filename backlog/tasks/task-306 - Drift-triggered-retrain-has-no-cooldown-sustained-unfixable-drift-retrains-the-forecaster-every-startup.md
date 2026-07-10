@@ -3,10 +3,11 @@ id: TASK-306
 title: >-
   Drift-triggered retrain has no cooldown -- sustained unfixable drift retrains
   the forecaster every startup
-status: To Do
+status: Review
 assignee:
   - Claude
 created_date: '2026-07-09 18:23'
+updated_date: '2026-07-10 09:48'
 labels: []
 milestone: m-8
 dependencies: []
@@ -22,10 +23,10 @@ TASK-138 drift detection requests an out-of-band forecaster retrain by resetting
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A drift-triggered out-of-band retrain is rate-limited (e.g. at most once per N hours, or the drift streak resets after a retrain attempt so another full 3-run streak is required) so sustained unfixable drift cannot retrain on every startup
-- [ ] #2 A drift retrain that fails to promote does not immediately re-request another retrain next startup
-- [ ] #3 The normal ~20h scheduled retrain is unaffected; a genuine one-off drift still triggers a timely out-of-band retrain
-- [ ] #4 Test asserts sustained drift does not trigger back-to-back retrains within the cooldown
+- [x] #1 A drift-triggered out-of-band retrain is rate-limited (e.g. at most once per N hours, or the drift streak resets after a retrain attempt so another full 3-run streak is required) so sustained unfixable drift cannot retrain on every startup
+- [x] #2 A drift retrain that fails to promote does not immediately re-request another retrain next startup
+- [x] #3 The normal ~20h scheduled retrain is unaffected; a genuine one-off drift still triggers a timely out-of-band retrain
+- [x] #4 Test asserts sustained drift does not trigger back-to-back retrains within the cooldown
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -37,15 +38,37 @@ TASK-138 drift detection requests an out-of-band forecaster retrain by resetting
 - TASK-140 (training-data census) was NOT deeply reviewed this pass (weekly limit); low-risk read-only diagnostics -- flag for a later look
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-10 09:37
+---
+branch: task-306
+---
+
+author: Claude
+created: 2026-07-10 09:37
+---
+Started: reset the drift streak after ANY out-of-band retrain attempt (not just on a non-drifting reconciliation run) so sustained-but-unfixable drift doesn't retrain every startup, and add a cooldown on the out-of-band retrain trigger itself.
+---
+
+author: Claude
+created: 2026-07-10 09:48
+---
+implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- lib/state/providers.dart (_checkForecastDrift: added _driftRetrainRequestedKey latch, gates the out-of-band retrain trigger to at most once per sustained-drift episode, clears when the episode genuinely resolves i.e. a non-drifting reconciliation run); tests: test/state/jobs_test.dart new cases 'sustained-but-unfixable drift requests the out-of-band retrain only ONCE...' and 'a latch left over from an already-resolved episode does not block a genuinely fresh one'; commit pending on branch task-306. Design: chose the AC#1-sanctioned 'streak resets after a retrain attempt' family of fix, implemented as an explicit persisted boolean latch (rather than resetting the numeric streak itself) so the UI's forecastDriftProvider.sustained flag stays accurate/visible for as long as drift genuinely persists, instead of flickering off between the trigger and a fresh 3-run recount -- the streak-reset alternative from the AC would have caused that flicker. Both branches (latch-set-on-trigger, latch-clear-on-resolution) individually rigor-checked (temp-bug + revert, each confirmed the corresponding new test fails with the predicted symptom before reverting). Full pipeline green: analyze clean, 1368 tests passing, coverage 68.78% (floor 65%), apk build succeeded. No native Kotlin changed, no user-visible/UI change (banner behavior already existed from TASK-138, this only changes retrain-request frequency), no screen/flow changed so no integration test.
+---
+<!-- COMMENTS:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test --coverage test/ green
-- [ ] #4 Line coverage did not drop -- at or above the ci.yml floor; any new testable code ships with its tests in the same change
-- [ ] #5 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test --coverage test/ green
+- [x] #4 Line coverage did not drop -- at or above the ci.yml floor; any new testable code ships with its tests in the same change
+- [x] #5 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
 - [ ] #6 gradlew :app:testDebugUnitTest green when native Kotlin changed
 - [ ] #7 doc/user-guide.html updated when the change is user-visible with screenshots
 - [ ] #8 Integration test added or extended when a screen/flow changed
-- [ ] #9 backlog item updated with comments
+- [x] #9 backlog item updated with comments
 <!-- DOD:END -->
