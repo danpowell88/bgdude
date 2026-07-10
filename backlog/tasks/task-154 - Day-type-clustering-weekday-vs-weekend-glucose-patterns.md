@@ -1,11 +1,6 @@
 ---
 id: TASK-154
 title: 'Day-type clustering: weekday vs weekend glucose patterns'
-status: Review
-assignee:
-  - Claude
-created_date: '2026-07-06 08:44'
-updated_date: '2026-07-10 11:16'
 status: Needs Review
 assignee:
   - Claude
