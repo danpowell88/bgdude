@@ -1,20 +1,23 @@
-# Agent loops (decisions 10 + 12)
+# Agent loops (decisions 10 + 12 + 13)
 
-Three scheduled agent roles plus one human gate keep the backlog moving through
+Three scheduled agent roles plus one human gate keep GitHub Issues moving through
 `Idea → Planned → To Do → Doing → Needs Review → Reviewing → Reviewed → Requires Human
-Verification → Done`. The prompts here are agent-agnostic: any CLI agent that can read
-`CLAUDE.md` and run `git`/`gh`/`backlog`/`flutter` can run them — Claude Code on a cheap
-model, qwen code, etc. Identity comes from the agent id it signs with, not the tool.
+Verification → Done` (statuses = `status:*` labels; `Done` = issue closed by Summer). The
+prompts here are agent-agnostic: any CLI agent that can read `CLAUDE.md` and run
+`git`/`gh`/`flutter` can run them — Claude Code on a cheap model, qwen code, etc. Identity
+comes from the agent id it signs with, not the tool.
 
 | Loop | Prompt | Model tier | Cadence | Pipeline segment |
 |------|--------|-----------|---------|------------------|
 | Implementer | `loops/implementer.md` | cheap (Sonnet / Haiku / qwen) | every 30–60 min, several in parallel OK | `To Do → Doing → Needs Review` |
 | Reviewer | `loops/reviewer.md` | expensive (Opus / Fable) | hourly | `Needs Review → Reviewing → Reviewed` (or `→ To Do`) |
 | Groomer | `loops/groomer.md` | expensive (Opus / Fable) | daily | `Idea → Planned → To Do`; `Reviewed → Requires Human Verification`; verdicts `→ Done` |
-| Summer (human) | — | — | when a batch appears | `Requires Human Verification → Done` |
+| Summer (human) | — | — | when a batch appears | `Requires Human Verification → Done` (closes the issues) |
 
-Safe to overlap: every role claims work with an immediate status commit pushed to `main`
-(`Doing` / `Reviewing`) before touching anything, and the groomer is idempotent.
+Safe to overlap: every role claims work by flipping the `status:*` label and posting a
+signed claiming comment BEFORE touching anything (`status:doing` / `status:reviewing`), then
+re-reads the issue and backs off if an earlier claim is present. Claims are API calls —
+instantly visible to every session, no commits, no push races. The groomer is idempotent.
 
 ## Start an agent (script)
 
@@ -52,6 +55,9 @@ Full process documentation (pipeline, gates, roles, human verification): `doc/pr
   successful `main` run: coverage that regresses fails the check — add tests, don't argue.
 - Implementers never merge; the reviewer never merges its own work; nobody uses
   `gh pr merge --admin`.
-- Agents never set `Done` — that is Summer's verdict on a verification batch (decision-12).
-  The one exception: the groomer flips tasks to `Done` when acting on her recorded verdict.
-- Claim/status backlog commits go straight to `main`, immediately, at every transition.
+- Agents never close a task issue — that is Summer's verdict on a verification batch
+  (decision-12). The one exception: the groomer closes issues when acting on her recorded
+  verdict. PR bodies say `Refs #<n>`, never `Closes #<n>`, so merges can't auto-close past
+  her gate.
+- Status flips happen via `gh issue edit` label changes + a signed comment, immediately at
+  every transition — never batched, never left stale.

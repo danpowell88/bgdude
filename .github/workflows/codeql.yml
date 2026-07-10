@@ -10,8 +10,8 @@
 # Gradle Kotlin compile ci.yml's native-tests job uses.
 #
 # NB: `push: main` deliberately has NO paths filter — the ruleset requires scanning
-# results for the ref being updated, and backlog bookkeeping commits land on main
-# constantly; every main commit must end up with results. cancel-in-progress keeps only
+# results for the ref being updated (the occasional docs/decision commit still lands on
+# main directly); every main commit must end up with results. cancel-in-progress keeps only
 # the newest tip analyzing. Dart is not a CodeQL-supported language: the Flutter code is
 # gated by analyze/test/coverage-gate in ci.yml instead.
 
@@ -40,10 +40,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
         with:
           languages: actions
           build-mode: none
@@ -54,7 +54,7 @@ jobs:
           queries: security-and-quality
 
       - name: Analyze
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
         with:
           category: '/language:actions'
 
@@ -64,28 +64,28 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       # Toolchain first, CodeQL init after — only the traced compile needs to run
       # between init and analyze.
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle (cache)
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
           flutter-version: 3.44.4
           cache: true
 
       - name: Install dependencies
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -103,7 +103,7 @@ jobs:
           printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_SDK" "$ANDROID_SDK" > android/local.properties
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
         with:
           languages: java-kotlin
           build-mode: manual
@@ -116,6 +116,6 @@ jobs:
         run: cd android && ./gradlew :app:compileDebugKotlin :app:compileDebugUnitTestKotlin --no-daemon
 
       - name: Analyze
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
         with:
           category: '/language:java-kotlin'
