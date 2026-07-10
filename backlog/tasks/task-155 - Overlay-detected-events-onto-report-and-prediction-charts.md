@@ -1,10 +1,11 @@
 ---
 id: TASK-155
 title: Overlay detected events onto report and prediction charts
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-06 08:44'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-10 11:20'
 labels:
   - feature
   - ui
@@ -50,6 +51,16 @@ ordinal: 702500
 - Where: `lib/ui/widgets/prediction_chart.dart`, glucose report chart, `doc/user-guide.html`
 - Related: TASK-107 (chart scaffolding)
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-10 11:20
+---
+branch: task-155
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
