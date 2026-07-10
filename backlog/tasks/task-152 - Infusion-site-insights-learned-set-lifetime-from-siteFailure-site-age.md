@@ -1,11 +1,6 @@
 ---
 id: TASK-152
 title: 'Infusion-site insights: learned set lifetime from siteFailure + site age'
-status: Review
-assignee:
-  - Claude
-created_date: '2026-07-06 08:43'
-updated_date: '2026-07-10 10:42'
 status: Needs Review
 assignee:
   - Claude
