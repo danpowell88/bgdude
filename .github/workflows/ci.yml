@@ -22,11 +22,22 @@
 # invoked for real in every job — never skipped on a cache hit — so a
 # stale or partial cache can only cost time, never silently pass stale
 # generated code.
+#
+# TASK-309: `push` also covers every `task-<id>` branch now, not just main.
+# The decision-8 review-and-merge workflow requires the review loop to
+# confirm CI is green on a task branch BEFORE merging it -- with only
+# `branches: [main]`, a task branch pushed on its own (the normal decision-8
+# flow: push branch, move the task to Review, the loop merges) got zero CI
+# runs, so that gate could never be satisfied and Review backed up
+# indefinitely (11 tasks queued, 2026-07-10). `task-**` matches the
+# `task-<id>` naming CLAUDE.md's Git section mandates; `paths-ignore` below
+# still applies to these pushes too (it's one shared push trigger), so a
+# branch that only touched backlog bookkeeping still doesn't burn CI.
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'task-**']
     # Docs and backlog files cannot break the build; skip the pipeline for
     # commits that touch nothing else.
     paths-ignore:
