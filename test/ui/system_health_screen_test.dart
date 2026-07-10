@@ -43,6 +43,28 @@ Future<void> _pumpScreen(
   await tester.pumpAndSettle();
 }
 
+/// Same as [_pumpScreen] but lets garminHealthProvider resolve to an
+/// AsyncError instead of AsyncData, to exercise the `garmin.when(error: ...)`
+/// branch on SystemHealthScreen (which must degrade to the same neutral
+/// "not available" tile as a null health map, not crash or hang loading).
+Future<void> _pumpScreenGarminError(
+  WidgetTester tester,
+  SystemHealthReport report,
+) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        systemHealthProvider
+            .overrideWith((ref) => _FixedHealthNotifier(report)),
+        garminHealthProvider
+            .overrideWith((ref) async => throw Exception('native bridge down')),
+      ],
+      child: const MaterialApp(home: SystemHealthScreen()),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets(
       'a subsystem with an old last-success and no recent attempt reads stale '
@@ -223,6 +245,102 @@ void main() {
       expect(
           find.descendant(
               of: garminTile, matching: find.byIcon(Icons.help_outline)),
+          findsNothing);
+    });
+  });
+
+  group('Garmin stale/healthy/error states (TASK-266 sibling coverage)', () {
+    Finder garminTileCard(WidgetTester tester) => find.ancestor(
+        of: find.text('Garmin watch delivery').last,
+        matching: find.byType(Card));
+
+    testWidgets(
+        'a Garmin success recorded over 15 minutes ago with no failures reads '
+        'stale (amber), not healthy and not neutral', (tester) async {
+      final overStaleWindow = DateTime.now() // now-ok: build() reads wall clock
+          .subtract(const Duration(minutes: 20));
+      await _pumpScreen(tester, const SystemHealthReport(), garminHealth: {
+        'lastSuccessAtMs': overStaleWindow.millisecondsSinceEpoch,
+        'consecutiveFailures': 0,
+      });
+      await tester.scrollUntilVisible(
+          find.textContaining('no recent activity'), 250,
+          scrollable: find.byType(Scrollable).first);
+
+      final garminTile = garminTileCard(tester);
+      expect(
+          find.descendant(
+              of: garminTile,
+              matching: find.byIcon(Icons.warning_amber_rounded)),
+          findsOneWidget,
+          reason: 'Garmin push is CGM-triggered every ~5 minutes; 20 minutes '
+              'with a real prior success and zero failures is exactly the '
+              'silent-stall case the stale state exists to catch');
+      expect(
+          find.descendant(
+              of: garminTile, matching: find.byIcon(Icons.check_circle_outline)),
+          findsNothing);
+      expect(
+          find.descendant(
+              of: garminTile, matching: find.byIcon(Icons.help_outline)),
+          findsNothing);
+      expect(find.textContaining('no recent activity, worth checking'),
+          findsOneWidget);
+    });
+
+    testWidgets(
+        'a Garmin success recorded a few minutes ago with no failures reads '
+        'healthy (green check), not stale and not neutral', (tester) async {
+      final recent = DateTime.now() // now-ok: build() reads the wall clock
+          .subtract(const Duration(minutes: 1));
+      await _pumpScreen(tester, const SystemHealthReport(), garminHealth: {
+        'lastSuccessAtMs': recent.millisecondsSinceEpoch,
+        'consecutiveFailures': 0,
+      });
+      await tester.scrollUntilVisible(find.textContaining('Last success'), 250,
+          scrollable: find.byType(Scrollable).first);
+
+      final garminTile = garminTileCard(tester);
+      expect(
+          find.descendant(
+              of: garminTile, matching: find.byIcon(Icons.check_circle_outline)),
+          findsOneWidget,
+          reason: 'a success inside the 15-minute stale window with no '
+              'recorded failures is genuinely healthy');
+      expect(
+          find.descendant(
+              of: garminTile,
+              matching: find.byIcon(Icons.warning_amber_rounded)),
+          findsNothing);
+      expect(
+          find.descendant(
+              of: garminTile, matching: find.byIcon(Icons.help_outline)),
+          findsNothing);
+      expect(find.textContaining('no recent activity'), findsNothing);
+    });
+
+    testWidgets(
+        'a garminHealthProvider error degrades to the same neutral tile as '
+        'no data, not a crash or a stuck loading spinner', (tester) async {
+      await _pumpScreenGarminError(tester, const SystemHealthReport());
+      await tester.scrollUntilVisible(find.textContaining('Not available'), 250,
+          scrollable: find.byType(Scrollable).first);
+
+      final garminTile = garminTileCard(tester);
+      expect(find.textContaining('Not available'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: garminTile, matching: find.byIcon(Icons.help_outline)),
+          findsOneWidget,
+          reason: 'garmin.when(error: ...) must render the same neutral tile '
+              'as a null health map, not surface as healthy or stay loading');
+      expect(
+          find.descendant(
+              of: garminTile, matching: find.byIcon(Icons.hourglass_empty)),
+          findsNothing);
+      expect(
+          find.descendant(
+              of: garminTile, matching: find.byIcon(Icons.check_circle_outline)),
           findsNothing);
     });
   });
