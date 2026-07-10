@@ -169,6 +169,30 @@ void main() {
     });
   });
 
+  group('trainingSigma (per-horizon sigma introspection)', () {
+    test('returns null for an untrained horizon', () {
+      final samples = _samples((x0, x1) => x0 - x1);
+      final model = const ResidualGbmTrainer().train({60: samples});
+      expect(model.trainingSigma(120), isNull);
+    });
+
+    test('returns null when no horizon has enough data to train', () {
+      final few = _samples((x0, x1) => x0 + x1, steps: 5); // 25 < 50
+      final model = const ResidualGbmTrainer().train({60: few});
+      expect(model.trainingSigma(60), isNull);
+    });
+
+    test('returns the same sigma correct() reports for a trained horizon', () {
+      final samples = _samples((x0, x1) => 5 * x0 - 3 * x1);
+      final model = const ResidualGbmTrainer().train({30: samples});
+
+      final sigma = model.trainingSigma(30);
+      expect(sigma, isNotNull);
+      expect(sigma,
+          model.correct(features: const [0.0, 0.0], horizonMinutes: 30).sigma);
+    });
+  });
+
   group('featureImportance (TASK-142)', () {
     test('surfaces the informative feature above the one that never mattered',
         () {
