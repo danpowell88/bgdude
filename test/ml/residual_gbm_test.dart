@@ -169,6 +169,38 @@ void main() {
     });
   });
 
+  group('featureImportance (TASK-142)', () {
+    test('surfaces the informative feature above the one that never mattered',
+        () {
+      // Target depends only on x0; x1 is not used anywhere in `f`.
+      final samples = _samples((x0, x1) => 10 * x0);
+      final model = const ResidualGbmTrainer().train({60: samples});
+      final holdout = [
+        for (final s in samples) (features: s.features, target: s.target),
+      ];
+
+      final importance = model.featureImportance(60, holdout);
+
+      expect(importance, isNotNull);
+      expect(importance![0], greaterThan(importance[1]!));
+    });
+
+    test('returns null for an untrained horizon', () {
+      final samples = _samples((x0, x1) => x0 + x1);
+      final model = const ResidualGbmTrainer().train({60: samples});
+      final holdout = [
+        for (final s in samples) (features: s.features, target: s.target),
+      ];
+      expect(model.featureImportance(30, holdout), isNull);
+    });
+
+    test('returns null for an empty holdout', () {
+      final samples = _samples((x0, x1) => x0 + x1);
+      final model = const ResidualGbmTrainer().train({60: samples});
+      expect(model.featureImportance(60, const []), isNull);
+    });
+  });
+
   group('persistence hardening', () {
     Map<String, dynamic> trainedBlob() {
       final samples = _samples((x0, x1) => 8 * x0 * x0 - 4 * x1);

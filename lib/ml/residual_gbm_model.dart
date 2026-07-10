@@ -57,6 +57,22 @@ class ResidualGbmModel implements ResidualModel {
     return _sigmas[horizonMinutes];
   }
 
+  /// TASK-142: permutation feature importance for [horizonMinutes]'s model
+  /// against [holdout] -- null when that horizon has no trained model or there's
+  /// no holdout to score against. Feature index -> RMSE increase when that
+  /// column is shuffled (see [GbmRegressor.permutationImportance]).
+  Map<int, double>? featureImportance(
+    int horizonMinutes,
+    List<({List<double> features, double target})> holdout,
+  ) {
+    final model = _models[horizonMinutes];
+    if (model == null || !model.isTrained || holdout.isEmpty) return null;
+    return model.permutationImportance(
+      [for (final h in holdout) h.features],
+      [for (final h in holdout) h.target],
+    );
+  }
+
   /// Bump when THIS serialization shape changes (independent of the feature
   /// layout, which [ForecastFeatures.version] tracks). Bumped to 2 by TASK-135:
   /// GbmRegressor's `minSamplesLeaf` (int) became `minLeafWeight` (double), an
