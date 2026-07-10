@@ -3,11 +3,11 @@ id: TASK-306
 title: >-
   Drift-triggered retrain has no cooldown -- sustained unfixable drift retrains
   the forecaster every startup
-status: Review
+status: Needs Review
 assignee:
   - Claude
 created_date: '2026-07-09 18:23'
-updated_date: '2026-07-10 10:44'
+updated_date: '2026-07-10 14:03'
 labels: []
 milestone: m-8
 dependencies: []

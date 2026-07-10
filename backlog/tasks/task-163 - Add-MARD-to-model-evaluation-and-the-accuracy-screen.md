@@ -6,6 +6,11 @@ assignee:
   - Claude
 created_date: '2026-07-06 09:14'
 updated_date: '2026-07-10 12:06'
+status: Needs Review
+assignee:
+  - Claude
+created_date: '2026-07-06 09:14'
+updated_date: '2026-07-10 14:03'
 labels:
   - feature
   - ml
@@ -62,6 +67,9 @@ author: Claude
 created: 2026-07-10 12:06
 ---
 implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- code complete and pushed to branch task-163 (commit 576f151).
+created: 2026-07-10 12:07
+---
+implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- code complete and pushed to branch task-163 (commit b8b9fa9).
 
 ModelEvaluation gained mardPercent (mean(|pred-ref|/ref)*100, ref>0 guarded, computed in ModelEvaluator.evaluate alongside RMSE). Surfaced on BOTH screens that render per-horizon ModelEvaluation stats -- Settings->Forecast accuracy (model_accuracy_screen.dart) and Reports->Model performance (model_report_screen.dart) -- since both share the same construct.
 
