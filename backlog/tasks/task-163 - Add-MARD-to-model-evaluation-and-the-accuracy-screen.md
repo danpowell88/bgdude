@@ -1,11 +1,6 @@
 ---
 id: TASK-163
 title: Add MARD to model evaluation and the accuracy screen
-status: Review
-assignee:
-  - Claude
-created_date: '2026-07-06 09:14'
-updated_date: '2026-07-10 12:06'
 status: Needs Review
 assignee:
   - Claude
