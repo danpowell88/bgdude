@@ -1,16 +1,14 @@
-# bgdude self-hosted CI runner for Unraid.
-#   docker compose --env-file .env up -d --build
-# (or use the Unraid "Compose Manager" plugin, or map these fields into an Add-Container template
-#  per the README).
+# Minimal bgdude self-hosted CI runner for Unraid — STOCK image, no build required.
+# The toolchain (JDK/Android SDK/Flutter) is installed per-job by the workflow steps
+# (setup-java + setup-android + flutter-action), so this container is just the plain runner.
+#   docker compose --env-file .env up -d
+# (or add it straight from the Unraid Docker UI — see README "Minimal quickstart".)
+#
+# Want faster jobs (SDKs baked in, no per-job install)? Build the Dockerfile in this folder
+# instead and swap `image:` for `build: .` — see README "Optional: bake the SDKs for speed".
 services:
   bgdude-runner:
-    build:
-      context: .
-      args:
-        FLUTTER_VERSION: "3.44.4"
-        # Phase 1 = false (build/analyze/test only). Set true for the emulator job (needs /dev/kvm).
-        WITH_EMULATOR: "false"
-    image: bgdude-ci-runner:latest
+    image: myoung34/github-runner:latest
     container_name: bgdude-ci-runner
     restart: unless-stopped
     environment:
@@ -20,19 +18,10 @@ services:
       ACCESS_TOKEN: "${GH_RUNNER_PAT}"
       RUNNER_NAME: "unraid-bgdude"
       LABELS: "self-hosted,linux,x64,unraid"
-      # EPHEMERAL: a fresh runner per job — the single most important security setting on a
-      # PUBLIC repo (a job can't leave state behind for the next one). Keep this true.
-      EPHEMERAL: "true"
-      DISABLE_AUTO_UPDATE: "true"
-    # --- Phase 2 (emulator) ONLY: uncomment to pass KVM through. Requires WITH_EMULATOR=true above
-    #     and VT-x/AMD-V enabled on the Unraid host. Do NOT run --privileged; the device map is enough.
-    # devices:
-    #   - "/dev/kvm:/dev/kvm"
+      RUN_AS_ROOT: "true"          # simplest — lets setup-android/flutter write to the tool cache freely
     volumes:
-      # Persist the runner work dir + warm the caches across restarts (big speedup).
-      - "./_work:/actions-runner/_work"
-      - "gradle-cache:/home/runner/.gradle"
-      - "pub-cache:/home/runner/.pub-cache"
-volumes:
-  gradle-cache:
-  pub-cache:
+      # Persist the work dir so tool-cache installs + git checkouts survive restarts (big speedup).
+      - "/mnt/user/appdata/bgdude-runner/_work:/actions-runner/_work"
+    # Security (public repo): the runner only ever runs YOUR refs — the workflow's fork-PR guard
+    # keeps untrusted fork PRs on GitHub-hosted runners. That guard is the real control; this box
+    # is a persistent trusted runner, so ephemeral/fresh-FS churn is unnecessary (see README).

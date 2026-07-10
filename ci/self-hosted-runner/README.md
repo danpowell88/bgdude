@@ -16,31 +16,49 @@ exposure is currently ~nil, but keep these guardrails:
 - **No `--privileged`.** Phase 2 needs only `--device /dev/kvm`.
 - Run it on an isolated Docker network / VLAN if you can, and don't hand it secrets it doesn't need.
 
+## Minimal quickstart (stock image, add straight from the Unraid Docker UI — no build)
+This stands up a plain runner; the toolchain is installed per-job by the workflow. Fastest to get
+going; the first build is slower (installs the SDK once, then it's cached in the mounted work dir).
+
+1. **Make a token** — fine-grained PAT scoped to `danpowell88/bgdude`, *Administration: Read and
+   write* (see `.env.example`). Keep it handy.
+2. **Unraid → Docker → Add Container** (`http://<your-unraid>/Docker`), toggle **Advanced view**:
+   - **Name:** `bgdude-ci-runner`
+   - **Repository:** `myoung34/github-runner:latest`
+   - **Extra Parameters:** `--restart unless-stopped`
+   - **Add › Variable** (one each):
+     - `REPO_URL` = `https://github.com/danpowell88/bgdude`
+     - `RUNNER_SCOPE` = `repo`
+     - `ACCESS_TOKEN` = *your PAT*
+     - `RUNNER_NAME` = `unraid-bgdude`
+     - `LABELS` = `self-hosted,linux,x64,unraid`
+     - `RUN_AS_ROOT` = `true`
+   - **Add › Path:** container `/actions-runner/_work` → host `/mnt/user/appdata/bgdude-runner/_work`
+   - **Apply.**
+3. **Verify:** repo → Settings → Actions → Runners shows **`unraid-bgdude` — Idle** with the
+   `unraid` label. (`docker logs bgdude-ci-runner` shows the registration.)
+4. **Wire CI to it:** the workflow needs `runs-on: [self-hosted, unraid]` + `android-actions/setup-android`
+   + the branch trigger + the fork-PR guard (see below). Ping me once it's Idle and I'll make those
+   `ci.yml` changes so we test against a live runner.
+
+That's the whole minimal setup. Everything below is optional depth (compose file, SDK-baked image
+for speed, the phase-2 emulator, and the security rationale).
+
 ## Prerequisites (on the Unraid host)
 - CPU virtualization (VT-x / AMD-V) enabled in BIOS — needed for the phase-2 emulator.
 - `/dev/kvm` present: `ls -l /dev/kvm` (phase 2 only).
 - The Docker or Compose Manager plugin.
 
-## Setup (phase 1 — branch builds: analyze / test / build apk)
-1. **Get a token:** create a fine-grained PAT scoped to `danpowell88/bgdude` with
-   *Administration: Read and write* (see `.env.example`). `cp .env.example .env` and paste it in.
-2. **Build + start:**
-   ```sh
-   cd ci/self-hosted-runner
-   docker compose --env-file .env up -d --build
-   ```
-   (First build downloads the Android SDK + Flutter — several GB, a few minutes.)
-3. **Verify:** repo → Settings → Actions → Runners should show **`unraid-bgdude` — Idle** with the
-   `unraid` label. `docker logs bgdude-ci-runner` shows the registration.
-
-### Unraid "Add Container" UI mapping (if you don't use Compose Manager)
-Build the image once on a shell (`docker build -t bgdude-ci-runner ci/self-hosted-runner`), then:
-- **Repository:** `bgdude-ci-runner:latest`
-- **Extra Parameters:** `--restart unless-stopped` (phase 2: add `--device /dev/kvm`)
-- **Variables** (Add another Path/Port/Variable → Variable): `REPO_URL`, `RUNNER_SCOPE=repo`,
-  `ACCESS_TOKEN=<your PAT>`, `RUNNER_NAME=unraid-bgdude`, `LABELS=self-hosted,linux,x64,unraid`,
-  `EPHEMERAL=true`, `DISABLE_AUTO_UPDATE=true`
-- **Paths:** container `/actions-runner/_work` → a share (e.g. `/mnt/user/appdata/bgdude-runner/_work`)
+## Optional: bake the SDKs for speed
+The minimal quickstart installs the toolchain per job (slower first build). To make builds fast,
+build the `Dockerfile` here (JDK + Android SDK + Flutter baked in) and use that image instead:
+```sh
+docker build -t bgdude-ci-runner ci/self-hosted-runner        # run once on the Unraid shell
+```
+then in the Add-Container form set **Repository:** `bgdude-ci-runner:latest` (instead of the stock
+`myoung34/github-runner`), same variables/paths as the quickstart. (The `docker-compose.yml` uses
+the stock image by default; swap `image:` for `build: .` to use the baked one via compose.) With
+the SDK baked in you can drop the `android-actions/setup-android` step from the workflow.
 
 ## Wiring CI to the runner (`.github/workflows/ci.yml`)
 Two changes — do these once the runner shows Idle (I can prepare them on request):
