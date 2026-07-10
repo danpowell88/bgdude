@@ -1,10 +1,11 @@
 ---
 id: TASK-143
 title: Predicted hypo/hyper duration on Predict
-status: To Do
-assignee: []
+status: Review
+assignee:
+  - Claude
 created_date: '2026-07-06 08:41'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-10 10:18'
 labels:
   - feature
   - ml
@@ -25,10 +26,10 @@ ordinal: 702000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Predicted minutes-below-70 / minutes-above-180 are derived from the existing trajectory and interval
-- [ ] #2 A "predicted low for ~25 min" style readout is surfaced on Predict
-- [ ] #3 Tests cover synthetic trajectories
-- [ ] #4 The user guide is updated
+- [x] #1 Predicted minutes-below-70 / minutes-above-180 are derived from the existing trajectory and interval
+- [x] #2 A "predicted low for ~25 min" style readout is surfaced on Predict
+- [x] #3 Tests cover synthetic trajectories
+- [x] #4 The user guide is updated
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -50,13 +51,35 @@ ordinal: 702000
 - Related: distinct from TASK-49 and TASK-52; better after TASK-46/47
 <!-- SECTION:NOTES:END -->
 
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-10 10:07
+---
+branch: task-143
+---
+
+author: Claude
+created: 2026-07-10 10:07
+---
+Started: reading Forecaster/HorizonForecast and the GlucosePredictor's underlying trajectory (PredictionLine) to see what's already computed between horizon grid points before designing minutes-below/above.
+---
+
+author: Claude
+created: 2026-07-10 10:18
+---
+implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- new lib/ml/threshold_duration.dart (ThresholdDurationEstimator: piecewise-linear interpolation across the horizon grid (now, +30, +60, +120), summing minutes on the below/above side of a threshold with exact crossing-point interpolation within a straddling segment; two estimates per call -- pointMinutes from the mgdl trajectory, confidentMinutes from the LESS SEVERE interval bound (upper for a low, lower for a high), so confidentMinutes is never longer than pointMinutes); lib/ui/predictions_screen.dart (new _DurationCard: 'Predicted low for ~Nmin' / 'Predicted high for ~Nmin', with an '(at least N min likely)' caveat when the confident estimate is shorter, hidden entirely when nothing is predicted); doc/user-guide.html updated. Thresholds: reused GlucoseThresholds.low(70)/.high(180), matching the existing _OvernightCard on the same screen rather than the user's personalised alert thresholds, for consistency. Tests: test/ml/threshold_duration_test.dart -- full-span/never-crosses/exact-interpolation cases for both below and above, confidentMinutes<=pointMinutes invariant, empty-input safety. Caught my own test-math errors during the first run (two minutesAbove cases assumed 'full 120min' with a current value that was actually BELOW threshold at t=0, which the real crossing-interpolation correctly counted as a partial first segment -- fixed the test fixtures, not the implementation, after manually re-deriving the expected numbers). Rigor-checked the crossing-fraction interpolation (temp-bug: count the whole segment unconditionally instead of the interpolated fraction; confirmed the crossing-point test fails with 120 instead of 105 as predicted; reverted cleanly). Full pipeline green: analyze clean, 1374 tests passing, coverage 68.83% (floor 65%), apk build succeeded. No native Kotlin changed. Integration test: Predict tab already has integration_test coverage (features_flows_test.dart); could not run it live (the emulator's VM-service WebSocket issue noted on TASK-141/305 is still present) -- the new card is purely additive (SizedBox.shrink() when nothing predicted) so the existing test's assertions are unaffected either way.
+---
+<!-- COMMENTS:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
-- [ ] #2 flutter analyze clean
-- [ ] #3 flutter test test/ green
-- [ ] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
+- [x] #1 dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)
+- [x] #2 flutter analyze clean
+- [x] #3 flutter test test/ green
+- [x] #4 flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)
 - [ ] #5 gradlew :app:testDebugUnitTest green when native Kotlin changed
-- [ ] #6 doc/user-guide.html updated when the change is user-visible
+- [x] #6 doc/user-guide.html updated when the change is user-visible
 - [ ] #7 Integration test added or extended when a screen/flow changed
 <!-- DOD:END -->
