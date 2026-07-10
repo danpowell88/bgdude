@@ -3,10 +3,11 @@ id: TASK-309
 title: >-
   CI does not run on task-<id> branches, so the review-merge gate can never
   confirm green
-status: To Do
+status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-10 12:26'
+updated_date: '2026-07-10 12:37'
 labels: []
 milestone: m-8
 dependencies: []
@@ -36,6 +37,16 @@ The decision-8 review-and-merge workflow requires the review loop to confirm CI 
 - Blocks decision-8 end to end; the 11-task Review queue cannot drain until this is fixed
 - Interacts with the GitHub-App connection (PRs work -- PR #1 ran CI); local --no-ff merge does not need the app but does need branch-push CI to confirm green
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-10 12:37
+---
+branch: task-309
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
