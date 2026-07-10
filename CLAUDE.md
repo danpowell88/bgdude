@@ -74,12 +74,30 @@ Use the **comment field** to leave a trail on the task you're working on:
 backlog task edit 42 --comment "Started: <approach in one line>" --comment-author "Claude"
 ```
 
-- When you **start** a task: set `-s "In Progress"` and add a comment stating the approach.
+- When you **start** a task: set `-s "In Progress"`, assign yourself as the implementer
+  (`-a <your-agent-id>` — the same identity you sign commits with, e.g. the `Co-Authored-By`
+  model/session name), and add a comment stating the approach.
 - While working: add a comment for any **significant finding, decision, or deviation** from
   the implementation plan (what and why) — not a play-by-play, just the things a reviewer
   would want to know.
-- When you **finish**: check off the acceptance criteria (`--check-ac <n>`), set
-  `-s Done`, and add a closing comment summarising what changed (files, tests, commit hash).
+- When you **finish the implementation** (code + tests + the full verify pipeline green):
+  check off the acceptance criteria (`--check-ac <n>`) and move the task to **`-s Review`**,
+  **not `Done`** — nothing goes straight to Done. Add a closing comment tagged
+  `implemented-by: <your-agent-id> — <files, tests, commit hash>`. Leave yourself as the
+  assignee so it's clear who did the work.
+- **Review stage (a different agent, always).** A task in `Review` is picked up by a
+  **different agent than the `implemented-by` one** — independent review is the whole point,
+  so a task must never be reviewed by its own implementer. The reviewer verifies the ACs and
+  DoD against the actual diff (apply the "sweep the whole surface" checklist above), then:
+  - **Pass** → add a comment tagged `reviewed-by: <reviewer-agent-id> — <what was checked / verdict>`,
+    check off the DoD (`--check-dod <n>`), and set `-s Done`. Done requires this reviewed-by
+    comment from a second agent (DoD item).
+  - **Fail** → add a `reviewed-by: <reviewer-agent-id> — <the problem>` comment and send it back
+    to `-s "In Progress"` (or `Blocked`, or file a prioritised follow-up ticket for a separable
+    gap) so it is reworked. Never rubber-stamp to Done.
+  - The `implemented-by:` / `reviewed-by:` tags (plus each comment's `--comment-author`) are the
+    greppable record of **who did the work and who reviewed it** — keep both present on every
+    task that reaches Done.
 - When you **cannot make further progress** — a dependency, a missing decision or answer, or
   an environment limitation (e.g. no reachable emulator) blocks you — **do not leave the task
   `In Progress`**. Set `-s Blocked`, add a comment naming the blocker and exactly what would
