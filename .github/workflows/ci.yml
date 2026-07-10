@@ -42,6 +42,12 @@ on:
   # Manual trigger — kick a build for any branch/ref that carries this workflow file.
   workflow_dispatch: {}
 
+# Least-privilege token for every job (CodeQL actions/missing-workflow-permissions,
+# decision-11): nothing here writes to the repo — artifact up/download uses the runtime
+# token, not this one.
+permissions:
+  contents: read
+
 # Newer pushes supersede in-flight runs of the same ref.
 concurrency:
   group: ci-${{ github.ref }}
