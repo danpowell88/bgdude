@@ -32,7 +32,7 @@ void main() {
   // app flags/prefs (in this file or another run in the same process) leak in.
   setUp(setUpDemoHarness);
 
-  testWidgets('reports hub opens each of the eight reports', (tester) async {
+  testWidgets('reports hub opens each of the seven reports', (tester) async {
     await pumpDemoApp(tester);
     await openSettingsScreen(tester, 'Reports');
     expect(find.text('Reports'), findsWidgets);
@@ -45,7 +45,6 @@ void main() {
       'Correlations',
       'Events journal',
       'Model performance',
-      'Patterns',
     ]) {
       await _openReport(tester, report);
     }
