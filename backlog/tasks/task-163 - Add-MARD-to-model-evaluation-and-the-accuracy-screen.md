@@ -1,10 +1,11 @@
 ---
 id: TASK-163
 title: Add MARD to model evaluation and the accuracy screen
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - Claude
 created_date: '2026-07-06 09:14'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-10 11:57'
 labels:
   - feature
   - ml
@@ -47,6 +48,16 @@ ordinal: 702900
 - Effort: M
 - Where: `lib/ml/model_registry.dart`, accuracy screen widgets, `doc/user-guide.html`
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-10 11:57
+---
+branch: task-163
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
