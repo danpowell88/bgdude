@@ -25,7 +25,7 @@ notes, comments) in its body. Structure:
 - **Project boards** are the column views. The main backlog board is user project **#2
   `bgdude`** (all open issues; built-in `Status` field carries the ten pipeline stages as
   columns, plus an `Ordinal` number field for ordering). Each milestone also has its own
-  board — projects **#3–#11**, titled exactly like the milestones (`Phase 0: …` …
+  board — projects **#12–#20**, titled exactly like the milestones (`Phase 0: …` …
   `Code health`) — containing ALL of that milestone's issues including Done, so a phase's
   progress reads at a glance. Labels are canonical; the boards are mirrors
   (`.github/workflows/project-sync.yml` syncs label → board `Status` when its

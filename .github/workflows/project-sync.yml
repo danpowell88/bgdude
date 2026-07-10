@@ -1,7 +1,7 @@
 # Mirrors each issue's `status:*` label (the canonical status, decision-13) to the
 # built-in `Status` single-select on the project boards: the main `bgdude` backlog
 # project (#2, all open issues) and the per-milestone phase project whose title
-# matches the issue's milestone (projects #3-#11). Closed issues sync to Done.
+# matches the issue's milestone (projects #12-#20, looked up by title). Closed issues sync to Done.
 # Labels stay the source of truth — this sync only keeps the board views honest,
 # so it degrades gracefully: without the PROJECT_SYNC_TOKEN secret it skips.
 #

@@ -21,7 +21,8 @@ status: accepted
 - **All task tracking moves to GitHub Issues on `danpowell88/bgdude`** (CLI: `gh`), with
   **project boards as the column views**: user project #2 `bgdude` (all open issues; the
   built-in `Status` single-select carries the ten stages as board columns + an `Ordinal`
-  number field), and one project per milestone (#3–#11, titled after the phases) holding
+  number field), and one project per milestone (#12–#20, titled after the phases, each with table + board
+  views) holding
   ALL of that milestone's issues including Done so phase progress is visible.
 - **Mapping** (all 315 Backlog items migrated, full content — description, ACs, plan, notes,
   DoD, comment history — preserved in issue bodies; `doc/backlog-migration-map.md` maps
