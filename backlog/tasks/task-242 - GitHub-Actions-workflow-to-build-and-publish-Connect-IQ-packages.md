@@ -1,11 +1,11 @@
 ---
 id: TASK-242
 title: GitHub Actions workflow to build and publish Connect IQ packages
-status: Review
+status: Needs Review
 assignee:
   - Claude
 created_date: '2026-07-07 12:56'
-updated_date: '2026-07-10 12:36'
+updated_date: '2026-07-10 14:03'
 labels:
   - garmin
   - ci

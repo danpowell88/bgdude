@@ -22,30 +22,31 @@
 # invoked for real in every job — never skipped on a cache hit — so a
 # stale or partial cache can only cost time, never silently pass stale
 # generated code.
-#
-# TASK-309: `push` also covers every `task-<id>` branch now, not just main.
-# The decision-8 review-and-merge workflow requires the review loop to
-# confirm CI is green on a task branch BEFORE merging it -- with only
-# `branches: [main]`, a task branch pushed on its own (the normal decision-8
-# flow: push branch, move the task to Review, the loop merges) got zero CI
-# runs, so that gate could never be satisfied and Review backed up
-# indefinitely (11 tasks queued, 2026-07-10). `task-**` matches the
-# `task-<id>` naming CLAUDE.md's Git section mandates; `paths-ignore` below
-# still applies to these pushes too (it's one shared push trigger), so a
-# branch that only touched backlog bookkeeping still doesn't burn CI.
 name: CI
 
 on:
   push:
-    branches: [main, 'task-**']
+    # main only (post-merge verification). Task branches build via their PR (decision-9:
+    # every task branch gets a PR, and the main ruleset requires these checks green on the
+    # PR before merge) — building task-** pushes too would run every branch twice.
+    branches: [main]
     # Docs and backlog files cannot break the build; skip the pipeline for
-    # commits that touch nothing else.
+    # commits that touch nothing else. (The backlog claim/status commits agents
+    # push straight to main land here constantly — they must stay free.)
     paths-ignore:
       - 'backlog/**'
       - 'doc/**'
       - '**/*.md'
   pull_request:
     branches: [main]
+  # Manual trigger — kick a build for any branch/ref that carries this workflow file.
+  workflow_dispatch: {}
+
+# Least-privilege token for every job (CodeQL actions/missing-workflow-permissions,
+# decision-11): nothing here writes to the repo — artifact up/download uses the runtime
+# token, not this one.
+permissions:
+  contents: read
 
 # Newer pushes supersede in-flight runs of the same ref.
 concurrency:
@@ -177,6 +178,11 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # actions:read on top of the workflow-level contents:read — the ratchet step below
+    # downloads the coverage baseline artifact from the latest successful main run.
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Download shard coverage
         uses: actions/download-artifact@v4
@@ -220,7 +226,42 @@ jobs:
           ' coverage/lcov.info)"
           pct=$(awk "BEGIN {printf \"%.1f\", 100*$hit/$total}")
           echo "Line coverage: $pct% ($hit/$total lines, excluding generated files)"
+          echo "$pct" > coverage-percent.txt
           awk "BEGIN {exit !($pct >= 65.0)}" || { echo "::error::Line coverage $pct% is below the 65% minimum"; exit 1; }
+
+      # Baseline for the no-drop ratchet below: every successful run (main pushes are the
+      # ones the ratchet consumes) publishes its coverage percentage as a tiny artifact.
+      - name: Upload coverage percent (ratchet baseline)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-percent
+          path: coverage-percent.txt
+
+      # No-drop coverage ratchet (the free stand-in for GitHub's "Restrict code coverage"
+      # ruleset rule, unavailable on a user-owned Free repo — decision-11). The 65% floor
+      # above catches collapse; this catches erosion: a PR may not land with lower line
+      # coverage than the latest successful main run (0.1pt tolerance for rounding). If
+      # a change genuinely must lower coverage, that is a reviewer decision, not a bypass:
+      # add tests until it recovers.
+      - name: Coverage no-drop ratchet vs main (PRs only)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&status=success&event=push&per_page=1" \
+            --jq '.workflow_runs[0].id // empty')
+          if [ -z "$run_id" ]; then
+            echo "::notice::No successful main CI run found — skipping the no-drop ratchet"; exit 0
+          fi
+          if ! gh run download "$run_id" --repo "$GITHUB_REPOSITORY" -n coverage-percent -D baseline 2>/dev/null; then
+            echo "::notice::main run $run_id predates the coverage-percent artifact — skipping the no-drop ratchet"; exit 0
+          fi
+          base=$(cat baseline/coverage-percent.txt)
+          pct=$(cat coverage-percent.txt)
+          echo "PR line coverage: $pct% — main baseline (run $run_id): $base%"
+          awk "BEGIN {exit !($pct >= $base - 0.1)}" || {
+            echo "::error::Line coverage dropped: $pct% on this PR vs $base% on main — add tests for the new code (coverage is a ratchet, see CLAUDE.md)"; exit 1
+          }
 
   apk-build:
     runs-on: ubuntu-latest
