@@ -189,14 +189,22 @@ Future<void> explainDayEvent(
   );
   // Accepting an explanation with an exclusion kind marks the event ignore.
   if (annotation != null) {
-    final reason = _reasonFor(annotation.kind);
+    final reason = reasonForAnnotationKind(annotation.kind);
     if (reason != null) {
       ref.read(eventDispositionProvider.notifier).ignore(event.id, reason);
     }
   }
 }
 
-IgnoreReason? _reasonFor(AnnotationKind annotationKind) {
+/// Maps an accepted [ExplainReadingScreen] annotation kind to the matching
+/// [IgnoreReason], so accepting e.g. a compression-low explanation auto-tags the
+/// event ignore with the same reason. Kinds with no ignore-worthy counterpart
+/// (context-only annotations like exercise/illness-as-context, `other`, etc.)
+/// return null and leave the event's disposition untouched. Exposed for testing
+/// this mapping directly, independent of the navigation it's normally reached
+/// through.
+@visibleForTesting
+IgnoreReason? reasonForAnnotationKind(AnnotationKind annotationKind) {
   final name = annotationKind.name;
   if (name.contains('compressionLow')) return IgnoreReason.compressionLow;
   if (name.contains('siteFailure')) return IgnoreReason.siteFailure;

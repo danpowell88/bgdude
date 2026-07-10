@@ -177,8 +177,8 @@ class PredictionChart extends ConsumerWidget {
             getTooltipItems: (spots) => [
               for (final s in spots)
                 LineTooltipItem(
-                  '${_labelFor(labels, s.barIndex)}  '
-                  '${_when(s.x)}  ${_fmt(s.y, unit)}',
+                  '${labelForBarIndex(labels, s.barIndex)}  '
+                  '${minutesFromNowLabel(s.x)}  ${formatDisplayValue(s.y, unit)}',
                   TextStyle(
                     color: cs.onInverseSurface,
                     fontWeight: FontWeight.w600,
@@ -217,10 +217,16 @@ class PredictionChart extends ConsumerWidget {
     );
   }
 
-  static String _labelFor(List<String> labels, int barIndex) =>
+  /// The series label for a hovered spot's bar index (tooltip line). Exposed for
+  /// testing the tooltip's label lookup in isolation from the chart widget tree.
+  @visibleForTesting
+  static String labelForBarIndex(List<String> labels, int barIndex) =>
       (barIndex >= 0 && barIndex < labels.length) ? labels[barIndex] : '';
 
-  static String _when(double minutes) {
+  /// Formats an x-axis value (minutes from now) as a relative time label, e.g.
+  /// `now`, `+1h30m`, `-45m`. Exposed for testing the tooltip's time formatting.
+  @visibleForTesting
+  static String minutesFromNowLabel(double minutes) {
     final m = minutes.round();
     if (m == 0) return 'now';
     final h = m ~/ 60;
@@ -230,7 +236,11 @@ class PredictionChart extends ConsumerWidget {
     return '$sign${h.abs()}h${rem > 0 ? '${rem}m' : ''}';
   }
 
-  static String _fmt(double display, GlucoseUnit unit) =>
+  /// Formats a display-unit glucose value with its unit suffix, matching the
+  /// unit's own precision convention (1 decimal for mmol/L, whole for mg/dL).
+  /// Exposed for testing the tooltip's value formatting.
+  @visibleForTesting
+  static String formatDisplayValue(double display, GlucoseUnit unit) =>
       '${unit == GlucoseUnit.mmol ? display.toStringAsFixed(1) : display.round()} '
       '${unit.label}';
 }
