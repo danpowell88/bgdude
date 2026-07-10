@@ -3,10 +3,11 @@ id: TASK-266
 title: >-
   Use a neutral unknown indicator not a green check for never-run subsystems on
   the system-health screen
-status: To Do
+status: In Progress
 assignee:
   - Claude
 created_date: '2026-07-07 17:30'
+updated_date: '2026-07-10 12:08'
 labels: []
 milestone: m-8
 dependencies: []
@@ -32,6 +33,16 @@ On the system-health screen, when lastAttemptAt is null the subtitle says Never 
 - Source: recent-code review 2026-07-08 (follow-up to TASK-201)
 - File: lib/ui/system_health_screen.dart:57,60,69 and the Garmin tile :118
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-10 12:08
+---
+branch: task-266
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
