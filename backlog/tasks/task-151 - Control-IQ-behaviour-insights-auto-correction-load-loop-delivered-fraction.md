@@ -6,6 +6,11 @@ assignee:
   - Claude
 created_date: '2026-07-06 08:43'
 updated_date: '2026-07-10 10:30'
+status: Needs Review
+assignee:
+  - Claude
+created_date: '2026-07-06 08:43'
+updated_date: '2026-07-10 14:03'
 labels:
   - feature
   - reports
@@ -58,6 +63,7 @@ ordinal: 702100
 <!-- COMMENTS:BEGIN -->
 author: Claude
 created: 2026-07-10 10:30
+created: 2026-07-10 10:45
 ---
 branch: task-151
 ---
@@ -66,6 +72,9 @@ author: Claude
 created: 2026-07-10 10:30
 ---
 implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- lib/reports/insulin_report.dart: DailyInsulin gained autoBolusUnits/autoBolusCount per day (mirrors the existing bolus/basal per-day fields, so the per-day list already IS the sparkline data source); InsulinReport gained avgAutoBolusUnits/avgAutoCorrectionCount (per-day averages over the same activeDays basis as avgBolus/avgBasal) and loopBolusFraction (auto bolus units / all bolus units in range). lib/ui/reports/insulin_report_screen.dart: new 'Control-IQ workload' section (3 stat rows + a per-day sparkline via fl_chart LineChart, mirroring the existing TDD BarChart's style). AC#2 (mode-log decision): DEFERRED -- filed TASK-307 as the follow-up. Reasoning: unlike this task's metrics (all derivable from already-persisted BolusEvent.isAutomatic history), a genuine time-in-controlIqMode report needs a NEW persisted data source (controlIqMode is snapshot-only today, never logged on transition) -- that's schema + a new tracking hook, a materially different and larger scope than 'new math over existing history', so it doesn't belong folded into this task. Tests: test/reports/reports_phase2_test.dart -- hand-computed workload metrics against a mixed manual/meal/auto fixture (avgAutoBolusUnits=0.6, avgAutoCorrectionCount=1.5, loopBolusFraction=1.2/8.2), verified per-day autoBolusUnits/autoBolusCount on the two active days, plus a no-automatic-boluses zero-not-NaN case. Rigor-checked both avgAutoBolusUnits and loopBolusFraction (temp-bug each to a hardcoded 0.0, confirmed the corresponding assertions fail with the predicted actual values, reverted cleanly -- confirmed via flutter analyze returning clean afterward, since the stub versions triggered unused-variable warnings that would have been visible otherwise). Full pipeline green: analyze clean, 1368 tests passing, coverage 68.64% (floor 65%), apk build succeeded. No native Kotlin changed. Integration test: Reports screens already have integration_test coverage; could not run it live (the emulator's known VM-service WebSocket limitation, same as TASK-141/143) -- the new section is additive to an existing screen.
+created: 2026-07-10 10:45
+---
+Coordination fix: code complete and pushed (commit 67a56a3 on branch task-151) -- status/branch previously only committed on that branch, invisible on main. Implementation details recorded in the comment history on that branch's copy of this task file.
 ---
 <!-- COMMENTS:END -->
 
