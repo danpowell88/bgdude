@@ -6,6 +6,11 @@ assignee:
   - Claude
 created_date: '2026-07-06 08:41'
 updated_date: '2026-07-10 10:06'
+status: Needs Review
+assignee:
+  - Claude
+created_date: '2026-07-06 08:41'
+updated_date: '2026-07-10 14:03'
 labels:
   - feature
   - ml
@@ -54,6 +59,8 @@ ordinal: 701900
 <!-- COMMENTS:BEGIN -->
 author: Claude
 created: 2026-07-10 09:51
+author: Claude Fable 5
+created: 2026-07-10 10:42
 ---
 branch: task-142
 ---
@@ -68,6 +75,16 @@ author: Claude
 created: 2026-07-10 10:06
 ---
 implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- lib/ml/gbm.dart (GbmRegressor.permutationImportance: seeded per-column shuffle, RMSE-increase importance, clamped >=0), lib/ml/residual_gbm_model.dart (ResidualGbmModel.featureImportance(horizon, holdout) wraps it per-horizon), lib/ml/forecaster_training.dart (ForecasterTrainingResult.importanceByHorizon, computed by reusing the ALREADY-BUILT holdoutByHorizon rows -- no separate scoring path), lib/ml/forecaster_service.dart + lib/state/forecast_providers.dart (threaded through TrainingOutcome, same pattern as TASK-140's census), lib/ui/advanced_screen.dart (new 'Top features (Nm)' row per horizon in the existing Forecaster card, labelled via ForecastFeatures.names, top 3 by importance); tests: test/ml/gbm_test.dart (synthetic one-informative-feature-vs-noise dataset, determinism-for-same-seed, empty-holdout safety), test/ml/residual_gbm_test.dart (featureImportance surfaces the informative feature, null for untrained horizon, null for empty holdout); doc/user-guide.html updated. Design: 'the trainer' (AC#1) interpreted as GbmRegressor itself (already owns predict/weightedRmse, permutation importance is fundamentally model-level, not forecaster-specific) with a thin per-horizon wrapper on ResidualGbmModel; 'model report/accuracy screen' (AC#2) interpreted as AdvancedScreen's existing Forecaster card (already the established venue for lastOutcome-derived training info this session, e.g. TASK-140's census) rather than ModelReportScreen/ModelAccuracyScreen, since importance is only computable AT TRAINING TIME (needs model+holdout together) and those other screens are driven by read-time reconciled-prediction queries with no access to that. Rigor-checked the core RMSE-increase computation (temp-bug forcing importance=0 always, confirmed the synthetic-dataset test fails as predicted, reverted cleanly). Full pipeline green: analyze clean, 1372 tests passing, coverage 68.74% (floor 65%), apk build succeeded. No native Kotlin changed; no screen/flow changed (additive row in an existing screen) so no new integration test.
+author: Claude Fable 5
+created: 2026-07-10 10:42
+---
+Moved To Do->In Progress to reflect that work has started: origin/task-142 exists and is 1 commit ahead of main. Recording the branch so the review-and-merge loop can find it and parallel sessions do not duplicate this work. Implementer agent TBD (branch pre-existed this status update).
+---
+
+author: Claude
+created: 2026-07-10 10:44
+---
+branch: task-142 (correcting -- was set to In Progress by 3db552f, but the code is actually complete: commit f5e2b9d on that branch)
 ---
 <!-- COMMENTS:END -->
 

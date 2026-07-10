@@ -1,10 +1,11 @@
 ---
 id: TASK-153
 title: Learn fat/protein-heavy meals from outcome tails
-status: To Do
-assignee: []
+status: Needs Review
+assignee:
+  - Claude
 created_date: '2026-07-06 08:44'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-10 14:03'
 labels:
   - feature
   - meals
@@ -51,6 +52,22 @@ ordinal: 702300
 - Where: `lib/meals/meal_library.dart`, pre-bolus and FPU coaches, `doc/user-guide.html`
 - Related: distinct from TASK-54 (timing, not FPU)
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-10 10:46
+---
+branch: task-153
+---
+
+author: Claude
+created: 2026-07-10 11:01
+---
+implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- code complete and pushed to branch task-153 (commit e32afef). Full implementation details, rigor-check notes, and pipeline results recorded on that branch's copy of this task file.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
