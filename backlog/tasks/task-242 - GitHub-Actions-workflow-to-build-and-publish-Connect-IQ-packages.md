@@ -6,6 +6,11 @@ assignee:
   - Claude
 created_date: '2026-07-07 12:56'
 updated_date: '2026-07-10 12:34'
+status: Needs Review
+assignee:
+  - Claude
+created_date: '2026-07-07 12:56'
+updated_date: '2026-07-10 14:03'
 labels:
   - garmin
   - ci
@@ -64,6 +69,9 @@ author: Claude
 created: 2026-07-10 12:34
 ---
 implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- code complete and pushed to branch task-242 (commit 00e434d).
+created: 2026-07-10 12:36
+---
+implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- code complete and pushed to branch task-242 (commit 9196b92).
 
 IMPORTANT CAVEAT FOR THE REVIEWER (read before merging): this is a CI-workflow-only ticket -- the deliverable IS the .github/workflows/garmin-release.yml file, and I have NO way to execute or observe a GitHub Actions run from this environment (no network access to Garmin's SDK servers, no developer key, no repo-admin access to trigger workflow_dispatch and watch it). Unlike every other task this session, none of the standard verification pipeline (flutter analyze/test/build) touches this file's actual correctness -- it's Dart/Kotlin-independent. I wrote it carefully against Garmin's documented CI guidance and this repo's existing ci.yml conventions, but the SDK Manager headless-install step (curl + sdkmanager --headless --accept-licenses --install-latest sdk) is UNVERIFIED and is the piece most likely to need a fix if Garmin's download URL/CLI flags have moved. Both the workflow's own header comment and garmin/README.md's new section 6 flag this explicitly and ask for one real workflow_dispatch smoke-test before this is trusted for an actual release.
 
