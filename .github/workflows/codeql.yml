@@ -47,6 +47,11 @@ jobs:
         with:
           languages: actions
           build-mode: none
+          # security-and-quality = the free stand-in for GitHub Code Quality (unavailable
+          # on a user-owned Free repo, decision-11): quality findings surface as code
+          # scanning alerts, and the ruleset's alerts_threshold:errors blocks merges on
+          # error-level ones — the same semantics as the real rule at "Severity: Errors".
+          queries: security-and-quality
 
       - name: Analyze
         uses: github/codeql-action/analyze@v4
@@ -102,6 +107,8 @@ jobs:
         with:
           languages: java-kotlin
           build-mode: manual
+          # See the actions job: quality queries feed the merge gate at error level.
+          queries: security-and-quality
 
       # Minimal compile that covers all Kotlin sources (app + unit tests) under CodeQL's
       # tracer — no APK packaging needed for extraction.

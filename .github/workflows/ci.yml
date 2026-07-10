@@ -178,6 +178,11 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # actions:read on top of the workflow-level contents:read — the ratchet step below
+    # downloads the coverage baseline artifact from the latest successful main run.
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Download shard coverage
         uses: actions/download-artifact@v4
@@ -221,7 +226,42 @@ jobs:
           ' coverage/lcov.info)"
           pct=$(awk "BEGIN {printf \"%.1f\", 100*$hit/$total}")
           echo "Line coverage: $pct% ($hit/$total lines, excluding generated files)"
+          echo "$pct" > coverage-percent.txt
           awk "BEGIN {exit !($pct >= 65.0)}" || { echo "::error::Line coverage $pct% is below the 65% minimum"; exit 1; }
+
+      # Baseline for the no-drop ratchet below: every successful run (main pushes are the
+      # ones the ratchet consumes) publishes its coverage percentage as a tiny artifact.
+      - name: Upload coverage percent (ratchet baseline)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-percent
+          path: coverage-percent.txt
+
+      # No-drop coverage ratchet (the free stand-in for GitHub's "Restrict code coverage"
+      # ruleset rule, unavailable on a user-owned Free repo — decision-11). The 65% floor
+      # above catches collapse; this catches erosion: a PR may not land with lower line
+      # coverage than the latest successful main run (0.1pt tolerance for rounding). If
+      # a change genuinely must lower coverage, that is a reviewer decision, not a bypass:
+      # add tests until it recovers.
+      - name: Coverage no-drop ratchet vs main (PRs only)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&status=success&event=push&per_page=1" \
+            --jq '.workflow_runs[0].id // empty')
+          if [ -z "$run_id" ]; then
+            echo "::notice::No successful main CI run found — skipping the no-drop ratchet"; exit 0
+          fi
+          if ! gh run download "$run_id" --repo "$GITHUB_REPOSITORY" -n coverage-percent -D baseline 2>/dev/null; then
+            echo "::notice::main run $run_id predates the coverage-percent artifact — skipping the no-drop ratchet"; exit 0
+          fi
+          base=$(cat baseline/coverage-percent.txt)
+          pct=$(cat coverage-percent.txt)
+          echo "PR line coverage: $pct% — main baseline (run $run_id): $base%"
+          awk "BEGIN {exit !($pct >= $base - 0.1)}" || {
+            echo "::error::Line coverage dropped: $pct% on this PR vs $base% on main — add tests for the new code (coverage is a ratchet, see CLAUDE.md)"; exit 1
+          }
 
   apk-build:
     runs-on: ubuntu-latest

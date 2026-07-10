@@ -50,3 +50,23 @@ status: accepted
   "Bypassed rule violations" message is expected and fine).
 - Kotlin/workflow changes get real static security analysis; Dart does not (unsupported) —
   don't mistake a green CodeQL check for Dart coverage.
+
+## Addendum (2026-07-10, same day): free in-house equivalents implemented
+
+- Unavailability re-verified empirically, not just from docs: the repo's
+  `security_and_analysis` settings expose no `code_quality` capability (a PATCH enabling it is
+  silently ignored), and the rulesets API rejects the `code_quality` rule type with a 422
+  ("matches no possible input") — the rule is not in the API schema for this repo.
+- **Code-quality equivalent:** `codeql.yml` now runs the `security-and-quality` query suite for
+  both languages. Quality findings surface as code scanning alerts, so the existing ruleset
+  rule (`alerts_threshold: errors`) blocks merges on error-level quality results — the same
+  semantics as GitHub's "Require code quality results" at "Severity: Errors". Warning-level
+  quality findings surface without blocking.
+- **Coverage-restrict equivalent:** the `coverage-gate` job (already a required check) now
+  enforces both halves of GitHub's "Restrict code coverage": the existing 65% floor
+  (= minimum coverage percentage) plus a new **no-drop ratchet** (= maximum coverage drop 0):
+  every run uploads its coverage % as a `coverage-percent` artifact, and on PRs the job
+  downloads the latest successful main run's baseline and fails if the PR's coverage is more
+  than 0.1pt below it. This machine-enforces the CLAUDE.md "coverage is a ratchet, per ticket"
+  convention that was previously review-enforced only.
+- Revisit the native GitHub features only if the repo moves into a Team/Enterprise org.

@@ -265,7 +265,10 @@ green, and **it must never be left red**. `flutter analyze` + `flutter test` pas
    2026-07-08). Coverage is a **ratchet, per ticket**: any new testable code ships with
    its tests in the *same* change, so the number never regresses; if your change lowers
    it, add tests until it recovers before committing; if it raises the sustained level,
-   bump the `ci.yml` floor so the gain is locked in. (UI-only screens are covered by the
+   bump the `ci.yml` floor so the gain is locked in. **CI machine-enforces the ratchet on
+   PRs** (decision-11): the `coverage-gate` check fails any PR whose coverage is below the
+   latest successful `main` run's, not just below the floor — so a local pass at 65% can
+   still fail CI if `main` is higher. (UI-only screens are covered by the
    `integration_test/` suite, not unit tests — don't chase their unit-coverage lines.)
 5. `flutter build apk --debug` — **required**: this catches Android/Gradle/manifest
    breakage that analyze and unit tests miss. Do not skip it.
