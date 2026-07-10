@@ -1,0 +1,121 @@
+# CodeQL code scanning (decision-11) — feeds the "Require code scanning results" rule in
+# the "main merge gate: PR + green CI" ruleset: a PR cannot merge to main while CodeQL
+# results are missing/in progress or contain a high+ security / error-level alert.
+#
+# Advanced setup, not default setup: default setup's autobuild cannot build a Flutter
+# Android app (no Flutter SDK / local.properties), failed on java-kotlin, and silently
+# dropped the language — leaving only workflow files scanned. The Kotlin under android/
+# (pump BLE, the read-only-pump charter surface) is exactly what we want scanned, and the
+# Kotlin extractor requires a real compile, so the java-kotlin job does the same minimal
+# Gradle Kotlin compile ci.yml's native-tests job uses.
+#
+# NB: `push: main` deliberately has NO paths filter — the ruleset requires scanning
+# results for the ref being updated, and backlog bookkeeping commits land on main
+# constantly; every main commit must end up with results. cancel-in-progress keeps only
+# the newest tip analyzing. Dart is not a CodeQL-supported language: the Flutter code is
+# gated by analyze/test/coverage-gate in ci.yml instead.
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '30 2 * * 1' # weekly re-scan so new CodeQL queries surface on unchanged code
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze-actions:
+    name: Analyze (actions)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: actions
+          build-mode: none
+          # security-and-quality = the free stand-in for GitHub Code Quality (unavailable
+          # on a user-owned Free repo, decision-11): quality findings surface as code
+          # scanning alerts, and the ruleset's alerts_threshold:errors blocks merges on
+          # error-level ones — the same semantics as the real rule at "Severity: Errors".
+          queries: security-and-quality
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: '/language:actions'
+
+  analyze-kotlin:
+    name: Analyze (java-kotlin)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Toolchain first, CodeQL init after — only the traced compile needs to run
+      # between init and analyze.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.4
+          cache: true
+
+      - name: Install dependencies
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: flutter pub get
+
+      # Same deterministic local.properties write as ci.yml's native-tests job.
+      - name: Write local.properties
+        run: |
+          FLUTTER_SDK="${FLUTTER_ROOT:-$(dirname "$(dirname "$(command -v flutter)")")}"
+          ANDROID_SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$FLUTTER_SDK" ] || [ -z "$ANDROID_SDK" ]; then
+            echo "::error::Could not resolve FLUTTER_SDK ('$FLUTTER_SDK') or ANDROID_SDK ('$ANDROID_SDK')"; exit 1
+          fi
+          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_SDK" "$ANDROID_SDK" > android/local.properties
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: java-kotlin
+          build-mode: manual
+          # See the actions job: quality queries feed the merge gate at error level.
+          queries: security-and-quality
+
+      # Minimal compile that covers all Kotlin sources (app + unit tests) under CodeQL's
+      # tracer — no APK packaging needed for extraction.
+      - name: Compile Kotlin (traced)
+        run: cd android && ./gradlew :app:compileDebugKotlin :app:compileDebugUnitTestKotlin --no-daemon
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: '/language:java-kotlin'

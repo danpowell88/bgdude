@@ -1,8 +1,8 @@
 project_name: "bgdude"
 default_status: "To Do"
-statuses: ["To Do", "In Progress", "Blocked", "Review", "Done"]
+statuses: ["Idea", "Planned", "To Do", "Doing", "Blocked", "Needs Review", "Reviewing", "Reviewed", "Requires Human Verification", "Done"]
 labels: []
-definition_of_done: ["dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)", "flutter analyze clean", "flutter test --coverage test/ green", "Line coverage did not drop -- at or above the ci.yml floor; any new testable code ships with its tests in the same change", "flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)", "gradlew :app:testDebugUnitTest green when native Kotlin changed", "doc/user-guide.html updated when the change is user-visible with screenshots", "Integration test added or extended when a screen/flow changed", "backlog item updated with comments", "Reviewed by a different agent than the implementer -- a reviewed-by comment is present and the task passed through Review before Done"]
+definition_of_done: ["dart run build_runner build --delete-conflicting-outputs succeeds (generated files are not committed)", "flutter analyze clean", "flutter test --coverage test/ green", "Line coverage did not drop -- at or above the ci.yml floor; any new testable code ships with its tests in the same change", "flutter build apk --debug succeeds (catches Android/Gradle/manifest breakage)", "gradlew :app:testDebugUnitTest green when native Kotlin changed", "doc/user-guide.html updated when the change is user-visible with screenshots", "Integration test added or extended when a screen/flow changed", "backlog item updated with comments", "Reviewed by a different agent than the implementer -- a reviewed-by comment is present and the PR was merged when the task reached Reviewed", "Done only after Summer verified the task's human-verification batch (decision-12) -- agents never set Done"]
 date_format: yyyy-mm-dd
 max_column_width: 20
 auto_open_browser: true
