@@ -74,7 +74,7 @@ dependencies:
 
   # Reporting export (clinician-ready PDF + raw CSV, shared via the system sheet)
   pdf: ^3.11.0
-  share_plus: ^10.1.0
+  share_plus: ^12.0.2
 
   # Barcode scanning for food lookup (CameraX/ML Kit; camera stays on-device).
   # 7.x pulls the 16 KB-page-aligned ML Kit barcode + CameraX native libs (required for
