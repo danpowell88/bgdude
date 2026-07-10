@@ -142,5 +142,34 @@ void main() {
       final bytes = await exporter.buildClinicPrepPdf(prep, report.generatedAt);
       expect(bytes.length, greaterThan(500));
     });
+
+    test('PDF renders an episode table when the report has low/high episodes', () async {
+      // The flat `report` above has no episodes, so buildPdf's episode-table branch
+      // (only rendered `if (lowEpisodes.isNotEmpty || highEpisodes.isNotEmpty)`) was
+      // never exercised by any test. Build a report with a real low episode and a real
+      // high episode (same detection thresholds as the EpisodeDetector group above) and
+      // confirm the branch actually fires and adds real content, not just that it
+      // doesn't throw.
+      final withEpisodes = const GlucoseReportBuilder().build(
+        cgm: [
+          ..._flat(DateTime(2026, 7, 4, 2), 5, 60), // 20 min low
+          ..._flat(DateTime(2026, 7, 4, 10), 5, 260), // 20 min high
+        ],
+        annotations: const [],
+        range: range,
+        now: DateTime(2026, 7, 5, 8),
+      );
+      expect(withEpisodes.lowEpisodes, isNotEmpty);
+      expect(withEpisodes.highEpisodes, isNotEmpty);
+
+      final bytesWithEpisodes =
+          await exporter.buildPdf(withEpisodes, GlucoseUnit.mmol);
+      final bytesFlat = await exporter.buildPdf(report, GlucoseUnit.mmol);
+
+      // Rendering the extra episode table must add real bytes to the PDF; if the
+      // branch were ever removed/short-circuited, this would collapse to roughly
+      // the flat-report size instead.
+      expect(bytesWithEpisodes.length, greaterThan(bytesFlat.length));
+    });
   });
 }
