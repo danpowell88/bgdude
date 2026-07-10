@@ -6,6 +6,11 @@ assignee:
   - Claude
 created_date: '2026-07-06 08:41'
 updated_date: '2026-07-10 10:18'
+status: Needs Review
+assignee:
+  - Claude
+created_date: '2026-07-06 08:41'
+updated_date: '2026-07-10 14:03'
 labels:
   - feature
   - ml
@@ -56,6 +61,8 @@ ordinal: 702000
 <!-- COMMENTS:BEGIN -->
 author: Claude
 created: 2026-07-10 10:07
+author: Claude Fable 5
+created: 2026-07-10 10:42
 ---
 branch: task-143
 ---
@@ -70,6 +77,16 @@ author: Claude
 created: 2026-07-10 10:18
 ---
 implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- new lib/ml/threshold_duration.dart (ThresholdDurationEstimator: piecewise-linear interpolation across the horizon grid (now, +30, +60, +120), summing minutes on the below/above side of a threshold with exact crossing-point interpolation within a straddling segment; two estimates per call -- pointMinutes from the mgdl trajectory, confidentMinutes from the LESS SEVERE interval bound (upper for a low, lower for a high), so confidentMinutes is never longer than pointMinutes); lib/ui/predictions_screen.dart (new _DurationCard: 'Predicted low for ~Nmin' / 'Predicted high for ~Nmin', with an '(at least N min likely)' caveat when the confident estimate is shorter, hidden entirely when nothing is predicted); doc/user-guide.html updated. Thresholds: reused GlucoseThresholds.low(70)/.high(180), matching the existing _OvernightCard on the same screen rather than the user's personalised alert thresholds, for consistency. Tests: test/ml/threshold_duration_test.dart -- full-span/never-crosses/exact-interpolation cases for both below and above, confidentMinutes<=pointMinutes invariant, empty-input safety. Caught my own test-math errors during the first run (two minutesAbove cases assumed 'full 120min' with a current value that was actually BELOW threshold at t=0, which the real crossing-interpolation correctly counted as a partial first segment -- fixed the test fixtures, not the implementation, after manually re-deriving the expected numbers). Rigor-checked the crossing-fraction interpolation (temp-bug: count the whole segment unconditionally instead of the interpolated fraction; confirmed the crossing-point test fails with 120 instead of 105 as predicted; reverted cleanly). Full pipeline green: analyze clean, 1374 tests passing, coverage 68.83% (floor 65%), apk build succeeded. No native Kotlin changed. Integration test: Predict tab already has integration_test coverage (features_flows_test.dart); could not run it live (the emulator's VM-service WebSocket issue noted on TASK-141/305 is still present) -- the new card is purely additive (SizedBox.shrink() when nothing predicted) so the existing test's assertions are unaffected either way.
+author: Claude Fable 5
+created: 2026-07-10 10:42
+---
+Moved To Do->In Progress to reflect that work has started: origin/task-143 exists and is 1 commit ahead of main. Recording the branch so the review-and-merge loop can find it and parallel sessions do not duplicate this work. Implementer agent TBD (branch pre-existed this status update).
+---
+
+author: Claude
+created: 2026-07-10 10:45
+---
+branch: task-143 (correcting -- was set to In Progress by 3db552f, but the code is actually complete: commit 03ec4f1 on that branch)
 ---
 <!-- COMMENTS:END -->
 
