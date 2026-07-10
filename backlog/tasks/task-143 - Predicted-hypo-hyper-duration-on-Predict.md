@@ -1,10 +1,10 @@
 ---
 id: TASK-143
 title: Predicted hypo/hyper duration on Predict
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-07-06 08:41'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-10 10:42'
 labels:
   - feature
   - ml
@@ -49,6 +49,22 @@ ordinal: 702000
 - Where: `lib/ml/forecaster.dart`, Predict screen, `doc/user-guide.html`
 - Related: distinct from TASK-49 and TASK-52; better after TASK-46/47
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude Fable 5
+created: 2026-07-10 10:42
+---
+branch: task-143
+---
+
+author: Claude Fable 5
+created: 2026-07-10 10:42
+---
+Moved To Do->In Progress to reflect that work has started: origin/task-143 exists and is 1 commit ahead of main. Recording the branch so the review-and-merge loop can find it and parallel sessions do not duplicate this work. Implementer agent TBD (branch pre-existed this status update).
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->

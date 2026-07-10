@@ -76,7 +76,18 @@ backlog task edit 42 --comment "Started: <approach in one line>" --comment-autho
 
 - When you **start** a task: set `-s "In Progress"`, assign yourself as the implementer
   (`-a <your-agent-id>` — the same identity you sign commits with, e.g. the `Co-Authored-By`
-  model/session name), and add a comment stating the approach.
+  model/session name), record the branch (`--comment "branch: task-<id>"`), and add a comment
+  stating the approach.
+- **Commit and push every status transition IMMEDIATELY — this is how parallel sessions avoid
+  duplicating work.** Task status lives in `backlog/tasks/task-<id>.md`, and `auto_commit` is
+  off, so a status change nobody committed is invisible to other sessions pulling `main`. The
+  instant you **claim** a task (To Do → In Progress) — before you write any code — commit that
+  task-file change to `main` and push (`git add backlog/tasks/task-<id>*.md && git commit && git
+  push`). Do the same for every later move (→ Review, → Blocked, → Done). These claim/status
+  commits are coordination bookkeeping and go **straight to `main`** (decision-8), separate from
+  the task's code on its `task-<id>` branch. A branch pushed while its task is still `To Do` is
+  a bug: another agent can't tell it's claimed and will duplicate it — always flip status +
+  commit + push at claim time.
 - While working: add a comment for any **significant finding, decision, or deviation** from
   the implementation plan (what and why) — not a play-by-play, just the things a reviewer
   would want to know.
