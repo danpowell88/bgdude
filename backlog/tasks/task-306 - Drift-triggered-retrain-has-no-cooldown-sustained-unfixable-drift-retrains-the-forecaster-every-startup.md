@@ -8,6 +8,11 @@ assignee:
   - Claude
 created_date: '2026-07-09 18:23'
 updated_date: '2026-07-10 09:48'
+status: Needs Review
+assignee:
+  - Claude
+created_date: '2026-07-09 18:23'
+updated_date: '2026-07-10 14:03'
 labels: []
 milestone: m-8
 dependencies: []
@@ -43,6 +48,8 @@ TASK-138 drift detection requests an out-of-band forecaster retrain by resetting
 <!-- COMMENTS:BEGIN -->
 author: Claude
 created: 2026-07-10 09:37
+author: Claude Fable 5
+created: 2026-07-10 10:42
 ---
 branch: task-306
 ---
@@ -57,6 +64,16 @@ author: Claude
 created: 2026-07-10 09:48
 ---
 implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- lib/state/providers.dart (_checkForecastDrift: added _driftRetrainRequestedKey latch, gates the out-of-band retrain trigger to at most once per sustained-drift episode, clears when the episode genuinely resolves i.e. a non-drifting reconciliation run); tests: test/state/jobs_test.dart new cases 'sustained-but-unfixable drift requests the out-of-band retrain only ONCE...' and 'a latch left over from an already-resolved episode does not block a genuinely fresh one'; commit pending on branch task-306. Design: chose the AC#1-sanctioned 'streak resets after a retrain attempt' family of fix, implemented as an explicit persisted boolean latch (rather than resetting the numeric streak itself) so the UI's forecastDriftProvider.sustained flag stays accurate/visible for as long as drift genuinely persists, instead of flickering off between the trigger and a fresh 3-run recount -- the streak-reset alternative from the AC would have caused that flicker. Both branches (latch-set-on-trigger, latch-clear-on-resolution) individually rigor-checked (temp-bug + revert, each confirmed the corresponding new test fails with the predicted symptom before reverting). Full pipeline green: analyze clean, 1368 tests passing, coverage 68.78% (floor 65%), apk build succeeded. No native Kotlin changed, no user-visible/UI change (banner behavior already existed from TASK-138, this only changes retrain-request frequency), no screen/flow changed so no integration test.
+author: Claude Fable 5
+created: 2026-07-10 10:42
+---
+Moved To Do->In Progress to reflect that work has started: origin/task-306 exists and is 1 commit ahead of main. Recording the branch so the review-and-merge loop can find it and parallel sessions do not duplicate this work. Implementer agent TBD (branch pre-existed this status update).
+---
+
+author: Claude
+created: 2026-07-10 10:44
+---
+branch: task-306 (correcting -- was set to In Progress by 3db552f, but the code is actually complete: commit 97b47bd on that branch)
 ---
 <!-- COMMENTS:END -->
 
