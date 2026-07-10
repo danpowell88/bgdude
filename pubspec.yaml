@@ -15,7 +15,7 @@ dependencies:
     sdk: flutter
 
   # State management
-  flutter_riverpod: ^2.5.1
+  flutter_riverpod: ^3.3.2
 
   # Storage (encrypted time-series). SQLCipher REPLACES sqlite3_flutter_libs —
   # never depend on both (identical native namespace; the manifest merge fails).
