@@ -84,7 +84,7 @@ dependencies:
 
   # Nutrition-panel photo reader: on-device OCR of the label text + a camera/gallery
   # picker. The image is processed on-device (ML Kit) and never uploaded.
-  google_mlkit_text_recognition: ^0.15.1
+  google_mlkit_text_recognition: ^0.16.0
   image_picker: ^1.1.2
 
   # Optional small on-device LLM (Gemma) to normalise messy/foreign nutrition-panel OCR
