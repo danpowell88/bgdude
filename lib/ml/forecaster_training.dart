@@ -13,6 +13,7 @@ import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
 import '../feedback/annotations.dart';
 import '../feedback/retraining.dart';
+import 'event_detectors.dart';
 import 'forecast_features.dart';
 import 'forecaster.dart';
 import 'health_features.dart';
@@ -99,6 +100,11 @@ class ForecasterTrainer {
       ..removeWhere((s) => s.sensorWarmup || s.isCalibration || s.mgdl <= 0)
       ..sort((a, b) => a.time.compareTo(b.time));
     if (samples.length < 60) return null;
+
+    // TASK-141: jump/flatline/dropout-edge faults aren't caught by the sensor's own
+    // warmup/calibration flags -- exclude them from training the same way an
+    // annotated site-failure/compression-low window already is.
+    final cgmFaults = const CgmFaultDetector().detect(samples);
 
     // Held-out split point in time (train on the older portion).
     final splitIdx = (samples.length * (1 - heldOutFraction)).floor();
@@ -194,6 +200,7 @@ class ForecasterTrainer {
         ],
         annotations: annotations,
         asOf: asOf,
+        cgmFaults: cgmFaults,
       );
       trainingByHorizon[h] = cleaned;
       trainCount += cleaned.length;

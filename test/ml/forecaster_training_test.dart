@@ -104,4 +104,45 @@ void main() {
       expect(result!.census.healthFeatureCoverage, greaterThan(0.0));
     });
   });
+
+  group('CGM fault exclusion (TASK-141)', () {
+    final start = DateTime(2026, 7, 1, 0, 0);
+    final settings = TherapySettings.placeholder();
+    final asOf = DateTime(2026, 7, 1, 22, 0);
+
+    ForecasterTrainingResult? train(List<CgmSample> cgm) =>
+        ForecasterTrainer(horizons: const [30], strideSamples: 1).train(
+          cgm: cgm,
+          boluses: const [],
+          basal: const [],
+          carbs: const [],
+          settings: settings,
+          annotations: const [],
+          asOf: asOf,
+        );
+
+    test(
+        'an implausible spike inserted well inside the training portion shrinks '
+        'the training-sample count -- proves the detector -> retraining-pipeline '
+        'wiring actually engages end-to-end, not just in isolation', () {
+      final flat = [
+        for (var i = 0; i <= 259; i++)
+          CgmSample(time: start.add(Duration(minutes: 5 * i)), mgdl: 150),
+      ];
+      final withJump = [
+        for (var i = 0; i <= 259; i++)
+          CgmSample(
+            time: start.add(Duration(minutes: 5 * i)),
+            mgdl: i == 50 ? 400.0 : 150.0,
+          ),
+      ];
+
+      final baseline = train(flat);
+      final faulted = train(withJump);
+
+      expect(baseline, isNotNull);
+      expect(faulted, isNotNull);
+      expect(faulted!.trainSamples, lessThan(baseline!.trainSamples));
+    });
+  });
 }

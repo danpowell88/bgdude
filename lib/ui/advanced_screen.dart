@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../ml/event_detectors.dart';
 import '../state/providers.dart';
 import 'app_routes.dart';
 import 'log_viewer_screen.dart';
@@ -22,6 +23,7 @@ class AdvancedScreen extends ConsumerWidget {
     final lastOutcome =
         ref.watch(forecasterModelProvider.notifier).lastOutcome;
     final census = ref.watch(sensitivityCensusProvider);
+    final dataQualityFault = ref.watch(cgmDataQualityProvider);
     final unit = ref.watch(glucoseUnitProvider);
     final points = ref.watch(errorGridPointsProvider);
 
@@ -40,6 +42,26 @@ class AdvancedScreen extends ConsumerWidget {
           ),
           const Divider(),
 
+          Text('CGM data quality', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: Icon(
+                dataQualityFault == null
+                    ? Icons.check_circle_outline
+                    : Icons.warning_amber_outlined,
+                color: dataQualityFault == null ? null : Colors.orange,
+              ),
+              title: Text(dataQualityFault == null
+                  ? 'Current reading looks clean'
+                  : dataQualityFault.label),
+              subtitle: const Text(
+                  'Jump/flatline/dropout-edge readings are excluded from '
+                  'forecaster training automatically.'),
+            ),
+          ),
+
+          const SizedBox(height: 16),
           Text('Effective sensitivity',
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
