@@ -49,8 +49,10 @@ jobs:
           build-mode: none
           # security-and-quality = the free stand-in for GitHub Code Quality (unavailable
           # on a user-owned Free repo, decision-11): quality findings surface as code
-          # scanning alerts, and the ruleset's alerts_threshold:errors blocks merges on
-          # error-level ones — the same semantics as the real rule at "Severity: Errors".
+          # scanning alerts and gate the merge via the ruleset. It is the broadest
+          # built-in suite (supersets security-extended); security-experimental was
+          # rejected as FP noise. Ruleset thresholds since decision-14: medium+ security
+          # alerts and errors_and_warnings block PRs that introduce them.
           queries: security-and-quality
 
       - name: Analyze

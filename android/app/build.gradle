@@ -59,6 +59,17 @@ android {
             includeAndroidResources = true
         }
     }
+
+    // Issue #331: Android Lint is a CI merge gate (ci.yml android-lint job). The baseline
+    // freezes the 44 pre-existing warnings (burn-down tracked separately); with
+    // warningsAsErrors, any NEW warning fails the build rather than accreting silently.
+    // To regenerate after intentional fixes: delete lint-baseline.xml and run
+    // `./gradlew :app:lintDebug` twice (first run writes the baseline, second verifies).
+    lint {
+        baseline = file("lint-baseline.xml")
+        warningsAsErrors = true
+        abortOnError = true
+    }
 }
 
 flutter {
