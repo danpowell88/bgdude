@@ -80,24 +80,28 @@ backlog task edit 42 --comment "Started: <approach in one line>" --comment-autho
 - While working: add a comment for any **significant finding, decision, or deviation** from
   the implementation plan (what and why) — not a play-by-play, just the things a reviewer
   would want to know.
-- When you **finish the implementation** (code + tests + the full verify pipeline green):
-  check off the acceptance criteria (`--check-ac <n>`) and move the task to **`-s Review`**,
-  **not `Done`** — nothing goes straight to Done. Add a closing comment tagged
-  `implemented-by: <your-agent-id> — <files, tests, commit hash>`. Leave yourself as the
-  assignee so it's clear who did the work.
-- **Review stage (a different agent, always).** A task in `Review` is picked up by a
-  **different agent than the `implemented-by` one** — independent review is the whole point,
-  so a task must never be reviewed by its own implementer. The reviewer verifies the ACs and
-  DoD against the actual diff (apply the "sweep the whole surface" checklist above), then:
+- When you **finish the implementation** (code + tests + the full verify pipeline green on the
+  branch): check off the acceptance criteria (`--check-ac <n>`), **push the `task-<id>` feature
+  branch** (do NOT merge to `main` yourself), and move the task to **`-s Review`** — never
+  straight to `Done`. Add a closing comment tagged
+  `implemented-by: <your-agent-id> — branch task-<id>, <files, tests, commit hash>`. Leave
+  yourself as the assignee so it's clear who did the work.
+- **Review stage — done by the review loop, a different agent, which also merges.** A task in
+  `Review` is picked up by a **different agent than the `implemented-by` one** (normally the
+  hourly review loop) — a task must never be reviewed or merged by its own implementer
+  (decision-7). The reviewer fetches the task's branch, verifies the ACs and DoD against the
+  branch diff (apply the "sweep the whole surface" checklist above), and confirms CI is green /
+  the verify pipeline passes on the branch. Then:
   - **Pass** → add a comment tagged `reviewed-by: <reviewer-agent-id> — <what was checked / verdict>`,
-    check off the DoD (`--check-dod <n>`), and set `-s Done`. Done requires this reviewed-by
-    comment from a second agent (DoD item).
-  - **Fail** → add a `reviewed-by: <reviewer-agent-id> — <the problem>` comment and send it back
-    to `-s "In Progress"` (or `Blocked`, or file a prioritised follow-up ticket for a separable
-    gap) so it is reworked. Never rubber-stamp to Done.
+    check off the DoD (`--check-dod <n>`), **merge the branch to `main` (`--no-ff`) and push**,
+    set `-s Done`, and delete the merged branch + its worktree. Done requires this reviewed-by
+    comment from a second agent (DoD item) and only ever happens via this merge.
+  - **Fail** → add a `reviewed-by: <reviewer-agent-id> — <the problem>` comment, **do not merge**,
+    and send it back to `-s "In Progress"` (or `Blocked`, or file a prioritised follow-up ticket
+    for a separable gap) so it is reworked on its branch. Never rubber-stamp or merge on a fail.
   - The `implemented-by:` / `reviewed-by:` tags (plus each comment's `--comment-author`) are the
-    greppable record of **who did the work and who reviewed it** — keep both present on every
-    task that reaches Done.
+    greppable record of **who did the work and who reviewed/merged it** — keep both present on
+    every task that reaches Done.
 - When you **cannot make further progress** — a dependency, a missing decision or answer, or
   an environment limitation (e.g. no reachable emulator) blocks you — **do not leave the task
   `In Progress`**. Set `-s Blocked`, add a comment naming the blocker and exactly what would
@@ -162,15 +166,25 @@ manually-scoped-commit problem). Workflow:
 - `git worktree add ../bgdude-<purpose> -b <purpose>` off the latest `main` (e.g.
   `../bgdude-review`, `../bgdude-impl`). One branch per worktree — git refuses to check out
   `main` in two worktrees at once, which is exactly why concurrent writers need branches.
-- Commit to the branch; run the full Verify-the-build pipeline; integrate into `main` by
-  merge/PR when green. Keep branches short-lived — `git worktree remove` + delete the branch
-  after merge.
 - Subagents that **mutate files in parallel** take `isolation: "worktree"` on the Agent tool;
   read-only reviewers don't need it.
 
-**Solo fast-path:** a single session with no concurrent writer still commits **straight to
-`main`** and pushes — the worktree/branch ceremony exists only to isolate concurrent writers,
-not to add friction when there's one. See the memory `git-workflow` and `backlog/decisions/`.
+**Task work goes on a feature branch and is merged to `main` only by the review loop after a
+passing review (decision-8).** Do NOT push task work straight to `main`. Concretely:
+- One branch per task, deterministically named **`task-<id>`** (optionally
+  `task-<id>-<slug>`), created off the latest `main` in its own worktree. Record it on the task
+  (`--comment "branch: task-<id>"`) so the review loop can find it.
+- The implementer commits to that branch through `In Progress`, and when done **pushes the
+  branch** and moves the task to `Review` (never `Done`, never a `main` push).
+- The **review loop is the only merger.** It reviews each `Review`-task's branch diff, and on a
+  pass merges it to `main` (`--no-ff`), pushes, sets the task `Done`, and deletes the branch +
+  worktree. On a fail it bounces the task back (see `### Comment as you work`). It never merges a
+  branch whose `implemented-by` is the review loop itself (reviewer ≠ implementer, decision-7).
+
+**Straight-to-`main` is only for non-task bookkeeping** — the loops' own review artifacts
+(follow-up tickets, quality-check markers), backlog/decision/config edits, and trivial docs.
+These aren't feature work, carry no `Review` gate, and (when there's a single writer) still
+commit and push directly. See the memory `git-workflow` and `backlog/decisions/` (6, 7, 8).
 
 ## Verify the build after EVERY task (must match CI — CI is the source of truth)
 The GitHub Actions workflow (`.github/workflows/ci.yml`) is what decides if `main` is
