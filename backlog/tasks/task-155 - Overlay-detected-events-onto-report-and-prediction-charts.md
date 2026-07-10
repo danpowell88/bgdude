@@ -6,6 +6,11 @@ assignee:
   - Claude
 created_date: '2026-07-06 08:44'
 updated_date: '2026-07-10 11:53'
+status: Needs Review
+assignee:
+  - Claude
+created_date: '2026-07-06 08:44'
+updated_date: '2026-07-10 14:03'
 labels:
   - feature
   - ui
@@ -65,6 +70,9 @@ author: Claude
 created: 2026-07-10 11:53
 ---
 implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- code complete and pushed to branch task-155 (commit 8614110).
+created: 2026-07-10 11:54
+---
+implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- code complete and pushed to branch task-155 (commit 9f4d256).
 
 New lib/ui/widgets/event_marker_bar.dart: a tappable icon row aligned to a chart's own x-domain, showing DayEvent.explainable markers (highs/lows/detected rises/compression lows), tap -> Explain-this-reading via a new shared explainDayEvent() (extracted from TimelineEventCard, which now calls it too).
 
@@ -79,6 +87,7 @@ author: Claude
 created: 2026-07-10 11:53
 ---
 friction:tooling — `dart run` on this package crashes (FFI/kernel transform exception) even for Flutter-independent files, so a quick pure-Dart probe script isn't viable here; had to write throwaway `flutter test` files instead (works, just slower). friction:code — a Stack with only Positioned children collapses to zero width under a loose parent constraint: it still PAINTS children outside its bounds via Clip.none, but hit-testing silently fails since RenderBox checks the parent's own size before testing children — caught only because the new widget test's tap() emitted a hit-test-miss warning; worth grepping for other Positioned-only Stacks in lib/ui/ if similar overlay patterns get reused.
+friction:tooling -- `dart run` on this package crashes (FFI/kernel transform exception) even for Flutter-independent files, so a quick pure-Dart probe script isn't viable here; had to write throwaway flutter test files instead (works, just slower). friction:code -- a Stack with only Positioned children collapses to zero width under a loose parent constraint: it still PAINTS children outside its bounds via Clip.none, but hit-testing silently fails since RenderBox checks the parent's own size before testing children -- caught only because the new widget test's tap() emitted a hit-test-miss warning; worth grepping for other Positioned-only Stacks in lib/ui/ if similar overlay patterns get reused.
 ---
 <!-- COMMENTS:END -->
 
