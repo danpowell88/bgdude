@@ -3,11 +3,11 @@ id: TASK-306
 title: >-
   Drift-triggered retrain has no cooldown -- sustained unfixable drift retrains
   the forecaster every startup
-status: In Progress
+status: Review
 assignee:
   - Claude
 created_date: '2026-07-09 18:23'
-updated_date: '2026-07-10 10:42'
+updated_date: '2026-07-10 10:44'
 labels: []
 milestone: m-8
 dependencies: []
@@ -51,6 +51,12 @@ author: Claude Fable 5
 created: 2026-07-10 10:42
 ---
 Moved To Do->In Progress to reflect that work has started: origin/task-306 exists and is 1 commit ahead of main. Recording the branch so the review-and-merge loop can find it and parallel sessions do not duplicate this work. Implementer agent TBD (branch pre-existed this status update).
+---
+
+author: Claude
+created: 2026-07-10 10:44
+---
+branch: task-306 (correcting -- was set to In Progress by 3db552f, but the code is actually complete: commit 97b47bd on that branch)
 ---
 <!-- COMMENTS:END -->
 

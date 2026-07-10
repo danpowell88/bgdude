@@ -1,10 +1,11 @@
 ---
 id: TASK-142
 title: GBM permutation feature importance
-status: In Progress
-assignee: []
+status: Review
+assignee:
+  - Claude
 created_date: '2026-07-06 08:41'
-updated_date: '2026-07-10 10:42'
+updated_date: '2026-07-10 10:44'
 labels:
   - feature
   - ml
@@ -61,6 +62,12 @@ author: Claude Fable 5
 created: 2026-07-10 10:42
 ---
 Moved To Do->In Progress to reflect that work has started: origin/task-142 exists and is 1 commit ahead of main. Recording the branch so the review-and-merge loop can find it and parallel sessions do not duplicate this work. Implementer agent TBD (branch pre-existed this status update).
+---
+
+author: Claude
+created: 2026-07-10 10:44
+---
+branch: task-142 (correcting -- was set to In Progress by 3db552f, but the code is actually complete: commit f5e2b9d on that branch)
 ---
 <!-- COMMENTS:END -->
 

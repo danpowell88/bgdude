@@ -1,10 +1,11 @@
 ---
 id: TASK-151
 title: 'Control-IQ behaviour insights (auto-correction load, loop-delivered fraction)'
-status: To Do
-assignee: []
+status: Review
+assignee:
+  - Claude
 created_date: '2026-07-06 08:43'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-10 10:45'
 labels:
   - feature
   - reports
@@ -51,6 +52,22 @@ ordinal: 702100
 - Where: `lib/reports/insulin_report.dart`, report screen, `doc/user-guide.html`
 - Related: TASK-42 if the mode log is added
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-10 10:45
+---
+branch: task-151
+---
+
+author: Claude
+created: 2026-07-10 10:45
+---
+Coordination fix: code complete and pushed (commit 67a56a3 on branch task-151) -- status/branch previously only committed on that branch, invisible on main. Implementation details recorded in the comment history on that branch's copy of this task file.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->

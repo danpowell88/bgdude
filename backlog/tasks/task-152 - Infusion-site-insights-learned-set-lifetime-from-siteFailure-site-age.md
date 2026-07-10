@@ -1,10 +1,11 @@
 ---
 id: TASK-152
 title: 'Infusion-site insights: learned set lifetime from siteFailure + site age'
-status: To Do
-assignee: []
+status: Review
+assignee:
+  - Claude
 created_date: '2026-07-06 08:43'
-updated_date: '2026-07-06 12:58'
+updated_date: '2026-07-10 10:45'
 labels:
   - feature
   - insights
@@ -51,6 +52,22 @@ ordinal: 702200
 - Where: report layer, `lib/insights/`, `doc/user-guide.html`
 - Related: TASK-77 for the nudge
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Claude
+created: 2026-07-10 10:45
+---
+branch: task-152
+---
+
+author: Claude
+created: 2026-07-10 10:45
+---
+Coordination fix: code complete and pushed (commit 0ee337c on branch task-152) -- status/branch previously only committed on that branch, invisible on main. Implementation details recorded in the comment history on that branch's copy of this task file.
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
