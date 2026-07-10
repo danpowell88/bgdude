@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'chart_axis.dart';
+import 'event_marker_bar.dart';
 import '../../analytics/predictor.dart';
 import '../../core/units.dart';
 import '../../state/providers.dart';
+import '../timeline_screen.dart' show explainDayEvent;
 
 /// Prediction chart: a trailing CGM trace leading into the forward forecast, with the
 /// target range shaded, a glucose y-axis (with units), and a "now" marker. Showing recent
@@ -67,8 +69,7 @@ class PredictionChart extends ConsumerWidget {
         {bool thick = false}) {
       return LineChartBarData(
         spots: [
-          for (final p in line.points)
-            FlSpot(xMin(p.time), toDisplay(p.mgdl)),
+          for (final p in line.points) FlSpot(xMin(p.time), toDisplay(p.mgdl)),
         ],
         isCurved: true,
         color: color,
@@ -96,9 +97,15 @@ class PredictionChart extends ConsumerWidget {
     labels.add('Predicted');
 
     // A round y-axis interval in the display unit.
-    final yInterval = unit == GlucoseUnit.mmol ? 4.0 : 72.0; // ~4 mmol / ~4 mmol in mg/dL
+    final yInterval =
+        unit == GlucoseUnit.mmol ? 4.0 : 72.0; // ~4 mmol / ~4 mmol in mg/dL
 
-    return LineChart(
+    // TASK-155: markers for today's explainable events (highs/lows/detected rises/
+    // compression lows), aligned to this chart's own x-domain (minutes-from-now) so
+    // a curve's shape can be read against what caused it.
+    final events = ref.watch(dayEventsProvider);
+
+    final chart = LineChart(
       LineChartData(
         minX: -_historyMinutes.toDouble(),
         maxX: 240,
@@ -108,14 +115,12 @@ class PredictionChart extends ConsumerWidget {
           show: true,
           drawVerticalLine: false,
           horizontalInterval: yInterval,
-          getDrawingHorizontalLine: (_) =>
-              FlLine(color: cs.outlineVariant.withValues(alpha: 0.25), strokeWidth: 1),
+          getDrawingHorizontalLine: (_) => FlLine(
+              color: cs.outlineVariant.withValues(alpha: 0.25), strokeWidth: 1),
         ),
         titlesData: FlTitlesData(
-          topTitles:
-              hiddenAxis,
-          rightTitles:
-              hiddenAxis,
+          topTitles: hiddenAxis,
+          rightTitles: hiddenAxis,
           leftTitles: AxisTitles(
             axisNameSize: 16,
             axisNameWidget: Padding(
@@ -195,6 +200,20 @@ class PredictionChart extends ConsumerWidget {
         ),
         lineBarsData: bars,
       ),
+    );
+
+    return Column(
+      children: [
+        Expanded(child: chart),
+        EventMarkerBar(
+          events: events,
+          minX: -_historyMinutes.toDouble(),
+          maxX: 240,
+          xForTime: xMin,
+          leftAxisWidth: 30,
+          onTap: (e) => explainDayEvent(context, ref, e),
+        ),
+      ],
     );
   }
 

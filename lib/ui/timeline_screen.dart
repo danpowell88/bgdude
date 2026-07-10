@@ -74,8 +74,10 @@ class TimelineEventCard extends ConsumerWidget {
                           style: Theme.of(context).textTheme.titleSmall),
                       Text(
                         '${formatHhmm(event.time)} · ${event.type.label}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.outline),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: cs.outline),
                       ),
                     ],
                   ),
@@ -90,7 +92,7 @@ class TimelineEventCard extends ConsumerWidget {
               children: [
                 if (event.explainable)
                   TextButton.icon(
-                    onPressed: () => _explain(context, ref),
+                    onPressed: () => explainDayEvent(context, ref, event),
                     icon: const Icon(Icons.help_outline, size: 18),
                     label: const Text('Explain'),
                   ),
@@ -126,8 +128,7 @@ class TimelineEventCard extends ConsumerWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(header,
-                  style: Theme.of(context).textTheme.bodySmall),
+              child: Text(header, style: Theme.of(context).textTheme.bodySmall),
             ),
             ListTile(
               leading: const Icon(Icons.check_circle_outline),
@@ -155,48 +156,54 @@ class TimelineEventCard extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Future<void> _explain(BuildContext context, WidgetRef ref) async {
-    final day = ref.read(dayDataProvider);
-    final explanations = ReadingExplainer().explain(
-      at: event.time,
-      cgm: day.cgm,
-      boluses: day.boluses,
-      basal: day.basal,
-      carbs: day.carbs,
-      settings: day.settings,
-      wasAsleep: event.type == DayEventType.compressionLow ||
-          defaultAsleepAt(event.time),
-    );
-    if (!context.mounted) return;
-    final annotation = await Navigator.of(context).push<Annotation>(
-      MaterialPageRoute<Annotation>(
-        builder: (_) => ExplainReadingScreen(
-          at: event.time,
-          mgdl: event.mgdl ?? 0,
-          explanations: explanations,
-        ),
+/// Explains a [DayEvent] (a specific past high/low/detected event), pushing
+/// [ExplainReadingScreen] for it. Shared by [TimelineEventCard]'s "Explain" button
+/// and any chart's event-marker overlay (TASK-155) — tapping a marker for an
+/// explainable event should behave exactly like tapping "Explain" in the day
+/// stream, including auto-tagging the event ignore when an exclusion reason is
+/// accepted.
+Future<void> explainDayEvent(
+    BuildContext context, WidgetRef ref, DayEvent event) async {
+  final day = ref.read(dayDataProvider);
+  final explanations = ReadingExplainer().explain(
+    at: event.time,
+    cgm: day.cgm,
+    boluses: day.boluses,
+    basal: day.basal,
+    carbs: day.carbs,
+    settings: day.settings,
+    wasAsleep: event.type == DayEventType.compressionLow ||
+        defaultAsleepAt(event.time),
+  );
+  if (!context.mounted) return;
+  final annotation = await Navigator.of(context).push<Annotation>(
+    MaterialPageRoute<Annotation>(
+      builder: (_) => ExplainReadingScreen(
+        at: event.time,
+        mgdl: event.mgdl ?? 0,
+        explanations: explanations,
       ),
-    );
-    // Accepting an explanation with an exclusion kind marks the event ignore.
-    if (annotation != null) {
-      final reason = _reasonFor(annotation.kind);
-      if (reason != null) {
-        ref.read(eventDispositionProvider.notifier).ignore(event.id, reason);
-      }
+    ),
+  );
+  // Accepting an explanation with an exclusion kind marks the event ignore.
+  if (annotation != null) {
+    final reason = _reasonFor(annotation.kind);
+    if (reason != null) {
+      ref.read(eventDispositionProvider.notifier).ignore(event.id, reason);
     }
   }
+}
 
-  static IgnoreReason? _reasonFor(AnnotationKind annotationKind) {
-    final name = annotationKind.name;
-    if (name.contains('compressionLow')) return IgnoreReason.compressionLow;
-    if (name.contains('siteFailure')) return IgnoreReason.siteFailure;
-    if (name.contains('sensorWarmup')) return IgnoreReason.sensorWarmup;
-    if (name.contains('illness')) return IgnoreReason.illness;
-    if (name.contains('missedCarbs')) return IgnoreReason.missedCarbs;
-    return null;
-  }
-
+IgnoreReason? _reasonFor(AnnotationKind annotationKind) {
+  final name = annotationKind.name;
+  if (name.contains('compressionLow')) return IgnoreReason.compressionLow;
+  if (name.contains('siteFailure')) return IgnoreReason.siteFailure;
+  if (name.contains('sensorWarmup')) return IgnoreReason.sensorWarmup;
+  if (name.contains('illness')) return IgnoreReason.illness;
+  if (name.contains('missedCarbs')) return IgnoreReason.missedCarbs;
+  return null;
 }
 
 class _DispositionChip extends StatelessWidget {

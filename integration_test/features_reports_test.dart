@@ -62,6 +62,9 @@ void main() {
     // Demo mode seeds ~3 weeks of history, so the AGP + GMI compute (not the empty state).
     expect(find.text('GMI'), findsWidgets);
     expect(find.text('Not enough data for an AGP curve.'), findsNothing);
+    // TASK-155: the event-marker overlay is wired up under the AGP chart.
+    expect(find.textContaining('Icons mark today\'s flagged events'),
+        findsOneWidget);
   });
 
   testWidgets('glucose report → clinic-visit prep sheet renders (§4-4.4)',
