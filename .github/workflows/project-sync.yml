@@ -1,0 +1,63 @@
+# Mirrors each issue's `status:*` label (the canonical status, decision-13) to the
+# `Stage` single-select field on the `bgdude` user project board, and marks closed
+# issues Done. Labels stay the source of truth — this sync only keeps the board view
+# honest, so it degrades gracefully: without the PROJECT_SYNC_TOKEN secret it skips.
+#
+# Setup (one-time, Summer): create a fine-grained PAT with `Projects: read+write` and
+# `Issues: read` on this account, then `gh secret set PROJECT_SYNC_TOKEN`.
+# (The default GITHUB_TOKEN cannot access user-owned Projects v2, hence the PAT.)
+name: Project sync
+
+on:
+  issues:
+    types: [opened, reopened, labeled, closed]
+
+permissions: {}
+
+env:
+  PROJECT_OWNER: danpowell88
+  PROJECT_NUMBER: "2"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync status label to project Stage
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_SYNC_TOKEN }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_STATE: ${{ github.event.issue.state }}
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+        run: |
+          set -eu
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "PROJECT_SYNC_TOKEN not configured; skipping (labels remain canonical)."
+            exit 0
+          fi
+          if [ "$ISSUE_STATE" = "closed" ]; then
+            stage="Done"
+          else
+            case ",$ISSUE_LABELS," in
+              *,status:idea,*)                        stage="Idea" ;;
+              *,status:planned,*)                     stage="Planned" ;;
+              *,status:to-do,*)                       stage="To Do" ;;
+              *,status:doing,*)                       stage="Doing" ;;
+              *,status:blocked,*)                     stage="Blocked" ;;
+              *,status:needs-review,*)                stage="Needs Review" ;;
+              *,status:reviewing,*)                   stage="Reviewing" ;;
+              *,status:reviewed,*)                    stage="Reviewed" ;;
+              *,status:needs-human-verification,*)    stage="Requires Human Verification" ;;
+              *) echo "no status:* label; nothing to sync"; exit 0 ;;
+            esac
+          fi
+          item=$(gh project item-add "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" \
+                 --url "$ISSUE_URL" --format json)
+          item_id=$(echo "$item" | jq -r '.id')
+          fields=$(gh project field-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json)
+          project_id=$(gh project view "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json | jq -r '.id')
+          field_id=$(echo "$fields" | jq -r '.fields[] | select(.name=="Stage") | .id')
+          option_id=$(echo "$fields" | jq -r --arg s "$stage" \
+                      '.fields[] | select(.name=="Stage") | .options[] | select(.name==$s) | .id')
+          gh project item-edit --project-id "$project_id" --id "$item_id" \
+             --field-id "$field_id" --single-select-option-id "$option_id"
+          echo "synced -> $stage"

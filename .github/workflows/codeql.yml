@@ -10,8 +10,8 @@
 # Gradle Kotlin compile ci.yml's native-tests job uses.
 #
 # NB: `push: main` deliberately has NO paths filter — the ruleset requires scanning
-# results for the ref being updated, and backlog bookkeeping commits land on main
-# constantly; every main commit must end up with results. cancel-in-progress keeps only
+# results for the ref being updated (the occasional docs/decision commit still lands on
+# main directly); every main commit must end up with results. cancel-in-progress keeps only
 # the newest tip analyzing. Dart is not a CodeQL-supported language: the Flutter code is
 # gated by analyze/test/coverage-gate in ci.yml instead.
 

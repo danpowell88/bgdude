@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>bgdude — Engineering process (backlog, agents &amp; gates)</title>
+<title>bgdude — Engineering process (issues, agents &amp; gates)</title>
 <style>
   :root {
     --bg: #ffffff; --fg: #1b1f24; --muted: #57606a; --line: #d0d7de;
@@ -50,10 +50,12 @@
 <body>
 <main>
 <h1>bgdude — Engineering process</h1>
-<p class="sub">How work flows from an idea to verified-done: the backlog pipeline, the agent loops, the
-merge gates, and the human verification batches. Source of truth for conventions is
-<code>CLAUDE.md</code>; standing choices live in <code>backlog/decisions/</code> (this page reflects
-decisions 6–12, updated 2026-07-11).</p>
+<p class="sub">How work flows from an idea to verified-done: the GitHub Issues pipeline, the agent loops,
+the merge gates, and the human verification batches. Source of truth for conventions is
+<code>CLAUDE.md</code>; standing choices live in <code>doc/decisions/</code> (this page reflects
+decisions 6–13, updated 2026-07-11). Tracking lives in GitHub Issues + the <code>bgdude</code>
+project board — statuses are <code>status:*</code> labels, <b>Done = the issue closed by Summer</b>.
+The pre-migration Backlog.md IDs map to issues via <code>doc/backlog-migration-map.md</code>.</p>
 
 <div class="toc">
   <a href="#pipeline">1. Status pipeline</a><br>
@@ -79,17 +81,17 @@ decisions 6–12, updated 2026-07-11).</p>
   <span class="chip" style="background:var(--done)">Done<span class="who">Summer only</span></span>
 </div>
 <ul>
-  <li><b>Idea</b> — a raw thought. No ACs required; just capture it (<code>backlog task create "…" -s Idea</code>).</li>
-  <li><b>Planned</b> — groomed: description, testable ACs, plan, milestone, ordinal, dependencies. Tasks
+  <li><b>Idea</b> — a raw thought. No ACs required; just capture it (<code>gh issue create --label "status:idea"</code>).</li>
+  <li><b>Planned</b> — groomed: description, testable ACs, plan, milestone, ordinal, dependencies. Issues
       needing answers wait here with the <code>detail-needed</code> label.</li>
   <li><b>To Do</b> — ready: dependencies met, spec sufficient. <b>The only status implementers pick from</b>, lowest ordinal first.</li>
-  <li><b>Doing</b> — claimed by one implementer via an instant status commit pushed to <code>main</code>. Means <i>actively worked right now</i>.</li>
+  <li><b>Doing</b> — claimed by one implementer: flip the label to <code>status:doing</code> + post a signed claiming comment. Means <i>actively worked right now</i>.</li>
   <li><b>Needs Review</b> — implementation finished: verify pipeline green, branch pushed, <b>PR open</b>.</li>
-  <li><b>Reviewing</b> — claimed by one reviewer (same instant claim commit — no two reviewers race a task).</li>
+  <li><b>Reviewing</b> — claimed by one reviewer (same label-flip + signed comment — no two reviewers race an issue).</li>
   <li><b>Reviewed</b> — review passed and <b>the PR is merged to <code>main</code></b>. The agent pipeline is complete; awaiting batch verification.
       A <span class="danger">failed review</span> goes back to <b>To Do</b> instead (branch + PR stay open, findings attached).</li>
-  <li><b>Requires Human Verification</b> — grouped into a <code>verification-batch</code> task for Summer (see <a href="#human">§6</a>).</li>
-  <li><b>Done</b> — Summer verified the batch on the real app. <b>Agents never set Done.</b></li>
+  <li><b>Requires Human Verification</b> — grouped into a <code>verification-batch</code> issue for Summer (see <a href="#human">§6</a>).</li>
+  <li><b>Done</b> — Summer verified the batch on the real app and <b>closes the issues</b>. <b>Agents never close a task issue</b> (PRs say <code>Refs #n</code>, never <code>Closes #n</code>, so a merge can't auto-close past her gate).</li>
   <li><b>Blocked</b> — orthogonal parked state from any active stage; the comment must name the blocker and what would unblock it.</li>
 </ul>
 <p>Merging happens at <b>Reviewed</b>, not after human verification — <code>main</code> stays reviewed and
@@ -104,52 +106,52 @@ CI-green at all times, while the human gate verifies <i>outcomes in batches</i> 
   <tr><td><b>Summer</b></td><td>Human — final gate</td><td>when a batch appears</td><td>Requires Human Verification → Done</td><td><a href="#human">§6</a></td></tr>
 </table>
 <p>Every agent signs its work with its own id (<code>implemented-by:</code> / <code>reviewed-by:</code> comments,
-<code>--comment-author</code>, git <code>Co-Authored-By</code>) — all agents share one GitHub account, so these
-tags are the identity record.</p>
+a leading <code>&lt;agent-id&gt;:</code> on every issue comment, git <code>Co-Authored-By</code>) — all agents
+share one GitHub account, so these tags are the identity record.</p>
 
 <h2 id="lifecycle">3. A task's life, step by step</h2>
 <div class="grid">
   <div class="card"><h3>Implementer (one task per run)</h3>
     <ol>
-      <li>Pull <code>main</code>; pick the lowest-ordinal <b>To Do</b> with deps met.</li>
-      <li><b>Claim first:</b> set <b>Doing</b> + assignee + <code>branch: task-&lt;id&gt;</code> comment; commit the task file straight to <code>main</code> and push — <i>before any code</i>.</li>
-      <li>Work in an own worktree on branch <code>task-&lt;id&gt;</code>.</li>
+      <li>Pull <code>main</code>; pick the lowest-ordinal <b>To Do</b> issue with deps met.</li>
+      <li><b>Claim first:</b> flip to <code>status:doing</code> + post a signed claiming comment naming branch <code>issue-&lt;n&gt;</code> — <i>before any code</i>; back off if an earlier claim is already there.</li>
+      <li>Work in an own worktree on branch <code>issue-&lt;n&gt;</code>.</li>
       <li>Implement per plan/ACs; log <code>friction:</code> comments; keep <code>doc/user-guide.html</code> current.</li>
       <li>Merge <code>origin/main</code> in, run the full verify pipeline (<a href="#verify">§5</a>).</li>
-      <li>Push branch, open PR <code>TASK-&lt;id&gt;: &lt;title&gt;</code>, record <code>PR: #&lt;n&gt;</code>, check ACs, closing comment ending with a <code>friction:</code> line, set <b>Needs Review</b>.</li>
+      <li>Push branch, open PR <code>issue-&lt;n&gt;: &lt;title&gt;</code> (<code>Refs #n</code>), record <code>PR: #&lt;pr&gt;</code>, tick ACs, closing comment ending with a <code>friction:</code> line, flip to <code>status:needs-review</code>.</li>
     </ol>
   </div>
   <div class="card"><h3>Reviewer (drains the queue)</h3>
     <ol>
       <li>Skip anything it implemented itself (decision-7).</li>
-      <li><b>Claim:</b> set <b>Reviewing</b>, commit + push to <code>main</code>.</li>
+      <li><b>Claim:</b> flip to <code>status:reviewing</code> + signed comment.</li>
       <li>Freshen a stale/conflicting branch (<code>git merge origin/main</code>, push, let CI re-run).</li>
-      <li>Review the PR diff adversarially against ACs/DoD (sweep-the-whole-surface checklist); notes on the PR <i>and</i> the task.</li>
-      <li><span class="ok">Pass</span>: <code>reviewed-by:</code> comment, DoD checked, <code>gh pr merge --merge --delete-branch</code> (never <code>--admin</code>), set <b>Reviewed</b>.</li>
+      <li>Review the PR diff adversarially against ACs/DoD (sweep-the-whole-surface checklist); notes on the PR <i>and</i> the issue.</li>
+      <li><span class="ok">Pass</span>: <code>reviewed-by:</code> comment, DoD ticked, <code>gh pr merge --merge --delete-branch</code> (never <code>--admin</code>), flip to <code>status:reviewed</code> — <b>not</b> closed.</li>
       <li><span class="danger">Fail</span>: <code>reviewed-by:</code> comment with concrete problems, no merge, back to <b>To Do</b> — the next implementer resumes on the same branch/PR.</li>
     </ol>
   </div>
   <div class="card"><h3>Groomer (front + back of pipeline)</h3>
     <ol>
-      <li>Flesh out <b>Idea</b> tasks into <b>Planned</b> (desc, ACs, plan, milestone, ordinal, deps); split anything bigger than one PR.</li>
+      <li>Flesh out <b>Idea</b> issues into <b>Planned</b> (desc, ACs, plan, milestone, ordinal, deps); split anything bigger than one PR.</li>
       <li>Promote <b>Planned → To Do</b> when deps are met and the spec is implementable.</li>
-      <li>Batch <b>Reviewed</b> tasks (≥5, a completed milestone, or &gt;7 days old) into a <code>verification-batch</code> task for Summer; members → <b>Requires Human Verification</b>.</li>
-      <li>Apply Summer's verdicts: pass → members + batch <b>Done</b>; problems → file fix tasks, bounce affected members to <b>To Do</b>.</li>
+      <li>Batch <b>Reviewed</b> issues (≥5, a completed milestone, or &gt;7 days old) into a <code>verification-batch</code> issue for Summer; members → <b>Requires Human Verification</b>.</li>
+      <li>Apply Summer's verdicts: pass → close members + batch (<b>Done</b>); problems → file fix issues, bounce affected members to <b>To Do</b>.</li>
     </ol>
   </div>
   <div class="card"><h3>Summer (human gate)</h3>
     <ol>
-      <li>A batch task assigned to you appears in <b>Requires Human Verification</b>.</li>
+      <li>A batch issue assigned to you appears in <b>Requires Human Verification</b>.</li>
       <li>Install the latest debug APK (artifact on the newest <code>main</code> CI run) or <code>flutter run</code>.</li>
-      <li>Walk the batch ACs — one checkbox per member task saying exactly what to verify.</li>
-      <li>All good → mark members + batch <b>Done</b> (or tell an agent to). Problems → comment what's wrong on the batch; the groomer files the fixes.</li>
+      <li>Walk the batch checklist — one checkbox per member issue saying exactly what to verify.</li>
+      <li>All good → close members + batch (or tell an agent to). Problems → comment what's wrong on the batch; the groomer files the fixes.</li>
     </ol>
   </div>
 </div>
 
 <h2 id="git">4. Git, PRs &amp; the merge gate <span class="tag">decisions 6, 8, 10, 11</span></h2>
 <ul>
-  <li><b>All work in worktrees + branches.</b> Every writer works in its own git worktree on its own branch off the latest <code>main</code> — one branch per task, named <code>task-&lt;id&gt;</code>.</li>
+  <li><b>All work in worktrees + branches.</b> Every writer works in its own git worktree on its own branch off the latest <code>main</code> — one branch per issue, named <code>issue-&lt;n&gt;</code> (pre-migration branches use the old <code>task-&lt;id&gt;</code> Backlog names — see <code>doc/backlog-migration-map.md</code>).</li>
   <li><b>Every task ships as a GitHub PR.</b> Implementers never push code to <code>main</code>, never merge; the reviewer loop merges via <code>gh pr merge --merge</code> only.</li>
   <li><b>The GitHub ruleset "main merge gate: PR + green CI" machine-enforces it.</b> Merging to <code>main</code> requires:
     <ul>
@@ -159,8 +161,8 @@ tags are the identity record.</p>
       <li>coverage on the PR at/above the 65% floor <b>and</b> not below the latest successful <code>main</code> run — the no-drop ratchet (the free stand-in for GitHub's "Restrict code coverage" rule).</li>
     </ul>
   </li>
-  <li><b>Straight-to-<code>main</code> is only for bookkeeping</b> — task claim/status commits, backlog/decision/config edits, trivial docs. The admin bypass on the ruleset exists <i>solely</i> for these (pushes print "Bypassed rule violations" — expected). Using it to merge a PR (<code>--admin</code>) or push task code is forbidden.</li>
-  <li><b>Claim commits are the coordination protocol:</b> the instant a task changes status, that task file is committed to <code>main</code> and pushed — that is how parallel agents (and <code>scripts/watch-backlog.ps1</code>) see the queue move.</li>
+  <li><b>Straight-to-<code>main</code> is only for rare bookkeeping</b> — <code>doc/decisions/</code> entries, config edits, trivial docs. The admin bypass on the ruleset exists <i>solely</i> for these (pushes print "Bypassed rule violations" — expected). Using it to merge a PR (<code>--admin</code>) or push task code is forbidden.</li>
+  <li><b>Label flips are the coordination protocol (decision-13):</b> the instant an issue changes status, its <code>status:*</code> label is updated and a signed comment posted — an atomic API call every parallel agent sees instantly. (This replaced the old claim-commit churn on <code>main</code>, which was making feature branches go stale and conflict — old TASK-310.)</li>
 </ul>
 
 <h2 id="verify">5. The verify pipeline (local must match CI)</h2>
@@ -198,29 +200,28 @@ pwsh scripts/run-agent.ps1 -Loop -IntervalMinutes 45      # keep implementing, o
 pwsh scripts/run-agent.ps1 -Role reviewer -Model opus -Loop -IntervalMinutes 60</code></pre>
 <p>Each iteration launches a fresh agent that reads <code>CLAUDE.md</code>, follows
 <code>loops/&lt;role&gt;.md</code> end-to-end (pick → claim → work → hand off), and exits. Because every claim is
-an instant status commit on <code>main</code>, you can run several instances — even across machines, or a mix of
+an instant label flip + signed comment on the issue, you can run several instances — even across machines, or a mix of
 Claude and qwen — without them stepping on each other.</p>
 <h3>Fully unattended: Windows Task Scheduler</h3>
 <pre><code>schtasks /Create /TN "bgdude-implementer" /SC HOURLY /TR "pwsh -NoProfile -File C:\Users\danpo\Desktop\bgdude\scripts\run-agent.ps1 -Role implementer" /F
 schtasks /Create /TN "bgdude-reviewer"    /SC HOURLY /ST 00:30 /TR "pwsh -NoProfile -File C:\Users\danpo\Desktop\bgdude\scripts\run-agent.ps1 -Role reviewer" /F
 schtasks /Create /TN "bgdude-groomer"     /SC DAILY  /ST 07:00 /TR "pwsh -NoProfile -File C:\Users\danpo\Desktop\bgdude\scripts\run-agent.ps1 -Role groomer" /F</code></pre>
 <h3>Watching without interfering</h3>
-<pre><code>pwsh scripts/watch-backlog.ps1            # read-only mirror of main + live backlog board (60s refresh)
-pwsh scripts/watch-backlog.ps1 -Browser   # same, plus the Backlog.md web UI on the mirror</code></pre>
-<p>The watcher uses its own mirror clone (<code>..\bgdude-watch</code>), so it never touches your working tree
-or any agent worktree.</p>
+<p>Everything is live on GitHub: the <a href="https://github.com/danpowell88/bgdude/issues">issues list</a>
+(filter by <code>label:status:doing</code> etc.) and the <code>bgdude</code> project board (Stage columns,
+sorted by Ordinal). No local mirror needed — watching never touches a working tree.</p>
 
 <h2 id="conventions">8. Conventions quick reference</h2>
 <table>
   <tr><th>Convention</th><th>Rule</th></tr>
-  <tr><td>Claim protocol</td><td>Status change → commit that task file to <code>main</code> → push, <i>immediately</i>, before any other work. A pushed branch whose task is still To Do is a bug.</td></tr>
-  <tr><td>Identity tags</td><td><code>implemented-by:</code> / <code>reviewed-by:</code> comments + <code>--comment-author</code> + git <code>Co-Authored-By</code>, always the agent's own id (e.g. <code>Sonnet</code>, <code>Fable</code>, <code>qwen-code</code>).</td></tr>
+  <tr><td>Claim protocol</td><td>Status change → flip the <code>status:*</code> label + signed comment, <i>immediately</i>, before any other work; re-read and back off if someone claimed first. A pushed branch whose issue is still To Do is a bug.</td></tr>
+  <tr><td>Identity tags</td><td><code>implemented-by:</code> / <code>reviewed-by:</code> comments + a leading <code>&lt;agent-id&gt;:</code> on every comment + git <code>Co-Authored-By</code>, always the agent's own id (e.g. <code>Sonnet</code>, <code>Fable</code>, <code>qwen-code</code>).</td></tr>
   <tr><td>Friction log</td><td><code>friction:&lt;build|env|deps|code|test|tooling&gt; — what bit you — root cause/fix</code> comment as you hit it; the closing comment before Needs Review <i>must</i> end with one (or <code>friction:none</code>).</td></tr>
-  <tr><td><code>detail-needed</code></td><td>Don't guess. Label + concrete questions; task waits in Planned (or Blocked if it was Doing).</td></tr>
+  <tr><td><code>detail-needed</code></td><td>Don't guess. Label + concrete questions; the issue waits in Planned (or Blocked if it was Doing).</td></tr>
   <tr><td>Bug fixes</td><td>Sweep the whole surface: sibling call sites, both branches/side-effects, a test that fails if reverted, concurrency/security nuance. Reviewers re-apply the same four axes.</td></tr>
   <tr><td>Ordinals</td><td>Band 1 (100000+) stabilise/fix/test → band 2 (500000+) finish existing features → band 3 (700000+) net-new. Pick lowest ordinal with deps met.</td></tr>
   <tr><td>User guide</td><td>Any user-visible change updates <code>doc/user-guide.html</code> in the same PR.</td></tr>
-  <tr><td>Decisions</td><td>Standing choices live in <code>backlog/decisions/</code> — read before re-litigating; record new ones with <code>backlog decision create</code>.</td></tr>
+  <tr><td>Decisions</td><td>Standing choices live in <code>doc/decisions/</code> — read before re-litigating; record new ones as a numbered markdown file (straight-to-main lane).</td></tr>
 </table>
 </main>
 </body>

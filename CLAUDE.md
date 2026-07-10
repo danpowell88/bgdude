@@ -13,232 +13,224 @@ When a change adds a new screen, also regenerate screenshots when an emulator is
 --target=integration_test/screenshots_test.dart -d <device>`) and reference the new PNG in
 both docs.
 
-## Backlog (task tracking — the single planning source)
-All planning lives in [Backlog.md](https://github.com/MrLesk/Backlog.md) under `backlog/`
-(CLI: `backlog`, e.g. `backlog task list --plain`, `backlog task 42 --plain`): **tasks** are
-the unit of execution, **milestones** (m-0..m-8) carry the phasing, **decisions**
-(`backlog/decisions/`) hold standing product/architecture choices (read-only charter,
-personal audience, GBM-not-neural, what-not-to-change), and **docs** hold archived
-narrative (the old `ROADMAP.md` is archived verbatim as doc-1 — task notes citing
-`Source: ROADMAP section N` refer to it). There is no ROADMAP.md; do not recreate one.
+## GitHub Issues (task tracking — the single planning source)
+All planning lives in **GitHub Issues** on `danpowell88/bgdude` (CLI: `gh`). Backlog.md was
+migrated here 2026-07-11 (decision-13); the old `TASK-<id>` → issue `#<n>` mapping is
+`doc/backlog-migration-map.md`, and each migrated issue carries its full history (ACs, plan,
+notes, comments) in its body. Structure:
 
-<!-- BACKLOG.MD GUIDELINES START -->
-<CRITICAL_INSTRUCTION>
+- **Issues** are the unit of execution. **Status is a `status:*` label** (exactly one per
+  open issue); **a closed issue is `Done`** (closing is Summer's act — see the pipeline).
+- **Milestones** carry the phasing (`Phase 0: …` … `Phase 7: …`, `Code health`).
+- **The project board** (`gh project view <n> --owner danpowell88`, title `bgdude`) is the
+  pipeline view with `Stage` and `Ordinal` fields. Labels are canonical; the board is a
+  mirror (synced by `.github/workflows/project-sync.yml` when its `PROJECT_SYNC_TOKEN`
+  secret is configured — otherwise best-effort manual).
+- **Decisions** (product/architecture choices that outlive an issue) live in
+  `doc/decisions/decision-<n>.md` — check them before re-litigating one; add a new numbered
+  file (straight-to-main lane) when a standing choice is made. Read-only charter, personal
+  audience, GBM-not-neural, what-not-to-change all live there.
+- The old `ROADMAP.md` is archived verbatim as `doc/roadmap-archived-2026-07-06.md` — issue
+  notes citing `Source: ROADMAP section N` refer to it. There is no ROADMAP.md; do not
+  recreate one.
 
-## Backlog.md Workflow
-
-This project uses Backlog.md for task and project management.
-
-**For every user request in this project, run `backlog instructions overview` before answering or taking action.**
-
-Use the overview to decide whether to search, read, create, or update Backlog tasks.
-
-Use the detailed guides when needed:
-- `backlog instructions task-creation` for creating or splitting tasks
-- `backlog instructions task-execution` for planning and implementation workflow
-- `backlog instructions task-finalization` for completion and handoff
-
-Use `backlog <command> --help` before running unfamiliar commands. Help shows options, fields, and examples.
-
-Do not edit Backlog task, draft, document, decision, or milestone markdown files directly. Use the `backlog` CLI so metadata, relationships, and history stay consistent.
-
-</CRITICAL_INSTRUCTION>
-<!-- BACKLOG.MD GUIDELINES END -->
-
-The formatting rules below apply to the *text you pass* via CLI flags.
+### Working with issues (gh cheat-sheet)
+- List pickable work: `gh issue list --label "status:to-do" --state open --limit 200`
+- Read one fully: `gh issue view <n> --comments`
+- Search: `gh issue list --search "<terms> in:title,body"` (add `in:comments` to search
+  comment trails, e.g. `gh issue list --state all --search "friction: in:comments"`)
+- Comment: `gh issue comment <n> --body "..."`
+- Move status: `gh issue edit <n> --remove-label "status:to-do" --add-label "status:doing"`
+- Edit body (tick AC checkboxes etc.): `gh issue view <n> --json body -q .body > b.md`,
+  edit, `gh issue edit <n> --body-file b.md`
+- Create: `gh issue create --title "<plain title>" --body-file <f> --label "status:idea"
+  --label "priority:medium" --milestone "<milestone title>"` — then add it to the project:
+  `gh project item-add <proj#> --owner danpowell88 --url <issue-url>`
 
 ### Structure conventions
-- **Titles are plain descriptions** — no roadmap-id prefixes (`P0-1`, `3.A`, `4-1.2`) and no
-  `§` symbol anywhere in task content; provenance lives in the Notes `- Source:` bullet.
-- **Blockers go in the real `dependencies` field** (`--dep task-2,task-46`), not prose.
-  `backlog sequence list --plain` then shows the execution order. A partial dependency
-  (only one stage blocked) still gets the dep, with the nuance spelled out in the plan.
-- **Every task gets a milestone** (`-m m-5`); milestones mirror the ROADMAP execution
-  phases (`backlog milestone list --plain`). New code-health work → `Code health` (m-8).
-- **Definition of Done defaults** are set project-wide (the CI-equivalent pipeline from
-  "Verify the build" below) — check them off with `--check-dod <n>` when finishing.
-- **Decisions** (product/architecture choices that outlive a task) are recorded with
-  `backlog decision create` — check `backlog/decisions/` before re-litigating one.
-- When starting a task also **assign yourself**: `-a Claude`.
+- **Titles are plain descriptions** — no id prefixes and no `§` symbol; provenance lives in
+  the body's `- Source:` bullet.
+- **Issue bodies carry structured metadata as bullets** (the migrated issues model this):
+  `- **Ordinal:** <n>`, `- **Depends on:** #<n>, #<m>`, `- **Branch:** issue-<n>`,
+  `- **PR:** #<n>`, plus `## Description`, `## Acceptance Criteria` (checklist),
+  `## Implementation Plan`, `## Implementation Notes`, `## Definition of Done` (checklist)
+  sections. New issues follow the `.github/ISSUE_TEMPLATE/task.md` template.
+- **Blockers go in the `Depends on:` bullet** as `#<n>` references (GitHub cross-links them),
+  not prose. A partial dependency (only one stage blocked) still gets the entry, with the
+  nuance spelled out in the plan. An issue is pickable only when every dependency is closed
+  or `status:reviewed`.
+- **Every issue gets a milestone**; new code-health work → `Code health`.
+- **Definition of Done** is the CI-equivalent pipeline from "Verify the build" below — the
+  issue template carries the checklist; tick items via body edit when finishing.
 - **Execution order is encoded in ordinals** (2026-07-06 triage), in three bands:
   stabilise existing functionality (fixes, cleanup, tests — ordinals 100000+), then
   **finish existing features** (500000+), then new features (700000+). Pick work from
-  the lowest ordinal whose dependencies are met; give a new task an ordinal in the
+  the lowest ordinal whose dependencies are met; give a new issue an ordinal in the
   band it belongs to (fixes/tests → band 1, completing something started → band 2,
-  net-new → band 3).
+  net-new → band 3). Sort by ordinal with:
+  `gh issue list --label "status:to-do" --state open --limit 200 --json number,title,body |
+  jq -r 'map({n:.number,t:.title,o:(((.body // "") | capture("Ordinal:\\*\\* (?<o>[0-9]+)")?.o // "999999999") | tonumber)}) | sort_by(.o)[] | "\(.o)\t#\(.n)\t\(.t)"'`
 
-### Status pipeline (decision-12)
+### Status pipeline (decision-12; GitHub mechanics decision-13)
 `Idea → Planned → To Do → Doing → Needs Review → Reviewing → Reviewed → Requires Human
-Verification → Done`, plus `Blocked` (parked, usable from any active stage). Who moves what:
+Verification → Done`, plus `Blocked` (parked, usable from any active stage). Statuses map to
+labels `status:idea`, `status:planned`, `status:to-do`, `status:doing`, `status:blocked`,
+`status:needs-review`, `status:reviewing`, `status:reviewed`,
+`status:needs-human-verification`; **`Done` = the issue is closed** (reason `completed`).
+Keep exactly one `status:*` label on every open issue. Who moves what:
 
 - **Idea** — raw thought, no ACs needed; anyone files these. **Planned** — groomed by the
-  groomer loop (description, ACs, plan, milestone, ordinal, deps); `detail-needed` tasks wait
+  groomer loop (description, ACs, plan, milestone, ordinal, deps); `detail-needed` issues wait
   here. **To Do** — deps met, spec sufficient: the ONLY status implementers pick from.
-- **Doing** — claimed by an implementer (instant claim-commit, see below). Must mean actively
-  worked *right now*. **Needs Review** — verify pipeline green, branch pushed, PR open.
-- **Reviewing** — claimed by a reviewer (same instant claim-commit; stops two reviewers racing
-  one task). **Reviewed** — review passed and **the PR is merged**; awaiting batch verification.
+- **Doing** — claimed by an implementer (claim protocol below). Must mean actively worked
+  *right now*. **Needs Review** — verify pipeline green, branch pushed, PR open.
+- **Reviewing** — claimed by a reviewer (same claim protocol; stops two reviewers racing one
+  issue). **Reviewed** — review passed and **the PR is merged**; awaiting batch verification.
   A failed review goes back to **To Do** (branch + PR stay open).
-- **Requires Human Verification** — the groomer groups `Reviewed` tasks into a
-  `verification-batch` task assigned to Summer (ACs = per-member checklist of what to verify on
-  the real app); members move here with a comment naming their batch. **Done** — Summer
-  verified the batch. **Agents never set Done** (DoD item); merge already happened at
-  `Reviewed`, so the human gate verifies outcomes without serializing merges.
+- **Requires Human Verification** — the groomer groups `status:reviewed` issues into a
+  `verification-batch` issue assigned to `danpowell88` (body = per-member checklist of what
+  to verify on the real app); members move here with a comment naming their batch. **Done** —
+  Summer verified the batch and **closes the issues** (the one agent path to closing is the
+  groomer acting on her recorded verdict). **Agents never close a task issue otherwise**
+  (DoD item); merge already happened at `Reviewed`, so the human gate verifies outcomes
+  without serializing merges.
+- **PRs must never auto-close issues**: reference the issue as `Refs #<n>` / `Issue: #<n>`,
+  NEVER `Closes/Fixes/Resolves #<n>` — a closing keyword would mark the issue Done at merge
+  time, bypassing Summer's gate.
 
 ### Comment as you work
-Use the **comment field** to leave a trail on the task you're working on:
+All agents share one GitHub account, so **every comment starts with your agent id**:
+`gh issue comment 42 --body "<agent-id>: Started — <approach in one line>"`. The
+`implemented-by:` / `reviewed-by:` tags and comment signatures are the greppable record of
+who did what (`in:comments` search) — keep both present on every issue that reaches Reviewed.
 
-```
-backlog task edit 42 --comment "Started: <approach in one line>" --comment-author "Claude"
-```
-
-- When you **start** a task: set `-s Doing`, assign yourself as the implementer
-  (`-a <your-agent-id>` — the same identity you sign commits with, e.g. the `Co-Authored-By`
-  model/session name), record the branch (`--comment "branch: task-<id>"`), and add a comment
-  stating the approach.
-- **Commit and push every status transition IMMEDIATELY — this is how parallel sessions avoid
-  duplicating work.** Task status lives in `backlog/tasks/task-<id>.md`, and `auto_commit` is
-  off, so a status change nobody committed is invisible to other sessions pulling `main`. The
-  instant you **claim** a task (To Do → Doing, or Needs Review → Reviewing for reviewers) —
-  before you write or read any code — commit that task-file change to `main` and push
-  (`git add backlog/tasks/task-<id>*.md && git commit && git push`). Do the same for every
-  later move (→ Needs Review, → Blocked, → Reviewed). These claim/status commits are
-  coordination bookkeeping and go **straight to `main`** (decision-8), separate from the
-  task's code on its `task-<id>` branch. A branch pushed while its task is still `To Do` is
-  a bug: another agent can't tell it's claimed and will duplicate it — always flip status +
-  commit + push at claim time.
-- While working: add a comment for any **significant finding, decision, or deviation** from
-  the implementation plan (what and why) — not a play-by-play, just the things a reviewer
-  would want to know.
+- **Claiming (replaces the old claim-commit protocol — no git involved).** To claim, in one
+  step flip the label and sign it:
+  `gh issue edit <n> --remove-label "status:to-do" --add-label "status:doing"` then
+  `gh issue comment <n> --body "<agent-id>: claiming — branch issue-<n> — <approach>"`.
+  Then **re-read the issue** (`gh issue view <n> --comments`): if another agent's claiming
+  comment is already there with an earlier timestamp, they win — restore the label, drop a
+  one-line "backing off" comment, and pick something else. Claims are visible instantly to
+  every session (no push race, no bookkeeping commits — this is why the migration happened;
+  see decision-13 / old TASK-310).
+- While working: comment any **significant finding, decision, or deviation** from the plan
+  (what and why) — not a play-by-play, just what a reviewer would want to know.
 - When you **finish the implementation**: first `git merge origin/main` into the branch — a
-  branch must enter `Needs Review` mergeable (`main` churns fast here; a conflicting PR doesn't even
-  run CI, TASK-310) — then confirm code + tests + the full verify pipeline green on the branch.
-  Check off the acceptance criteria (`--check-ac <n>`), **push the `task-<id>` feature
-  branch and open a PR against `main`** (do NOT merge it yourself):
-  `gh pr create --base main --head task-<id> --title "TASK-<id>: <task title>" --body "<task summary, implemented-by line, test evidence>"`.
+  branch must enter `Needs Review` mergeable (a conflicting PR doesn't even run CI) — then
+  confirm code + tests + the full verify pipeline green on the branch. Tick the AC
+  checkboxes (body edit), **push the `issue-<n>` branch and open a PR against `main`** (do
+  NOT merge it yourself):
+  `gh pr create --base main --head issue-<n> --title "issue-<n>: <title>" --body "<summary,
+  ACs addressed, test evidence, implemented-by line, Refs #<n>>"`.
   If a PR for the branch already exists (rework after a failed review), just push — the PR
-  updates itself; leave a PR comment saying what changed. Record the PR on the task
-  (`--comment "PR: #<n>"`) and move the task to **`-s "Needs Review"`** — never further.
-  Add a closing comment tagged
-  `implemented-by: <your-agent-id> — branch task-<id>, PR #<n>, <files, tests, commit hash>`. Leave
-  yourself as the assignee so it's clear who did the work.
+  updates itself; leave a PR comment saying what changed. Add the `- **PR:** #<pr>` bullet to
+  the issue body, move the issue to `status:needs-review`, and add a closing comment tagged
+  `implemented-by: <your-agent-id> — branch issue-<n>, PR #<pr>, <files, tests, commit hash>`.
   **This closing comment MUST end with a friction line** — a `friction:<category> — …` bullet
   for anything that tripped you up (build/env/deps/code/test/tooling), or literally
-  `friction:none` if it was genuinely smooth. No task reaches `Needs Review` without one. This is the
-  forcing function that makes the friction trail actually exist: the "log friction as you hit
-  it" bullet below is the ideal (log in the moment), but the Review gate is the *floor* — a
-  task with no friction line is not ready for Needs Review. (Rationale: the friction convention had
-  **zero** logged comments backlog-wide until this rule; the meta loop that mines them was
-  starved. Tying capture to an already-required step fixes adoption.)
+  `friction:none` if it was genuinely smooth. No issue reaches `Needs Review` without one —
+  the Review gate is the *floor* that makes the friction trail exist; logging in the moment
+  (below) is the ideal.
 - **Review stage — done by the reviewer loop (expensive model), a different agent, which also
-  merges the PR.** A task in `Needs Review` is picked up by a **different agent than the
-  `implemented-by` one** (normally the scheduled reviewer loop, `loops/reviewer.md`) — a task
-  must never be reviewed or merged by its own implementer (decision-7). The reviewer **claims
-  it first**: `-s Reviewing`, committed and pushed to `main` immediately (same claim protocol
-  as implementers — this stops two reviewers racing one task). Then it finds the task's PR
-  (`gh pr list --head task-<id>`; if a legacy branch has none, open it), verifies the
-  ACs and DoD against the PR diff (apply the "sweep the whole surface" checklist above), and
-  checks CI on the PR (`gh pr checks <n>`). If the branch is stale or conflicts with `main`,
-  the reviewer merges `main` into the branch (`git merge origin/main`, resolve, push) and lets
-  CI re-run before judging. Review notes go on **both** the PR (inline/`gh pr comment`) and the
-  task. Then:
-  - **Pass** → add a comment tagged `reviewed-by: <reviewer-agent-id> — <what was checked / verdict>`,
-    check off the DoD (`--check-dod <n>`), and **merge the PR: `gh pr merge <n> --merge --delete-branch`**
-    (merge commit ≈ the old `--no-ff`; **never `--admin`** — if GitHub refuses because checks
-    are red or pending, that is the gate working: wait or fail the review, don't bypass). Set
-    **`-s Reviewed`** — NOT `Done` — and remove the local worktree. `Reviewed` requires this
-    reviewed-by comment from a second agent (DoD item) and only ever happens via this PR merge.
-  - **Fail** → add a `reviewed-by: <reviewer-agent-id> — <the problems>` comment on the task,
-    leave the concrete follow-ups as PR comments, **do not merge**, and send the task back to
-    **`-s "To Do"`** (or `Blocked`, or file a prioritised follow-up ticket for a separable gap)
-    so any implementer can pick it up and resume **on the same branch/PR**. Never rubber-stamp
+  merges the PR.** An issue in `status:needs-review` is picked up by a **different agent than
+  the `implemented-by` one** (normally the scheduled reviewer loop, `loops/reviewer.md`) — an
+  issue must never be reviewed or merged by its own implementer (decision-7). The reviewer
+  **claims it first** (`status:reviewing` + signed claiming comment, same protocol). Then it
+  finds the PR (`gh pr list --head issue-<n>` or the body's PR bullet), verifies the ACs and
+  DoD against the PR diff (apply the "sweep the whole surface" checklist below), and checks
+  CI (`gh pr checks <pr>`). If the branch is stale or conflicts with `main`, the reviewer
+  merges `main` into the branch, resolves faithfully to both sides' intent, pushes, and lets
+  CI re-run before judging. Review notes go on **both** the PR and the issue. Then:
+  - **Pass** → comment tagged `reviewed-by: <reviewer-agent-id> — <what was checked /
+    verdict>`, tick the DoD boxes (body edit), **merge the PR:
+    `gh pr merge <pr> --merge --delete-branch`** (**never `--admin`** — if GitHub refuses
+    because checks are red or pending, that is the gate working: wait or fail the review,
+    don't bypass). Move the issue to `status:reviewed` — do NOT close it.
+  - **Fail** → comment tagged `reviewed-by: <reviewer-agent-id> — <the problems>`, leave the
+    concrete follow-ups as PR comments, **do not merge**, and move the issue back to
+    `status:to-do` (or `status:blocked`, or file a prioritised follow-up issue for a
+    separable gap) so any implementer resumes **on the same branch/PR**. Never rubber-stamp
     or merge on a fail.
-  - The `implemented-by:` / `reviewed-by:` tags (plus each comment's `--comment-author`) are the
-    greppable record of **who did the work and who reviewed/merged it** — keep both present on
-    every task that reaches Reviewed.
 - **Human verification — Summer's gate, batch-level (decision-12).** The groomer loop
-  (`loops/groomer.md`) groups `Reviewed` tasks into a `verification-batch` task assigned to
-  Summer whose ACs list, per member task, exactly what to check on the real app; members move
-  to `Requires Human Verification` with a `verification-batch: task-<id>` comment. Summer
-  verifies and moves members + batch to `Done` — or comments the problems, and the groomer
-  files fix tasks and bounces the affected members to `To Do`. **No agent ever sets `Done`.**
+  (`loops/groomer.md`) groups `status:reviewed` issues into a `verification-batch` issue
+  assigned to `danpowell88` whose body checklist lists, per member, exactly what to check on
+  the real app; members move to `status:needs-human-verification` with a comment
+  `verification-batch: #<batch>`. Summer verifies and closes members + batch — or comments
+  the problems, and the groomer files fix issues and bounces the affected members to
+  `status:to-do`. **No agent ever closes a task issue except the groomer acting on Summer's
+  recorded verdict.**
 - When you **cannot make further progress** — a dependency, a missing decision or answer, or
-  an environment limitation (e.g. no reachable emulator) blocks you — **do not leave the task
-  `Doing`**. Set `-s Blocked`, add a comment naming the blocker and exactly what would
-  unblock it, and if another task is the blocker record it in the `dependencies` field
-  (`--dep task-N`). Move it back to `Doing` only when you actually resume it, or to
-  `To Do` if you are handing it off unstarted. **`Doing` must mean actively being worked
-  right now** (and `Reviewing` actively being reviewed) — never a parked, waiting, or
-  half-done task. Before ending a work session, sweep your `Doing`/`Reviewing` tasks and
-  re-status any you are not still actively progressing (`Needs Review` if finished,
-  `Blocked` if stuck, `To Do` if not really started).
-- **Log friction as you hit it** — whenever something slows you down or trips you up while
-  working a task, drop a one-line comment on that task tagged **`friction:<category>`** so the
-  review/meta loops can aggregate them later and turn the recurring ones into fixes or
-  conventions. This is the raw material those loops mine — capturing it is the point, so err
-  toward logging. Categories: `build` (CI/gradle/codegen/APK breakage), `env` (emulator/SDK/
-  device/platform limits), `deps` (package/version/pub conflicts), `code` (a language/API/
-  framework footgun or a pattern that bit you), `test` (a flaky/hollow/hard-to-write test),
-  `tooling` (the `backlog` CLI, git, this harness, editors). Format:
-  `friction:<category> — <what bit you> — <root cause and the fix/workaround, if known>`.
-  One comment per distinct issue; skip the trivial; include the fix so the trail is
-  actionable, not just a complaint. Example:
-  `backlog task edit 42 --comment "friction:env — emulator VM-service WebSocket fails for ANY integration_test file here (pre-existing, not test-specific); workaround: run unit tests only, leave on-device ACs Blocked" --comment-author "Claude"`.
-  If the friction isn't tied to one task, log it on the closest related task (or the one you
-  were on when it happened). The tag is greppable across `backlog/tasks` + `backlog/completed`,
-  which is how the loops find them.
+  an environment limitation (e.g. no reachable emulator) blocks you — **do not leave the
+  issue `status:doing`**. Move it to `status:blocked`, comment the blocker and exactly what
+  would unblock it, and if another issue is the blocker add it to the `Depends on:` bullet.
+  Move it back to `status:doing` only when you actually resume it, or to `status:to-do` if
+  you are handing it off unstarted. **`Doing` must mean actively being worked right now**
+  (and `Reviewing` actively being reviewed) — never a parked, waiting, or half-done issue.
+  Before ending a work session, sweep your `Doing`/`Reviewing` issues and re-status any you
+  are not still actively progressing.
+- **Log friction as you hit it** — whenever something slows you down or trips you up, drop a
+  one-line comment on that issue tagged **`friction:<category>`** so the groomer can
+  aggregate them and turn recurring ones into fixes or conventions. Err toward logging.
+  Categories: `build` (CI/gradle/codegen/APK breakage), `env` (emulator/SDK/device/platform
+  limits), `deps` (package/version/pub conflicts), `code` (a language/API/framework footgun),
+  `test` (a flaky/hollow/hard-to-write test), `tooling` (gh, git, this harness, editors).
+  Format: `friction:<category> — <what bit you> — <root cause and the fix/workaround, if
+  known>`. One comment per distinct issue; skip the trivial; include the fix so the trail is
+  actionable. If the friction isn't tied to one issue, log it on the closest related one.
+  The tag is greppable repo-wide: `gh issue list --state all --search "friction: in:comments"`.
 
 ### `detail-needed` label
-If a task lacks the information needed to implement it properly (unclear requirement,
+If an issue lacks the information needed to implement it properly (unclear requirement,
 missing decision, unknown validation data, ambiguous acceptance criterion), **do not guess**:
 
 ```
-backlog task edit 42 --add-label detail-needed --comment "detail-needed: <the specific questions>" --comment-author "Claude"
+gh issue edit 42 --add-label "detail-needed"
+gh issue comment 42 --body "<agent-id>: detail-needed — <the specific questions>"
 ```
 
-State the concrete questions in the comment. If the task was `Doing`, move it to
-`-s Blocked` (an information gap you cannot resolve yourself is a blocker); if it was `To Do`,
-demote it to `-s Planned` so implementers stop picking it up until the groomer/Summer answers.
-Either way it must not stay `Doing`. Then move on. (`needs-exploration` is
-the related pre-existing label for tasks that were known to be under-scoped at creation;
+State the concrete questions in the comment. If the issue was `status:doing`, move it to
+`status:blocked` (an information gap you cannot resolve yourself is a blocker); if it was
+`status:to-do`, demote it to `status:planned` so implementers stop picking it up until the
+groomer/Summer answers. Either way it must not stay `Doing`. Then move on.
+(`needs-exploration` is the related label for issues known to be under-scoped at creation;
 `detail-needed` is for gaps you discover.)
 
-### Formatting task content (important — renders as markdown)
-Task sections (Description, Plan, Notes, comments) are rendered as **markdown** in the
-Backlog.md web UI. Consecutive lines without a blank line between them collapse into one
-run-on paragraph, and long prose paragraphs are unreadable there. Rules:
+### Formatting issue content (GitHub renders markdown)
+Issue bodies and comments render as GitHub-flavored markdown. Rules:
 
 - **Use bullet lists, not prose blocks.** Any sequence of facts, steps, or key–value pairs
-  must be a `- ` list (e.g. Implementation Notes are always bullets: `- Source: …`,
-  `- Effort: …`). Never bare `Key: value` lines on consecutive lines.
-- **Short paragraphs** (≤3 sentences) separated by blank lines; prefer a bold lead-in
-  (`**Background.**`) only for genuine paragraphs, not to glue a list into prose.
-- **Implementation plans are numbered/bulleted steps**, one step per line, not a single
-  paragraph narrating the whole plan.
-- When passing multi-line text to the CLI, include real newlines inside the quoted string.
-  Never write literal `\n`.
-- Wrap code identifiers/paths in backticks so they don't italicise (underscores).
+  must be a `- ` list (Implementation Notes are always bullets: `- Source: …`, `- Effort: …`).
+- **Short paragraphs** (≤3 sentences) separated by blank lines; a bold lead-in
+  (`**Background.**`) only for genuine paragraphs.
+- **Implementation plans are numbered/bulleted steps**, one step per line.
+- Wrap code identifiers/paths in backticks so underscores don't italicise, and so `#123` in
+  code/paths isn't auto-linked as an issue reference. Only write a bare `#<n>` when you MEAN
+  to cross-reference that issue/PR, and never a closing keyword (`Closes #n`) outside of
+  Summer's own use.
+- When passing multi-line text to `gh --body`, use `--body-file` or a here-string with real
+  newlines. Never write literal `\n`.
 
 ## Agent roles (model tiering — decisions 10 + 12)
 Work in this repo is split across three agent roles (chosen by cost) plus one human gate:
 
 - **Implementers — cheap models.** Claude Sonnet/Haiku sessions, or external CLI agents
-  (e.g. **qwen code**) — external agents follow these same conventions: the `backlog` CLI,
-  the claim protocol, branch/worktree isolation, the verify pipeline, the PR flow, and they
-  sign `implemented-by:`/`--comment-author`/`Co-Authored-By` with their own agent id (e.g.
-  `qwen-code`). They pick the lowest-ordinal `To Do` task whose deps are met, claim it
-  (`Doing`), implement it on a `task-<id>` branch, and open a PR
+  (e.g. **qwen code**) — external agents follow these same conventions: `gh`, the claim
+  protocol, branch/worktree isolation, the verify pipeline, the PR flow, and they sign
+  comments, `implemented-by:` tags and `Co-Authored-By` with their own agent id (e.g.
+  `qwen-code`). They pick the lowest-ordinal `status:to-do` issue whose deps are met, claim
+  it (`status:doing`), implement it on an `issue-<n>` branch, and open a PR
   (loop prompt: `loops/implementer.md`).
 - **Reviewers — expensive model.** A scheduled loop (e.g. Opus/Fable) that drains the
-  `Needs Review` queue: claims (`Reviewing`), reviews each task's PR, merges `main` into stale
-  branches, and is the **only** thing that merges to `main`; a pass lands at `Reviewed`
-  (loop prompt: `loops/reviewer.md`). Reviewer ≠ implementer (decision-7).
+  `status:needs-review` queue: claims (`status:reviewing`), reviews each issue's PR, merges
+  `main` into stale branches, and is the **only** thing that merges to `main`; a pass lands
+  at `status:reviewed` (loop prompt: `loops/reviewer.md`). Reviewer ≠ implementer
+  (decision-7).
 - **Groomer — expensive model.** A scheduled loop that refines `Idea → Planned → To Do`
-  (specs, ACs, plans, ordinals, deps), batches `Reviewed` tasks into `verification-batch`
-  tasks for Summer (`Requires Human Verification`), processes her verdicts, and mines
-  `friction:` comments (loop prompt: `loops/groomer.md`).
+  (specs, ACs, plans, ordinals, deps), batches `status:reviewed` issues into
+  `verification-batch` issues for Summer (`status:needs-human-verification`), processes her
+  verdicts, and mines `friction:` comments (loop prompt: `loops/groomer.md`).
 - **Summer — the human gate.** Verifies each batch on the real app and is the only one who
-  sets `Done`.
+  closes task issues (`Done`).
 
 ## Git
 **Concurrent sessions isolate via worktrees + branches — ALL work, no exceptions.** When more
@@ -247,38 +239,41 @@ loops, any file-mutating agent), each works in its **own git worktree on its own
 branch off `main`** — this is what prevents two sessions racing on one working tree (the "file
 modified since read" / manually-scoped-commit problem). Workflow:
 - `git worktree add ../bgdude-<purpose> -b <purpose>` off the latest `main` (e.g.
-  `../bgdude-task-42`, `../bgdude-review`). One branch per worktree — git refuses to check out
-  `main` in two worktrees at once, which is exactly why concurrent writers need branches.
+  `../bgdude-issue-42`, `../bgdude-review`). One branch per worktree — git refuses to check
+  out `main` in two worktrees at once, which is exactly why concurrent writers need branches.
 - Subagents that **mutate files in parallel** take `isolation: "worktree"` on the Agent tool;
   read-only reviewers don't need it.
 
 **Task work ships as a GitHub PR and reaches `main` only via a reviewed, CI-green PR merge
-(decision-10, refining decision-8).** Do NOT push task work straight to `main`. Concretely:
-- One branch per task, deterministically named **`task-<id>`** (optionally
-  `task-<id>-<slug>`), created off the latest `main` in its own worktree. Record it on the task
-  (`--comment "branch: task-<id>"`).
+(decision-10).** Do NOT push task work straight to `main`. Concretely:
+- One branch per issue, deterministically named **`issue-<n>`** (n = the issue number;
+  optionally `issue-<n>-<slug>`), created off the latest `main` in its own worktree. Record
+  it on the issue (`- **Branch:** issue-<n>` bullet / claiming comment). (Pre-migration
+  branches are named `task-<id>` after their old Backlog IDs — `doc/backlog-migration-map.md`
+  maps them; do NOT reuse the `task-` prefix for new work, the numbers would collide.)
 - The implementer commits to that branch through `Doing`; when done it pushes the branch,
-  **opens a PR** (`gh pr create`, title `TASK-<id>: <title>`), records `PR: #<n>` on the task,
-  and moves the task to `Needs Review` (never further, never a `main` push, never a self-merge).
+  **opens a PR** (`gh pr create`, title `issue-<n>: <title>`, body `Refs #<n>` — never a
+  closing keyword), records `PR: #<pr>` on the issue, and moves the issue to
+  `status:needs-review` (never further, never a `main` push, never a self-merge).
 - **The reviewer loop is the only merger, and it merges via the PR** (`gh pr merge --merge`),
-  only after a passing review with CI green. On a fail it comments on the PR + task and bounces
-  the task back to `To Do` (see `### Comment as you work`). It never merges a PR whose
-  `implemented-by` is itself (reviewer ≠ implementer, decision-7).
+  only after a passing review with CI green. On a fail it comments on the PR + issue and
+  bounces the issue back to `status:to-do` (see `### Comment as you work`). It never merges a
+  PR whose `implemented-by` is itself (reviewer ≠ implementer, decision-7).
 - **A GitHub ruleset enforces this** ("main merge gate: PR + green CI"): merging to `main`
   requires a PR with required checks `analyze`, `coverage-gate`, `apk-build`, `native-tests`
   green **and CodeQL code-scanning results with no high+ security / error-level alerts**
   (decision-11 — the CodeQL workflow `.github/workflows/codeql.yml` scans the `android/`
   Kotlin + workflow files; Dart is not CodeQL-supported and is covered by our own checks
-  instead); merge-commit method only;
-  no force-push or deletion of `main`. Repository admins carry
-  an `always` bypass **solely** so backlog claim/status/bookkeeping commits can go straight to
-  `main` — using it to merge a PR (`gh pr merge --admin`) or push task code to `main` is
-  forbidden. If a merge is refused, CI isn't green: fix that, never bypass.
+  instead); merge-commit method only; no force-push or deletion of `main`. Repository admins
+  carry an `always` bypass **solely** for rare non-task bookkeeping commits (below) — using
+  it to merge a PR (`gh pr merge --admin`) or push task code to `main` is forbidden. If a
+  merge is refused, CI isn't green: fix that, never bypass.
 
-**Straight-to-`main` is only for non-task bookkeeping** — task claim/status commits, the loops'
-own review artifacts (follow-up tickets, quality-check markers), backlog/decision/config edits,
-and trivial docs. These aren't feature work and carry no review gate. See the memory
-`git-workflow` and `backlog/decisions/` (6, 7, 8, 10, 12).
+**Straight-to-`main` is only for non-task bookkeeping** — `doc/decisions/` entries, config
+edits, and trivial docs. (Issue status changes are `gh` API calls now, NOT commits — the
+old claim/status-commit churn is gone, which is what kept feature branches from rotting;
+decision-13.) These aren't feature work and carry no review gate. See the memory
+`git-workflow` and `doc/decisions/` (6, 7, 8, 10, 12, 13).
 
 ## Verify the build after EVERY task (must match CI — CI is the source of truth)
 The GitHub Actions workflow (`.github/workflows/ci.yml`) is what decides if `main` is
@@ -319,7 +314,7 @@ Native code is buildable/testable here (JDK + Android SDK present); verify pumpx
 package (an FFI/kernel-transform exception) *even for pure-Dart, Flutter-independent files*, so a
 throwaway "quick probe" script is not viable. When you want to sanity-check a pure-Dart function
 in isolation, write a throwaway file under `test/` and run it with `flutter test <file>` instead —
-it works, just slightly slower to spin up. (Source: friction:tooling, TASK-155.)
+it works, just slightly slower to spin up. (Source: friction:tooling, old TASK-155.)
 
 ## Fixing a bug? Sweep the whole surface — don't just patch the reported site
 The single most common defect the review loop finds is a fix that **protects its literal
