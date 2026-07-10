@@ -3,11 +3,11 @@ id: TASK-309
 title: >-
   CI does not run on task-<id> branches, so the review-merge gate can never
   confirm green
-status: Review
+status: Needs Review
 assignee:
   - Claude
 created_date: '2026-07-10 12:26'
-updated_date: '2026-07-10 13:23'
+updated_date: '2026-07-10 14:03'
 labels: []
 milestone: m-8
 dependencies: []
