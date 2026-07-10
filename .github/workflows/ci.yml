@@ -97,8 +97,105 @@ jobs:
       - name: Run code generation
         run: dart run build_runner build --delete-conflicting-outputs
 
+      # Issue #331: --fatal-infos — the tree is diagnostic-clean, so ANY reported
+      # issue (info-level lints included) fails the gate instead of scrolling past.
       - name: Analyze
-        run: flutter analyze
+        run: flutter analyze --fatal-infos
+
+  # Issue #331: lint the workflow files themselves — expression bugs, wrong event/
+  # context names, shellcheck over every run: block. Cheap (<1 min), catches the
+  # class of bug that otherwise only surfaces when a workflow misfires in prod.
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run actionlint
+        run: |
+          bash <(curl -sSL "https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash") 1.7.7
+          ./actionlint -color
+
+  # Issue #331: Android Lint over the native surface (manifest, Kotlin, resources).
+  # warningsAsErrors + a committed baseline (android/app/lint-baseline.xml freezes the
+  # 44 pre-existing warnings): NEW warnings fail; the frozen set is a tracked burn-down.
+  android-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.4
+          cache: true
+
+      - name: Install dependencies
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: flutter pub get
+
+      # Unlike native-tests, lintDebug DOES need codegen: its task graph includes
+      # :app:compileFlutterBuildDebug, which compiles the Dart app (fails on missing
+      # *.g.dart otherwise — verified locally).
+      - name: Cache build_runner state
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/build
+          key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
+          restore-keys: |
+            ${{ runner.os }}-build-runner-
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # Same deterministic local.properties write as native-tests.
+      - name: Write local.properties
+        run: |
+          FLUTTER_SDK="${FLUTTER_ROOT:-$(dirname "$(dirname "$(command -v flutter)")")}"
+          ANDROID_SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$FLUTTER_SDK" ] || [ -z "$ANDROID_SDK" ]; then
+            echo "::error::Could not resolve FLUTTER_SDK ('$FLUTTER_SDK') or ANDROID_SDK ('$ANDROID_SDK')"; exit 1
+          fi
+          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_SDK" "$ANDROID_SDK" > android/local.properties
+
+      - name: Android Lint
+        run: cd android && ./gradlew :app:lintDebug --no-daemon
+
+  # Issue #331: block PRs that introduce dependencies with known vulnerabilities
+  # (GitHub Advisory Database; dependency graph + Dependabot alerts are enabled
+  # repo-side). pull_request-only by nature — it diffs the PR's dependency changes.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: low
 
   # TASK-297: the unit-test suite (1185+ tests, one process) was the test
   # job's dominant cost. Sharded across 4 matrix jobs so the dominant cost

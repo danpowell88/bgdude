@@ -156,8 +156,8 @@ share one GitHub account, so these tags are the identity record.</p>
   <li><b>The GitHub ruleset "main merge gate: PR + green CI" machine-enforces it.</b> Merging to <code>main</code> requires:
     <ul>
       <li>a pull request (merge-commit method only; no force-push / deletion of <code>main</code>);</li>
-      <li>required checks green: <code>analyze</code>, <code>coverage-gate</code>, <code>apk-build</code>, <code>native-tests</code>;</li>
-      <li>CodeQL code-scanning results present and free of high+ security / error-level alerts — the <code>security-and-quality</code> suite means error-level <i>quality</i> findings block too (the free stand-in for GitHub's Code Quality rule, which needs an org on Team/Enterprise);</li>
+      <li>required checks green: <code>analyze</code> (with <code>--fatal-infos</code>), <code>coverage-gate</code>, <code>apk-build</code>, <code>native-tests</code>, <code>actionlint</code> (workflow lint), <code>android-lint</code> (Android Lint, <code>warningsAsErrors</code> + committed baseline), <code>dependency-review</code> (blocks known-vulnerable dependency changes) — decision-14;</li>
+      <li>CodeQL code-scanning results present and free of <b>medium+ security / warning-level</b> alerts introduced by the PR (decision-14 tightened from high+/errors) — the <code>security-and-quality</code> suite means <i>quality</i> findings block too (the free stand-in for GitHub's Code Quality rule, which needs an org on Team/Enterprise);</li>
       <li>coverage on the PR at/above the 65% floor <b>and</b> not below the latest successful <code>main</code> run — the no-drop ratchet (the free stand-in for GitHub's "Restrict code coverage" rule).</li>
     </ul>
   </li>
@@ -169,10 +169,10 @@ share one GitHub account, so these tags are the identity record.</p>
 <ol>
   <li><code>flutter pub get</code></li>
   <li><code>dart run build_runner build --delete-conflicting-outputs</code> (generated files are not committed)</li>
-  <li><code>flutter analyze</code> — clean</li>
+  <li><code>flutter analyze --fatal-infos</code> — zero diagnostics of any severity (strict-casts / strict-raw-types / strict-inference are on)</li>
   <li><code>flutter test --coverage test/</code> — green, and coverage at/above the floor <i>and</i> not below <code>main</code> (CI enforces the ratchet on PRs)</li>
   <li><code>flutter build apk --debug</code></li>
-  <li>Kotlin changed? <code>cd android &amp;&amp; ./gradlew :app:testDebugUnitTest</code></li>
+  <li>Kotlin changed? <code>cd android &amp;&amp; ./gradlew :app:testDebugUnitTest</code> and <code>:app:lintDebug</code> (new warnings fail — the committed baseline only covers pre-existing ones)</li>
 </ol>
 <p>CI additionally runs CodeQL (security + quality) on every PR and push to <code>main</code>.
 Integration tests (<code>integration_test/</code>) run nightly on an emulator and locally — they are not a merge gate (decision-5).</p>
