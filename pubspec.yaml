@@ -35,7 +35,7 @@ dependencies:
   # or ONNX) behind the ResidualModel interface in lib/ml/forecaster.dart.
 
   # Notifications & background scheduling
-  flutter_local_notifications: ^17.2.2
+  flutter_local_notifications: ^18.0.1
   workmanager: ^0.9.0
   timezone: ^0.9.4
 
