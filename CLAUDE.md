@@ -230,7 +230,11 @@ modified since read" / manually-scoped-commit problem). Workflow:
   `implemented-by` is itself (reviewer ≠ implementer, decision-7).
 - **A GitHub ruleset enforces this** ("main merge gate: PR + green CI"): merging to `main`
   requires a PR with required checks `analyze`, `coverage-gate`, `apk-build`, `native-tests`
-  green; merge-commit method only; no force-push or deletion of `main`. Repository admins carry
+  green **and CodeQL code-scanning results with no high+ security / error-level alerts**
+  (decision-11 — the CodeQL workflow `.github/workflows/codeql.yml` scans the `android/`
+  Kotlin + workflow files; Dart is not CodeQL-supported and is covered by our own checks
+  instead); merge-commit method only;
+  no force-push or deletion of `main`. Repository admins carry
   an `always` bypass **solely** so backlog claim/status/bookkeeping commits can go straight to
   `main` — using it to merge a PR (`gh pr merge --admin`) or push task code to `main` is
   forbidden. If a merge is refused, CI isn't green: fix that, never bypass.

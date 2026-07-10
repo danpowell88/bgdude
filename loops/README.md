@@ -39,7 +39,8 @@ instead — point them at the same prompt files so there is one source of truth.
 ## Invariants (enforced by ruleset + convention)
 
 - `main` only gains task code through a PR with `analyze`, `coverage-gate`, `apk-build`,
-  `native-tests` green (GitHub ruleset "main merge gate: PR + green CI").
+  `native-tests` green plus CodeQL code-scanning results clean of high+ security /
+  error-level alerts (GitHub ruleset "main merge gate: PR + green CI", decisions 10 + 11).
 - Implementers never merge; the reviewer never merges its own work; nobody uses
   `gh pr merge --admin`.
 - Claim/status backlog commits go straight to `main`, immediately, at every transition.

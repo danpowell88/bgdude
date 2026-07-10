@@ -23,7 +23,9 @@ Each run, drain the whole `Review` queue: `git pull` on `main`, then
    the DoD, applying the four-axis "sweep the whole surface" checklist; check tests would
    actually fail if the change were reverted; check `doc/user-guide.html` was updated for
    user-visible changes; check the coverage gate. Leave concrete findings as PR comments
-   (`gh pr comment <n>` or inline via `gh api`). Confirm CI: `gh pr checks <n>` all green.
+   (`gh pr comment <n>` or inline via `gh api`). Confirm CI: `gh pr checks <n>` all green —
+   including the CodeQL code-scanning runs (decision-11); "waiting for code scanning results"
+   on a fresh merge/push means wait for the analysis, never bypass.
 5. **Verdict.**
    - **Pass** → task comment `reviewed-by: <your-agent-id> — <what was checked / verdict>`,
      check the DoD (`--check-dod`), merge: `gh pr merge <n> --merge --delete-branch`
