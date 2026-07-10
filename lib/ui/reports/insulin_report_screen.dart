@@ -78,7 +78,63 @@ class _Body extends StatelessWidget {
         Text('Basal is integrated from recorded rate changes and may under-count on '
             'days with sparse pump history.',
             style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 20),
+        Text('Control-IQ workload', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 4),
+        Text(
+            'How hard the loop is compensating for you, independent of anything you '
+            'changed yourself — a rising trend here is often the earliest sign that '
+            'basal/ISF/carb ratio need a look.',
+            style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 8),
+        _Row('Auto-bolus units/day',
+            '${report.avgAutoBolusUnits.toStringAsFixed(2)} U'),
+        _Row('Auto-corrections/day',
+            report.avgAutoCorrectionCount.toStringAsFixed(1)),
+        _Row('Loop-delivered fraction',
+            '${(report.loopBolusFraction * 100).toStringAsFixed(0)}% of all bolus insulin'),
+        const SizedBox(height: 8),
+        SizedBox(height: 80, child: _AutoBolusSparkline(report: report)),
       ],
+    );
+  }
+}
+
+/// TASK-151: per-day auto-bolus units, so a trend (not just an average) is
+/// visible — a settings drift often shows as a gradual climb before it's
+/// obvious in the averages.
+class _AutoBolusSparkline extends StatelessWidget {
+  const _AutoBolusSparkline({required this.report});
+  final InsulinReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final days = report.days;
+    final maxUnits =
+        days.fold<double>(1, (m, d) => d.autoBolusUnits > m ? d.autoBolusUnits : m);
+    return LineChart(
+      LineChartData(
+        maxY: maxUnits * 1.15,
+        minY: 0,
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        titlesData: const FlTitlesData(show: false),
+        lineTouchData: const LineTouchData(enabled: false),
+        lineBarsData: [
+          LineChartBarData(
+            spots: [
+              for (var i = 0; i < days.length; i++)
+                FlSpot(i.toDouble(), days[i].autoBolusUnits),
+            ],
+            isCurved: false,
+            color: cs.tertiary,
+            barWidth: 1.5,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(show: true, color: cs.tertiary.withValues(alpha: 0.15)),
+          ),
+        ],
+      ),
     );
   }
 }
