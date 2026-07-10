@@ -1,0 +1,38 @@
+# bgdude self-hosted CI runner for Unraid.
+#   docker compose --env-file .env up -d --build
+# (or use the Unraid "Compose Manager" plugin, or map these fields into an Add-Container template
+#  per the README).
+services:
+  bgdude-runner:
+    build:
+      context: .
+      args:
+        FLUTTER_VERSION: "3.44.4"
+        # Phase 1 = false (build/analyze/test only). Set true for the emulator job (needs /dev/kvm).
+        WITH_EMULATOR: "false"
+    image: bgdude-ci-runner:latest
+    container_name: bgdude-ci-runner
+    restart: unless-stopped
+    environment:
+      REPO_URL: "https://github.com/danpowell88/bgdude"
+      RUNNER_SCOPE: "repo"
+      # Fine-grained PAT (repo Administration: Read+Write) so the runner self-registers. See .env.example.
+      ACCESS_TOKEN: "${GH_RUNNER_PAT}"
+      RUNNER_NAME: "unraid-bgdude"
+      LABELS: "self-hosted,linux,x64,unraid"
+      # EPHEMERAL: a fresh runner per job — the single most important security setting on a
+      # PUBLIC repo (a job can't leave state behind for the next one). Keep this true.
+      EPHEMERAL: "true"
+      DISABLE_AUTO_UPDATE: "true"
+    # --- Phase 2 (emulator) ONLY: uncomment to pass KVM through. Requires WITH_EMULATOR=true above
+    #     and VT-x/AMD-V enabled on the Unraid host. Do NOT run --privileged; the device map is enough.
+    # devices:
+    #   - "/dev/kvm:/dev/kvm"
+    volumes:
+      # Persist the runner work dir + warm the caches across restarts (big speedup).
+      - "./_work:/actions-runner/_work"
+      - "gradle-cache:/home/runner/.gradle"
+      - "pub-cache:/home/runner/.pub-cache"
+volumes:
+  gradle-cache:
+  pub-cache:
