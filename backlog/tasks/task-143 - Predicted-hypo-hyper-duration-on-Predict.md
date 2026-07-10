@@ -1,11 +1,6 @@
 ---
 id: TASK-143
 title: Predicted hypo/hyper duration on Predict
-status: Review
-assignee:
-  - Claude
-created_date: '2026-07-06 08:41'
-updated_date: '2026-07-10 10:18'
 status: Needs Review
 assignee:
   - Claude
