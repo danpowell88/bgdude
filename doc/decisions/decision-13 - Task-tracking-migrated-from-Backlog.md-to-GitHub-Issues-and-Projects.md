@@ -18,9 +18,11 @@ status: accepted
 
 ## Decision
 
-- **All task tracking moves to GitHub Issues on `danpowell88/bgdude`** (CLI: `gh`), with the
-  **`bgdude` user project board** as the pipeline view (custom `Stage` single-select +
-  `Ordinal` number fields).
+- **All task tracking moves to GitHub Issues on `danpowell88/bgdude`** (CLI: `gh`), with
+  **project boards as the column views**: user project #2 `bgdude` (all open issues; the
+  built-in `Status` single-select carries the ten stages as board columns + an `Ordinal`
+  number field), and one project per milestone (#3–#11, titled after the phases) holding
+  ALL of that milestone's issues including Done so phase progress is visible.
 - **Mapping** (all 315 Backlog items migrated, full content — description, ACs, plan, notes,
   DoD, comment history — preserved in issue bodies; `doc/backlog-migration-map.md` maps
   `TASK-<id>` → `#<n>`):
@@ -47,9 +49,9 @@ status: accepted
 - The `backlog/` tree, the Backlog.md CLI/MCP wiring, and `scripts/watch-backlog.ps1` are
   removed (content fully replicated to issues; git history retains the originals). CI's
   `paths-ignore` for `backlog/**` is dropped. `.github/workflows/project-sync.yml` mirrors
-  `status:*` labels to the project board's `Stage` field when a `PROJECT_SYNC_TOKEN` secret
-  (fine-grained PAT with Projects read/write) is configured; labels stay canonical either
-  way.
+  `status:*` labels to the boards' `Status` field (main backlog project + the issue's
+  milestone project) when a `PROJECT_SYNC_TOKEN` secret (fine-grained PAT with Projects
+  read/write) is configured; labels stay canonical either way.
 
 ## Consequences
 

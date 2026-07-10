@@ -208,8 +208,11 @@ schtasks /Create /TN "bgdude-reviewer"    /SC HOURLY /ST 00:30 /TR "pwsh -NoProf
 schtasks /Create /TN "bgdude-groomer"     /SC DAILY  /ST 07:00 /TR "pwsh -NoProfile -File C:\Users\danpo\Desktop\bgdude\scripts\run-agent.ps1 -Role groomer" /F</code></pre>
 <h3>Watching without interfering</h3>
 <p>Everything is live on GitHub: the <a href="https://github.com/danpowell88/bgdude/issues">issues list</a>
-(filter by <code>label:status:doing</code> etc.) and the <code>bgdude</code> project board (Stage columns,
-sorted by Ordinal). No local mirror needed — watching never touches a working tree.</p>
+(filter by <code>label:status:doing</code> etc.), the main <code>bgdude</code> backlog board
+(<a href="https://github.com/users/danpowell88/projects/2">project #2</a> — Status columns for every open
+issue, sortable by Ordinal), and one board per milestone (projects #3–#11, titled after the phases,
+including their Done issues so per-phase progress reads at a glance). No local mirror needed —
+watching never touches a working tree.</p>
 
 <h2 id="conventions">8. Conventions quick reference</h2>
 <table>

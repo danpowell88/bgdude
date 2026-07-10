@@ -22,10 +22,17 @@ notes, comments) in its body. Structure:
 - **Issues** are the unit of execution. **Status is a `status:*` label** (exactly one per
   open issue); **a closed issue is `Done`** (closing is Summer's act — see the pipeline).
 - **Milestones** carry the phasing (`Phase 0: …` … `Phase 7: …`, `Code health`).
-- **The project board** (`gh project view <n> --owner danpowell88`, title `bgdude`) is the
-  pipeline view with `Stage` and `Ordinal` fields. Labels are canonical; the board is a
-  mirror (synced by `.github/workflows/project-sync.yml` when its `PROJECT_SYNC_TOKEN`
-  secret is configured — otherwise best-effort manual).
+- **Project boards** are the column views. The main backlog board is user project **#2
+  `bgdude`** (all open issues; built-in `Status` field carries the ten pipeline stages as
+  columns, plus an `Ordinal` number field for ordering). Each milestone also has its own
+  board — projects **#3–#11**, titled exactly like the milestones (`Phase 0: …` …
+  `Code health`) — containing ALL of that milestone's issues including Done, so a phase's
+  progress reads at a glance. Labels are canonical; the boards are mirrors
+  (`.github/workflows/project-sync.yml` syncs label → board `Status` when its
+  `PROJECT_SYNC_TOKEN` secret is configured — otherwise best-effort manual via
+  `gh project item-edit`). When creating an issue, add it to project #2 and, if it has a
+  milestone, to that milestone's project (`gh project item-add <n> --owner danpowell88
+  --url <issue-url>`).
 - **Decisions** (product/architecture choices that outlive an issue) live in
   `doc/decisions/decision-<n>.md` — check them before re-litigating one; add a new numbered
   file (straight-to-main lane) when a standing choice is made. Read-only charter, personal
