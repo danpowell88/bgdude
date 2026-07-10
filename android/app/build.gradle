@@ -113,5 +113,5 @@ dependencies {
     testImplementation "androidx.test:core:1.6.1"
     // TASK-186: BluetoothPeripheral has no public constructor (blessed-android owns
     // construction internally), so the reconnect-on-disconnect test needs a mock.
-    testImplementation "org.mockito:mockito-core:5.14.2"
+    testImplementation "org.mockito:mockito-core:5.23.0"
 }
