@@ -1,11 +1,6 @@
 ---
 id: TASK-155
 title: Overlay detected events onto report and prediction charts
-status: Review
-assignee:
-  - Claude
-created_date: '2026-07-06 08:44'
-updated_date: '2026-07-10 11:53'
 status: Needs Review
 assignee:
   - Claude
