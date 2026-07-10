@@ -109,7 +109,7 @@ dependencies {
     testImplementation "org.json:json:20231013"
     // TASK-186: PumpService/BootReceiver lifecycle tests need a real (shadowed) Android
     // framework — Context, Service, NotificationManager, BroadcastReceiver dispatch.
-    testImplementation "org.robolectric:robolectric:4.13"
+    testImplementation "org.robolectric:robolectric:4.16.1"
     testImplementation "androidx.test:core:1.6.1"
     // TASK-186: BluetoothPeripheral has no public constructor (blessed-android owns
     // construction internally), so the reconnect-on-disconnect test needs a mock.
