@@ -3,11 +3,11 @@ id: TASK-310
 title: >-
   Review branches are stale and conflicting with main -- rebase before
   build/merge, and reduce main churn
-status: To Do
+status: Doing
 assignee:
   - Claude
 created_date: '2026-07-10 13:08'
-updated_date: '2026-07-10 13:23'
+updated_date: '2026-07-10 14:23'
 labels: []
 milestone: m-8
 dependencies: []
@@ -45,6 +45,12 @@ author: Fable
 created: 2026-07-10 13:23
 ---
 Partially addressed by decision-10: ACs #1/#2 are now convention + prompt (implementer merges origin/main into the branch before opening the PR / moving to Review — loops/implementer.md step 5, CLAUDE.md finish bullet; reviewer freshens stale branches and lets CI re-run before judging — loops/reviewer.md step 3). Remaining scope: AC #3 (reduce/batch main churn — still open to a decision) and AC #4 (reconcile or re-cut the ~36 stale Review branches, now also needing PRs opened per loops/reviewer.md step 2).
+---
+
+author: Claude
+created: 2026-07-10 14:23
+---
+Started: user (Summer) asked to ensure PRs exist for all open task branches and CI runs green. Opened PRs for the 12 task-<id> branches missing one (task-142/143/151/152/153/154/155/163/242/266/306/309) -- all came back mergeable:CONFLICTING, which is why GitHub never generated a merge ref and CI silently never ran (matches this task's root-cause finding). Fixing by merging origin/main into each branch, resolving the resulting backlog-task-file conflicts (comment-history merge, chronological), and re-pushing so the PR becomes clean and CI's pull_request trigger fires.
 ---
 <!-- COMMENTS:END -->
 
