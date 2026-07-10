@@ -1,11 +1,11 @@
 ---
 id: TASK-151
 title: 'Control-IQ behaviour insights (auto-correction load, loop-delivered fraction)'
-status: Review
+status: Needs Review
 assignee:
   - Claude
 created_date: '2026-07-06 08:43'
-updated_date: '2026-07-10 10:45'
+updated_date: '2026-07-10 14:03'
 labels:
   - feature
   - reports

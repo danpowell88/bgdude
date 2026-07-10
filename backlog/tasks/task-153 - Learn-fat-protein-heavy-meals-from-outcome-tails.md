@@ -6,6 +6,11 @@ assignee:
   - Claude
 created_date: '2026-07-06 08:44'
 updated_date: '2026-07-10 11:00'
+status: Needs Review
+assignee:
+  - Claude
+created_date: '2026-07-06 08:44'
+updated_date: '2026-07-10 14:03'
 labels:
   - feature
   - meals
@@ -72,6 +77,9 @@ author: Claude
 created: 2026-07-10 11:00
 ---
 implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- lib/meals/meal_library.dart: SavedMeal gained fatProteinTailScore ([0,1], persisted+hardened like other TASK-250 fields) and effectiveFatProteinHeavy (manual flag OR learned score >= fatProteinHeavyThreshold(0.5)). MealLibrary.learnFromOutcome: once a meal has >= minOutcomesForFatProteinLearning(3, matches prebolus_coach's existing confidence threshold) outcomes, re-derives an observed [0,1] signal from median(bgAt3h-bgAtMeal) (0 at resolved, 1.0 at 60+ mg/dL still elevated) and median(peakOffsetMinutes) (0 at ~60min carb-only peak, 1.0 at 120+ min), averages them, and damped-blends into the persisted score via the SAME learningRate=0.3 formula already used for absorptionMinutes/peakOffsetMinutes. Consumers updated: prebolus_coach.dart and meal_detail_screen.dart's FPU-split check now read effectiveFatProteinHeavy instead of the raw manual flag; the meal-detail 'Learned curve' card's Fat/protein-heavy row shows the source (manual vs learned, with the %signal). Tests: test/meals/meal_library_test.dart -- below-threshold-outcomes stays at 0, a consistent fat/protein pattern climbs 0->0.3->0.51 across two learning passes (hand-verified against the damping formula, crossing effectiveFatProteinHeavy on the second), a normal resolved meal stays at 0, effectiveFatProteinHeavy's manual-override and learned-threshold cases, JSON round-trip, and the hostile-decode clamp (NaN/negative/>1 all clamp into [0,1]). Rigor-checked both the damping (temp-bug: full jump instead of damped blend, confirmed 1.0 instead of predicted 0.3) and the manual-flag override (temp-bug: dropped it from the OR, confirmed false instead of predicted true) -- both reverted cleanly. Full pipeline green: analyze clean, 1372 tests passing, coverage 68.84% (floor 65%), apk build succeeded. No native Kotlin changed. doc/user-guide.html updated (Meals section, Fat/protein card bullet). No screen/flow changed (additive field + row in existing screens) so no new integration test.
+created: 2026-07-10 11:01
+---
+implemented-by: Claude (Sonnet 5, session 5ecb6b72-c69b-4afb-b36c-af3d04f85cad) -- code complete and pushed to branch task-153 (commit e32afef). Full implementation details, rigor-check notes, and pipeline results recorded on that branch's copy of this task file.
 ---
 <!-- COMMENTS:END -->
 
