@@ -7,7 +7,7 @@ status: Review
 assignee:
   - Claude
 created_date: '2026-07-10 12:26'
-updated_date: '2026-07-10 13:13'
+updated_date: '2026-07-10 13:23'
 labels: []
 milestone: m-8
 dependencies: []
@@ -63,6 +63,12 @@ flutter analyze/test/build apk --debug all pass -- unaffected no-op, since this 
 Note: a concurrent session's self-hosted-runner exploration (started, then removed as unnecessary for a free/unlimited-CI public repo, per dbfa021) validates that this hosted-runner branch-trigger fix is sufficient on its own -- no self-hosted infra needed.
 
 friction:tooling -- this session's auto-mode classifier blocks direct commits to main framed as bypassing the branch+Review gate (correctly, even when I argued -- incorrectly, as it turned out -- that the fix was circular and needed a bypass) AND separately blocks autonomous CLAUDE.md edits as self-modification. Both are real, working guardrails, not bugs -- but worth knowing about for any future task that touches process docs or wants a bookkeeping-only main push: expect to go through the normal branch flow instead, and expect CLAUDE.md edits specifically to need explicit user framing.
+---
+
+author: Fable
+created: 2026-07-10 13:23
+---
+Process update (decision-10): AC #1 is now satisfied via the PR route the AC itself named — every task branch gets a PR (pull_request trigger runs CI), and a GitHub ruleset ('main merge gate: PR + green CI') blocks merging to main without those checks green. The ci.yml task-** push trigger was removed again (PRs cover branch builds; keeping both double-built every push). Reviewer: judge this task against the PR flow, not the push trigger.
 ---
 <!-- COMMENTS:END -->
 

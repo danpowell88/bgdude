@@ -7,6 +7,7 @@ status: To Do
 assignee:
   - Claude
 created_date: '2026-07-10 13:08'
+updated_date: '2026-07-10 13:23'
 labels: []
 milestone: m-8
 dependencies: []
@@ -36,6 +37,16 @@ Enabling branch CI (task-** trigger, TASK-309) exposed the real jam: all ~36 Rev
 - Interacts with decision-8 (straight-to-main bookkeeping is the churn source) -- may need a decision update
 - Blocks the entire Review queue (36 tasks) from draining
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: Fable
+created: 2026-07-10 13:23
+---
+Partially addressed by decision-10: ACs #1/#2 are now convention + prompt (implementer merges origin/main into the branch before opening the PR / moving to Review — loops/implementer.md step 5, CLAUDE.md finish bullet; reviewer freshens stale branches and lets CI re-run before judging — loops/reviewer.md step 3). Remaining scope: AC #3 (reduce/batch main churn — still open to a decision) and AC #4 (reconcile or re-cut the ~36 stale Review branches, now also needing PRs opened per loops/reviewer.md step 2).
+---
+<!-- COMMENTS:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->

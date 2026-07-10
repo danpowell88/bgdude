@@ -91,11 +91,17 @@ backlog task edit 42 --comment "Started: <approach in one line>" --comment-autho
 - While working: add a comment for any **significant finding, decision, or deviation** from
   the implementation plan (what and why) — not a play-by-play, just the things a reviewer
   would want to know.
-- When you **finish the implementation** (code + tests + the full verify pipeline green on the
-  branch): check off the acceptance criteria (`--check-ac <n>`), **push the `task-<id>` feature
-  branch** (do NOT merge to `main` yourself), and move the task to **`-s Review`** — never
-  straight to `Done`. Add a closing comment tagged
-  `implemented-by: <your-agent-id> — branch task-<id>, <files, tests, commit hash>`. Leave
+- When you **finish the implementation**: first `git merge origin/main` into the branch — a
+  branch must enter `Review` mergeable (`main` churns fast here; a conflicting PR doesn't even
+  run CI, TASK-310) — then confirm code + tests + the full verify pipeline green on the branch.
+  Check off the acceptance criteria (`--check-ac <n>`), **push the `task-<id>` feature
+  branch and open a PR against `main`** (do NOT merge it yourself):
+  `gh pr create --base main --head task-<id> --title "TASK-<id>: <task title>" --body "<task summary, implemented-by line, test evidence>"`.
+  If a PR for the branch already exists (rework after a failed review), just push — the PR
+  updates itself; leave a PR comment saying what changed. Record the PR on the task
+  (`--comment "PR: #<n>"`) and move the task to **`-s Review`** — never straight to `Done`.
+  Add a closing comment tagged
+  `implemented-by: <your-agent-id> — branch task-<id>, PR #<n>, <files, tests, commit hash>`. Leave
   yourself as the assignee so it's clear who did the work.
   **This closing comment MUST end with a friction line** — a `friction:<category> — …` bullet
   for anything that tripped you up (build/env/deps/code/test/tooling), or literally
@@ -105,19 +111,27 @@ backlog task edit 42 --comment "Started: <approach in one line>" --comment-autho
   task with no friction line is not ready for Review. (Rationale: the friction convention had
   **zero** logged comments backlog-wide until this rule; the meta loop that mines them was
   starved. Tying capture to an already-required step fixes adoption.)
-- **Review stage — done by the review loop, a different agent, which also merges.** A task in
-  `Review` is picked up by a **different agent than the `implemented-by` one** (normally the
-  hourly review loop) — a task must never be reviewed or merged by its own implementer
-  (decision-7). The reviewer fetches the task's branch, verifies the ACs and DoD against the
-  branch diff (apply the "sweep the whole surface" checklist above), and confirms CI is green /
-  the verify pipeline passes on the branch. Then:
+- **Review stage — done by the reviewer loop (expensive model), a different agent, which also
+  merges the PR.** A task in `Review` is picked up by a **different agent than the
+  `implemented-by` one** (normally the scheduled reviewer loop, `loops/reviewer.md`) — a task
+  must never be reviewed or merged by its own implementer (decision-7). The reviewer finds the
+  task's PR (`gh pr list --head task-<id>`; if a legacy branch has none, open it), verifies the
+  ACs and DoD against the PR diff (apply the "sweep the whole surface" checklist above), and
+  checks CI on the PR (`gh pr checks <n>`). If the branch is stale or conflicts with `main`,
+  the reviewer merges `main` into the branch (`git merge origin/main`, resolve, push) and lets
+  CI re-run before judging. Review notes go on **both** the PR (inline/`gh pr comment`) and the
+  task. Then:
   - **Pass** → add a comment tagged `reviewed-by: <reviewer-agent-id> — <what was checked / verdict>`,
-    check off the DoD (`--check-dod <n>`), **merge the branch to `main` (`--no-ff`) and push**,
-    set `-s Done`, and delete the merged branch + its worktree. Done requires this reviewed-by
-    comment from a second agent (DoD item) and only ever happens via this merge.
-  - **Fail** → add a `reviewed-by: <reviewer-agent-id> — <the problem>` comment, **do not merge**,
-    and send it back to `-s "In Progress"` (or `Blocked`, or file a prioritised follow-up ticket
-    for a separable gap) so it is reworked on its branch. Never rubber-stamp or merge on a fail.
+    check off the DoD (`--check-dod <n>`), and **merge the PR: `gh pr merge <n> --merge --delete-branch`**
+    (merge commit ≈ the old `--no-ff`; **never `--admin`** — if GitHub refuses because checks
+    are red or pending, that is the gate working: wait or fail the review, don't bypass). Set
+    `-s Done` and remove the local worktree. Done requires this reviewed-by comment from a
+    second agent (DoD item) and only ever happens via this PR merge.
+  - **Fail** → add a `reviewed-by: <reviewer-agent-id> — <the problems>` comment on the task,
+    leave the concrete follow-ups as PR comments, **do not merge**, and send the task back to
+    **`-s "To Do"`** (or `Blocked`, or file a prioritised follow-up ticket for a separable gap)
+    so any implementer can pick it up and resume **on the same branch/PR**. Never rubber-stamp
+    or merge on a fail.
   - The `implemented-by:` / `reviewed-by:` tags (plus each comment's `--comment-author`) are the
     greppable record of **who did the work and who reviewed/merged it** — keep both present on
     every task that reaches Done.
@@ -176,34 +190,55 @@ run-on paragraph, and long prose paragraphs are unreadable there. Rules:
   Never write literal `\n`.
 - Wrap code identifiers/paths in backticks so they don't italicise (underscores).
 
+## Agent roles (model tiering — decision-10)
+Work in this repo is split across two agent roles, chosen by cost:
+
+- **Implementers — cheap models.** Claude Sonnet/Haiku sessions, or external CLI agents
+  (e.g. **qwen code**) — external agents follow these same conventions: the `backlog` CLI,
+  the claim protocol, branch/worktree isolation, the verify pipeline, the PR flow, and they
+  sign `implemented-by:`/`--comment-author`/`Co-Authored-By` with their own agent id (e.g.
+  `qwen-code`). They pick the lowest-ordinal `To Do` task whose deps are met, claim it,
+  implement it on a `task-<id>` branch, and open a PR (loop prompt: `loops/implementer.md`).
+- **Reviewers — expensive model.** A scheduled loop (e.g. Opus/Fable) that drains the `Review`
+  queue: reviews each task's PR, merges `main` into stale branches, and is the **only** thing
+  that merges to `main` (loop prompt: `loops/reviewer.md`). Reviewer ≠ implementer
+  (decision-7).
+
 ## Git
-**Concurrent sessions isolate via worktrees + branches.** When more than one session/agent
-writes to this repo at once (the implementer session, the review/meta loops, any file-mutating
-agent), each works in its **own git worktree on its own short-lived branch off `main`** — this
-is what prevents two sessions racing on one working tree (the "file modified since read" /
-manually-scoped-commit problem). Workflow:
+**Concurrent sessions isolate via worktrees + branches — ALL work, no exceptions.** When more
+than one session/agent writes to this repo at once (implementer agents, the reviewer/meta
+loops, any file-mutating agent), each works in its **own git worktree on its own short-lived
+branch off `main`** — this is what prevents two sessions racing on one working tree (the "file
+modified since read" / manually-scoped-commit problem). Workflow:
 - `git worktree add ../bgdude-<purpose> -b <purpose>` off the latest `main` (e.g.
-  `../bgdude-review`, `../bgdude-impl`). One branch per worktree — git refuses to check out
+  `../bgdude-task-42`, `../bgdude-review`). One branch per worktree — git refuses to check out
   `main` in two worktrees at once, which is exactly why concurrent writers need branches.
 - Subagents that **mutate files in parallel** take `isolation: "worktree"` on the Agent tool;
   read-only reviewers don't need it.
 
-**Task work goes on a feature branch and is merged to `main` only by the review loop after a
-passing review (decision-8).** Do NOT push task work straight to `main`. Concretely:
+**Task work ships as a GitHub PR and reaches `main` only via a reviewed, CI-green PR merge
+(decision-10, refining decision-8).** Do NOT push task work straight to `main`. Concretely:
 - One branch per task, deterministically named **`task-<id>`** (optionally
   `task-<id>-<slug>`), created off the latest `main` in its own worktree. Record it on the task
-  (`--comment "branch: task-<id>"`) so the review loop can find it.
-- The implementer commits to that branch through `In Progress`, and when done **pushes the
-  branch** and moves the task to `Review` (never `Done`, never a `main` push).
-- The **review loop is the only merger.** It reviews each `Review`-task's branch diff, and on a
-  pass merges it to `main` (`--no-ff`), pushes, sets the task `Done`, and deletes the branch +
-  worktree. On a fail it bounces the task back (see `### Comment as you work`). It never merges a
-  branch whose `implemented-by` is the review loop itself (reviewer ≠ implementer, decision-7).
+  (`--comment "branch: task-<id>"`).
+- The implementer commits to that branch through `In Progress`; when done it pushes the branch,
+  **opens a PR** (`gh pr create`, title `TASK-<id>: <title>`), records `PR: #<n>` on the task,
+  and moves the task to `Review` (never `Done`, never a `main` push, never a self-merge).
+- **The reviewer loop is the only merger, and it merges via the PR** (`gh pr merge --merge`),
+  only after a passing review with CI green. On a fail it comments on the PR + task and bounces
+  the task back to `To Do` (see `### Comment as you work`). It never merges a PR whose
+  `implemented-by` is itself (reviewer ≠ implementer, decision-7).
+- **A GitHub ruleset enforces this** ("main merge gate: PR + green CI"): merging to `main`
+  requires a PR with required checks `analyze`, `coverage-gate`, `apk-build`, `native-tests`
+  green; merge-commit method only; no force-push or deletion of `main`. Repository admins carry
+  an `always` bypass **solely** so backlog claim/status/bookkeeping commits can go straight to
+  `main` — using it to merge a PR (`gh pr merge --admin`) or push task code to `main` is
+  forbidden. If a merge is refused, CI isn't green: fix that, never bypass.
 
-**Straight-to-`main` is only for non-task bookkeeping** — the loops' own review artifacts
-(follow-up tickets, quality-check markers), backlog/decision/config edits, and trivial docs.
-These aren't feature work, carry no `Review` gate, and (when there's a single writer) still
-commit and push directly. See the memory `git-workflow` and `backlog/decisions/` (6, 7, 8).
+**Straight-to-`main` is only for non-task bookkeeping** — task claim/status commits, the loops'
+own review artifacts (follow-up tickets, quality-check markers), backlog/decision/config edits,
+and trivial docs. These aren't feature work and carry no `Review` gate. See the memory
+`git-workflow` and `backlog/decisions/` (6, 7, 8, 10).
 
 ## Verify the build after EVERY task (must match CI — CI is the source of truth)
 The GitHub Actions workflow (`.github/workflows/ci.yml`) is what decides if `main` is
