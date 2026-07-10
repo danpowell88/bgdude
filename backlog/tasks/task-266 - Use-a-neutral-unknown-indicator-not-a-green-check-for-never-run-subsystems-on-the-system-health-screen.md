@@ -3,11 +3,6 @@ id: TASK-266
 title: >-
   Use a neutral unknown indicator not a green check for never-run subsystems on
   the system-health screen
-status: Review
-assignee:
-  - Claude
-created_date: '2026-07-07 17:30'
-updated_date: '2026-07-10 12:20'
 status: Needs Review
 assignee:
   - Claude
