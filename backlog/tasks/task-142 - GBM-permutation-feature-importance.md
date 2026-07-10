@@ -1,11 +1,6 @@
 ---
 id: TASK-142
 title: GBM permutation feature importance
-status: Review
-assignee:
-  - Claude
-created_date: '2026-07-06 08:41'
-updated_date: '2026-07-10 10:06'
 status: Needs Review
 assignee:
   - Claude
