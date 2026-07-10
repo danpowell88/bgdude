@@ -49,7 +49,15 @@
         android:label="bgdude"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:enableOnBackInvokedCallback="true">
+        android:enableOnBackInvokedCallback="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"><!--
+        Issue #327 (CodeQL java/android/backup-enabled): a diabetes app's local
+        encrypted glucose/pump history must not sync to Google cloud backup or
+        transfer to a new device via the default mechanisms. allowBackup=false
+        disables legacy (≤API 30) auto-backup; dataExtractionRules (API 31+)
+        excludes everything from both cloud backup and device-to-device transfer. -->
 
         <activity
             android:name=".MainActivity"
