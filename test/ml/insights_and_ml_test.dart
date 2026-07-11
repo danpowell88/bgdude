@@ -132,6 +132,7 @@ void main() {
         trainedOnDays: 30,
         metrics: const ModelEvaluation(
           rmseMgdl: 25,
+          mardPercent: 5.0,
           abFraction: 0.80, // below 0.95 gate
           dangerousFraction: 0.05,
           hypoSensitivity: 0.5,
@@ -154,6 +155,7 @@ void main() {
         trainedOnDays: 30,
         metrics: const ModelEvaluation(
           rmseMgdl: 18,
+          mardPercent: 5.0,
           abFraction: 0.97,
           dangerousFraction: 0.01,
           hypoSensitivity: 0.85,
@@ -177,6 +179,7 @@ void main() {
         trainedOnDays: 30,
         metrics: const ModelEvaluation(
           rmseMgdl: 18,
+          mardPercent: 5.0,
           abFraction: 0.97,
           dangerousFraction: 0.01,
           hypoSensitivity: null,

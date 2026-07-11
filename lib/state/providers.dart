@@ -2248,12 +2248,22 @@ class AppJobs {
 
   static const _driftStreakKey = 'forecast_drift_streak';
 
+  /// TASK-306: latches once an out-of-band retrain has been requested for the
+  /// CURRENT drift episode, so sustained-but-unfixable drift (retraining on the
+  /// still-drifted data keeps failing the A/B gate) can't keep requesting another
+  /// retrain on every subsequent reconciliation run. Cleared once a non-drifting
+  /// run proves the episode is actually over, so a genuinely NEW drift episode is
+  /// still free to trigger its own (single) out-of-band retrain right away.
+  static const _driftRetrainRequestedKey = 'forecast_drift_retrain_requested';
+
   /// TASK-138: compares [recentRmse] to the active model's trained per-horizon
   /// sigma. A single noisy run doesn't flag anything -- only [kSustainedDriftRuns]
-  /// consecutive drifting runs sets [forecastDriftProvider]'s sustained flag and
-  /// requests an out-of-band retrain, by resetting `trainForecaster`'s throttle
-  /// stamp so the `trainForecaster` startup job later in this SAME run (see
-  /// [runStartup]'s job order) retrains now instead of waiting out its ~20h cooldown.
+  /// consecutive drifting runs sets [forecastDriftProvider]'s sustained flag.
+  /// TASK-306: the out-of-band retrain (resetting `trainForecaster`'s throttle
+  /// stamp so the `trainForecaster` startup job later in this SAME run -- see
+  /// [runStartup]'s job order -- retrains now instead of waiting out its ~20h
+  /// cooldown) fires AT MOST ONCE per sustained-drift episode, not on every run
+  /// the episode remains sustained -- see [_driftRetrainRequestedKey].
   Future<void> _checkForecastDrift(Map<int, double> recentRmse) async {
     const detector = DriftDetector();
     final model = _ref.read(forecasterModelProvider);
@@ -2272,7 +2282,13 @@ class AppJobs {
       consecutiveDriftRuns: streak,
       sustained: sustained,
     );
-    if (sustained) {
+    if (!driftingNow) {
+      // The episode is over (if there was one) -- a future new episode must be
+      // free to request its own retrain rather than staying latched forever.
+      await KvStore.setBool(_driftRetrainRequestedKey, false);
+    } else if (sustained &&
+        (await KvStore.getBool(_driftRetrainRequestedKey)) != true) {
+      await KvStore.setBool(_driftRetrainRequestedKey, true);
       await KvStore.setString(
           _forecasterTrainStampKey, DateTime(2000).toIso8601String());
     }
