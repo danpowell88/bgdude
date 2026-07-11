@@ -234,12 +234,14 @@ checkout, set `use_local_pumpx2=true` in `android/local.properties` and
 
 ## How work is planned
 
-There is no ROADMAP file: planning lives in the **Backlog.md** workspace under
-`backlog/` — tasks (`backlog task list --plain` or the web UI via `backlog browser`),
-milestones (execution phases), standing decisions (`backlog/decisions/`), and the
-archived roadmap narrative (`backlog/docs/doc-1`). Work is ordered by ordinal bands:
-stabilise → finish existing features → new features. See `CLAUDE.md` for the
-contributor workflow and the CI-equivalent verification pipeline.
+There is no ROADMAP file: planning lives in **GitHub Issues** (+ the `bgdude` project
+board) — issues are the unit of work, statuses are `status:*` labels, milestones carry
+the execution phases, and standing decisions live in `doc/decisions/` (decision-13; the
+pre-2026-07-11 Backlog.md IDs map to issues via `doc/backlog-migration-map.md`, and the
+archived roadmap narrative is `doc/roadmap-archived-2026-07-06.md`). Work is ordered by
+ordinal bands: stabilise → finish existing features → new features. See `CLAUDE.md` for
+the contributor workflow and the CI-equivalent verification pipeline; the full process
+is documented in `doc/process.html`.
 
 ## Tests
 
