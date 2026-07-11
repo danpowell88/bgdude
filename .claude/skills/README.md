@@ -16,6 +16,7 @@ stays a faithful mirror.
 | Skill | What it does | Source | License |
 |-------|--------------|--------|---------|
 | `github/` | `gh` CLI for issues, PRs, CI runs, and `gh api` queries (incl. a CI-failure debugging flow). | [Dimillian/Skills](https://github.com/Dimillian/Skills) (`github`) | MIT |
+| `android-cli/` | The `android` CLI: AVDs/emulators, screenshots & UI inspection, SDK components, project run — supports the repo's emulator integration tests and screenshot generation. | [android/skills](https://github.com/android/skills) (`devtools/android-cli`) | Apache-2.0 |
 | `flutter-add-integration-test/` | Convert app interactions into permanent `integration_test/` tests via Flutter Driver. | [flutter/skills](https://github.com/flutter/skills) | BSD-3-Clause |
 | `flutter-add-widget-preview/` | Add interactive widget previews (`previews.dart`). | flutter/skills | BSD-3-Clause |
 | `flutter-add-widget-test/` | Component-level `WidgetTester` tests for rendering + interaction. | flutter/skills | BSD-3-Clause |
@@ -28,7 +29,16 @@ stays a faithful mirror.
 | `flutter-use-http-package/` | Networking with the `http` package. | flutter/skills | BSD-3-Clause |
 
 The `flutter-*` set is the official Flutter team's skills (BSD-3-Clause, © The Flutter
-Authors); `github` is Thomas Ricouard's (MIT).
+Authors); `android-cli` is from Google's official [android/skills](https://github.com/android/skills)
+(Apache-2.0); `github` is Thomas Ricouard's (MIT).
+
+**Why only one skill from `android/skills`?** That repo is excellent but aimed at *native*
+Android app development — most of it (Jetpack Compose, navigation, Wear, XR, Play billing,
+CameraX, edge-to-edge) doesn't apply to a Flutter app that owns its own UI. Only
+`devtools/android-cli` maps cleanly to bgdude's actual native surface (emulator/AVD +
+screenshots). Situational others worth opting into later: `performance/r8-analyzer`
+(release shrinking/keep-rules), `build/agp/agp-9-upgrade` (AGP migrations),
+`security/android-intent-security`.
 
 ## How this fits the repo's conventions
 
