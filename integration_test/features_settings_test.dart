@@ -112,7 +112,8 @@ void main() {
     expect(find.text('Learned residual'), findsOneWidget);
   });
 
-  testWidgets('System health screen opens from Advanced and lists every subsystem',
+  testWidgets(
+      'System health screen opens from Advanced and lists every subsystem',
       (tester) async {
     await pumpDemoApp(tester);
     await openSettingsScreen(tester, 'Model internals');
@@ -128,6 +129,20 @@ void main() {
     expect(find.text('Garmin watch delivery'), findsOneWidget);
     expect(find.text('Weather'), findsOneWidget);
     expect(find.text('Nutrition-label model download'), findsOneWidget);
+    // TASK-266: a subsystem demo mode never runs (model download is a one-shot
+    // user-tap action) must NOT read as a verified-healthy green check.
+    final modelDownloadCard = find.ancestor(
+        of: find.text('Nutrition-label model download'),
+        matching: find.byType(Card));
+    expect(
+        find.descendant(
+            of: modelDownloadCard, matching: find.byIcon(Icons.help_outline)),
+        findsOneWidget);
+    expect(
+        find.descendant(
+            of: modelDownloadCard,
+            matching: find.byIcon(Icons.check_circle_outline)),
+        findsNothing);
   });
 
   testWidgets('changing units to mg/dL propagates to the Pump screen',
@@ -158,7 +173,8 @@ void main() {
   testWidgets('P1-6: a DB-open failure shows a banner (not a silent fallback)',
       (tester) async {
     await pumpDemoApp(tester,
-        dbOpenError: 'Storage failed to open — the app is running without saving.');
+        dbOpenError:
+            'Storage failed to open — the app is running without saving.');
     expect(find.textContaining('running without saving'), findsOneWidget);
   });
 }

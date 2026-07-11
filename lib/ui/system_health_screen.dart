@@ -23,12 +23,13 @@ class SystemHealthScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-              'Background subsystems and when each last succeeded. A row in red '
-              'has failed at least once since its last success — usually still '
-              'harmless on its own, but worth noticing if it stays red. A row in '
-              'amber hasn\'t failed, but hasn\'t succeeded recently either — the '
-              'most common way a background job actually breaks is by silently no '
-              'longer being scheduled at all, which never shows up as a failure.'),
+            'Background subsystems and when each last succeeded. A row in red '
+            'has failed at least once since its last success — usually still '
+            'harmless on its own, but worth noticing if it stays red. A row in '
+            'amber hasn\'t failed, but hasn\'t succeeded recently either — the '
+            'most common way a background job actually breaks is by silently no '
+            'longer being scheduled at all, which never shows up as a failure.',
+          ),
           const SizedBox(height: 16),
           for (final s in Subsystem.values) _SubsystemTile(s, report.of(s)),
           const Divider(),
@@ -51,28 +52,39 @@ class _SubsystemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unhealthy = health.isUnhealthy;
+    // TASK-266: never-attempted is its own neutral state -- a green check means
+    // "verified healthy", which a subsystem that has never run has no basis to
+    // claim (fresh install, or demo mode where syncHealth is disabled).
+    final neverRun = health.lastAttemptAt == null;
     // TASK-265: stale (amber) is checked only when NOT already unhealthy (red) --
     // a real recorded failure is worse than "just old", so it takes priority.
-    final stale =
-        !unhealthy && health.isStale(DateTime.now(), subsystem.expectedCadence);
+    final stale = !unhealthy &&
+        !neverRun &&
+        health.isStale(DateTime.now(), subsystem.expectedCadence);
     return Card(
       color: unhealthy
           ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.4)
           : stale
-              ? Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.4)
+              ? Theme.of(
+                  context,
+                ).colorScheme.tertiaryContainer.withValues(alpha: 0.4)
               : null,
       child: ListTile(
         leading: Icon(
-          unhealthy
-              ? Icons.error_outline
-              : stale
-                  ? Icons.warning_amber_rounded
-                  : Icons.check_circle_outline,
-          color: unhealthy
-              ? Theme.of(context).colorScheme.error
-              : stale
-                  ? Colors.amber.shade800
-                  : Colors.green,
+          neverRun
+              ? Icons.help_outline
+              : unhealthy
+                  ? Icons.error_outline
+                  : stale
+                      ? Icons.warning_amber_rounded
+                      : Icons.check_circle_outline,
+          color: neverRun
+              ? Theme.of(context).colorScheme.onSurfaceVariant
+              : unhealthy
+                  ? Theme.of(context).colorScheme.error
+                  : stale
+                      ? Colors.amber.shade800
+                      : Colors.green,
         ),
         title: Text(subsystem.label),
         subtitle: Text(_subtitle(health, stale)),
@@ -120,11 +132,18 @@ class _GarminTile extends StatelessWidget {
     final lastSuccessMs = health?['lastSuccessAtMs'] as int?;
     final failures = (health?['consecutiveFailures'] as int?) ?? 0;
     final unhealthy = !loading && failures > 0;
+    // TASK-266: no success recorded and no failures either covers BOTH "not
+    // available" (health == null, e.g. no native bridge / demo mode) and "no send
+    // attempted yet this session" -- neither is "verified healthy", so neither
+    // should render the green check.
+    final neverRun = !loading && !unhealthy && lastSuccessMs == null;
     final stale = !loading &&
         !unhealthy &&
+        !neverRun &&
         lastSuccessMs != null &&
-        DateTime.now()
-                .difference(DateTime.fromMillisecondsSinceEpoch(lastSuccessMs)) >
+        DateTime.now().difference(
+              DateTime.fromMillisecondsSinceEpoch(lastSuccessMs),
+            ) >
             _staleAfter;
     final subtitle = loading
         ? 'Checking…'
@@ -141,25 +160,33 @@ class _GarminTile extends StatelessWidget {
       color: unhealthy
           ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.4)
           : stale
-              ? Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.4)
+              ? Theme.of(
+                  context,
+                ).colorScheme.tertiaryContainer.withValues(alpha: 0.4)
               : null,
       child: ListTile(
         leading: Icon(
           loading
               ? Icons.hourglass_empty
+              : neverRun
+                  ? Icons.help_outline
+                  : unhealthy
+                      ? Icons.error_outline
+                      : stale
+                          ? Icons.warning_amber_rounded
+                          : Icons.check_circle_outline,
+          color: neverRun
+              ? Theme.of(context).colorScheme.onSurfaceVariant
               : unhealthy
-                  ? Icons.error_outline
+                  ? Theme.of(context).colorScheme.error
                   : stale
-                      ? Icons.warning_amber_rounded
-                      : Icons.check_circle_outline,
-          color: unhealthy
-              ? Theme.of(context).colorScheme.error
-              : stale
-                  ? Colors.amber.shade800
-                  : Colors.green,
+                      ? Colors.amber.shade800
+                      : Colors.green,
         ),
         title: const Text('Garmin watch delivery'),
-        subtitle: Text('$subtitle\n(this session only — not persisted across restarts)'),
+        subtitle: Text(
+          '$subtitle\n(this session only — not persisted across restarts)',
+        ),
         isThreeLine: true,
       ),
     );
