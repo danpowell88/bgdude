@@ -33,6 +33,7 @@ class ForecasterTrainingResult {
     this.candidateByHorizon = const {},
     this.incumbentByHorizon,
     this.census = const TrainingCensus(),
+    this.importanceByHorizon = const {},
   });
 
   final ResidualGbmModel model;
@@ -59,6 +60,10 @@ class ForecasterTrainingResult {
 
   /// TASK-140: per-horizon training-sample counts and health-feature coverage.
   final TrainingCensus census;
+
+  /// TASK-142: horizon -> (feature index -> permutation importance). Empty for a
+  /// horizon with no trained model or no holdout to score against.
+  final Map<int, Map<int, double>> importanceByHorizon;
 }
 
 class ForecasterTrainer {
@@ -219,6 +224,13 @@ class ForecasterTrainer {
     final model = const ResidualGbmTrainer()
         .train(trainingByHorizon, holdoutByHorizon: holdoutByHorizon);
 
+    // TASK-142: reuses the same holdout rows already built for sigma above --
+    // no separate held-out scoring path to keep in sync.
+    final importanceByHorizon = <int, Map<int, double>>{
+      for (final h in horizons)
+        if (model.featureImportance(h, holdoutByHorizon[h]!) case final imp?) h: imp,
+    };
+
     // Score baseline vs incumbent vs baseline+candidate on the held-out tail —
     // pooled for display, and per horizon for the promotion gate (TASK-130).
     final baselinePairs = <({double reference, double predicted})>[];
@@ -280,6 +292,7 @@ class ForecasterTrainer {
             ? null
             : trainingTimestepsWithHealth / trainingTimesteps,
       ),
+      importanceByHorizon: importanceByHorizon,
     );
   }
 

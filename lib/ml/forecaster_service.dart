@@ -26,6 +26,7 @@ class TrainingOutcome {
     this.incumbentRmse,
     this.trainSamples = 0,
     this.census = const TrainingCensus(),
+    this.importanceByHorizon = const {},
   });
 
   final bool trained;
@@ -43,6 +44,9 @@ class TrainingOutcome {
   /// from this run, so the diagnostics screen can explain why a horizon (or the
   /// whole run) declined to train.
   final TrainingCensus census;
+
+  /// TASK-142: horizon -> (feature index -> permutation importance) from this run.
+  final Map<int, Map<int, double>> importanceByHorizon;
 
   static const TrainingOutcome notEnoughData =
       TrainingOutcome(trained: false, promoted: false, reasons: ['not enough data']);
