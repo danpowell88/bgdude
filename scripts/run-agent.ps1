@@ -1,7 +1,7 @@
-# run-agent.ps1 — start a backlog agent (decisions 10 + 12; see doc/process.html).
+# run-agent.ps1 — start a task-pipeline agent (decisions 10 + 12 + 13; see doc/process.html).
 #
 # Wraps `claude` (Claude Code CLI) or `qwen` (qwen code CLI) with the right loop prompt,
-# model tier, and working directory, so "work on the backlog" is one command:
+# model tier, and working directory, so "work on the issue queue" is one command:
 #
 #   pwsh scripts/run-agent.ps1                                # one implementer run (claude, sonnet)
 #   pwsh scripts/run-agent.ps1 -Role reviewer                 # one reviewer run (claude, opus)
@@ -9,8 +9,9 @@
 #   pwsh scripts/run-agent.ps1 -Loop -IntervalMinutes 45      # run forever, 45 min between runs
 #
 # Each iteration is a fresh agent process that follows loops/<role>.md end-to-end (pick ->
-# claim -> implement -> PR -> hand off). Coordination happens through backlog status commits
-# on main, so multiple instances / machines are safe to run concurrently.
+# claim -> implement -> PR -> hand off). Coordination happens through GitHub issue labels
+# (`status:*`) and signed claiming comments, so multiple instances / machines are safe to
+# run concurrently.
 
 param(
   [ValidateSet('implementer', 'reviewer', 'groomer')]
@@ -48,7 +49,7 @@ do {
     }
     else {
       # qwen code follows the same repo conventions; it signs with its own agent id.
-      qwen --yolo -p "$goal Sign all backlog comments, implemented-by tags and git commits as qwen-code."
+      qwen --yolo -p "$goal Sign all issue comments, implemented-by tags and git commits as qwen-code."
     }
     if ($LASTEXITCODE -ne 0) { Write-Warning "agent exited with code $LASTEXITCODE" }
   }
