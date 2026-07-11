@@ -70,6 +70,7 @@ import '../meals/meal_outcome_service.dart';
 import '../meals/prebolus_coach.dart';
 import '../ml/basal_recommender.dart';
 import '../ml/drift_detector.dart';
+import '../ml/event_detectors.dart';
 import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
 import '../ml/forecaster_service.dart';
@@ -1526,6 +1527,20 @@ final dayDataProvider =
 /// The day's health context features (sleep/HRV/etc.), when available.
 final contextFeaturesProvider = Provider<ContextFeatures?>((ref) {
   return ref.watch(dayDataProvider).context;
+});
+
+/// TASK-141: live CGM data-quality signal — non-null when the MOST RECENT reading
+/// falls inside a detected jump/flatline/dropout-edge fault window, so the rest of
+/// the app can distrust the current reading without duplicating the detection.
+final cgmDataQualityProvider = Provider<CgmFaultKind?>((ref) {
+  final cgm = ref.watch(dayDataProvider).cgm;
+  if (cgm.isEmpty) return null;
+  final latest = cgm.map((s) => s.time).reduce((a, b) => a.isAfter(b) ? a : b);
+  final faults = const CgmFaultDetector().detect(cgm);
+  for (final f in faults) {
+    if (f.covers(latest)) return f.kind;
+  }
+  return null;
 });
 
 /// User tags over timeline events: eventId → (disposition, reason). Overlaid on the
