@@ -1,0 +1,73 @@
+# Mirrors each issue's `status:*` label (the canonical status, decision-13) to the
+# built-in `Status` single-select on the project boards: the main `bgdude` backlog
+# project (#2, all open issues) and the per-milestone phase project whose title
+# matches the issue's milestone (projects #12-#20, looked up by title). Closed issues sync to Done.
+# Labels stay the source of truth — this sync only keeps the board views honest,
+# so it degrades gracefully: without the PROJECT_SYNC_TOKEN secret it skips.
+#
+# Setup (one-time, Summer): create a fine-grained PAT with `Projects: read+write`
+# and `Issues: read` on this account, then `gh secret set PROJECT_SYNC_TOKEN`.
+# (The default GITHUB_TOKEN cannot access user-owned Projects v2, hence the PAT.)
+name: Project sync
+
+on:
+  issues:
+    types: [opened, reopened, labeled, closed, milestoned]
+
+permissions: {}
+
+env:
+  PROJECT_OWNER: danpowell88
+  BACKLOG_PROJECT_NUMBER: "2"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync status label to project Status
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_SYNC_TOKEN }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_STATE: ${{ github.event.issue.state }}
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+          ISSUE_MILESTONE: ${{ github.event.issue.milestone.title }}
+        run: |
+          set -eu
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "PROJECT_SYNC_TOKEN not configured; skipping (labels remain canonical)."
+            exit 0
+          fi
+          if [ "$ISSUE_STATE" = "closed" ]; then
+            status="Done"
+          else
+            case ",$ISSUE_LABELS," in
+              *,status:idea,*)                        status="Idea" ;;
+              *,status:planned,*)                     status="Planned" ;;
+              *,status:to-do,*)                       status="To Do" ;;
+              *,status:doing,*)                       status="Doing" ;;
+              *,status:blocked,*)                     status="Blocked" ;;
+              *,status:needs-review,*)                status="Needs Review" ;;
+              *,status:reviewing,*)                   status="Reviewing" ;;
+              *,status:reviewed,*)                    status="Reviewed" ;;
+              *,status:needs-human-verification,*)    status="Requires Human Verification" ;;
+              *) echo "no status:* label; nothing to sync"; exit 0 ;;
+            esac
+          fi
+          targets="$BACKLOG_PROJECT_NUMBER"
+          if [ -n "${ISSUE_MILESTONE:-}" ]; then
+            mnum=$(gh project list --owner "$PROJECT_OWNER" --limit 50 --format json \
+                   | jq -r --arg t "$ISSUE_MILESTONE" '.projects[] | select(.title==$t) | .number' | head -1)
+            [ -n "$mnum" ] && targets="$targets $mnum"
+          fi
+          for num in $targets; do
+            item=$(gh project item-add "$num" --owner "$PROJECT_OWNER" --url "$ISSUE_URL" --format json)
+            item_id=$(echo "$item" | jq -r '.id')
+            fields=$(gh project field-list "$num" --owner "$PROJECT_OWNER" --format json)
+            project_id=$(gh project view "$num" --owner "$PROJECT_OWNER" --format json | jq -r '.id')
+            field_id=$(echo "$fields" | jq -r '.fields[] | select(.name=="Status") | .id')
+            option_id=$(echo "$fields" | jq -r --arg s "$status" \
+                        '.fields[] | select(.name=="Status") | .options[] | select(.name==$s) | .id')
+            gh project item-edit --project-id "$project_id" --id "$item_id" \
+               --field-id "$field_id" --single-select-option-id "$option_id"
+            echo "project $num -> $status"
+          done

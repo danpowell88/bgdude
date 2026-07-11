@@ -52,7 +52,8 @@ void main() {
     });
 
     test('parseProduct rejects a nameless product', () {
-      expect(OpenFoodFactsDatabase.parseProduct({'nutriments': {}}, '123'), isNull);
+      expect(OpenFoodFactsDatabase.parseProduct({'nutriments': <String, dynamic>{}}, '123'),
+          isNull);
     });
 
     test('name search maps the products array', () async {
