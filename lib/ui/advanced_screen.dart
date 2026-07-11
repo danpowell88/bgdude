@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../ml/forecast_features.dart';
 import '../state/providers.dart';
 import 'app_routes.dart';
 import 'log_viewer_screen.dart';
@@ -135,6 +136,9 @@ class AdvancedScreen extends ConsumerWidget {
                           lastOutcome.incumbentRmse!.toStringAsFixed(1)),
                     if (lastOutcome.reasons.isNotEmpty)
                       _kv(context, 'Notes', lastOutcome.reasons.join('; ')),
+                    for (final entry in lastOutcome.importanceByHorizon.entries)
+                      _kv(context, 'Top features (${entry.key}m)',
+                          _topFeatures(entry.value)),
                   ],
                 ],
               ),
@@ -218,4 +222,22 @@ class AdvancedScreen extends ConsumerWidget {
           ],
         ),
       );
+
+  /// TASK-142: top 3 features by permutation importance, human-readable via
+  /// [ForecastFeatures.names] -- which features actually earn their place in
+  /// this horizon's model, not just an opaque index list.
+  String _topFeatures(Map<int, double> importance) {
+    if (importance.isEmpty) return 'n/a';
+    final sorted = importance.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return sorted
+        .take(3)
+        .map((e) {
+          final name = e.key < ForecastFeatures.names.length
+              ? ForecastFeatures.names[e.key]
+              : 'f${e.key}';
+          return '$name (+${e.value.toStringAsFixed(1)})';
+        })
+        .join(', ');
+  }
 }
