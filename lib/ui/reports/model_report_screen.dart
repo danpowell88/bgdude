@@ -25,7 +25,8 @@ class ModelReportScreen extends ConsumerWidget {
           Expanded(
             child: async.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Could not build report: $e')),
+              error: (e, _) =>
+                  Center(child: Text('Could not build report: $e')),
               data: (r) => r.hasData
                   ? _Body(report: r)
                   : const Center(
@@ -95,7 +96,8 @@ class _Body extends StatelessWidget {
         for (final h in horizons)
           _HorizonCard(minutes: h, eval: report.accuracy.byHorizon[h]!.eval),
         const SizedBox(height: 16),
-        Text('Clarke error grid', style: Theme.of(context).textTheme.titleMedium),
+        Text('Clarke error grid',
+            style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         _Row('Zone A+B (clinically acceptable)',
             '${(eg.abFraction * 100).toStringAsFixed(1)}%'),
@@ -143,8 +145,10 @@ class _HorizonCard extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('$minutes min', style: Theme.of(context).textTheme.titleMedium),
+            Text('$minutes min',
+                style: Theme.of(context).textTheme.titleMedium),
             Text('RMSE ${eval.rmseMgdl.toStringAsFixed(0)}'),
+            Text('MARD ${eval.mardPercent.toStringAsFixed(1)}%'),
             Text('A+B ${(eval.abFraction * 100).round()}%'),
             Text('n=${eval.sampleCount}',
                 style: Theme.of(context).textTheme.bodySmall),
@@ -165,7 +169,9 @@ class _Row extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
+            Expanded(
+                child:
+                    Text(label, style: Theme.of(context).textTheme.bodyMedium)),
             Text(value, style: Theme.of(context).textTheme.bodyLarge),
           ],
         ),

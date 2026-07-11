@@ -81,10 +81,12 @@ void main() {
     expect(find.text('Basal suggestions'), findsWidgets);
   });
 
-  testWidgets('Forecast accuracy opens', (tester) async {
+  testWidgets('Forecast accuracy opens and shows MARD per horizon (TASK-163)',
+      (tester) async {
     await pumpDemoApp(tester);
     await openSettingsScreen(tester, 'Forecast accuracy');
     expect(find.text('Forecast accuracy'), findsWidgets);
+    expect(find.textContaining('MARD'), findsWidgets);
   });
 
   testWidgets('Therapy profile editor lists a segment', (tester) async {
