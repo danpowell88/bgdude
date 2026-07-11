@@ -95,12 +95,10 @@ class _DbRecoveryScreenState extends ConsumerState<DbRecoveryScreen> {
     try {
       final dir = await getTemporaryDirectory();
       final file = await writeSalvageExportFile(db, directory: dir);
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path, mimeType: 'application/json')],
-          subject: 'bgdude salvage export',
-        ),
-      );
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(file.path, mimeType: 'application/json')],
+        subject: 'bgdude salvage export',
+      ));
     } catch (e) {
       if (mounted) _showResult('Export failed: $e');
     } finally {
