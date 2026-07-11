@@ -16,8 +16,10 @@ exercised on a device.
 flutter test integration_test/<file>.dart -d <device-id>
 ```
 An emulator (e.g. `emulator-5554`) is used. Run the functional `*_test.dart` files
-**explicitly** — the `screenshots_test.dart` / `walkthrough_test.dart` files need
-`flutter drive`, so don't run the whole folder at once.
+**explicitly**, not the whole folder: `screenshots_test.dart` needs `flutter drive` (via
+`test_driver/screenshot_driver.dart`); `walkthrough_test.dart` is a slow, recording-oriented
+`flutter test` file (run alone with `adb screenrecord`, per `tools/gen_docs.ps1 -Video`) whose
+deliberate real-time pauses make it unfit for a whole-folder run.
 
 ## Harness usage (`integration_test/harness.dart`)
 - It is **not** a test file (no `_test.dart` suffix), so the runner won't execute it.

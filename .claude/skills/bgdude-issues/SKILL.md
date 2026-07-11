@@ -25,8 +25,9 @@ unit of execution.
   has its own board (projects **#12–#20**). Labels are canonical; boards are mirrors
   (`.github/workflows/project-sync.yml` syncs label → board when `PROJECT_SYNC_TOKEN` is set,
   else `gh project item-edit` manually). On create, add the issue to project #2 and its
-  milestone's project: `gh project item-add <n> --owner danpowell88 --url <issue-url>`.
-- **Decisions** that outlive an issue live in `doc/decisions/decision-<n>.md` — check them
+  milestone's project: `gh project item-add <proj#> --owner danpowell88 --url <issue-url>`.
+- **Decisions** that outlive an issue live in `doc/decisions/decision-<n>.md` (read-only
+  charter, personal audience, GBM-not-neural, what-not-to-change all live there) — check them
   before re-litigating; add a new numbered file (straight-to-main) when a standing choice is
   made.
 
