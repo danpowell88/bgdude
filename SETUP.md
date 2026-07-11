@@ -18,9 +18,9 @@ Follow these steps on a machine with Flutter to get to a running app.
 - Flutter 3.27+ (`flutter --version`; CI builds on pinned stable 3.44.4)
 - Android SDK with **compileSdk 36 / build-tools** and an Android 10+ (minSdk 29) device or emulator
 - JDK 17+
-- [Backlog.md CLI](https://github.com/MrLesk/Backlog.md) (`npm install -g backlog.md`) — all
-  task/milestone/decision planning lives under `backlog/` and is edited through this CLI, not
-  by hand; see `CLAUDE.md` for the workflow. `backlog instructions overview` is the entry point.
+- [GitHub CLI](https://cli.github.com/) (`gh`), authenticated with `repo` + `project` scopes
+  (`gh auth login`) — all task/milestone planning lives in GitHub Issues + the `bgdude`
+  project board; see `CLAUDE.md` for the workflow and `doc/process.html` for the pipeline.
 
 ## 2. Fill in the generated platform scaffolding
 

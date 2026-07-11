@@ -89,7 +89,7 @@ void main() {
   group('TherapySettings.fromJson', () {
     test('an empty segments list from a corrupted blob falls back to the placeholder, '
         'not left empty', () {
-      final settings = TherapySettings.fromJson(const {'segments': []});
+      final settings = TherapySettings.fromJson(const {'segments': <dynamic>[]});
       expect(settings.segments, isNotEmpty);
       // segmentAt() must not throw (sorted.first on an empty list is the exact bug).
       expect(() => settings.segmentAt(DateTime(2026, 7, 4, 8)), returnsNormally);
