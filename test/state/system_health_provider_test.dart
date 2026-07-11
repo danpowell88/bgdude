@@ -18,7 +18,7 @@ void main() {
     final notifier = container.read(systemHealthProvider.notifier);
 
     await expectLater(
-      notifier.track(Subsystem.weather, () => throw StateError('network down')),
+      notifier.track<void>(Subsystem.weather, () => throw StateError('network down')),
       throwsA(isA<StateError>()),
     );
 
@@ -36,7 +36,7 @@ void main() {
       () async {
     final notifier = container.read(systemHealthProvider.notifier);
     await expectLater(
-      notifier.track(Subsystem.modelDownload, () => throw Exception('boom')),
+      notifier.track<void>(Subsystem.modelDownload, () => throw Exception('boom')),
       throwsException,
     );
     expect(
