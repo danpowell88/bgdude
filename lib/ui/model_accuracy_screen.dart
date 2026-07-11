@@ -10,7 +10,8 @@ final accuracyReportProvider = FutureProvider<AccuracyReport>((ref) async {
   final repo = ref.watch(historyRepositoryProvider);
   final now = DateTime.now();
   await repo.reconcilePredictions(now);
-  final preds = await repo.predictions(now.subtract(const Duration(days: 14)), now);
+  final preds =
+      await repo.predictions(now.subtract(const Duration(days: 14)), now);
   return const AccuracyAnalyzer().analyze(preds);
 });
 
@@ -21,7 +22,8 @@ final errorGridPointsProvider =
   final repo = ref.watch(historyRepositoryProvider);
   final now = DateTime.now();
   await repo.reconcilePredictions(now);
-  final preds = await repo.predictions(now.subtract(const Duration(days: 14)), now);
+  final preds =
+      await repo.predictions(now.subtract(const Duration(days: 14)), now);
   return [
     for (final p in preds)
       if (p.actualMgdl != null)
@@ -56,13 +58,13 @@ class ModelAccuracyScreen extends ConsumerWidget {
             : ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Text('${r.scored} predictions scored'
+                  Text(
+                      '${r.scored} predictions scored'
                       '${r.pending > 0 ? ' · ${r.pending} maturing' : ''}',
                       style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 12),
                   for (final entry in r.byHorizon.entries)
-                    _HorizonAccuracyCard(
-                        horizon: entry.key, band: entry.value),
+                    _HorizonAccuracyCard(horizon: entry.key, band: entry.value),
                   const SizedBox(height: 12),
                   Text(
                     'Clarke A+B is the clinically-safe fraction; a retrained model must '
@@ -96,6 +98,7 @@ class _HorizonAccuracyCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             _stat(context, 'RMSE', '${eval.rmseMgdl.toStringAsFixed(1)} mg/dL'),
+            _stat(context, 'MARD', '${eval.mardPercent.toStringAsFixed(1)}%'),
             _stat(context, 'Clarke A+B',
                 '${(eval.abFraction * 100).toStringAsFixed(1)}%'),
             _stat(context, 'Parkes (Consensus) A+B',

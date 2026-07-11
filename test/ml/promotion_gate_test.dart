@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 ModelEvaluation _eval({required double rmse, int samples = 200}) =>
     ModelEvaluation(
       rmseMgdl: rmse,
+      mardPercent: 0.0,
       abFraction: 1.0,
       dangerousFraction: 0.0,
       hypoSensitivity: null,
