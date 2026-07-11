@@ -285,9 +285,11 @@ class ReportExporter {
     final bytes = await buildClinicPrepPdf(prep, generatedAt);
     final file = File('${dir.path}/clinic_prep_$stamp.pdf');
     await file.writeAsBytes(bytes);
-    await Share.shareXFiles(
-      [XFile(file.path, mimeType: 'application/pdf')],
-      subject: 'bgdude clinic-visit prep — ${prep.rangeLabel}',
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path, mimeType: 'application/pdf')],
+        subject: 'bgdude clinic-visit prep — ${prep.rangeLabel}',
+      ),
     );
   }
 
@@ -308,13 +310,15 @@ class ReportExporter {
     await summaryFile.writeAsString(summaryCsv(report, unit));
     await rawFile.writeAsString(rawReadingsCsv(confirmed, unit));
 
-    await Share.shareXFiles(
-      [
-        XFile(pdfFile.path, mimeType: 'application/pdf'),
-        XFile(summaryFile.path, mimeType: 'text/csv'),
-        XFile(rawFile.path, mimeType: 'text/csv'),
-      ],
-      subject: 'bgdude glucose report — ${report.range.label}',
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [
+          XFile(pdfFile.path, mimeType: 'application/pdf'),
+          XFile(summaryFile.path, mimeType: 'text/csv'),
+          XFile(rawFile.path, mimeType: 'text/csv'),
+        ],
+        subject: 'bgdude glucose report — ${report.range.label}',
+      ),
     );
   }
 }
