@@ -1,9 +1,10 @@
 # CI workflow for bgdude (Flutter / Android-only)
 #
 # Runs code generation, static analysis, unit tests with a coverage gate, a
-# debug APK build, and BLOCKING native Kotlin unit tests on every push / PR to
-# main. The integration_test/ suite is manual-only (needs an emulator; see
-# CLAUDE.md) — everything here must stay green for main to be green.
+# debug APK build, a 16 KB native-library alignment gate, and BLOCKING native
+# Kotlin unit tests on every push / PR to main. The integration_test/ suite is
+# manual-only (needs an emulator; see CLAUDE.md) — everything here must stay
+# green for main to be green.
 #
 # (TASK-298 cache-hit verification commit: this comment-only edit does not
 # touch any file the build_runner cache key hashes, so the next run should
@@ -525,3 +526,114 @@ jobs:
       # fail the build rather than get a free second attempt.
       - name: Native unit tests
         run: cd android && ./gradlew :app:testDebugUnitTest --no-daemon
+
+  # 16 KB page-size native-library alignment gate — the former manual
+  # doc/release-checklist.md audit (issue #243 / old TASK-229), now enforced on every push
+  # and PR instead of only before a release. Android 15+ 64-bit devices with a 16 KB memory
+  # page refuse to load a native .so whose ELF LOAD segments aren't 16 KB-aligned, and
+  # targetSdk is already 37 — so this is a live compatibility risk, not a future one. Two
+  # independent checks against the debug APK that apk-build already produced (packaging can
+  # misalign an already-aligned .so, so we verify the built artifact, not the AAR sources):
+  #   1. zipalign -c -P 16 — every lib/**/*.so ZIP entry sits at a 16 KB-aligned offset.
+  #      ABI-agnostic: this is about placement inside the .apk zip, so it covers every ABI.
+  #   2. readelf -l LOAD Align — every PT_LOAD segment of each 64-bit .so is aligned to a
+  #      multiple of 0x4000 (16384). Scoped to the 64-bit ABIs — arm64-v8a (required) and
+  #      x86_64 (checked when present): 16 KB pages are a 64-bit concern, and Play's 16 KB
+  #      compliance check plus the Android 15 "16 KB" emulator both cover x86_64, not just
+  #      arm. 32-bit armeabi-v7a is EXCLUDED on purpose — it always runs with 4 KB pages, so
+  #      its 0x1000-aligned .so files are correct and must NOT fail this gate (e.g. armeabi-v7a
+  #      libbarhopper_v3 / libmlkit_google_ocr_pipeline ship 4 KB LOAD segments by design).
+  # Blocking: a regression from a native-dependency bump (mobile_scanner, flutter_gemma/
+  # mediapipe, sqlcipher_flutter_libs, or any new plugin bundling a .so) reds the build the
+  # moment it lands instead of surfacing at release time.
+  native-lib-alignment:
+    needs: apk-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download debug APK
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: bgdude-debug-apk
+          path: apk
+
+      # Check 1 — ZIP-entry 16 KB alignment. zipalign ships in the Android SDK build-tools
+      # preinstalled on the runner ($ANDROID_SDK_ROOT); -P (page size) needs build-tools
+      # >= 35, so use the newest installed and assert the version so an older runner image
+      # gives a clear error rather than a cryptic flag-parse failure. -c = verify only,
+      # non-zero exit if any entry is misaligned.
+      - name: ZIP-entry 16 KB alignment (zipalign -c -P 16)
+        run: |
+          set -euo pipefail
+          sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          if [ -z "$sdk" ]; then
+            echo "::error::ANDROID_SDK_ROOT / ANDROID_HOME is unset"; exit 1
+          fi
+          zipalign=$(find "$sdk/build-tools" -maxdepth 2 -name zipalign 2>/dev/null | sort -V | tail -1)
+          if [ -z "$zipalign" ]; then
+            echo "::error::no zipalign found under $sdk/build-tools"; exit 1
+          fi
+          bt_ver=$(basename "$(dirname "$zipalign")")
+          if [ "${bt_ver%%.*}" -lt 35 ]; then
+            echo "::error::build-tools $bt_ver selected; zipalign -P (16 KB) needs >= 35.0.0"; exit 1
+          fi
+          echo "Using $zipalign (build-tools $bt_ver)"
+          "$zipalign" -c -v -P 16 4 apk/app-debug.apk
+
+      # Check 2 — ELF PT_LOAD 16 KB alignment across the 64-bit ABIs (see the job comment).
+      # readelf is from binutils, preinstalled on ubuntu-latest. arm64-v8a is required (fails
+      # loudly if absent); x86_64 is checked when present. A lib fails if any LOAD segment is
+      # not a multiple of 0x4000, or if readelf reports no LOAD segments for it at all.
+      - name: ELF LOAD-segment 16 KB alignment (64-bit ABIs)
+        run: |
+          set -euo pipefail
+          rm -rf extract && mkdir -p extract
+          # unzip exits 11 when a pattern matches nothing; tolerate ONLY that (the per-ABI
+          # guard below reports a missing required ABI clearly) and fail on any real error.
+          rc=0
+          unzip -oq apk/app-debug.apk 'lib/arm64-v8a/*.so' 'lib/x86_64/*.so' -d extract || rc=$?
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 11 ]; then
+            echo "::error::unzip failed (exit $rc) extracting native libraries"; exit 1
+          fi
+          fail=0
+          total=0
+          for abi in arm64-v8a x86_64; do
+            count=0
+            while IFS= read -r so; do
+              count=$((count + 1))
+              ok=1
+              nload=0
+              while IFS= read -r align; do
+                nload=$((nload + 1))
+                dec=$((align))
+                if [ "$dec" -eq 0 ] || [ "$((dec % 16384))" -ne 0 ]; then
+                  ok=0
+                  echo "::error::${so#extract/}: PT_LOAD Align=$align is not a multiple of 0x4000 (16 KB)"
+                fi
+              done < <(readelf -lW "$so" | awk '$1 == "LOAD" { print $NF }')
+              if [ "$nload" -eq 0 ]; then
+                echo "::error::${so#extract/}: readelf reported no PT_LOAD segments"
+                ok=0
+              fi
+              if [ "$ok" -eq 1 ]; then
+                echo "OK (16 KB aligned): ${so#extract/}"
+              else
+                fail=1
+              fi
+            done < <(find "extract/lib/$abi" -name '*.so' 2>/dev/null | sort)
+            total=$((total + count))
+            if [ "$count" -gt 0 ]; then
+              echo "Checked $count $abi native libraries."
+            elif [ "$abi" = "arm64-v8a" ]; then
+              echo "::error::no arm64-v8a .so files in the APK — the primary 64-bit ABI must ship"
+              fail=1
+            else
+              echo "Note: no $abi .so files in the APK — skipping (not required)."
+            fi
+          done
+          if [ "$total" -eq 0 ]; then
+            echo "::error::no 64-bit native libraries found in the APK"; exit 1
+          fi
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::one or more 64-bit native libraries are not 16 KB page-aligned"; exit 1
+          fi

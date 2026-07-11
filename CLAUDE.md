@@ -267,8 +267,9 @@ modified since read" / manually-scoped-commit problem). Workflow:
   bounces the issue back to `status:to-do` (see `### Comment as you work`). It never merges a
   PR whose `implemented-by` is itself (reviewer ≠ implementer, decision-7).
 - **A GitHub ruleset enforces this** ("main merge gate: PR + green CI"): merging to `main`
-  requires a PR with required checks `analyze`, `coverage-gate`, `apk-build`, `native-tests`
-  green **and CodeQL code-scanning results with no high+ security / error-level alerts**
+  requires a PR with required checks `analyze`, `coverage-gate`, `apk-build`, `native-tests`,
+  `native-lib-alignment`, `actionlint`, `android-lint`, `dependency-review` green **and
+  CodeQL code-scanning results with no high+ security / error-level alerts**
   (decision-11 — the CodeQL workflow `.github/workflows/codeql.yml` scans the `android/`
   Kotlin + workflow files; Dart is not CodeQL-supported and is covered by our own checks
   instead); merge-commit method only; no force-push or deletion of `main`. Repository admins
