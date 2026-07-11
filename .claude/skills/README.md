@@ -6,12 +6,14 @@ agents) picks them up automatically. Each skill is a folder with a `SKILL.md`: Y
 frontmatter (`name`, `description` — used to decide when the skill applies) plus markdown
 instructions.
 
-These are **vendored copies** of publicly available, permissively licensed skills. Upstream
-license texts are in [`licenses/`](licenses/); keep them when adding or updating a vendored
-skill. To refresh a skill, re-copy it from its source (below) rather than hand-editing, so it
-stays a faithful mirror.
+Two kinds live here: **vendored** copies of public, permissively licensed skills, and
+**bespoke** skills written for this codebase.
 
-## Vendored skills
+## Vendored skills (public, mirrored verbatim)
+
+Upstream license texts are in [`licenses/`](licenses/); keep them when adding or updating a
+vendored skill. To refresh one, re-copy it from its source rather than hand-editing, so it
+stays a faithful mirror.
 
 | Skill | What it does | Source | License |
 |-------|--------------|--------|---------|
@@ -40,24 +42,31 @@ screenshots). Situational others worth opting into later: `performance/r8-analyz
 (release shrinking/keep-rules), `build/agp/agp-9-upgrade` (AGP migrations),
 `security/android-intent-security`.
 
-## How this fits the repo's conventions
+## Bespoke skills (written for this repo)
 
-The `github` skill is a **general** `gh` reference. This repo's **specific** issue workflow —
-the `status:*` label pipeline, the claim protocol, ordinals, `implemented-by:` /
-`friction:` comment tags — lives in the root `CLAUDE.md` ("GitHub Issues" section). Use the
-skill for the mechanics of `gh` and `CLAUDE.md` for how we drive issues here.
+These encode bgdude-specific knowledge with no clean public equivalent. Edit them directly as
+the codebase evolves.
 
-## Suggested additional skills
+| Skill | What it does |
+|-------|--------------|
+| `verify-build/` | The CI-equivalent local pipeline to run before committing (codegen → analyze → coverage-gated test → APK → native Kotlin tests), plus the `dart run` dev-env gotcha. |
+| `coverage-ratchet/` | The per-ticket coverage discipline: ship tests with new code; how CI computes coverage (excluding `database.g.dart`) and enforces no-drop vs `main`. |
+| `drift-sqlcipher/` | The encrypted drift/SQLCipher store: mandatory codegen, `schemaVersion`/downgrade guards, and the Keystore passphrase failure modes not to paper over. |
+| `pumpx2-native-bridge/` | The native Kotlin ↔ t:slim X2 pump bridge (pumpx2 over BLE via MethodChannel). **Read-only by charter** — never send control/signed messages; verify pumpx2 APIs with `javap`. |
 
-Candidates worth adding next (bespoke, since no clean public equivalent fits this codebase):
+The `github` skill is a **general** `gh` reference; this repo's **specific** issue workflow
+(the `status:*` pipeline, claim protocol, ordinals, comment tags) is the "GitHub Issues"
+section of the root `CLAUDE.md`. Use the skill for `gh` mechanics and `CLAUDE.md` for how we
+drive issues here.
 
-- **drift-sqlcipher** — schema/migrations, generated code, and the encrypted-DB setup this app
-  uses (`lib/data/database.dart`, the one committed `*.g.dart`).
-- **pumpx2-native-bridge** — the read-only t:slim X2 BLE MethodChannel bridge and Robolectric
-  tests; verify pumpx2 APIs via `javap` before writing (see the `CLAUDE.md` native notes).
-- **coverage-ratchet** — add tests in the same change as new code so the CI coverage gate never
-  regresses (the repo's per-ticket ratchet).
+## Suggested additional skills (not yet written)
+
 - **user-guide-sync** — keep `doc/user-guide.html` (and `doc/index.html`) current on any
-  user-visible change (a standing `CLAUDE.md` rule).
-- **android-release** — signing, Play internal track, versioning (the 16 KB native-library
-  alignment audit is now enforced by the `native-lib-alignment` CI job, not a manual checklist).
+  user-visible change (currently a `CLAUDE.md` rule; a good skill or hook candidate).
+- **integration-test-harness** — writing on-device tests with `integration_test/harness.dart`
+  in demo mode.
+- **android-release** — signing, Play internal track, versioning (the 16 KB alignment audit
+  is now the `native-lib-alignment` CI job, not a manual checklist).
+- **bgdude-issues** — a repo-tailored companion to `github` that scripts the `status:*`
+  transitions and comment-tag templates (only if we want the issue workflow loadable
+  on-demand rather than always-on in `CLAUDE.md`).

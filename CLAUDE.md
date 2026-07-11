@@ -13,6 +13,14 @@ When a change adds a new screen, also regenerate screenshots when an emulator is
 --target=integration_test/screenshots_test.dart -d <device>`) and reference the new PNG in
 both docs.
 
+## Agent skills
+Reusable, on-demand skills live in `.claude/skills/` and load automatically when relevant —
+see `.claude/skills/README.md`. Bespoke ones encode this repo's knowledge: `verify-build`
+(the CI-equivalent pipeline — the exact steps behind "Verify the build" below),
+`coverage-ratchet`, `drift-sqlcipher`, and `pumpx2-native-bridge` (the read-only pump
+charter). Vendored ones cover general tooling: `github` (gh CLI), the official `flutter-*`
+set, and `android-cli`. Keep them current as the code evolves.
+
 ## GitHub Issues (task tracking — the single planning source)
 All planning lives in **GitHub Issues** on `danpowell88/bgdude` (CLI: `gh`).
 
@@ -124,7 +132,8 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) is what decides if `mai
 green, and **it must never be left red**. `flutter analyze` + `flutter test` passing is
 **not sufficient** — CI also generates code and builds the APK, so a change can be
 "green locally" yet break CI. After finishing any task (and before committing), run the
-**same pipeline CI runs, in this order**, and only commit when it all passes.
+**same pipeline CI runs, in this order**, and only commit when it all passes — the exact
+steps are in the `verify-build` skill (`.claude/skills/verify-build/`).
 
 If any step fails, fix it before committing — do not push a change that would turn CI
 red. If CI is already red on `main`, treat getting it green as part of the current task.
