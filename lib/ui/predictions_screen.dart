@@ -5,6 +5,7 @@ import '../analytics/predictor.dart';
 import '../analytics/therapy_settings.dart';
 import '../core/units.dart';
 import '../ml/forecaster.dart';
+import '../ml/threshold_duration.dart';
 import '../state/providers.dart';
 import 'widgets/on_board_forecast_chart.dart';
 import 'widgets/prediction_chart.dart';
@@ -65,6 +66,8 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
             ],
           ],
         ),
+        if (forecasts.isNotEmpty)
+          _DurationCard(forecasts: forecasts, currentMgdl: state.currentMgdl),
         const SizedBox(height: 8),
         Text(
           ref.watch(forecasterProvider).residualTrained
@@ -137,6 +140,68 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// TASK-143: "predicted low for ~25 min" — the clinically actionable readout a
+/// point forecast alone can't answer (treat-now vs ride-it-out). Hidden
+/// entirely when the point trajectory predicts no time below/above threshold.
+class _DurationCard extends StatelessWidget {
+  const _DurationCard({required this.forecasts, required this.currentMgdl});
+  final List<HorizonForecast> forecasts;
+  final double currentMgdl;
+
+  @override
+  Widget build(BuildContext context) {
+    const estimator = ThresholdDurationEstimator();
+    final low = estimator.minutesBelow(
+        forecasts, currentMgdl, GlucoseThresholds.low);
+    final high = estimator.minutesAbove(
+        forecasts, currentMgdl, GlucoseThresholds.high);
+    if (!low.isPredicted && !high.isPredicted) return const SizedBox.shrink();
+
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Card(
+        color: low.isPredicted ? cs.errorContainer : null,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (low.isPredicted)
+                _durationRow(context, Icons.trending_down,
+                    'Predicted low for ~${low.pointMinutes} min', low),
+              if (high.isPredicted)
+                _durationRow(context, Icons.trending_up,
+                    'Predicted high for ~${high.pointMinutes} min', high),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _durationRow(
+      BuildContext context, IconData icon, String text, ThresholdDuration d) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              d.confidentMinutes < d.pointMinutes
+                  ? '$text (at least ${d.confidentMinutes} min likely)'
+                  : text,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

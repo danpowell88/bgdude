@@ -3,6 +3,7 @@ import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/feedback/annotations.dart';
 import 'package:bgdude/feedback/retraining.dart';
 import 'package:bgdude/insights/morning_summary.dart';
+import 'package:bgdude/ml/event_detectors.dart';
 import 'package:bgdude/ml/model_registry.dart';
 import 'package:bgdude/ml/sensitivity_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -120,6 +121,33 @@ void main() {
       final clipped = set.firstWhere((s) => s.target.abs() == 30);
       expect(clipped.target, 30);
     });
+
+    test('excludes CGM data-quality fault windows the same way as annotations '
+        '(TASK-141)', () {
+      const pipeline = RetrainingPipeline(RetrainingConfig(huberDeltaMgdl: 30));
+      final asOf = DateTime(2026, 7, 4, 12);
+      final raw = [
+        (time: asOf.subtract(const Duration(hours: 1)), features: [1.0], residual: 5.0),
+        (time: asOf.subtract(const Duration(hours: 2)), features: [1.0], residual: 8.0),
+        (time: asOf.subtract(const Duration(hours: 3)), features: [1.0], residual: 10.0),
+      ];
+      final faults = [
+        CgmFaultEvent(
+          start: asOf.subtract(const Duration(hours: 2, minutes: 10)),
+          end: asOf.subtract(const Duration(hours: 1, minutes: 50)),
+          kind: CgmFaultKind.jump,
+        ),
+      ];
+      final set = pipeline.buildTrainingSet(
+        rawSamples: raw,
+        annotations: const [],
+        asOf: asOf,
+        cgmFaults: faults,
+      );
+      // Only the 2-hours-ago sample falls inside the fault window.
+      expect(set.length, 2);
+      expect(set.any((s) => s.target == 8.0), isFalse);
+    });
   });
 
   group('Model promotion gate', () {
@@ -132,6 +160,7 @@ void main() {
         trainedOnDays: 30,
         metrics: const ModelEvaluation(
           rmseMgdl: 25,
+          mardPercent: 5.0,
           abFraction: 0.80, // below 0.95 gate
           dangerousFraction: 0.05,
           hypoSensitivity: 0.5,
@@ -154,6 +183,7 @@ void main() {
         trainedOnDays: 30,
         metrics: const ModelEvaluation(
           rmseMgdl: 18,
+          mardPercent: 5.0,
           abFraction: 0.97,
           dangerousFraction: 0.01,
           hypoSensitivity: 0.85,
@@ -177,6 +207,7 @@ void main() {
         trainedOnDays: 30,
         metrics: const ModelEvaluation(
           rmseMgdl: 18,
+          mardPercent: 5.0,
           abFraction: 0.97,
           dangerousFraction: 0.01,
           hypoSensitivity: null,
