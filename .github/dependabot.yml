@@ -1,0 +1,26 @@
+# Issue #331: weekly dependency-update PRs (free). Security updates are separately
+# enabled repo-side (Dependabot alerts + security updates), so known-vulnerable deps
+# get PRs immediately regardless of this schedule. Update PRs flow through the normal
+# merge gate (CI + review loop) like any other PR.
+version: 2
+updates:
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: gradle
+    directory: /android/app
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
