@@ -145,7 +145,7 @@ void main() {
     }
 
     test('TherapySettings: empty segments list never crashes segmentAt', () {
-      final settings = TherapySettings.fromJson(const {'segments': []});
+      final settings = TherapySettings.fromJson(const {'segments': <dynamic>[]});
       expect(() => settings.segmentAt(DateTime(2026, 7, 4, 8)), returnsNormally);
     });
   });

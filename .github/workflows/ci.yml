@@ -26,15 +26,26 @@ name: CI
 
 on:
   push:
+    # main only (post-merge verification). Task branches build via their PR (decision-9:
+    # every task branch gets a PR, and the main ruleset requires these checks green on the
+    # PR before merge) — building task-** pushes too would run every branch twice.
     branches: [main]
-    # Docs and backlog files cannot break the build; skip the pipeline for
-    # commits that touch nothing else.
+    # Docs cannot break the build; skip the pipeline for commits that touch
+    # nothing else. (Task tracking lives in GitHub Issues, decision-13 — there
+    # are no backlog bookkeeping commits anymore.)
     paths-ignore:
-      - 'backlog/**'
       - 'doc/**'
       - '**/*.md'
   pull_request:
     branches: [main]
+  # Manual trigger — kick a build for any branch/ref that carries this workflow file.
+  workflow_dispatch: {}
+
+# Least-privilege token for every job (CodeQL actions/missing-workflow-permissions,
+# decision-11): nothing here writes to the repo — artifact up/download uses the runtime
+# token, not this one.
+permissions:
+  contents: read
 
 # Newer pushes supersede in-flight runs of the same ref.
 concurrency:
@@ -47,10 +58,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
           flutter-version: 3.44.4
@@ -59,7 +70,7 @@ jobs:
       # TASK-288: pub.dev resolution is a real network dependency -- retry a
       # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -75,7 +86,7 @@ jobs:
       # only cost time, never correctness -- build_runner itself detects
       # and rebuilds whatever actually changed.
       - name: Cache build_runner state
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .dart_tool/build
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
@@ -86,8 +97,105 @@ jobs:
       - name: Run code generation
         run: dart run build_runner build --delete-conflicting-outputs
 
+      # Issue #331: --fatal-infos — the tree is diagnostic-clean, so ANY reported
+      # issue (info-level lints included) fails the gate instead of scrolling past.
       - name: Analyze
-        run: flutter analyze
+        run: flutter analyze --fatal-infos
+
+  # Issue #331: lint the workflow files themselves — expression bugs, wrong event/
+  # context names, shellcheck over every run: block. Cheap (<1 min), catches the
+  # class of bug that otherwise only surfaces when a workflow misfires in prod.
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Run actionlint
+        run: |
+          bash <(curl -sSL "https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash") 1.7.7
+          ./actionlint -color
+
+  # Issue #331: Android Lint over the native surface (manifest, Kotlin, resources).
+  # warningsAsErrors + a committed baseline (android/app/lint-baseline.xml freezes the
+  # 44 pre-existing warnings): NEW warnings fail; the frozen set is a tracked burn-down.
+  android-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: 3.44.4
+          cache: true
+
+      - name: Install dependencies
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: flutter pub get
+
+      # Unlike native-tests, lintDebug DOES need codegen: its task graph includes
+      # :app:compileFlutterBuildDebug, which compiles the Dart app (fails on missing
+      # *.g.dart otherwise — verified locally).
+      - name: Cache build_runner state
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .dart_tool/build
+          key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
+          restore-keys: |
+            ${{ runner.os }}-build-runner-
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # Same deterministic local.properties write as native-tests.
+      - name: Write local.properties
+        run: |
+          FLUTTER_SDK="${FLUTTER_ROOT:-$(dirname "$(dirname "$(command -v flutter)")")}"
+          ANDROID_SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$FLUTTER_SDK" ] || [ -z "$ANDROID_SDK" ]; then
+            echo "::error::Could not resolve FLUTTER_SDK ('$FLUTTER_SDK') or ANDROID_SDK ('$ANDROID_SDK')"; exit 1
+          fi
+          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_SDK" "$ANDROID_SDK" > android/local.properties
+
+      - name: Android Lint
+        run: cd android && ./gradlew :app:lintDebug --no-daemon
+
+  # Issue #331: block PRs that introduce dependencies with known vulnerabilities
+  # (GitHub Advisory Database; dependency graph + Dependabot alerts are enabled
+  # repo-side). pull_request-only by nature — it diffs the PR's dependency changes.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+        with:
+          fail-on-severity: low
 
   # TASK-297: the unit-test suite (1185+ tests, one process) was the test
   # job's dominant cost. Sharded across 4 matrix jobs so the dominant cost
@@ -113,10 +221,10 @@ jobs:
         shard: [1, 2, 3, 4]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
           flutter-version: 3.44.4
@@ -125,7 +233,7 @@ jobs:
       # TASK-288: pub.dev resolution is a real network dependency -- retry a
       # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -137,7 +245,7 @@ jobs:
       # one another's cache writes across runs); build_runner still always
       # runs for real, so this only affects speed.
       - name: Cache build_runner state
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .dart_tool/build
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
@@ -157,7 +265,7 @@ jobs:
           flutter test --coverage --total-shards=4 --shard-index=$(( ${{ matrix.shard }} - 1 )) test/
 
       - name: Upload shard coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: coverage-shard-${{ matrix.shard }}
           path: coverage/lcov.info
@@ -166,9 +274,14 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # actions:read on top of the workflow-level contents:read — the ratchet step below
+    # downloads the coverage baseline artifact from the latest successful main run.
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Download shard coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: coverage-shard-*
           path: shard-coverage
@@ -209,35 +322,70 @@ jobs:
           ' coverage/lcov.info)"
           pct=$(awk "BEGIN {printf \"%.1f\", 100*$hit/$total}")
           echo "Line coverage: $pct% ($hit/$total lines, excluding generated files)"
+          echo "$pct" > coverage-percent.txt
           awk "BEGIN {exit !($pct >= 65.0)}" || { echo "::error::Line coverage $pct% is below the 65% minimum"; exit 1; }
+
+      # Baseline for the no-drop ratchet below: every successful run (main pushes are the
+      # ones the ratchet consumes) publishes its coverage percentage as a tiny artifact.
+      - name: Upload coverage percent (ratchet baseline)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-percent
+          path: coverage-percent.txt
+
+      # No-drop coverage ratchet (the free stand-in for GitHub's "Restrict code coverage"
+      # ruleset rule, unavailable on a user-owned Free repo — decision-11). The 65% floor
+      # above catches collapse; this catches erosion: a PR may not land with lower line
+      # coverage than the latest successful main run (0.1pt tolerance for rounding). If
+      # a change genuinely must lower coverage, that is a reviewer decision, not a bypass:
+      # add tests until it recovers.
+      - name: Coverage no-drop ratchet vs main (PRs only)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&status=success&event=push&per_page=1" \
+            --jq '.workflow_runs[0].id // empty')
+          if [ -z "$run_id" ]; then
+            echo "::notice::No successful main CI run found — skipping the no-drop ratchet"; exit 0
+          fi
+          if ! gh run download "$run_id" --repo "$GITHUB_REPOSITORY" -n coverage-percent -D baseline 2>/dev/null; then
+            echo "::notice::main run $run_id predates the coverage-percent artifact — skipping the no-drop ratchet"; exit 0
+          fi
+          base=$(cat baseline/coverage-percent.txt)
+          pct=$(cat coverage-percent.txt)
+          echo "PR line coverage: $pct% — main baseline (run $run_id): $base%"
+          awk "BEGIN {exit !($pct >= $base - 0.1)}" || {
+            echo "::error::Line coverage dropped: $pct% on this PR vs $base% on main — add tests for the new code (coverage is a ratchet, see CLAUDE.md)"; exit 1
+          }
 
   apk-build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       # TASK-299: fail the build if android/gradle/wrapper/gradle-wrapper.jar doesn't
       # match one of Gradle's own published checksums -- a tampered or unknown-provenance
       # wrapper jar (the exact class of issue the TASK-287 hotfix committing one raised)
       # is caught automatically instead of silently trusted.
       - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v4
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
       # Required for the Android/Gradle build (compileSdk 36).
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           distribution: temurin
           java-version: '17'
 
       # Cache Gradle dependencies + wrapper (TASK-218).
       - name: Set up Gradle (cache)
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
           flutter-version: 3.44.4
@@ -246,7 +394,7 @@ jobs:
       # TASK-288: pub.dev resolution is a real network dependency -- retry a
       # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -256,7 +404,7 @@ jobs:
       # TASK-298: see the analyze job's identically-keyed cache step for
       # rationale.
       - name: Cache build_runner state
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .dart_tool/build
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
@@ -280,7 +428,7 @@ jobs:
         run: flutter build apk --debug
 
       - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: bgdude-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
@@ -290,23 +438,23 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       # TASK-299: same wrapper-provenance check as apk-build.
       - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v4
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle (cache)
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
           flutter-version: 3.44.4
@@ -322,7 +470,7 @@ jobs:
       # TASK-288: pub.dev resolution is a real network dependency -- retry a
       # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -359,7 +507,7 @@ jobs:
       # Maven cache as a side effect before the real, ungated run below.
       - name: Warm the Robolectric SDK-jar cache (network-dependent, retried)
         continue-on-error: true
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
         with:
           timeout_minutes: 5
           max_attempts: 3

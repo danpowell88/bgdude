@@ -1,8 +1,9 @@
 # Release checklist
 
 Steps to run before any release build (Play internal track or a sideloaded APK for a
-real device) — see backlog TASK-99 (`backlog task 99 --plain`) for the still-undecided
-distribution/signing question this checklist doesn't cover yet.
+real device) — see the "Release path" issue (old TASK-99; find it via
+`doc/backlog-migration-map.md` or `gh issue list --search "Release path in:title"`) for the
+still-undecided distribution/signing question this checklist doesn't cover yet.
 
 ## 16 KB page-size native-library alignment (TASK-229)
 
