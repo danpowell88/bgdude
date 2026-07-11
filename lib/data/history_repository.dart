@@ -137,7 +137,8 @@ class DriftHistoryRepository implements HistoryRepository {
           );
         } else {
           b.insert(_db.cgmReadings, companion,
-              onConflict: DoNothing(target: [_db.cgmReadings.time]));
+              onConflict:
+                  DoNothing<$CgmReadingsTable, CgmRow>(target: [_db.cgmReadings.time]));
         }
       }
     });
