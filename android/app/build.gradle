@@ -97,7 +97,7 @@ dependencies {
     implementation "com.github.weliem:blessed-android:2.4.0"
 
     // Garmin Connect IQ Mobile SDK (free) — pushes BG to the watch app in garmin/.
-    implementation "com.garmin.connectiq:ciq-companion-app-sdk:2.0.3@aar"
+    implementation "com.garmin.connectiq:ciq-companion-app-sdk:2.4.0@aar"
 
     implementation "androidx.core:core-ktx:1.13.1"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0"
