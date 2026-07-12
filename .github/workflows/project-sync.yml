@@ -1,9 +1,16 @@
-# Mirrors each issue's `status:*` label (the canonical status, decision-13) to the
-# built-in `Status` single-select on the project boards: the main `bgdude` backlog
-# project (#2, all open issues) and the per-milestone phase project whose title
-# matches the issue's milestone (projects #12-#20, looked up by title). Closed issues sync to Done.
-# Labels stay the source of truth — this sync only keeps the board views honest,
-# so it degrades gracefully: without the PROJECT_SYNC_TOKEN secret it skips.
+# Keeps the project boards coherent now that **board #2's `Status` column is the
+# canonical pipeline stage** (decision-15; labels are routing flags only).
+#
+# Two jobs:
+#   - membership: on issue open/reopen/milestone, add the issue to board #2 (Status
+#     defaults to Idea for brand-new issues) and to its milestone's phase board; on
+#     close, set Done on both. Issue events still fire — this part stays event-driven.
+#   - mirror: Projects v2 field edits do NOT trigger repo workflows, so the
+#     board #2 -> milestone-board Status mirror runs on a schedule (hourly) and on
+#     manual dispatch, reconciling every item that has a milestone.
+#
+# Degrades gracefully: without the PROJECT_SYNC_TOKEN secret both jobs skip (the
+# canonical state on board #2 is unaffected — only the milestone mirrors drift).
 #
 # Setup (one-time, Summer): create a fine-grained PAT with `Projects: read+write`
 # and `Issues: read` on this account, then `gh secret set PROJECT_SYNC_TOKEN`.
@@ -12,7 +19,10 @@ name: Project sync
 
 on:
   issues:
-    types: [opened, reopened, labeled, closed, milestoned]
+    types: [opened, reopened, closed, milestoned]
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
 
 permissions: {}
 
@@ -21,38 +31,32 @@ env:
   BACKLOG_PROJECT_NUMBER: "2"
 
 jobs:
-  sync:
+  membership:
+    if: github.event_name == 'issues'
     runs-on: ubuntu-latest
     steps:
-      - name: Sync status label to project Status
+      - name: Ensure board membership / sync closed state
         env:
           GH_TOKEN: ${{ secrets.PROJECT_SYNC_TOKEN }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
           ISSUE_STATE: ${{ github.event.issue.state }}
-          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
           ISSUE_MILESTONE: ${{ github.event.issue.milestone.title }}
+          EVENT_ACTION: ${{ github.event.action }}
         run: |
           set -eu
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "PROJECT_SYNC_TOKEN not configured; skipping (labels remain canonical)."
+            echo "PROJECT_SYNC_TOKEN not configured; skipping."
             exit 0
           fi
-          if [ "$ISSUE_STATE" = "closed" ]; then
-            status="Done"
-          else
-            case ",$ISSUE_LABELS," in
-              *,status:idea,*)                        status="Idea" ;;
-              *,status:planned,*)                     status="Planned" ;;
-              *,status:to-do,*)                       status="To Do" ;;
-              *,status:doing,*)                       status="Doing" ;;
-              *,status:blocked,*)                     status="Blocked" ;;
-              *,status:needs-review,*)                status="Needs Review" ;;
-              *,status:reviewing,*)                   status="Reviewing" ;;
-              *,status:reviewed,*)                    status="Reviewed" ;;
-              *,status:needs-human-verification,*)    status="Requires Human Verification" ;;
-              *) echo "no status:* label; nothing to sync"; exit 0 ;;
-            esac
-          fi
+          # Only stamp a Status for events with an unambiguous stage: brand-new
+          # issues start in Idea, closed issues are Done. Reopen/milestone events
+          # just ensure membership — the board keeps whatever stage it has.
+          status=""
+          case "$EVENT_ACTION" in
+            opened) status="Idea" ;;
+            closed) status="Done" ;;
+          esac
+          [ "$ISSUE_STATE" = "closed" ] && status="Done"
           targets="$BACKLOG_PROJECT_NUMBER"
           if [ -n "${ISSUE_MILESTONE:-}" ]; then
             mnum=$(gh project list --owner "$PROJECT_OWNER" --limit 50 --format json \
@@ -62,12 +66,71 @@ jobs:
           for num in $targets; do
             item=$(gh project item-add "$num" --owner "$PROJECT_OWNER" --url "$ISSUE_URL" --format json)
             item_id=$(echo "$item" | jq -r '.id')
-            fields=$(gh project field-list "$num" --owner "$PROJECT_OWNER" --format json)
-            project_id=$(gh project view "$num" --owner "$PROJECT_OWNER" --format json | jq -r '.id')
+            if [ -n "$status" ]; then
+              fields=$(gh project field-list "$num" --owner "$PROJECT_OWNER" --format json)
+              project_id=$(gh project view "$num" --owner "$PROJECT_OWNER" --format json | jq -r '.id')
+              field_id=$(echo "$fields" | jq -r '.fields[] | select(.name=="Status") | .id')
+              option_id=$(echo "$fields" | jq -r --arg s "$status" \
+                          '.fields[] | select(.name=="Status") | .options[] | select(.name==$s) | .id')
+              gh project item-edit --project-id "$project_id" --id "$item_id" \
+                 --field-id "$field_id" --single-select-option-id "$option_id"
+              echo "project $num -> $status"
+            else
+              echo "project $num: membership ensured (Status untouched)"
+            fi
+          done
+
+  mirror:
+    if: github.event_name != 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror board #2 Status to milestone boards
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_SYNC_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "PROJECT_SYNC_TOKEN not configured; skipping."
+            exit 0
+          fi
+          projects=$(gh project list --owner "$PROJECT_OWNER" --limit 50 --format json)
+          # Canonical queue: every board-#2 item with an issue + milestone + Status.
+          # One paginated GraphQL query gets Status AND the issue's milestone directly
+          # (item-list only exposes milestones when the board has that field configured).
+          gh api graphql --paginate \
+            -f owner="$PROJECT_OWNER" -F num="$BACKLOG_PROJECT_NUMBER" \
+            -f query='query($owner: String!, $num: Int!, $endCursor: String) {
+              user(login: $owner) { projectV2(number: $num) {
+                items(first: 100, after: $endCursor) {
+                  pageInfo { hasNextPage endCursor }
+                  nodes {
+                    fieldValueByName(name: "Status") {
+                      ... on ProjectV2ItemFieldSingleSelectValue { name }
+                    }
+                    content { ... on Issue { url milestone { title } } }
+                  }
+                } } } }' \
+            | jq -c '.data.user.projectV2.items.nodes[]
+                     | select(.content.url != null and .content.milestone != null
+                              and .fieldValueByName.name != null)
+                     | {url: .content.url, status: .fieldValueByName.name,
+                        milestone: .content.milestone.title}' \
+            | while read -r row; do
+            url=$(echo "$row" | jq -r '.url')
+            status=$(echo "$row" | jq -r '.status')
+            milestone=$(echo "$row" | jq -r '.milestone')
+            mnum=$(echo "$projects" | jq -r --arg t "$milestone" \
+                   '.projects[] | select(.title==$t) | .number' | head -1)
+            [ -z "$mnum" ] && continue
+            item=$(gh project item-add "$mnum" --owner "$PROJECT_OWNER" --url "$url" --format json)
+            item_id=$(echo "$item" | jq -r '.id')
+            fields=$(gh project field-list "$mnum" --owner "$PROJECT_OWNER" --format json)
+            project_id=$(echo "$projects" | jq -r --argjson n "$mnum" '.projects[] | select(.number==$n) | .id')
             field_id=$(echo "$fields" | jq -r '.fields[] | select(.name=="Status") | .id')
             option_id=$(echo "$fields" | jq -r --arg s "$status" \
                         '.fields[] | select(.name=="Status") | .options[] | select(.name==$s) | .id')
+            [ -z "$option_id" ] && { echo "project $mnum has no '$status' column; skipping $url"; continue; }
             gh project item-edit --project-id "$project_id" --id "$item_id" \
                --field-id "$field_id" --single-select-option-id "$option_id"
-            echo "project $num -> $status"
+            echo "mirrored $url -> project $mnum ($status)"
           done

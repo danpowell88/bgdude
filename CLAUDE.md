@@ -24,37 +24,52 @@ set, and `android-cli`. Keep them current as the code evolves.
 ## GitHub Issues (task tracking — the single planning source)
 All planning lives in **GitHub Issues** on `danpowell88/bgdude` (CLI: `gh`).
 
-- **Issues** are the unit of execution. **Status is a `status:*` label** (exactly one per
-  open issue); **a closed issue is `Done`** (closing is Summer's act — see the pipeline).
+- **Issues** are the unit of execution. **The pipeline stage is the `Status` column on
+  project board #2 — board columns are canonical (decision-15)**; **a closed issue is
+  `Done`** (closing is Summer's act — see the pipeline). Labels are NOT statuses anymore:
+  they survive only as **routing flags** — `escalate` (Blocked item awaiting the stronger
+  escalation agent), `needs-human` (Blocked item every automated tier failed on),
+  `detail-needed`, `verification-batch`, and `priority:*`.
 - **Milestones** carry the phasing (`Phase 0: …` … `Phase 7: …`, `Code health`).
-- **Project boards** are the column views. The main backlog board is user project **#2
-  `bgdude`** (all open issues; built-in `Status` field carries the ten pipeline stages as
-  columns, plus an `Ordinal` number field for ordering). Each milestone also has its own
-  board — projects **#12–#20**, titled exactly like the milestones (`Phase 0: …` …
-  `Code health`) — containing ALL of that milestone's issues including Done, so a phase's
-  progress reads at a glance. Labels are canonical; the boards are mirrors
-  (`.github/workflows/project-sync.yml` syncs label → board `Status` when its
-  `PROJECT_SYNC_TOKEN` secret is configured — otherwise best-effort manual via
-  `gh project item-edit`). When creating an issue, add it to project #2 and, if it has a
-  milestone, to that milestone's project (`gh project item-add <n> --owner danpowell88
-  --url <issue-url>`).
+- **Project boards**: the main backlog board is user project **#2 `bgdude`** (all open
+  issues; built-in `Status` field carries the ten pipeline stages as columns, plus an
+  `Ordinal` number field for ordering — the canonical queue). Each milestone also has its
+  own board — projects **#12–#20**, titled exactly like the milestones — containing ALL of
+  that milestone's issues including Done. The milestone boards are mirrors:
+  `.github/workflows/project-sync.yml` adds new/closed issues to the boards on issue events
+  and reconciles board #2 `Status` → milestone boards hourly (needs the
+  `PROJECT_SYNC_TOKEN` secret; without it only the mirrors drift — board #2 stays true).
+  When creating an issue, add it to project #2 and, if it has a milestone, to that
+  milestone's project (`gh project item-add <n> --owner danpowell88 --url <issue-url>`).
+- **The agent fleet** that works this queue (implementer / escalation / reviewer / groomer /
+  reaper loops, tiered by model cost) is documented in `loops/README.md` and driven by
+  `scripts/run-agent.ps1`. Working `gh` needs the Projects scope:
+  `gh auth refresh -s project` (one-time per machine).
 - **Decisions** (product/architecture choices that outlive an issue) live in
   `doc/decisions/decision-<n>.md` — check them before re-litigating one; add a new numbered
   file (straight-to-main lane) when a standing choice is made. Read-only charter, personal
   audience, GBM-not-neural, what-not-to-change all live there.
 
 ### Working with issues (gh cheat-sheet)
-- List pickable work: `gh issue list --label "status:to-do" --state open --limit 200`
+- The whole queue (Status column + Ordinal, one call):
+  `gh project item-list 2 --owner danpowell88 --format json --limit 500`
+- Move an item between columns: resolve ids once
+  (`gh project view 2 --owner danpowell88 --format json` → project id;
+  `gh project field-list 2 --owner danpowell88 --format json` → Status field + option ids)
+  then `gh project item-edit --project-id <pid> --id <item-id> --field-id <status-field>
+  --single-select-option-id <target-option>` — full cheat-sheet in `loops/README.md`.
 - Read one fully: `gh issue view <n> --comments`
 - Search: `gh issue list --search "<terms> in:title,body"` (add `in:comments` to search
   comment trails, e.g. `gh issue list --state all --search "friction: in:comments"`)
 - Comment: `gh issue comment <n> --body "..."`
-- Move status: `gh issue edit <n> --remove-label "status:to-do" --add-label "status:doing"`
+- Routing flags stay labels: `gh issue edit <n> --add-label escalate` (likewise
+  `needs-human`, `detail-needed`)
 - Edit body (tick AC checkboxes etc.): `gh issue view <n> --json body -q .body > b.md`,
   edit, `gh issue edit <n> --body-file b.md`
-- Create: `gh issue create --title "<plain title>" --body-file <f> --label "status:idea"
-  --label "priority:medium" --milestone "<milestone title>"` — then add it to the project:
-  `gh project item-add <proj#> --owner danpowell88 --url <issue-url>`
+- Create: `gh issue create --title "<plain title>" --body-file <f>
+  --label "priority:medium" --milestone "<milestone title>"` — then add it to project #2
+  (`gh project item-add 2 --owner danpowell88 --url <issue-url>`; the sync workflow also
+  does this and stamps new issues `Idea`)
 
 ### Structure conventions
 - **Titles are plain descriptions** — no id prefixes and no `§` symbol; provenance lives in
@@ -67,7 +82,7 @@ All planning lives in **GitHub Issues** on `danpowell88/bgdude` (CLI: `gh`).
 - **Blockers go in the `Depends on:` bullet** as `#<n>` references (GitHub cross-links them),
   not prose. A partial dependency (only one stage blocked) still gets the entry, with the
   nuance spelled out in the plan. An issue is pickable only when every dependency is closed
-  or `status:reviewed`.
+  or in the `Reviewed` column.
 - **Every issue gets a milestone**; new code-health work → `Code health`.
 - **Definition of Done** is the CI-equivalent pipeline from "Verify the build" below — the
   issue template carries the checklist; tick items via body edit when finishing.
@@ -76,9 +91,10 @@ All planning lives in **GitHub Issues** on `danpowell88/bgdude` (CLI: `gh`).
   **finish existing features** (500000+), then new features (700000+). Pick work from
   the lowest ordinal whose dependencies are met; give a new issue an ordinal in the
   band it belongs to (fixes/tests → band 1, completing something started → band 2,
-  net-new → band 3). Sort by ordinal with:
-  `gh issue list --label "status:to-do" --state open --limit 200 --json number,title,body |
-  jq -r 'map({n:.number,t:.title,o:(((.body // "") | capture("Ordinal:\\*\\* (?<o>[0-9]+)")?.o // "999999999") | tonumber)}) | sort_by(.o)[] | "\(.o)\t#\(.n)\t\(.t)"'`
+  net-new → band 3). The ordinal lives in the board's `Ordinal` number field (canonical
+  for sorting) AND the `- **Ordinal:** <n>` body bullet (set both). Sort the To Do column:
+  `gh project item-list 2 --owner danpowell88 --format json --limit 500 |
+  jq -r '.items[] | select(.status=="To Do") | [(.ordinal // 999999999), .content.number, .title] | @tsv' | sort -n`
 
 ### Comment as you work
 All agents share one GitHub account, so **every comment starts with your agent id**:
@@ -99,13 +115,16 @@ who did what (`in:comments` search) — keep both present on every issue that re
   `friction:none` if it was genuinely smooth.
 - When you **cannot make further progress** — a dependency, a missing decision or answer, or
   an environment limitation (e.g. no reachable emulator) blocks you — **do not leave the
-  issue `status:doing`**. Move it to `status:blocked`, comment the blocker and exactly what
+  item in `Doing`**. Move it to the `Blocked` column, comment the blocker and exactly what
   would unblock it, and if another issue is the blocker add it to the `Depends on:` bullet.
-  Move it back to `status:doing` only when you actually resume it, or to `status:to-do` if
+  Add the `escalate` label ONLY when the work itself defeated you and a stronger model
+  should retry (build/CI you can't fix); a missing decision or answer is a human blocker —
+  no `escalate`. Move it back to `Doing` only when you actually resume it, or to `To Do` if
   you are handing it off unstarted. **`Doing` must mean actively being worked right now**
-  (and `Reviewing` actively being reviewed) — never a parked, waiting, or half-done issue.
-  Before ending a work session, sweep your `Doing`/`Reviewing` issues and re-status any you
-  are not still actively progressing.
+  (and `Reviewing` actively being reviewed) — never a parked, waiting, or half-done issue;
+  the reaper loop (`loops/reaper.md`) releases claims that go silent for 45+ minutes, so
+  post `progress:` comments on long-running work. Before ending a work session, sweep your
+  `Doing`/`Reviewing` items and re-status any you are not still actively progressing.
 - **Log friction as you hit it** — whenever something slows you down or trips you up, drop a
   one-line comment on that issue tagged **`friction:<category>`** so the groomer can
   aggregate them and turn recurring ones into fixes or conventions. Err toward logging.
