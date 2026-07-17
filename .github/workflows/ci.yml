@@ -87,7 +87,7 @@ jobs:
       # only cost time, never correctness -- build_runner itself detects
       # and rebuilds whatever actually changed.
       - name: Cache build_runner state
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .dart_tool/build
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
@@ -159,7 +159,7 @@ jobs:
       # :app:compileFlutterBuildDebug, which compiles the Dart app (fails on missing
       # *.g.dart otherwise — verified locally).
       - name: Cache build_runner state
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .dart_tool/build
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
@@ -246,7 +246,7 @@ jobs:
       # one another's cache writes across runs); build_runner still always
       # runs for real, so this only affects speed.
       - name: Cache build_runner state
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .dart_tool/build
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
@@ -408,7 +408,7 @@ jobs:
       # TASK-298: see the analyze job's identically-keyed cache step for
       # rationale.
       - name: Cache build_runner state
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .dart_tool/build
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
