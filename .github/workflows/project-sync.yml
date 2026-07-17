@@ -97,6 +97,7 @@ jobs:
           # Canonical queue: every board-#2 item with an issue + milestone + Status.
           # One paginated GraphQL query gets Status AND the issue's milestone directly
           # (item-list only exposes milestones when the board has that field configured).
+          # shellcheck disable=SC2016 # $owner/$num/$endCursor are GraphQL variables, not shell expansions
           gh api graphql --paginate \
             -f owner="$PROJECT_OWNER" -F num="$BACKLOG_PROJECT_NUMBER" \
             -f query='query($owner: String!, $num: Int!, $endCursor: String) {
