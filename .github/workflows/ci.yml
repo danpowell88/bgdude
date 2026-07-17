@@ -266,7 +266,7 @@ jobs:
           flutter test --coverage --total-shards=4 --shard-index=$(( ${{ matrix.shard }} - 1 )) test/
 
       - name: Upload shard coverage
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-shard-${{ matrix.shard }}
           path: coverage/lcov.info
@@ -329,7 +329,7 @@ jobs:
       # Baseline for the no-drop ratchet below: every successful run (main pushes are the
       # ones the ratchet consumes) publishes its coverage percentage as a tiny artifact.
       - name: Upload coverage percent (ratchet baseline)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-percent
           path: coverage-percent.txt
@@ -432,7 +432,7 @@ jobs:
         run: flutter build apk --debug
 
       - name: Upload debug APK
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bgdude-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
