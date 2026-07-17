@@ -356,7 +356,10 @@ jobs:
           base=$(cat baseline/coverage-percent.txt)
           pct=$(cat coverage-percent.txt)
           echo "PR line coverage: $pct% — main baseline (run $run_id): $base%"
-          awk "BEGIN {exit !($pct >= $base - 0.1)}" || {
+          # Compare integer tenths, not floats: `base - 0.1` in awk lands a hair
+          # above its true value (69.2 - 0.1 = 69.100000000000009), which fails a
+          # PR sitting at exactly the allowed 0.1pt tolerance (issue #368).
+          awk -v pct="$pct" -v base="$base" 'BEGIN {exit !(int(pct*10 + 0.5) >= int(base*10 + 0.5) - 1)}' || {
             echo "::error::Line coverage dropped: $pct% on this PR vs $base% on main — add tests for the new code (coverage is a ratchet, see CLAUDE.md)"; exit 1
           }
 
