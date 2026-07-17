@@ -17,7 +17,8 @@ void main() {
   // app flags/prefs (in this file or another run in the same process) leak in.
   setUp(setUpDemoHarness);
 
-  testWidgets('Today → Explain this reading opens the explainer', (tester) async {
+  testWidgets('Today → Explain this reading opens the explainer',
+      (tester) async {
     await pumpDemoApp(tester);
     final button = find.text('Explain this reading');
     await tester.scrollUntilVisible(button, 250,
@@ -95,5 +96,28 @@ void main() {
 
     expect(find.text('DEMO'), findsNothing);
     expect(find.text('Exit demo'), findsNothing);
+  });
+
+  testWidgets(
+      'Today → prediction chart event marker opens Explain this reading '
+      '(TASK-155)', (tester) async {
+    // The simulated day's nocturnal compression low (~03:10, see sim_data.dart)
+    // lands ~50 min before this fixed "now" -- inside the prediction chart's
+    // -150..0 min history window -- so a marker is guaranteed to render.
+    await pumpDemoApp(tester, fixedNow: DateTime(2026, 7, 10, 4, 0));
+
+    final marker = find.byWidgetPredicate((w) =>
+        w.key is ValueKey<String> &&
+        (w.key as ValueKey<String>).value.startsWith('event-marker-'));
+    await tester.scrollUntilVisible(marker, 250,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    expect(marker, findsWidgets);
+
+    await tester.tap(marker.first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Explain this reading'), findsWidgets);
+    expect(find.byTooltip('Back'), findsOneWidget);
   });
 }

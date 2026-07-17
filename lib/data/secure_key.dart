@@ -41,9 +41,20 @@ class SecureKeyStore {
   /// existing key".
   static const _generatedMarkerKey = 'db_passphrase_v1_generated';
 
-  /// Android options that back the store with the hardware Keystore (EncryptedSharedPrefs).
-  static const _androidOptions =
-      AndroidOptions(encryptedSharedPreferences: true);
+  /// Android options for the Keystore-backed store (flutter_secure_storage 10.x).
+  ///
+  /// Under 9.x the passphrase was written via Jetpack EncryptedSharedPreferences
+  /// (`encryptedSharedPreferences: true`). 10.x deprecates and *ignores* that flag
+  /// and instead auto-migrates ESP data to its own AES-GCM storage (RSA-OAEP
+  /// Keystore-wrapped key) on first access — driven by `migrateOnAlgorithmChange`,
+  /// whose default is `true`. Do NOT set it to false: that is what keeps a
+  /// 9.x-written passphrase readable after the upgrade.
+  ///
+  /// `resetOnError` MUST stay `false` (10.x flipped its default to `true`, which
+  /// PERMANENTLY erases stored values whenever a read/decrypt error occurs —
+  /// exactly the transient Keystore failure that [SecureKeyReadFailure]/TASK-249
+  /// exists to keep retryable instead of turning into data loss).
+  static const _androidOptions = AndroidOptions(resetOnError: false);
 
   /// Resolve the passphrase: read it from secure storage, migrating a key written by the
   /// old SharedPreferences implementation (so an existing encrypted DB stays readable), or

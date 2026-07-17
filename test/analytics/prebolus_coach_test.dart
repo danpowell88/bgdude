@@ -96,4 +96,37 @@ void main() {
     final advice = coach.advise(meal: pizza, state: state(bg: 130));
     expect(advice.notes.any((n) => n.contains('extended/split')), isTrue);
   });
+
+  test(
+      'a LEARNED fat/protein signature (no manual flag) also gets the '
+      'split-bolus note (TASK-153: effectiveFatProteinHeavy, not just the '
+      'manual flag)', () {
+    const learnedHeavy = SavedMeal(
+      id: 'learned-heavy',
+      name: 'Curry',
+      carbsGrams: 55,
+      fatProteinHeavy: false,
+      fatProteinTailScore: 0.6, // above SavedMeal.fatProteinHeavyThreshold
+      absorptionMinutes: 300,
+      peakOffsetMinutes: 120,
+    );
+    final advice = coach.advise(meal: learnedHeavy, state: state(bg: 130));
+    expect(advice.notes.any((n) => n.contains('extended/split')), isTrue);
+  });
+
+  test(
+      'a below-threshold learned score does NOT get the split-bolus note '
+      '(only effectiveFatProteinHeavy crossing the threshold should)', () {
+    const learnedMild = SavedMeal(
+      id: 'learned-mild',
+      name: 'Sandwich',
+      carbsGrams: 55,
+      fatProteinHeavy: false,
+      fatProteinTailScore: 0.4, // below SavedMeal.fatProteinHeavyThreshold
+      absorptionMinutes: 180,
+      peakOffsetMinutes: 90,
+    );
+    final advice = coach.advise(meal: learnedMild, state: state(bg: 130));
+    expect(advice.notes.any((n) => n.contains('extended/split')), isFalse);
+  });
 }

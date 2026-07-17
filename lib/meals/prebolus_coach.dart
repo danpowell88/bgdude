@@ -138,7 +138,7 @@ class PreBolusCoach {
         '${Mgdl(bestPeak).display(displayUnit)} with a $best-min lead vs '
         '${Mgdl(peakAtZero).display(displayUnit)} ${displayUnit.label} with none'));
 
-    if (meal.fatProteinHeavy) {
+    if (meal.effectiveFatProteinHeavy) {
       notes.add('Fat/protein-heavy meal — expect a late tail; an extended/split '
           'bolus may work better than a longer lead.');
     }
