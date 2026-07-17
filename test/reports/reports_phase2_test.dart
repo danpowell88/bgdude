@@ -57,6 +57,55 @@ void main() {
       expect(report.autoBolusCount, 3);
     });
 
+    test(
+        'TASK-151: Control-IQ workload metrics -- per-day auto units/count and '
+        'the loop-delivered fraction of all bolus insulin', () {
+      final report = const InsulinReportBuilder().build(
+        boluses: [
+          BolusEvent(time: DateTime(2026, 7, 4, 8), units: 5, carbsGrams: 40),
+          BolusEvent(time: DateTime(2026, 7, 4, 15), units: 2), // manual corr.
+          BolusEvent(
+              time: DateTime(2026, 7, 4, 16), units: 0.4, isAutomatic: true),
+          BolusEvent(
+              time: DateTime(2026, 7, 4, 17), units: 0.3, isAutomatic: true),
+          BolusEvent(
+              time: DateTime(2026, 7, 5, 3), units: 0.5, isAutomatic: true),
+        ],
+        basal: const [],
+        range: range,
+        now: DateTime(2026, 7, 6, 8),
+      );
+      // 2 active days: 7/4 (0.4+0.3=0.7 auto U, 2 events), 7/5 (0.5 auto U, 1
+      // event) -- per-day averages over those 2 active days.
+      expect(report.avgAutoBolusUnits, closeTo(0.6, 1e-9));
+      expect(report.avgAutoCorrectionCount, closeTo(1.5, 1e-9));
+      // 1.2 auto U out of 8.2 total bolus U.
+      expect(report.loopBolusFraction, closeTo(1.2 / 8.2, 1e-9));
+
+      final day74 =
+          report.days.firstWhere((d) => d.date == DateTime(2026, 7, 4));
+      expect(day74.autoBolusUnits, closeTo(0.7, 1e-9));
+      expect(day74.autoBolusCount, 2);
+      final day75 =
+          report.days.firstWhere((d) => d.date == DateTime(2026, 7, 5));
+      expect(day75.autoBolusUnits, closeTo(0.5, 1e-9));
+      expect(day75.autoBolusCount, 1);
+    });
+
+    test('no automatic boluses -> workload metrics are all zero, not NaN', () {
+      final report = const InsulinReportBuilder().build(
+        boluses: [
+          BolusEvent(time: DateTime(2026, 7, 4, 8), units: 5, carbsGrams: 40),
+        ],
+        basal: const [],
+        range: range,
+        now: DateTime(2026, 7, 6, 8),
+      );
+      expect(report.avgAutoBolusUnits, 0);
+      expect(report.avgAutoCorrectionCount, 0);
+      expect(report.loopBolusFraction, 0);
+    });
+
     test('empty history → no data', () {
       final report = const InsulinReportBuilder().build(
         boluses: const [],
