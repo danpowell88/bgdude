@@ -35,7 +35,7 @@ dependencies:
   # or ONNX) behind the ResidualModel interface in lib/ml/forecaster.dart.
 
   # Notifications & background scheduling
-  flutter_local_notifications: ^17.2.2
+  flutter_local_notifications: ^18.0.1
   workmanager: ^0.9.0
   timezone: ^0.9.4
 
@@ -74,7 +74,7 @@ dependencies:
 
   # Reporting export (clinician-ready PDF + raw CSV, shared via the system sheet)
   pdf: ^3.11.0
-  share_plus: ^10.1.0
+  share_plus: ^12.0.2
 
   # Barcode scanning for food lookup (CameraX/ML Kit; camera stays on-device).
   # 7.x pulls the 16 KB-page-aligned ML Kit barcode + CameraX native libs (required for
@@ -84,7 +84,7 @@ dependencies:
 
   # Nutrition-panel photo reader: on-device OCR of the label text + a camera/gallery
   # picker. The image is processed on-device (ML Kit) and never uploaded.
-  google_mlkit_text_recognition: ^0.15.1
+  google_mlkit_text_recognition: ^0.16.0
   image_picker: ^1.1.2
 
   # Optional small on-device LLM (Gemma) to normalise messy/foreign nutrition-panel OCR

@@ -13,6 +13,7 @@ import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
 import '../feedback/annotations.dart';
 import '../feedback/retraining.dart';
+import 'event_detectors.dart';
 import 'forecast_features.dart';
 import 'forecaster.dart';
 import 'health_features.dart';
@@ -32,6 +33,7 @@ class ForecasterTrainingResult {
     this.candidateByHorizon = const {},
     this.incumbentByHorizon,
     this.census = const TrainingCensus(),
+    this.importanceByHorizon = const {},
   });
 
   final ResidualGbmModel model;
@@ -58,6 +60,10 @@ class ForecasterTrainingResult {
 
   /// TASK-140: per-horizon training-sample counts and health-feature coverage.
   final TrainingCensus census;
+
+  /// TASK-142: horizon -> (feature index -> permutation importance). Empty for a
+  /// horizon with no trained model or no holdout to score against.
+  final Map<int, Map<int, double>> importanceByHorizon;
 }
 
 class ForecasterTrainer {
@@ -99,6 +105,11 @@ class ForecasterTrainer {
       ..removeWhere((s) => s.sensorWarmup || s.isCalibration || s.mgdl <= 0)
       ..sort((a, b) => a.time.compareTo(b.time));
     if (samples.length < 60) return null;
+
+    // TASK-141: jump/flatline/dropout-edge faults aren't caught by the sensor's own
+    // warmup/calibration flags -- exclude them from training the same way an
+    // annotated site-failure/compression-low window already is.
+    final cgmFaults = const CgmFaultDetector().detect(samples);
 
     // Held-out split point in time (train on the older portion).
     final splitIdx = (samples.length * (1 - heldOutFraction)).floor();
@@ -194,6 +205,7 @@ class ForecasterTrainer {
         ],
         annotations: annotations,
         asOf: asOf,
+        cgmFaults: cgmFaults,
       );
       trainingByHorizon[h] = cleaned;
       trainCount += cleaned.length;
@@ -211,6 +223,13 @@ class ForecasterTrainer {
     };
     final model = const ResidualGbmTrainer()
         .train(trainingByHorizon, holdoutByHorizon: holdoutByHorizon);
+
+    // TASK-142: reuses the same holdout rows already built for sigma above --
+    // no separate held-out scoring path to keep in sync.
+    final importanceByHorizon = <int, Map<int, double>>{
+      for (final h in horizons)
+        if (model.featureImportance(h, holdoutByHorizon[h]!) case final imp?) h: imp,
+    };
 
     // Score baseline vs incumbent vs baseline+candidate on the held-out tail —
     // pooled for display, and per horizon for the promotion gate (TASK-130).
@@ -273,6 +292,7 @@ class ForecasterTrainer {
             ? null
             : trainingTimestepsWithHealth / trainingTimesteps,
       ),
+      importanceByHorizon: importanceByHorizon,
     );
   }
 
