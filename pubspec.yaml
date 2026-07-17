@@ -40,7 +40,7 @@ dependencies:
   timezone: ^0.10.1
 
   # Charts
-  fl_chart: ^0.69.0
+  fl_chart: ^1.2.0
 
   # Foreground-task helper (Flutter-side mirror of native pump service state)
   flutter_foreground_task: ^8.10.0
