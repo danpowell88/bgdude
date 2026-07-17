@@ -1,0 +1,118 @@
+# Builds signed, release Connect IQ export packages (.iq) for the three
+# bgdude watch products (widget, watch face, data field) and attaches them to
+# a GitHub Release. Dormant unless explicitly triggered (a version tag or
+# workflow_dispatch) — it never runs on an ordinary push/PR, so it cannot
+# affect the main Flutter/Android CI in ci.yml.
+#
+# TASK-242: CI never built the Garmin products before this — they were built
+# ad hoc on a developer machine with a local developer_key.der (see
+# garmin/README.md). This workflow is the automated, reproducible
+# alternative for producing a store-ready .iq per product.
+#
+# VERIFICATION NOTE (be explicit, not silently confident — decision-5): the
+# Connect IQ SDK Manager's headless install step below follows Garmin's own
+# published CI guidance (a `sdkmanager --headless` binary distributed
+# alongside the SDK Manager), but this workflow has NOT been exercised by an
+# actual run in this environment (no network access to Garmin's servers, no
+# developer key, no way to trigger/observe a GitHub Actions run from here).
+# Before relying on it: push a tag or use workflow_dispatch once and confirm
+# the "Install Connect IQ SDK" step actually succeeds — the SDK Manager's
+# exact CLI flags/download URL are the one part of this file most likely to
+# have drifted from Garmin's current release.
+name: Garmin release
+
+on:
+  push:
+    tags:
+      - 'garmin-v*'
+  workflow_dispatch: {}
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write # to attach .iq artifacts to a GitHub Release
+    defaults:
+      run:
+        working-directory: garmin
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      # The Monkey C compiler itself runs headless on Linux; only the CIQ
+      # *simulator* needs a display (screenshots.ps1, run locally on
+      # Windows — see garmin/README.md), so packaging can run on a hosted
+      # Linux runner.
+      - name: Set up JDK 11
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Install Connect IQ SDK Manager (headless)
+        run: |
+          set -euo pipefail
+          curl -fsSL -o sdkmanager.zip \
+            https://developer.garmin.com/downloads/connect-iq/sdk-manager/linux/connectiq-sdk-manager-linux.zip
+          unzip -q sdkmanager.zip -d "$HOME/ciq-sdk-manager"
+          chmod +x "$HOME/ciq-sdk-manager/bin/sdkmanager"
+          echo "$HOME/ciq-sdk-manager/bin" >> "$GITHUB_PATH"
+
+      - name: Install the current Connect IQ SDK
+        run: |
+          set -euo pipefail
+          sdkmanager --headless --accept-licenses --install-latest sdk
+          sdk_bin="$(sdkmanager --headless --list-installed 2>/dev/null | \
+            grep -m1 -oE '/[^ ]*connectiq-sdk[^ ]*/bin' || true)"
+          if [ -z "$sdk_bin" ]; then
+            echo "::error::Could not locate the installed SDK's bin/ directory — see sdkmanager --headless --list-installed output above."
+            exit 1
+          fi
+          echo "$sdk_bin" >> "$GITHUB_PATH"
+
+      # The developer key is provided as a base64-encoded RSA-4096 DER secret
+      # (never committed — garmin/.gitignore already excludes
+      # developer_key.der/.pem, see "Generate a developer key" in
+      # garmin/README.md). Written to a runner-local temp file that never
+      # leaves this job.
+      - name: Materialize the signing key
+        env:
+          GARMIN_DEVELOPER_KEY_BASE64: ${{ secrets.GARMIN_DEVELOPER_KEY_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GARMIN_DEVELOPER_KEY_BASE64:-}" ]; then
+            echo "::error::The GARMIN_DEVELOPER_KEY_BASE64 repository secret is not set — see garmin/README.md 'Automated release builds (CI)'."
+            exit 1
+          fi
+          echo "$GARMIN_DEVELOPER_KEY_BASE64" | base64 -d > developer_key.der
+
+      # -e (export) with no -d builds a single .iq covering every device
+      # listed in the jungle's manifest (unlike a -d <device> sideload .prg,
+      # which targets one device) — this is why manifest*.xml's device lists
+      # (see garmin/README.md's device table) matter for the release build.
+      - name: Build release .iq exports
+        run: |
+          set -euo pipefail
+          mkdir -p bin
+          declare -A targets=(
+            [monkey.jungle]=bgdude-widget.iq
+            [watchface.jungle]=bgdude-watchface.iq
+            [datafield.jungle]=bgdude-datafield.iq
+          )
+          for jungle in "${!targets[@]}"; do
+            out="bin/${targets[$jungle]}"
+            echo "Building $jungle -> $out"
+            monkeyc -e -f "$jungle" -o "$out" -y developer_key.der -w
+          done
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f developer_key.der
+
+      - name: Attach .iq packages to the GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          files: garmin/bin/*.iq
+          fail_on_unmatched_files: true
+          generate_release_notes: true

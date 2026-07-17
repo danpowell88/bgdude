@@ -207,6 +207,53 @@ The watch adds elapsed time since receipt to `ageSec` when rendering, and
 treats anything over 900 s as stale. Every message is treated as a full
 snapshot: a key sent as absent/null clears the previously stored value.
 
+## 6. Automated release builds (CI)
+
+`.github/workflows/garmin-release.yml` builds signed, release **`.iq`** export
+packages (the format the Connect IQ Store and manual sideloading both accept)
+for all three products and attaches them to a GitHub Release. It is dormant
+unless explicitly triggered — it never runs on an ordinary push/PR, so it
+cannot affect the Flutter/Android CI in `ci.yml`.
+
+**Triggers:**
+- Pushing a tag matching `garmin-v*` (e.g. `garmin-v1.0.0`).
+- Manually, via the Actions tab → *Garmin release* → *Run workflow*.
+
+**One-time setup required before the first real run:** add a repository
+secret named **`GARMIN_DEVELOPER_KEY_BASE64`** — your `developer_key.der`
+(see "Generate a developer key" above), base64-encoded:
+
+```bash
+base64 -w0 developer_key.der   # macOS: base64 developer_key.der | tr -d '\n'
+```
+
+Paste the output as the secret value (Settings → Secrets and variables →
+Actions → New repository secret). The workflow decodes it to a runner-local
+temp file for the build and deletes it before the job ends; the key is never
+committed and never logged.
+
+**Publishing to the Connect IQ Store.** Garmin has no fully public, automated
+store-submission API, so this workflow stops at "packages attached to the
+GitHub Release" — the actual store listing/upload is a manual step:
+
+1. Download the `.iq` you want to publish from the GitHub Release.
+2. Sign in to the [Connect IQ Developer Portal](https://developer.garmin.com/connect-iq/)
+   with the same developer account whose key signed the build.
+3. Under *My Apps*, select the matching app (by its UUID — see the table in
+   section 5 above) and upload the `.iq` as a new version.
+4. Fill in store metadata (screenshots, description, changelog) and submit
+   for Garmin's review.
+
+> **Unverified step, flagged deliberately (not silently assumed working):**
+> the workflow's Connect IQ SDK Manager install step (`sdkmanager --headless`)
+> follows Garmin's published CI guidance but has not been exercised by an
+> actual run — this repo's automation had no network access to Garmin's
+> servers or a developer key to test with. Before relying on it for a real
+> release, trigger it once (`workflow_dispatch`) and confirm the "Install
+> Connect IQ SDK" step succeeds; the SDK Manager's exact download URL/CLI
+> flags are the part most likely to have drifted from Garmin's current
+> release if this ever fails.
+
 ## Prerequisites on the phone
 
 - **Garmin Connect** app installed and paired with the watch (the Connect
