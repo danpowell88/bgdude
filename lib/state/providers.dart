@@ -70,6 +70,7 @@ import '../meals/meal_outcome_service.dart';
 import '../meals/prebolus_coach.dart';
 import '../ml/basal_recommender.dart';
 import '../ml/drift_detector.dart';
+import '../ml/event_detectors.dart';
 import '../ml/forecast_features.dart';
 import '../ml/forecaster.dart';
 import '../ml/forecaster_service.dart';
@@ -1549,6 +1550,20 @@ final contextFeaturesProvider = Provider<ContextFeatures?>((ref) {
   return ref.watch(dayDataProvider).context;
 });
 
+/// TASK-141: live CGM data-quality signal — non-null when the MOST RECENT reading
+/// falls inside a detected jump/flatline/dropout-edge fault window, so the rest of
+/// the app can distrust the current reading without duplicating the detection.
+final cgmDataQualityProvider = Provider<CgmFaultKind?>((ref) {
+  final cgm = ref.watch(dayDataProvider).cgm;
+  if (cgm.isEmpty) return null;
+  final latest = cgm.map((s) => s.time).reduce((a, b) => a.isAfter(b) ? a : b);
+  final faults = const CgmFaultDetector().detect(cgm);
+  for (final f in faults) {
+    if (f.covers(latest)) return f.kind;
+  }
+  return null;
+});
+
 /// User tags over timeline events: eventId → (disposition, reason). Overlaid on the
 /// derived events so the model-inclusion choice survives rebuilds. Ignored events
 /// yield annotations for the retraining pipeline.
@@ -2269,12 +2284,22 @@ class AppJobs {
 
   static const _driftStreakKey = 'forecast_drift_streak';
 
+  /// TASK-306: latches once an out-of-band retrain has been requested for the
+  /// CURRENT drift episode, so sustained-but-unfixable drift (retraining on the
+  /// still-drifted data keeps failing the A/B gate) can't keep requesting another
+  /// retrain on every subsequent reconciliation run. Cleared once a non-drifting
+  /// run proves the episode is actually over, so a genuinely NEW drift episode is
+  /// still free to trigger its own (single) out-of-band retrain right away.
+  static const _driftRetrainRequestedKey = 'forecast_drift_retrain_requested';
+
   /// TASK-138: compares [recentRmse] to the active model's trained per-horizon
   /// sigma. A single noisy run doesn't flag anything -- only [kSustainedDriftRuns]
-  /// consecutive drifting runs sets [forecastDriftProvider]'s sustained flag and
-  /// requests an out-of-band retrain, by resetting `trainForecaster`'s throttle
-  /// stamp so the `trainForecaster` startup job later in this SAME run (see
-  /// [runStartup]'s job order) retrains now instead of waiting out its ~20h cooldown.
+  /// consecutive drifting runs sets [forecastDriftProvider]'s sustained flag.
+  /// TASK-306: the out-of-band retrain (resetting `trainForecaster`'s throttle
+  /// stamp so the `trainForecaster` startup job later in this SAME run -- see
+  /// [runStartup]'s job order -- retrains now instead of waiting out its ~20h
+  /// cooldown) fires AT MOST ONCE per sustained-drift episode, not on every run
+  /// the episode remains sustained -- see [_driftRetrainRequestedKey].
   Future<void> _checkForecastDrift(Map<int, double> recentRmse) async {
     const detector = DriftDetector();
     final model = _ref.read(forecasterModelProvider);
@@ -2293,7 +2318,13 @@ class AppJobs {
       consecutiveDriftRuns: streak,
       sustained: sustained,
     );
-    if (sustained) {
+    if (!driftingNow) {
+      // The episode is over (if there was one) -- a future new episode must be
+      // free to request its own retrain rather than staying latched forever.
+      await KvStore.setBool(_driftRetrainRequestedKey, false);
+    } else if (sustained &&
+        (await KvStore.getBool(_driftRetrainRequestedKey)) != true) {
+      await KvStore.setBool(_driftRetrainRequestedKey, true);
       await KvStore.setString(
           _forecasterTrainStampKey, DateTime(2000).toIso8601String());
     }

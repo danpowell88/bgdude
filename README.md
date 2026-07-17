@@ -30,13 +30,6 @@ tools/gen_docs.ps1 -Video      # Windows (PowerShell)
 tools/gen_docs.sh --video      # macOS / Linux
 ```
 
-## Status
-
-Actively built out. The full app — read-only pump sync, Health Connect context, on-device
-prediction & insight, dosing advisor, a customisable notification system, a Confirmation
-Inbox, and a reporting suite — is implemented, analyzer-clean, and covered by **~570 Dart tests** (90 test files) plus a native Kotlin test suite (`./gradlew :app:testDebugUnitTest`), all green on
-this machine.
-
 ## Architecture
 
 ```
@@ -234,11 +227,9 @@ checkout, set `use_local_pumpx2=true` in `android/local.properties` and
 
 ## How work is planned
 
-There is no ROADMAP file: planning lives in **GitHub Issues** (+ the `bgdude` project
+Planning lives in **GitHub Issues** (+ the `bgdude` project
 board) — issues are the unit of work, statuses are `status:*` labels, milestones carry
-the execution phases, and standing decisions live in `doc/decisions/` (decision-13; the
-pre-2026-07-11 Backlog.md IDs map to issues via `doc/backlog-migration-map.md`, and the
-archived roadmap narrative is `doc/roadmap-archived-2026-07-06.md`). Work is ordered by
+the execution phases, and standing decisions live in `doc/decisions/`. Work is ordered by
 ordinal bands: stabilise → finish existing features → new features. See `CLAUDE.md` for
 the contributor workflow and the CI-equivalent verification pipeline; the full process
 is documented in `doc/process.html`.
