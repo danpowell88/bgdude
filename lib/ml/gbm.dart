@@ -408,6 +408,39 @@ class GbmRegressor {
     }
     return sw > 0 ? math.sqrt(se / sw) : 0.0;
   }
+
+  /// Permutation feature importance (TASK-142): for each feature column, shuffles
+  /// just that column across [x] (breaking its relationship with [y] while leaving
+  /// every other feature and row order untouched) and measures how much
+  /// [weightedRmse] gets WORSE — a feature the model actually relies on hurts more
+  /// when scrambled; a feature it ignores costs nothing. Clamped to >= 0 (a
+  /// shuffle can occasionally land on an improvement by chance; that's noise, not
+  /// negative importance). Seeded (default 42) so results are deterministic given
+  /// the same holdout, matching this file's no-hidden-randomness design.
+  Map<int, double> permutationImportance(
+    List<List<double>> x,
+    List<double> y, {
+    List<double>? sampleWeights,
+    int seed = 42,
+  }) {
+    if (x.isEmpty) return {};
+    final rng = math.Random(seed);
+    final baseline = weightedRmse(x, y, sampleWeights: sampleWeights);
+    final featureCount = x.first.length;
+    final importance = <int, double>{};
+    for (var f = 0; f < featureCount; f++) {
+      final column = [for (final row in x) row[f]]..shuffle(rng);
+      final shuffled = <List<double>>[];
+      for (var i = 0; i < x.length; i++) {
+        final row = List<double>.of(x[i]);
+        row[f] = column[i];
+        shuffled.add(row);
+      }
+      final shuffledRmse = weightedRmse(shuffled, y, sampleWeights: sampleWeights);
+      importance[f] = math.max(0.0, shuffledRmse - baseline);
+    }
+    return importance;
+  }
 }
 
 class _Split {

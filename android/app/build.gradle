@@ -97,21 +97,21 @@ dependencies {
     implementation "com.github.weliem:blessed-android:2.4.0"
 
     // Garmin Connect IQ Mobile SDK (free) — pushes BG to the watch app in garmin/.
-    implementation "com.garmin.connectiq:ciq-companion-app-sdk:2.0.3@aar"
+    implementation "com.garmin.connectiq:ciq-companion-app-sdk:2.4.0@aar"
 
     implementation "androidx.core:core-ktx:1.13.1"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0"
 
     // JVM unit tests for pure native pump logic (PumpResponseMapper, MutableSnapshot).
     testImplementation "junit:junit:4.13.2"
     // Real org.json on the unit-test classpath so PumpProfileMapper's JSON output can be
     // asserted (Android's bundled org.json is a throwing stub under JVM unit tests).
-    testImplementation "org.json:json:20231013"
+    testImplementation "org.json:json:20260522"
     // TASK-186: PumpService/BootReceiver lifecycle tests need a real (shadowed) Android
     // framework — Context, Service, NotificationManager, BroadcastReceiver dispatch.
-    testImplementation "org.robolectric:robolectric:4.13"
+    testImplementation "org.robolectric:robolectric:4.16.1"
     testImplementation "androidx.test:core:1.6.1"
     // TASK-186: BluetoothPeripheral has no public constructor (blessed-android owns
     // construction internally), so the reconnect-on-disconnect test needs a mock.
-    testImplementation "org.mockito:mockito-core:5.14.2"
+    testImplementation "org.mockito:mockito-core:5.23.0"
 }
