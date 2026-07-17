@@ -12,6 +12,7 @@ library;
 import 'dart:math' as math;
 
 import '../core/samples.dart';
+import '../ml/event_detectors.dart';
 import 'annotations.dart';
 
 /// A single training row for the residual/forecaster model.
@@ -62,6 +63,10 @@ class RetrainingPipeline {
         rawSamples,
     required List<Annotation> annotations,
     required DateTime asOf,
+    // TASK-141: algorithmic CGM data-quality faults (jump/flatline/dropout-edge) --
+    // kept separate from [annotations] since these are never user-visible or
+    // persisted, just recomputed fresh from the raw CGM each training run.
+    List<CgmFaultEvent> cgmFaults = const [],
   }) {
     final excludeWindows =
         annotations.where((a) => a.kind.excludesFromTraining).toList();
@@ -70,6 +75,7 @@ class RetrainingPipeline {
     for (final s in rawSamples) {
       // Hard exclusion.
       if (excludeWindows.any((a) => a.covers(s.time))) continue;
+      if (cgmFaults.any((f) => f.covers(s.time))) continue;
 
       // Recency weight.
       final ageDays = asOf.difference(s.time).inMinutes / (60 * 24);
