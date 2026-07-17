@@ -242,6 +242,82 @@ void main() {
       expect((metrics['driftRatios'] as Map)['30'],
           greaterThanOrEqualTo(kDriftRatioThreshold));
     });
+
+    test(
+        'sustained-but-unfixable drift requests the out-of-band retrain only '
+        'ONCE, not on every subsequent run it stays sustained (TASK-306)',
+        () async {
+      final c = buildContainer(const _FixedResidualModel({30: 5.0}));
+      addTearDown(c.dispose);
+      await seedDriftingPredictions();
+      final jobs = c.read(appJobsProvider);
+
+      for (var i = 0; i < kSustainedDriftRuns; i++) {
+        await jobs.updateRecentForecastError();
+      }
+      expect(c.read(forecastDriftProvider).sustained, isTrue);
+
+      // Simulate the requested retrain having actually run (trainForecaster
+      // updates the stamp to "now" on success -- see the trainForecaster
+      // StartupJob closure).
+      final afterFirstTrigger = DateTime(2026, 1, 1);
+      await KvStore.setString(
+          'forecaster_last_trained_at', afterFirstTrigger.toIso8601String());
+
+      // Drift is STILL sustained (nothing about the underlying predictions
+      // changed) for several more reconciliation runs.
+      for (var i = 0; i < 5; i++) {
+        await jobs.updateRecentForecastError();
+      }
+      expect(c.read(forecastDriftProvider).sustained, isTrue,
+          reason: 'drift genuinely never resolved');
+
+      // A real retrain-triggering fix WOULD have reset the stamp back to
+      // epoch again -- it must not have, since one was already requested for
+      // this still-ongoing episode.
+      final stamp = await KvStore.getString('forecaster_last_trained_at');
+      expect(DateTime.parse(stamp!), afterFirstTrigger);
+    });
+
+    test(
+        'a latch left over from an already-resolved episode does not block a '
+        'genuinely fresh one', () async {
+      final c = buildContainer(const _FixedResidualModel({30: 5.0}));
+      addTearDown(c.dispose);
+      final jobs = c.read(appJobsProvider);
+
+      // Simulate a stale latch from a PRIOR (already-resolved) drift episode
+      // that requested and completed its one retrain.
+      await KvStore.setBool('forecast_drift_retrain_requested', true);
+      await KvStore.setString(
+          'forecaster_last_trained_at', DateTime(2026, 1, 1).toIso8601String());
+
+      // A clean (low-error) reconciliation run -- the episode genuinely
+      // resolved -- must clear that stale latch.
+      for (var i = 0; i < 25; i++) {
+        await repo.savePrediction(StoredPrediction(
+          madeAt: now.subtract(Duration(minutes: 30 + i)),
+          horizonMinutes: 30,
+          predictedMgdl: 100,
+          lowerMgdl: 90,
+          upperMgdl: 110,
+          modelId: 'test',
+          actualMgdl: 100.1,
+        ));
+      }
+      await jobs.updateRecentForecastError();
+      expect(c.read(forecastDriftProvider).sustained, isFalse);
+
+      // A genuinely NEW drift episode must be free to request its own
+      // retrain -- the earlier episode's latch must not still be blocking it.
+      await seedDriftingPredictions();
+      for (var i = 0; i < kSustainedDriftRuns; i++) {
+        await jobs.updateRecentForecastError();
+      }
+      expect(c.read(forecastDriftProvider).sustained, isTrue);
+      final stamp = await KvStore.getString('forecaster_last_trained_at');
+      expect(DateTime.parse(stamp!).year, 2000);
+    });
   });
 
   group('announceExercise notification gating (TASK-305)', () {

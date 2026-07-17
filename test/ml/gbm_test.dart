@@ -170,4 +170,50 @@ void main() {
           greaterThan(15.0));
     });
   });
+
+  group('permutationImportance (TASK-142)', () {
+    test('ranks the one informative feature far above pure-noise features', () {
+      // y depends ONLY on x0; x1 and x2 are independent random noise the model
+      // may pick up on by chance during fitting but that carries no real signal
+      // to lose when shuffled.
+      final rng = math.Random(7);
+      final x = <List<double>>[];
+      final y = <double>[];
+      for (var i = 0; i < 300; i++) {
+        final x0 = rng.nextDouble() * 10 - 5;
+        final x1 = rng.nextDouble() * 10 - 5;
+        final x2 = rng.nextDouble() * 10 - 5;
+        x.add([x0, x1, x2]);
+        y.add(x0 * 3);
+      }
+      final model = GbmRegressor(nEstimators: 80, maxDepth: 3)..fit(x, y);
+
+      final importance = model.permutationImportance(x, y);
+
+      expect(importance.length, 3);
+      final informative = importance[0]!;
+      final noise1 = importance[1]!;
+      final noise2 = importance[2]!;
+      expect(informative, greaterThan(noise1));
+      expect(informative, greaterThan(noise2));
+      // The noise features should cost close to nothing to shuffle.
+      expect(noise1, lessThan(informative * 0.2));
+      expect(noise2, lessThan(informative * 0.2));
+    });
+
+    test('is deterministic for the same seed', () {
+      final data = _grid((x0, x1) => x0 * x0 - 2 * x1);
+      final model = GbmRegressor(nEstimators: 60, maxDepth: 3)
+        ..fit(data.x, data.y);
+      final a = model.permutationImportance(data.x, data.y, seed: 11);
+      final b = model.permutationImportance(data.x, data.y, seed: 11);
+      expect(a, b);
+    });
+
+    test('empty holdout returns an empty map, does not throw', () {
+      final data = _grid((x0, x1) => x0 + x1);
+      final model = GbmRegressor(nEstimators: 20)..fit(data.x, data.y);
+      expect(model.permutationImportance(const [], const []), isEmpty);
+    });
+  });
 }
