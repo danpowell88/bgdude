@@ -87,7 +87,7 @@ jobs:
       # only cost time, never correctness -- build_runner itself detects
       # and rebuilds whatever actually changed.
       - name: Cache build_runner state
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .dart_tool/build
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
@@ -132,13 +132,13 @@ jobs:
         uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle (cache)
-        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
 
       - name: Set up Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
@@ -159,7 +159,7 @@ jobs:
       # :app:compileFlutterBuildDebug, which compiles the Dart app (fails on missing
       # *.g.dart otherwise — verified locally).
       - name: Cache build_runner state
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .dart_tool/build
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
@@ -194,7 +194,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Dependency review
-        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v4
         with:
           fail-on-severity: low
 
@@ -246,7 +246,7 @@ jobs:
       # one another's cache writes across runs); build_runner still always
       # runs for real, so this only affects speed.
       - name: Cache build_runner state
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .dart_tool/build
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
@@ -266,7 +266,7 @@ jobs:
           flutter test --coverage --total-shards=4 --shard-index=$(( ${{ matrix.shard }} - 1 )) test/
 
       - name: Upload shard coverage
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-shard-${{ matrix.shard }}
           path: coverage/lcov.info
@@ -329,7 +329,7 @@ jobs:
       # Baseline for the no-drop ratchet below: every successful run (main pushes are the
       # ones the ratchet consumes) publishes its coverage percentage as a tiny artifact.
       - name: Upload coverage percent (ratchet baseline)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-percent
           path: coverage-percent.txt
@@ -356,7 +356,10 @@ jobs:
           base=$(cat baseline/coverage-percent.txt)
           pct=$(cat coverage-percent.txt)
           echo "PR line coverage: $pct% — main baseline (run $run_id): $base%"
-          awk "BEGIN {exit !($pct >= $base - 0.1)}" || {
+          # Compare integer tenths, not floats: `base - 0.1` in awk lands a hair
+          # above its true value (69.2 - 0.1 = 69.100000000000009), which fails a
+          # PR sitting at exactly the allowed 0.1pt tolerance (issue #368).
+          awk -v pct="$pct" -v base="$base" 'BEGIN {exit !(int(pct*10 + 0.5) >= int(base*10 + 0.5) - 1)}' || {
             echo "::error::Line coverage dropped: $pct% on this PR vs $base% on main — add tests for the new code (coverage is a ratchet, see CLAUDE.md)"; exit 1
           }
 
@@ -376,14 +379,14 @@ jobs:
 
       # Required for the Android/Gradle build (compileSdk 36).
       - name: Set up JDK 17
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           distribution: temurin
           java-version: '17'
 
       # Cache Gradle dependencies + wrapper (TASK-218).
       - name: Set up Gradle (cache)
-        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
 
       - name: Set up Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
@@ -405,7 +408,7 @@ jobs:
       # TASK-298: see the analyze job's identically-keyed cache step for
       # rationale.
       - name: Cache build_runner state
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .dart_tool/build
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart', 'integration_test/**/*.dart') }}
@@ -429,7 +432,7 @@ jobs:
         run: flutter build apk --debug
 
       - name: Upload debug APK
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bgdude-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
@@ -446,13 +449,13 @@ jobs:
         uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle (cache)
-        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
 
       - name: Set up Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2

@@ -179,6 +179,7 @@ class SavedMeal {
     this.fatGrams = 0,
     this.proteinGrams = 0,
     this.fatProteinHeavy = false,
+    this.fatProteinTailScore = 0,
     this.absorptionMinutes = 180,
     this.peakOffsetMinutes = 90,
     this.outcomes = const [],
@@ -194,6 +195,10 @@ class SavedMeal {
   static const int minPeakOffsetMinutes = 30;
   static const int maxPeakOffsetMinutes = 180;
 
+  /// TASK-153: a learned score at/above this counts as fat/protein-heavy for the
+  /// coaches, same role as the manual [fatProteinHeavy] flag.
+  static const double fatProteinHeavyThreshold = 0.5;
+
   final String id;
   final String name;
   final String emoji;
@@ -205,9 +210,15 @@ class SavedMeal {
   final double fatGrams;
   final double proteinGrams;
 
-  /// Fat/protein-heavy meals absorb late and long (pizza effect); the coach and
-  /// insights call this out.
+  /// User-set fat/protein-heavy flag (the "pizza effect" — late, long absorption).
+  /// Always wins over [fatProteinTailScore] when true; see [effectiveFatProteinHeavy].
   final bool fatProteinHeavy;
+
+  /// TASK-153: learned fat/protein-tail signature in [0, 1], derived from the
+  /// outcome history's late-peak + still-elevated-at-3h pattern (see
+  /// [MealLibrary.learnFromOutcome]) — the "pizza effect" the app can spot on its
+  /// own once enough outcomes are logged, without the user remembering to flag it.
+  final double fatProteinTailScore;
 
   /// Learned absorption duration for the bilinear carb model. Starts at the
   /// app-wide default of 180 min and drifts toward what CGM actually shows.
@@ -215,6 +226,12 @@ class SavedMeal {
 
   /// Learned minutes from eating to the post-meal BG peak.
   final int peakOffsetMinutes;
+
+  /// TASK-153: whether the coaches should treat this meal as fat/protein-heavy —
+  /// the manual flag always wins when the user has set it; otherwise the learned
+  /// score decides once it's crossed [fatProteinHeavyThreshold].
+  bool get effectiveFatProteinHeavy =>
+      fatProteinHeavy || fatProteinTailScore >= fatProteinHeavyThreshold;
 
   /// Most recent outcomes, ascending by [MealOutcome.eatenAt].
   final List<MealOutcome> outcomes;
@@ -227,6 +244,7 @@ class SavedMeal {
     double? fatGrams,
     double? proteinGrams,
     bool? fatProteinHeavy,
+    double? fatProteinTailScore,
     int? absorptionMinutes,
     int? peakOffsetMinutes,
     List<MealOutcome>? outcomes,
@@ -240,6 +258,7 @@ class SavedMeal {
         fatGrams: fatGrams ?? this.fatGrams,
         proteinGrams: proteinGrams ?? this.proteinGrams,
         fatProteinHeavy: fatProteinHeavy ?? this.fatProteinHeavy,
+        fatProteinTailScore: fatProteinTailScore ?? this.fatProteinTailScore,
         absorptionMinutes: absorptionMinutes ?? this.absorptionMinutes,
         peakOffsetMinutes: peakOffsetMinutes ?? this.peakOffsetMinutes,
         outcomes: outcomes ?? this.outcomes,
@@ -265,6 +284,7 @@ class SavedMeal {
         'fatGrams': fatGrams,
         'proteinGrams': proteinGrams,
         'fatProteinHeavy': fatProteinHeavy,
+        'fatProteinTailScore': fatProteinTailScore,
         'absorptionMinutes': absorptionMinutes,
         'peakOffsetMinutes': peakOffsetMinutes,
         'outcomes': [for (final o in outcomes) o.toJson()],
@@ -284,6 +304,10 @@ class SavedMeal {
         proteinGrams:
             _clampNonNegative((json['proteinGrams'] as num?)?.toDouble() ?? 0),
         fatProteinHeavy: json['fatProteinHeavy'] as bool? ?? false,
+        // TASK-250-style hardening: a learned [0,1] score must not carry a
+        // corrupt/hostile out-of-range value into the coaches' threshold check.
+        fatProteinTailScore: _clampUnit(
+            (json['fatProteinTailScore'] as num?)?.toDouble() ?? 0),
         absorptionMinutes: _clampMinutes(
             (json['absorptionMinutes'] as num?)?.toInt() ?? 180,
             max: 600),
@@ -303,6 +327,9 @@ class SavedMeal {
   /// TASK-250: absorption/peak-offset minutes are positive and bounded — a corrupt
   /// row must not produce a meal whose modelled curve runs for years or backwards.
   static int _clampMinutes(int v, {required int max}) => v.clamp(1, max);
+
+  /// TASK-153: a [0,1] score must not decode to NaN or an out-of-range value.
+  static double _clampUnit(double v) => v.isNaN ? 0 : v.clamp(0.0, 1.0);
 }
 
 /// Generates a compact unique-enough id for a personal, single-device library.
@@ -321,6 +348,11 @@ class MealLibrary {
   /// Blend fraction toward each new observation. 0.3 = damped: three-ish
   /// consistent meals shift the curve most of the way, one outlier barely moves it.
   static const double learningRate = 0.3;
+
+  /// TASK-153: fewer outcomes than this and the fat/protein-tail signature is
+  /// noise, not a pattern — mirrors the outcomes>=3 confidence threshold the
+  /// pre-bolus coach already uses to gate its own advice.
+  static const int minOutcomesForFatProteinLearning = 3;
 
   final Map<String, SavedMeal> _meals;
 
@@ -391,7 +423,39 @@ class MealLibrary {
       );
     }
 
+    // TASK-153: once there's enough outcome history to trust it, re-derive the
+    // fat/protein-tail signature from the median late-peak + still-elevated-at-3h
+    // pattern and damped-blend it in, same as the peak/absorption learning above.
+    if (updated.outcomes.length >= minOutcomesForFatProteinLearning) {
+      final observedSignal = _fatProteinTailSignal(updated.outcomes);
+      final newScore = (current.fatProteinTailScore +
+              learningRate * (observedSignal - current.fatProteinTailScore))
+          .clamp(0.0, 1.0);
+      updated = updated.copyWith(fatProteinTailScore: newScore);
+    }
+
     return (library: add(updated), meal: updated);
+  }
+
+  /// TASK-153: the fat/protein "pizza effect" signature is a LATE peak (well past
+  /// the ~60-90 min a pure-carb meal typically peaks at) combined with glucose
+  /// STILL elevated at +3 h relative to where it started — carb counting alone
+  /// misses this because it only sees the (correctly-dosed) early rise. Uses the
+  /// median across [outcomes] rather than the single latest one so one noisy meal
+  /// can't swing the signal; the damped blend in [learnFromOutcome] then keeps the
+  /// STORED score itself from swinging on a single re-derivation either.
+  static double _fatProteinTailSignal(List<MealOutcome> outcomes) {
+    final medianTail =
+        _median([for (final o in outcomes) o.bgAt3hMgdl - o.bgAtMealMgdl]);
+    final medianPeakOffset =
+        _median([for (final o in outcomes) o.peakOffsetMinutes.toDouble()]);
+
+    // 0 at a resolved tail (<=0 mg/dL above meal-time BG by +3h), 1.0 once still
+    // 60+ mg/dL elevated.
+    final tailSignal = (medianTail / 60.0).clamp(0.0, 1.0);
+    // 0 at a typical ~60-min carb-only peak, 1.0 at 120+ min (clearly delayed).
+    final peakSignal = ((medianPeakOffset - 60.0) / 60.0).clamp(0.0, 1.0);
+    return (tailSignal + peakSignal) / 2.0;
   }
 
   /// Plain-language stats for the detail screen, e.g.

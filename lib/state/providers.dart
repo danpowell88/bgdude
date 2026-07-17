@@ -92,6 +92,7 @@ import '../pump/pump_snapshot.dart';
 import '../reports/report_dataset.dart';
 import '../reports/correlation_report.dart';
 import '../reports/cycle_report.dart';
+import '../reports/day_pattern_report.dart';
 import '../reports/events_journal.dart';
 import '../reports/glucose_report.dart';
 import '../reports/insulin_report.dart';
@@ -1011,6 +1012,19 @@ final siteLifetimeReportProvider =
   return const SiteLifetimeReportBuilder().build(
     annotations: ds.annotations,
     siteChanges: siteChanges,
+    cgm: ds.cgmInRange,
+    range: range,
+    now: DateTime.now(),
+  );
+});
+
+/// Day-type clustering: weekday/weekend + optional k-means over per-day feature
+/// vectors, each with a pooled AGP (TASK-154).
+final dayPatternReportProvider =
+    FutureProvider.autoDispose<DayPatternReport>((ref) async {
+  final range = ref.watch(reportRangeProvider);
+  final ds = await ref.watch(reportDatasetProvider(range).future);
+  return const DayPatternReportBuilder().build(
     cgm: ds.cgmInRange,
     range: range,
     now: DateTime.now(),

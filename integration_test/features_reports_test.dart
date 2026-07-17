@@ -1,4 +1,4 @@
-/// Emulator coverage for the Reports hub and each of the seven reports. Opens every
+/// Emulator coverage for the Reports hub and each of the eight reports. Opens every
 /// report from the hub, asserts it renders, and returns — exercising the full report
 /// stack against the simulated day's confirmed data.
 ///
@@ -32,7 +32,7 @@ void main() {
   // app flags/prefs (in this file or another run in the same process) leak in.
   setUp(setUpDemoHarness);
 
-  testWidgets('reports hub opens each of the seven reports', (tester) async {
+  testWidgets('reports hub opens each of the eight reports', (tester) async {
     await pumpDemoApp(tester);
     await openSettingsScreen(tester, 'Reports');
     expect(find.text('Reports'), findsWidgets);
@@ -45,6 +45,7 @@ void main() {
       'Correlations',
       'Events journal',
       'Model performance',
+      'Patterns',
     ]) {
       await _openReport(tester, report);
     }
@@ -76,6 +77,9 @@ void main() {
     // Demo mode seeds ~3 weeks of history, so the AGP + GMI compute (not the empty state).
     expect(find.text('GMI'), findsWidgets);
     expect(find.text('Not enough data for an AGP curve.'), findsNothing);
+    // TASK-155: the event-marker overlay is wired up under the AGP chart.
+    expect(find.textContaining('Icons mark today\'s flagged events'),
+        findsOneWidget);
   });
 
   testWidgets('glucose report → clinic-visit prep sheet renders (§4-4.4)',

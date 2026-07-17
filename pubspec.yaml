@@ -37,10 +37,10 @@ dependencies:
   # Notifications & background scheduling
   flutter_local_notifications: ^18.0.1
   workmanager: ^0.9.0
-  timezone: ^0.9.4
+  timezone: ^0.10.1
 
   # Charts
-  fl_chart: ^0.69.0
+  fl_chart: ^1.2.0
 
   # Foreground-task helper (Flutter-side mirror of native pump service state)
   flutter_foreground_task: ^8.10.0
@@ -49,7 +49,7 @@ dependencies:
   home_widget: ^0.7.0
 
   # Runtime permission requests (Bluetooth, notifications)
-  permission_handler: ^11.3.1
+  permission_handler: ^12.0.3
 
   # Android API level check (TASK-226): below API 31, BLE scanning needs runtime
   # ACCESS_FINE_LOCATION rather than the split bluetoothScan/bluetoothConnect perms.
@@ -70,7 +70,7 @@ dependencies:
   logging: ^1.2.0
   shared_preferences: ^2.3.2
   # Keystore-backed storage for the SQLCipher DB passphrase (TASK-8).
-  flutter_secure_storage: ^9.2.2
+  flutter_secure_storage: ^10.3.1
 
   # Reporting export (clinician-ready PDF + raw CSV, shared via the system sheet)
   pdf: ^3.11.0

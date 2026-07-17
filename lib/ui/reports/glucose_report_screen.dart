@@ -12,6 +12,8 @@ import '../../state/providers.dart';
 import '../widgets/common.dart';
 import '../widgets/glucose_colors.dart';
 import '../widgets/chart_axis.dart';
+import '../widgets/event_marker_bar.dart';
+import '../timeline_screen.dart' show explainDayEvent;
 import 'report_range_picker.dart';
 
 /// The Glucose report: AGP, time-in-range, key metrics, and episodes over the selected
@@ -139,7 +141,8 @@ class _ReportBody extends StatelessWidget {
         SizedBox(height: 220, child: _AgpChart(report: report, unit: unit)),
         const SizedBox(height: 8),
         Text(
-            'Median with 25–75% (dark) and 5–95% (light) bands; green = target.',
+            'Median with 25–75% (dark) and 5–95% (light) bands; green = target. '
+            'Icons mark today\'s flagged events by time of day — tap one to explain.',
             style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 20),
         _Episodes(report: report, unit: unit),
@@ -273,7 +276,7 @@ class _TirBar extends StatelessWidget {
   }
 }
 
-class _AgpChart extends StatelessWidget {
+class _AgpChart extends ConsumerWidget {
   const _AgpChart({required this.report, required this.unit});
   final GlucoseReport report;
   final GlucoseUnit unit;
@@ -281,7 +284,7 @@ class _AgpChart extends StatelessWidget {
   double _d(double mgdl) => Mgdl(mgdl).inUnit(unit);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final agp = report.agp;
     if (agp.length < 2) {
@@ -307,7 +310,7 @@ class _AgpChart extends StatelessWidget {
       line((b) => b.median, width: 3),
     ];
 
-    return LineChart(
+    final chart = LineChart(
       LineChartData(
         minX: 0,
         maxX: 24,
@@ -353,6 +356,26 @@ class _AgpChart extends StatelessWidget {
               color: cs.primary.withValues(alpha: 0.25)),
         ],
       ),
+    );
+
+    // TASK-155: today's explainable events, positioned by time-of-day against the
+    // pooled AGP curve — the AGP itself spans the whole report range, but events are
+    // only detected for today (EventBuilder runs per-day), so this shows where
+    // today's flagged moments land relative to the typical-day profile.
+    final events = ref.watch(dayEventsProvider);
+
+    return Column(
+      children: [
+        Expanded(child: chart),
+        EventMarkerBar(
+          events: events,
+          minX: 0,
+          maxX: 24,
+          xForTime: (t) => t.hour + t.minute / 60.0,
+          leftAxisWidth: 34,
+          onTap: (e) => explainDayEvent(context, ref, e),
+        ),
+      ],
     );
   }
 }
