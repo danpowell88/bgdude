@@ -1,8 +1,7 @@
 ---
 name: Task
-about: A unit of work for the agent pipeline (Idea → … → Done)
+about: A unit of work for the agent pipeline (Idea → … → Done; stage = board #2 Status column, decision-15)
 title: ''
-labels: 'status:idea'
 ---
 
 - **Ordinal:** <!-- band 1 fixes/tests 100000+, band 2 finish-existing 500000+, band 3 net-new 700000+ -->
@@ -35,5 +34,5 @@ labels: 'status:idea'
 - [ ] `doc/user-guide.html` updated when the change is user-visible, with screenshots
 - [ ] Integration test added or extended when a screen/flow changed
 - [ ] Issue updated with comments (`implemented-by:` ending with a `friction:` line)
-- [ ] Reviewed by a different agent than the implementer — a `reviewed-by:` comment is present and the PR was merged when the issue reached `status:reviewed`
+- [ ] Reviewed by a different agent than the implementer — a `reviewed-by:` comment is present and the PR was merged when the issue reached the `Reviewed` column
 - [ ] Closed (`Done`) only after Summer verified the issue's human-verification batch (decision-12) — agents never close task issues

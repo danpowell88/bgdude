@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
 import 'correlation_report_screen.dart';
+import 'day_pattern_report_screen.dart';
 import 'events_journal_screen.dart';
 import 'glucose_report_screen.dart';
 import 'insulin_report_screen.dart';
@@ -86,6 +87,12 @@ class ReportsHubScreen extends ConsumerWidget {
             title: 'Model performance',
             subtitle: 'Forecast accuracy, error grid & calibration',
             builder: () => const ModelReportScreen(),
+          ),
+          _ReportCard(
+            icon: Icons.calendar_view_week_outlined,
+            title: 'Patterns',
+            subtitle: 'Weekday vs weekend, and a learned day-type grouping',
+            builder: () => const DayPatternReportScreen(),
           ),
           const SizedBox(height: 8),
           const Padding(

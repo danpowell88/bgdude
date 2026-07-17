@@ -88,8 +88,14 @@ class MealDetailScreen extends ConsumerWidget {
                   KvRow('Carbs', '${meal.carbsGrams.toStringAsFixed(0)} g'),
                   KvRow('Absorption', '~${meal.absorptionMinutes} min'),
                   KvRow('BG peak', '~+${meal.peakOffsetMinutes} min'),
-                  KvRow('Fat/protein heavy',
-                      meal.fatProteinHeavy ? 'yes' : 'no'),
+                  KvRow('Fat/protein heavy', meal.fatProteinHeavy
+                      ? 'yes (set manually)'
+                      : meal.effectiveFatProteinHeavy
+                          ? 'yes (learned, ${(meal.fatProteinTailScore * 100).round()}% signal)'
+                          : meal.outcomes.length >=
+                                  MealLibrary.minOutcomesForFatProteinLearning
+                              ? 'no (learned)'
+                              : 'no'),
                   KvRow('Logged outcomes', '${meal.outcomes.length}'),
                 ],
               ),
@@ -153,7 +159,7 @@ class _FpuCard extends ConsumerWidget {
     if (!coach.warrantsSplit(
       fatGrams: meal.fatGrams,
       proteinGrams: meal.proteinGrams,
-      fatProteinHeavy: meal.fatProteinHeavy,
+      fatProteinHeavy: meal.effectiveFatProteinHeavy,
     )) {
       return const SizedBox.shrink();
     }

@@ -30,6 +30,16 @@ The full operational workflow — the status pipeline, the gh cheat-sheet, ordin
 issue-body structure, the claim/finish/blocked steps, and the comment tags (`implemented-by:`
 / `friction:`) — is the **`bgdude-issues`** skill (`.claude/skills/bgdude-issues/`).
 
+## Agent fleet (tooling; pipeline change PROPOSED, not in effect)
+A tiered agent fleet — implementer / escalation / reviewer / groomer / reaper role loops,
+driven by `scripts/run-agent.ps1` across harnesses (claude / qwen / copilot) — is documented
+in `loops/README.md` (`AGENTS.md` points non-Claude harnesses at these conventions). Working
+`gh` for the board needs the Projects scope: `gh auth refresh -s project` (one-time per
+machine). **Note:** decision-15 proposes making project-board columns the canonical pipeline
+stage (with labels demoted to routing flags); that contradicts the standing labels-canonical
+convention above and is **not in effect until Summer approves it** — until then the
+`bgdude-issues` skill remains authoritative.
+
 ## Git
 **Concurrent sessions isolate via worktrees + branches — ALL work, no exceptions.** When more
 than one session/agent writes to this repo at once each works in its **own git worktree on its own short-lived
