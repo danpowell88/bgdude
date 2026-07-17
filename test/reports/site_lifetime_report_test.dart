@@ -77,6 +77,27 @@ void main() {
       expect(report.medianFailureAgeHours, closeTo(60.0, 1e-9));
     });
 
+    test('an even number of failures takes the mean of the middle pair', () {
+      final base = DateTime(2026, 7, 1);
+      final changes = [
+        for (var i = 0; i < 4; i++) _change(base.add(Duration(days: 3 * i))),
+      ];
+      // Ages 40h, 50h, 70h, 80h -> median (50 + 70) / 2 = 60h.
+      final failures = [
+        for (final (i, age) in const [40, 50, 70, 80].indexed)
+          _siteFailure(base.add(Duration(days: 3 * i, hours: age))),
+      ];
+      final report = builder.build(
+        annotations: failures,
+        siteChanges: changes,
+        cgm: const [],
+        range: range,
+        now: DateTime(2026, 7, 15),
+      );
+      expect(report.failureAgesHours, hasLength(4));
+      expect(report.medianFailureAgeHours, closeTo(60.0, 1e-9));
+    });
+
     test('a siteFailure annotation outside the report range is excluded', () {
       final changedAt = DateTime(2026, 6, 1);
       final report = builder.build(
