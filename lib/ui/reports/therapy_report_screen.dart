@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../reports/site_lifetime_report.dart';
 import '../../reports/therapy_report.dart';
 import '../../state/providers.dart';
 import '../basal_recommendations_screen.dart';
@@ -18,6 +19,7 @@ class TherapyReportScreen extends ConsumerWidget {
     final async = ref.watch(therapyReportProvider);
     final profile = ref.watch(timeOfDayProfileProvider);
     final basal = ref.watch(basalRecommendationProvider);
+    final siteLifetime = ref.watch(siteLifetimeReportProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Therapy report')),
@@ -63,6 +65,13 @@ class TherapyReportScreen extends ConsumerWidget {
                           multiplier: b.multiplier,
                         ),
                     const SizedBox(height: 12),
+                  ],
+                  if (siteLifetime != null && siteLifetime.hasData) ...[
+                    Text('Infusion-site lifetime',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    _SiteLifetimeSection(report: siteLifetime),
+                    const SizedBox(height: 20),
                   ],
                   Card(
                     child: ListTile(
@@ -162,6 +171,92 @@ class _TrendChart extends StatelessWidget {
             color: cs.primary,
             dotData: const FlDotData(show: false),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// TASK-152: turns scattered siteFailure annotations into a personal
+/// set-lifetime estimate ("failures cluster after ~2.6 days") and shows
+/// whether Time in Range actually declines as a set ages.
+class _SiteLifetimeSection extends StatelessWidget {
+  const _SiteLifetimeSection({required this.report});
+  final SiteLifetimeReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final median = report.medianFailureAgeHours;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (median != null)
+              Text(
+                'Failures cluster after ~${(median / 24).toStringAsFixed(1)} '
+                'days (median of ${report.failureAgesHours.length} logged '
+                'failures).',
+                style: Theme.of(context).textTheme.bodyMedium,
+              )
+            else
+              Text(
+                '${report.failureAgesHours.length} logged site failure(s) in '
+                'range — not enough yet for a reliable pattern.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            if (report.tirBySetDay.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Time in Range by day of wear',
+                  style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 6),
+              SizedBox(height: 80, child: _TirBySetDayChart(report: report)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TirBySetDayChart extends StatelessWidget {
+  const _TirBySetDayChart({required this.report});
+  final SiteLifetimeReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final days = report.tirBySetDay.keys.toList()..sort();
+    return BarChart(
+      BarChartData(
+        maxY: 1.0,
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          show: true,
+          topTitles: hiddenAxis,
+          rightTitles: hiddenAxis,
+          leftTitles: hiddenAxis,
+          bottomTitles: AxisTitles(
+            sideTitles: numericSideTitles(
+              reservedSize: 18,
+              interval: 1,
+              color: cs.onSurfaceVariant,
+              format: (v) => v.round().toString(),
+            ),
+          ),
+        ),
+        barGroups: [
+          for (final d in days)
+            BarChartGroupData(x: d, barRods: [
+              BarChartRodData(
+                toY: report.tirBySetDay[d]!,
+                width: 10,
+                color: cs.primary,
+                borderRadius: BorderRadius.zero,
+              ),
+            ]),
         ],
       ),
     );

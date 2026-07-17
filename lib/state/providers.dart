@@ -99,6 +99,7 @@ import '../reports/insulin_report.dart';
 import '../reports/meals_report.dart';
 import '../reports/model_report.dart';
 import '../reports/report_range.dart';
+import '../reports/site_lifetime_report.dart';
 import '../reports/therapy_report.dart';
 import '../weather/weather.dart';
 import '../weather/weather_history.dart';
@@ -994,6 +995,26 @@ final correlationReportProvider =
     now: DateTime.now(),
     dailyTempC: await WeatherHistoryStore.loadDaily(),
     annotations: ds.annotations,
+  );
+});
+
+/// Infusion-site lifetime insights: siteFailure age vs set wear + a
+/// TIR-by-set-day curve (TASK-152).
+final siteLifetimeReportProvider =
+    FutureProvider.autoDispose<SiteLifetimeReport>((ref) async {
+  final range = ref.watch(reportRangeProvider);
+  final ds = await ref.watch(reportDatasetProvider(range).future);
+  final siteChanges = ref
+      .watch(deviceStateProvider)
+      .changes
+      .where((c) => c.kind == DeviceKind.site)
+      .toList();
+  return const SiteLifetimeReportBuilder().build(
+    annotations: ds.annotations,
+    siteChanges: siteChanges,
+    cgm: ds.cgmInRange,
+    range: range,
+    now: DateTime.now(),
   );
 });
 
