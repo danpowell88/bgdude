@@ -44,6 +44,7 @@ class ModelVersion {
 class ModelEvaluation {
   const ModelEvaluation({
     required this.rmseMgdl,
+    required this.mardPercent,
     required this.abFraction,
     required this.dangerousFraction,
     required this.hypoSensitivity,
@@ -52,6 +53,12 @@ class ModelEvaluation {
   });
 
   final double rmseMgdl;
+
+  /// Mean Absolute Relative Difference: mean(|predicted-reference|/reference)*100,
+  /// the field-standard CGM/forecast accuracy metric (published devices/algorithms
+  /// are usually quoted around 9-10%). Pairs with a non-positive reference are
+  /// excluded from the mean (the relative error is undefined at/below zero).
+  final double mardPercent;
   final double abFraction;
   final double dangerousFraction;
 
@@ -176,13 +183,21 @@ class ModelEvaluator {
     final grid = const ClarkeErrorGrid().evaluate(pairs);
     final hypo = HypoDetectionStats.fromPairs(pairs);
     var se = 0.0;
+    var ardSum = 0.0;
+    var ardCount = 0;
     for (final p in pairs) {
       final d = p.predicted - p.reference;
       se += d * d;
+      if (p.reference > 0) {
+        ardSum += (p.predicted - p.reference).abs() / p.reference;
+        ardCount++;
+      }
     }
     final rmse = pairs.isEmpty ? double.infinity : math.sqrt(se / pairs.length);
+    final mard = ardCount == 0 ? 0.0 : (ardSum / ardCount) * 100;
     return ModelEvaluation(
       rmseMgdl: rmse,
+      mardPercent: mard,
       abFraction: grid.abFraction,
       dangerousFraction: grid.dangerousFraction,
       hypoSensitivity: hypo.sensitivity,

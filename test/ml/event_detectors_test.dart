@@ -130,6 +130,83 @@ void main() {
     });
   });
 
+  group('CgmFaultDetector (TASK-141)', () {
+    test('flags an implausible jump between consecutive readings', () {
+      final cgm = trace(DateTime(2026, 7, 4, 8), [100, 100, 180, 182, 184]);
+      final out = const CgmFaultDetector().detect(cgm);
+      expect(out.any((e) => e.kind == CgmFaultKind.jump), isTrue);
+    });
+
+    test('a normal rate of change is not flagged as a jump', () {
+      // 1.6 mg/dL/min -- well under the physiologic ceiling.
+      final cgm = trace(DateTime(2026, 7, 4, 8), [100, 108, 116, 124, 132]);
+      final out = const CgmFaultDetector().detect(cgm);
+      expect(out.where((e) => e.kind == CgmFaultKind.jump), isEmpty);
+    });
+
+    test('flags a stuck run spanning the minimum flatline window', () {
+      // 25 minutes of bit-identical readings -- a live glucose trace always has
+      // at least minor sensor noise, this is a stuck sensor.
+      final cgm = trace(DateTime(2026, 7, 4, 8), [120, 120, 120, 120, 120, 120]);
+      final out = const CgmFaultDetector().detect(cgm);
+      expect(out.any((e) => e.kind == CgmFaultKind.flatline), isTrue);
+    });
+
+    test('normal glucose noise across the same span is not flagged as flatline',
+        () {
+      final cgm = trace(DateTime(2026, 7, 4, 8), [120, 122, 119, 123, 121, 118]);
+      final out = const CgmFaultDetector().detect(cgm);
+      expect(out.where((e) => e.kind == CgmFaultKind.flatline), isEmpty);
+    });
+
+    test(
+        'a run that stays flat for HOURS is only flagged for its first '
+        '~flatlineWindow, not its entire span -- excluding an unbounded amount '
+        'of training data for one stuck-sensor episode would be its own bug',
+        () {
+      final start = DateTime(2026, 7, 4, 0);
+      // 4 hours of bit-identical readings (48 samples @ 5-min).
+      final cgm = trace(start, List.filled(48, 120.0));
+      final out = const CgmFaultDetector().detect(cgm);
+      final flatlines = out.where((e) => e.kind == CgmFaultKind.flatline);
+      expect(flatlines, hasLength(1));
+      final span = flatlines.first.end.difference(flatlines.first.start);
+      expect(span, lessThan(const Duration(hours: 1)),
+          reason: 'the whole 4h run must not be excluded from training');
+    });
+
+    test('flags the readings bracketing a dropout gap', () {
+      final start = DateTime(2026, 7, 4, 8);
+      final cgm = [
+        CgmSample(time: start, mgdl: 120),
+        CgmSample(
+            time: start.add(const Duration(minutes: 25)), mgdl: 118), // gap
+      ];
+      final out = const CgmFaultDetector().detect(cgm);
+      final edge =
+          out.where((e) => e.kind == CgmFaultKind.dropoutEdge).toList();
+      expect(edge, isNotEmpty);
+      expect(edge.first.covers(start), isTrue);
+      expect(edge.first.covers(start.add(const Duration(minutes: 25))), isTrue);
+    });
+
+    test('a normal ~5-min cadence gap is not flagged as a dropout', () {
+      final cgm = trace(DateTime(2026, 7, 4, 8), [120, 121, 122]);
+      final out = const CgmFaultDetector().detect(cgm);
+      expect(out.where((e) => e.kind == CgmFaultKind.dropoutEdge), isEmpty);
+    });
+
+    test('degenerate CGM input -> no throw, empty result', () {
+      for (final cgm in [
+        const <CgmSample>[],
+        trace(DateTime(2026, 7, 4, 8), [120]),
+      ]) {
+        expect(() => const CgmFaultDetector().detect(cgm), returnsNormally);
+        expect(const CgmFaultDetector().detect(cgm), isEmpty);
+      }
+    });
+  });
+
   // All four AttributionKernel consumers over degenerate CGM input
   // (empty, single-sample, all-gap) in one table-driven sweep. MealDetector is the
   // only one with a pre-loop `.first`/`.last`-style access outside the kernel's own

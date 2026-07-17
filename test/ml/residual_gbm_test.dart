@@ -169,6 +169,62 @@ void main() {
     });
   });
 
+  group('trainingSigma (per-horizon sigma introspection)', () {
+    test('returns null for an untrained horizon', () {
+      final samples = _samples((x0, x1) => x0 - x1);
+      final model = const ResidualGbmTrainer().train({60: samples});
+      expect(model.trainingSigma(120), isNull);
+    });
+
+    test('returns null when no horizon has enough data to train', () {
+      final few = _samples((x0, x1) => x0 + x1, steps: 5); // 25 < 50
+      final model = const ResidualGbmTrainer().train({60: few});
+      expect(model.trainingSigma(60), isNull);
+    });
+
+    test('returns the same sigma correct() reports for a trained horizon', () {
+      final samples = _samples((x0, x1) => 5 * x0 - 3 * x1);
+      final model = const ResidualGbmTrainer().train({30: samples});
+
+      final sigma = model.trainingSigma(30);
+      expect(sigma, isNotNull);
+      expect(sigma,
+          model.correct(features: const [0.0, 0.0], horizonMinutes: 30).sigma);
+    });
+  });
+
+  group('featureImportance (TASK-142)', () {
+    test('surfaces the informative feature above the one that never mattered',
+        () {
+      // Target depends only on x0; x1 is not used anywhere in `f`.
+      final samples = _samples((x0, x1) => 10 * x0);
+      final model = const ResidualGbmTrainer().train({60: samples});
+      final holdout = [
+        for (final s in samples) (features: s.features, target: s.target),
+      ];
+
+      final importance = model.featureImportance(60, holdout);
+
+      expect(importance, isNotNull);
+      expect(importance![0], greaterThan(importance[1]!));
+    });
+
+    test('returns null for an untrained horizon', () {
+      final samples = _samples((x0, x1) => x0 + x1);
+      final model = const ResidualGbmTrainer().train({60: samples});
+      final holdout = [
+        for (final s in samples) (features: s.features, target: s.target),
+      ];
+      expect(model.featureImportance(30, holdout), isNull);
+    });
+
+    test('returns null for an empty holdout', () {
+      final samples = _samples((x0, x1) => x0 + x1);
+      final model = const ResidualGbmTrainer().train({60: samples});
+      expect(model.featureImportance(60, const []), isNull);
+    });
+  });
+
   group('persistence hardening', () {
     Map<String, dynamic> trainedBlob() {
       final samples = _samples((x0, x1) => 8 * x0 * x0 - 4 * x1);

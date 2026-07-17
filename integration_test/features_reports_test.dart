@@ -50,6 +50,20 @@ void main() {
     }
   });
 
+  testWidgets('model performance report shows MARD per horizon (TASK-163)',
+      (tester) async {
+    await pumpDemoApp(tester);
+    await openSettingsScreen(tester, 'Reports');
+    final card = find.text('Model performance');
+    await tester.scrollUntilVisible(card, 150,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(card);
+    await tester.pumpAndSettle();
+    // Demo mode seeds scored predictions, so the per-horizon cards render (not the
+    // "no matured predictions" empty state).
+    expect(find.textContaining('MARD'), findsWidgets);
+  });
+
   testWidgets('glucose report renders AGP + metrics from seeded demo data',
       (tester) async {
     await pumpDemoApp(tester);
