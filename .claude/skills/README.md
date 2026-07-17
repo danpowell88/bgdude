@@ -49,24 +49,23 @@ the codebase evolves.
 
 | Skill | What it does |
 |-------|--------------|
+| `bgdude-issues/` | The full GitHub-Issues workflow: the `status:*` pipeline, gh cheat-sheet, ordinals/body structure, claim/finish/blocked steps, comment + `friction:` tags, and the PRs-never-close-issues rule. |
 | `verify-build/` | The CI-equivalent local pipeline to run before committing (codegen → analyze → coverage-gated test → APK → native Kotlin tests), plus the `dart run` dev-env gotcha. |
 | `coverage-ratchet/` | The per-ticket coverage discipline: ship tests with new code; how CI computes coverage (excluding `database.g.dart`) and enforces no-drop vs `main`. |
+| `bug-sweep/` | The four-axis "sweep the whole surface" checklist for any bug fix (sibling sites, both branches, a test that fails when reverted, concurrency/security nuance). |
 | `drift-sqlcipher/` | The encrypted drift/SQLCipher store: mandatory codegen, `schemaVersion`/downgrade guards, and the Keystore passphrase failure modes not to paper over. |
 | `pumpx2-native-bridge/` | The native Kotlin ↔ t:slim X2 pump bridge (pumpx2 over BLE via MethodChannel). **Read-only by charter** — never send control/signed messages; verify pumpx2 APIs with `javap`. |
+| `integration-test-harness/` | Adding/running on-device tests under `integration_test/` (demo-mode harness), how to run a single file on an emulator, and the `flutter drive` caveat. |
+| `user-guide-sync/` | Keep `doc/user-guide.html` (and `doc/index.html`) current on any user-visible change; regenerate screenshots for new screens. |
+| `android-release/` | Versioning/build-types/R8, and the still-open distribution+signing decision (issue #113) — don't invent a signing/store flow. |
 
-The `github` skill is a **general** `gh` reference; this repo's **specific** issue workflow
-(the `status:*` pipeline, claim protocol, ordinals, comment tags) is the "GitHub Issues"
-section of the root `CLAUDE.md`. Use the skill for `gh` mechanics and `CLAUDE.md` for how we
-drive issues here.
+The general `github` skill covers `gh` mechanics; `bgdude-issues` covers **how we drive issues
+here**. Much of the root `CLAUDE.md` now points into these skills for detail (its *GitHub
+Issues*, *Verify the build*, *Fixing a bug*, and *Emulator tests* sections) — keep the skill
+and its CLAUDE.md pointer in sync when either changes.
 
-## Suggested additional skills (not yet written)
+## Further opt-ins
 
-- **user-guide-sync** — keep `doc/user-guide.html` (and `doc/index.html`) current on any
-  user-visible change (currently a `CLAUDE.md` rule; a good skill or hook candidate).
-- **integration-test-harness** — writing on-device tests with `integration_test/harness.dart`
-  in demo mode.
-- **android-release** — signing, Play internal track, versioning (the 16 KB alignment audit
-  is now the `native-lib-alignment` CI job, not a manual checklist).
-- **bgdude-issues** — a repo-tailored companion to `github` that scripts the `status:*`
-  transitions and comment-tag templates (only if we want the issue workflow loadable
-  on-demand rather than always-on in `CLAUDE.md`).
+`android/skills` has situational skills we didn't vendor (native-Android-focused overall):
+`performance/r8-analyzer` (release keep-rules), `build/agp/agp-9-upgrade` (AGP migrations),
+`security/android-intent-security`. Add if/when the need arises.
