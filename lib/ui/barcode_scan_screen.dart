@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import 'widgets/scanner_error_view.dart';
+
 /// Full-screen barcode scanner. Pops the first detected barcode value (or null if the
 /// user backs out). The camera stays on-device — only the resulting code is looked up,
 /// and only when barcode lookup is enabled.
@@ -51,7 +53,14 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
       ),
       body: Stack(
         children: [
-          MobileScanner(controller: _controller, onDetect: _onDetect),
+          MobileScanner(
+            controller: _controller,
+            onDetect: _onDetect,
+            // Issue #376: without this the user gets the plugin's bare default on a
+            // denied camera — no reason bgdude wanted it, no way to fix it.
+            errorBuilder: (context, error) =>
+                ScannerErrorView(errorCode: error.errorCode),
+          ),
           const IgnorePointer(
             child: Center(
               child: SizedBox(

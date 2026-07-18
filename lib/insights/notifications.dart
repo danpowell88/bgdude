@@ -9,6 +9,7 @@ library;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
+import '../logging/app_log.dart';
 import 'notification_prefs.dart';
 
 class NotificationService {
@@ -181,6 +182,39 @@ class NotificationService {
   /// can show the current state without having to schedule a real timer.
   Future<bool> canScheduleExactAlarms() async =>
       await _android?.canScheduleExactNotifications() ?? false;
+
+  /// Whether the OS will actually deliver this app's notifications (issue #376).
+  ///
+  /// Every alert this app raises — including urgent lows — is a notification, so a
+  /// denied or later-revoked `POST_NOTIFICATIONS` grant silently disables the entire
+  /// alerting surface. [init] requests the permission once, but nothing read the
+  /// answer, so a refusal was indistinguishable from working normally.
+  ///
+  /// Defaults to **true** when the platform can't say (non-Android, or no plugin
+  /// implementation registered): a warning shown on a platform that simply doesn't
+  /// report the state would be crying wolf, and this drives a prominent warning.
+  ///
+  /// Must never throw. It is called from a widget's `initState` to decide whether to
+  /// show that warning, so an exception here is an unhandled async error in Settings
+  /// rather than a missing row. `resolvePlatformSpecificImplementation` throws a
+  /// `LateError` — not a `MissingPluginException` — when no platform implementation
+  /// is registered, which is why this catches broadly rather than a specific type.
+  Future<bool> areNotificationsEnabled() async {
+    try {
+      return await _android?.areNotificationsEnabled() ?? true;
+    } catch (e) {
+      appLog.info('alerts', 'notification-enabled state unavailable: $e');
+      return true;
+    }
+  }
+
+  /// Re-request the notification permission. Android only shows the system dialog
+  /// while the grant is still askable; after a permanent denial this resolves without
+  /// any UI, which is why the caller re-checks [areNotificationsEnabled] and keeps
+  /// pointing at system settings when it stays false.
+  Future<void> requestNotificationsPermission() async {
+    await _android?.requestNotificationsPermission();
+  }
 
   /// Opens the system's exact-alarm settings screen for this app (Android 12+
   /// requires navigating there — unlike most permissions there is no simple

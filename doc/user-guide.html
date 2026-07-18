@@ -110,6 +110,7 @@
   <div class="grp">Setup</div>
   <a href="#profile">Profile</a>
   <a href="#settings">Settings &amp; integrations</a>
+  <a href="#permissions">Permissions</a>
   <a href="#safety">Safety &amp; scope</a>
 </nav>
 
@@ -260,7 +261,7 @@
   <h3>Add a meal</h3>
   <p>Tap <b>Add meal</b>. In the sheet you can:</p>
   <ul class="tight">
-    <li><b>Scan barcode</b> — point the camera at a product; carbs (and fat/protein) fill in from the food database.</li>
+    <li><b>Scan barcode</b> — point the camera at a product; carbs (and fat/protein) fill in from the food database. If camera access is off, the scanner explains what it needs the camera for (only the barcode number is looked up — the image never leaves the phone) and offers a shortcut to Android's settings. On a device with no usable camera it says so and points you at searching by name instead.</li>
     <li><b>Search foods</b> — type a name to look it up (packaged products + a bundled offline Australian generic-food set).</li>
     <li><b>Scan nutrition label</b> — photograph the <b>nutrition panel</b> (the facts table, not the food). The label text is read <b>on-device</b> (OCR; the photo never leaves your phone), the carbs/fat/protein/serving are parsed out, and — for unusual or foreign layouts — an optional small on-device AI model (Gemma, downloaded from <b>Settings → Nutrition-label AI</b>) can normalise the reading. It's a reading aid: values land in the editable fields for you to confirm, and it never doses anything by itself.</li>
     <li>Every looked-up value lands in an <b>editable field</b> — correct anything the database got wrong, or adjust to your portion. Fat/Protein (optional) feed the fat-protein-unit coach.</li>
@@ -504,7 +505,8 @@
   <p>Everything not on a tab lives in Settings. Beyond the screens above:</p>
   <ul class="tight">
     <li><b>Demo mode</b> — when active (chosen during onboarding), a status row here lets you <b>Exit</b> back to your real pump. There's no switch to turn it on; that only happens in onboarding.</li>
-    <li><b>Keep running in background</b> — Android's battery saver can delay readings and alerts while the phone sleeps; this row asks Android to exempt bgdude (one-time system dialog, also offered during onboarding) and shows whether it's granted. Recommended for reliable overnight monitoring.</li>
+    <li><b>Alerts are turned off</b> — only appears when Android is blocking bgdude's notifications, which silently disables <em>every</em> alert including urgent lows. Notification permission is asked for once at first run; if it was declined then, or switched off later in Android's settings, nothing else in the app can reach you and this row is the only sign. Tap it to turn notifications back on. If the row stays after tapping, Android has permanently denied the permission and won't ask again — the row says so and the next tap takes you straight to bgdude's system settings page, where you can switch notifications back on. It deliberately does not disappear until alerts genuinely work again.</li>
+    <li><b>Keep running in background</b> — Android's battery saver can delay readings and alerts while the phone sleeps; this row asks Android to exempt bgdude (one-time system dialog, also offered during onboarding) and shows whether it's granted. If Android has stopped asking, the row says so and the next tap opens bgdude's system settings page instead. Recommended for reliable overnight monitoring.</li>
     <li><b>Allow exact alarms</b> — only appears when the pre-bolus timer (see <a href="#meals">Meals</a>) can't get an exact-alarm grant from Android (revocable on Android 13, denied by default on Android 14+ for new installs). Without it, the timer falls back to an inexact alarm that can fire 30–40 minutes late while the phone is idle — late enough to miss the meal it was timed for. Tap to open Android's exact-alarm settings screen and grant it; the row disappears once granted, so it never nags after being addressed.</li>
     <li><b>Glucose units</b> — mmol/L (Australian default) or mg/dL. You pick this during onboarding; change it here any time and the whole app follows.</li>
     <li><b>Sync health data now</b> — pull sleep, HRV, resting/continuous HR, steps and workouts from Health Connect. If Health Connect can't be reached, a snackbar says so instead of the sync silently failing.</li>
@@ -514,6 +516,51 @@
     <li><b>Nightscout</b> — optional upload of entries, treatments and device status; enter your site URL + API secret and <b>Test connection</b>.</li>
   </ul>
   <p><b>Storage recovery.</b> If encrypted local storage fails to open (a mismatched key after restoring a backup, file damage, a temporary failure reading the saved key from secure storage — e.g. right after an OS update — or this app build being older than the data, e.g. after sideloading an older version), a banner appears explaining what's wrong and the app keeps running without saving until you act. Tap the banner for the recovery screen: <b>retry</b> opening, <b>export what's still readable</b> (only offered when some data may have survived), or a destructive, twice-confirmed <b>reset storage</b> (not offered when the real fix is installing a newer app build — there's nothing to reset). Reset never deletes the old file outright — it's renamed aside on disk in case it turns out to be recoverable later, and only then is a fresh empty store created.</p>
+</section>
+
+<section id="permissions">
+  <h2>Permissions</h2>
+  <p class="lead">What bgdude asks Android for, why, and exactly what stops working if you say no. Nothing here is asked for speculatively — if a permission is listed, something visible breaks without it.</p>
+  <table>
+    <tr><th>Permission</th><th>What it's for</th><th>What breaks without it</th></tr>
+    <tr>
+      <td><b>Notifications</b></td>
+      <td>Every alert the app raises — predicted lows and highs, urgent lows, missed bolus, mode changes, the pre-bolus timer.</td>
+      <td><b>All alerting, silently.</b> This is the one that matters most: alerts simply never appear, including urgent lows, and nothing else in the app can reach you. If it's off, Settings shows a red <b>Alerts are turned off</b> row.</td>
+    </tr>
+    <tr>
+      <td><b>Bluetooth</b> (scan &amp; connect)</td>
+      <td>Finding and holding the connection to your t:slim X2.</td>
+      <td>Pairing and all live pump data — glucose, IOB, reservoir, alarms. On Android 12 and below the system <b>Location</b> toggle must also be on (a location permission alone isn't enough on those versions); with it off, scanning finds nothing and the app says so rather than appearing to just fail.</td>
+    </tr>
+    <tr>
+      <td><b>Ignore battery optimisation</b></td>
+      <td>Keeping the pump connection and alert checks alive while the phone sleeps.</td>
+      <td>Readings and alerts get delayed or dropped overnight — Android's Doze throttles the app. Nothing looks broken; it just goes quiet at the time you're least able to notice. Offered during onboarding and re-offered in Settings if it's missing or was revoked.</td>
+    </tr>
+    <tr>
+      <td><b>Alarms &amp; reminders</b> (exact alarms)</td>
+      <td>Firing the pre-bolus timer at the moment you asked for.</td>
+      <td>The timer falls back to an inexact alarm that can drift 30–40 minutes in deep sleep — late enough that a pre-bolus reminder arrives after the meal it was timed for. Everything else is unaffected. Android 13 lets you revoke this; Android 14+ denies it by default for new installs.</td>
+    </tr>
+    <tr>
+      <td><b>Camera</b></td>
+      <td>Scanning a product barcode when adding a meal.</td>
+      <td>Barcode scanning only. You can still add foods by searching by name. The image never leaves the phone — only the barcode number is looked up, and only when barcode lookup is enabled.</td>
+    </tr>
+    <tr>
+      <td><b>Health Connect</b> (sleep, heart rate, HRV, steps, exercise, glucose)</td>
+      <td>The context the sensitivity and forecast models read — short sleep and low HRV genuinely change how much insulin you need.</td>
+      <td>Predictions and the daily briefing lose their context signals and fall back to a flatter, less personal model. The app still works; it just knows less about the day you've had.</td>
+    </tr>
+    <tr>
+      <td><b>Run at startup</b></td>
+      <td>Resuming pump monitoring after the phone reboots.</td>
+      <td>Monitoring stays off after a restart until you open the app.</td>
+    </tr>
+  </table>
+  <div class="note"><b>If you said no and changed your mind.</b> Android stops asking after a permanent denial ("don't ask again") — a further prompt then does nothing at all, with no dialog. Where that matters, bgdude notices and changes what it offers: the row or message switches to taking you straight to the app's system settings page instead of asking again. That applies to notifications, the battery exemption, Bluetooth and the camera.</div>
+  <div class="note warn"><b>Background location is not requested.</b> bgdude does not ask for it and does not declare it. Location is only involved in Bluetooth scanning on older Android versions, and only while you're using the app.</div>
 </section>
 
 <section id="safety">
