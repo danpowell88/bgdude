@@ -8,6 +8,7 @@ import '../logging/device_changes.dart';
 import '../pump/pump_events.dart';
 import '../pump/pump_snapshot.dart';
 import '../state/providers.dart';
+import 'widgets/pump_mirror_panel.dart';
 
 /// Read-only view of everything we sync from the pump: live status, insulin totals,
 /// reservoir runway, site age, active alarms/alerts, and a recent-events timeline.
@@ -48,6 +49,9 @@ class PumpScreen extends ConsumerWidget {
                             alarms: snap.activeAlarms,
                             alerts: snap.activeAlerts),
                       _StatusCard(snap: snap, unit: unit),
+                      // Issue #84: what the pump is showing on its own screen.
+                      // Renders nothing unless the pump actually answered op 57.
+                      PumpMirrorPanel(snapshot: snap),
                       _InsulinTodayCard(totals: totals),
                       _ReservoirCard(snap: snap),
                       _SiteCard(devices: devices, now: now),

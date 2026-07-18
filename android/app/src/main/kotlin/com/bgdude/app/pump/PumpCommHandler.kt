@@ -20,6 +20,7 @@ import com.jwoglom.pumpx2.pump.messages.request.currentStatus.AlarmStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.AlertStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.BasalLimitSettingsRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.GlobalMaxBolusSettingsRequest
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.HomeScreenMirrorRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.ControlIQIOBRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CurrentBasalStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CurrentEGVGuiDataRequest
@@ -280,6 +281,11 @@ class PumpCommHandler(
         // TASK-72: the pump's configured max bolus + basal limits (read-only).
         sendCommand(p, GlobalMaxBolusSettingsRequest())
         sendCommand(p, BasalLimitSettingsRequest())
+        // Issue #84: the icons the pump is showing on its own screen. Read-only
+        // currentStatus, same class as everything above — ProtocolProbe already lists
+        // it as safe. Firmware that doesn't answer op 57 simply never populates the
+        // mirror fields, which the panel renders as "unknown" rather than as "off".
+        sendCommand(p, HomeScreenMirrorRequest())
     }
 
     /**

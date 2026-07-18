@@ -430,6 +430,7 @@
   <p class="lead">Settings → <b>Pump</b>. A read-only view of live and derived pump data:</p>
   <ul class="tight">
     <li><b>Live status</b> — glucose + trend, insulin-on-board, basal rate, last bolus, and <b>Control-IQ</b> which shows the closed loop's state and current mode (e.g. "Active · Sleep").</li>
+    <li><b>On the pump right now</b> — a mirror of the status icons the pump is displaying on its own screen: whether basal is delivering, suspended or zeroed by Control-IQ, what Control-IQ is currently doing, any CGM alert, and a bolus in progress. Each is written out in words rather than shown as an icon you'd have to remember. States worth noticing (a suspension, Control-IQ stopping insulin for a predicted low, a CGM alert) are highlighted. The panel only appears when your pump actually reports this — older firmware doesn't, and rather than imply all-clear, it simply isn't shown.</li>
     <li><b>Safety limits</b> — the pump's own configured <b>max bolus</b> and <b>max basal</b> rate. The bolus advisor never suggests more than your pump's max bolus.</li>
     <li><b>Insulin today</b> — total, bolus/basal split.</li>
     <li><b>Reservoir</b> — units left + a runway estimate.</li>

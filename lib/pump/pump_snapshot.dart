@@ -114,6 +114,12 @@ class PumpSnapshot {
     this.lastBolusTime,
     this.apiVersion,
     this.firmwareVersion,
+    this.basalStatusIcon,
+    this.apControlStateIcon,
+    this.cgmTrendIcon,
+    this.cgmAlertIcon,
+    this.bolusStatusIcon,
+    this.cgmDisplayData,
     this.activeAlerts = const [],
     this.activeAlarms = const [],
   });
@@ -152,6 +158,22 @@ class PumpSnapshot {
   final DateTime? lastBolusTime;
   final String? apiVersion;
   final String? firmwareVersion;
+
+  /// HomeScreenMirror (op 57) — what the pump is showing on its own screen right now
+  /// (issue #84), as pumpx2 enum names. **Null means unknown, not off:** firmware that
+  /// doesn't answer op 57 never populates these, and a panel that rendered null as an
+  /// "off" state would assert something about the pump it was never told.
+  final String? basalStatusIcon;
+  final String? apControlStateIcon;
+  final String? cgmTrendIcon;
+  final String? cgmAlertIcon;
+  final String? bolusStatusIcon;
+  final bool? cgmDisplayData;
+
+  /// Whether the pump answered op 57 at all — the difference between "the pump says
+  /// nothing is happening" and "we never asked / it never replied".
+  bool get hasHomeScreenMirror =>
+      basalStatusIcon != null || apControlStateIcon != null;
 
   /// Active pump alerts (informational) and alarms (higher severity), by name.
   final List<String> activeAlerts;
@@ -236,6 +258,12 @@ class PumpSnapshot {
         lastBolusTime: _time(j['lastBolusTimestampEpochMs'] as num?),
         apiVersion: j['apiVersion'] as String?,
         firmwareVersion: j['firmwareVersion'] as String?,
+        basalStatusIcon: j['basalStatusIcon'] as String?,
+        apControlStateIcon: j['apControlStateIcon'] as String?,
+        cgmTrendIcon: j['cgmTrendIcon'] as String?,
+        cgmAlertIcon: j['cgmAlertIcon'] as String?,
+        bolusStatusIcon: j['bolusStatusIcon'] as String?,
+        cgmDisplayData: j['cgmDisplayData'] as bool?,
         activeAlerts: _stringList(j['activeAlerts']),
         activeAlarms: _stringList(j['activeAlarms']),
       );
