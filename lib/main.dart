@@ -117,7 +117,9 @@ Future<void> _run() async {
         persistentHistoryRepositoryProvider.overrideWithValue(repository),
         dbOpenErrorProvider.overrideWithValue(dbOpenError),
         dbOpenDiagnosisProvider.overrideWithValue(dbOpenDiagnosis),
-        dbOpenSalvageDbProvider.overrideWithValue(
+        // Issue #170: the backup service needs the live connection to export from.
+        appDatabaseProvider.overrideWithValue(dbOpenError == null ? openDb : null),
+                dbOpenSalvageDbProvider.overrideWithValue(
             dbOpenDiagnosis == DbOpenDiagnosis.corruptedData ? openDb : null),
       ],
       child: const BgDudeApp(),

@@ -28,6 +28,7 @@ import 'reports/reports_hub_screen.dart';
 import 'system_health_screen.dart';
 import 'therapy_settings_screen.dart';
 import 'weather_settings_screen.dart';
+import 'backup_screen.dart';
 
 /// Every zero-argument screen reachable via [AppRoutes.push].
 enum AppRoute {
@@ -47,6 +48,7 @@ enum AppRoute {
   modelAccuracy,
   developer,
   systemHealth,
+  backup,
 }
 
 /// Typed push helpers for [AppRoute] — the registry AC#1 asks for.
@@ -72,6 +74,7 @@ class AppRoutes {
         AppRoute.modelAccuracy => (_) => const ModelAccuracyScreen(),
         AppRoute.developer => (_) => const DeveloperScreen(),
         AppRoute.systemHealth => (_) => const SystemHealthScreen(),
+        AppRoute.backup => (_) => const BackupScreen(),
       };
 
   /// Pushes [route] onto the navigator rooted at [context].

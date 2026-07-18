@@ -335,6 +335,17 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ],
           const Divider(),
+          // Issue #170: an encrypted copy of everything, under a passphrase the user
+          // chooses. Sits next to storage recovery because that is when people look
+          // for it — ideally before, not after.
+          ListTile(
+            leading: const Icon(Icons.backup_outlined),
+            title: const Text('Backup & restore'),
+            subtitle: const Text(
+                'One encrypted file with all your data, locked with your own passphrase'),
+            onTap: () => AppRoutes.push(context, AppRoute.backup),
+          ),
+          const Divider(),
           const _NightscoutSection(),
           const Divider(),
           const AboutListTile(

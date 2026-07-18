@@ -57,6 +57,8 @@ import '../integrations/glucose_meter_transport_fbp.dart';
 import '../integrations/nightscout.dart';
 import '../logging/app_log.dart';
 import '../logging/device_changes.dart';
+import '../data/backup_archive.dart';
+import '../data/backup_io_sqlcipher.dart';
 import '../data/database.dart';
 import '../data/db_open_diagnosis.dart';
 import '../data/health_sync.dart';
@@ -478,6 +480,21 @@ final dbOpenDiagnosisProvider = Provider<DbOpenDiagnosis?>((ref) => null);
 /// [DbOpenDiagnosis.corruptedData] — lets the recovery screen attempt a salvage
 /// export of whatever tables are still readable. Null otherwise. Overridden in `main()`.
 final dbOpenSalvageDbProvider = Provider<AppDatabase?>((ref) => null);
+
+/// The live, opened database — overridden in `main()`. Null when the database failed to
+/// open, which is why every consumer must handle null rather than assuming it is there.
+final appDatabaseProvider = Provider<AppDatabase?>((ref) => null);
+
+/// Encrypted backup/restore (issue #170). Null until the database is open — there is
+/// nothing to back up before then, and a restore needs a live connection to export into.
+final backupServiceProvider = Provider<BackupService?>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  if (db == null) return null;
+  return BackupService(
+    io: SqlCipherBackupIo(db),
+    currentSchemaVersion: db.schemaVersion,
+  );
+});
 
 /// The clock demo-mode data generation reads (TASK-220). Defaults to the wall clock;
 /// integration tests override this to a fixed value so the simulated feed/history
