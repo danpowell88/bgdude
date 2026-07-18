@@ -48,10 +48,19 @@ enum GlucoseTrend {
 /// (when they're calibrations) are excluded from stats/training (TASK-9).
 enum GlucoseSource {
   sensor,
-  meter;
+  meter,
 
-  static GlucoseSource fromName(String? s) =>
-      s == 'meter' ? GlucoseSource.meter : GlucoseSource.sensor;
+  /// Pulled from a Nightscout site in follower mode (issue #75), not measured by a
+  /// device this app is connected to.
+  nightscout;
+
+  /// Unknown names fall back to [sensor] deliberately: rows written before this enum
+  /// grew a value must keep their original meaning rather than becoming "unknown".
+  static GlucoseSource fromName(String? s) => switch (s) {
+        'meter' => GlucoseSource.meter,
+        'nightscout' => GlucoseSource.nightscout,
+        _ => GlucoseSource.sensor,
+      };
 }
 
 /// A single CGM reading.

@@ -55,6 +55,7 @@ import '../integrations/glucose_meter_service.dart';
 import '../integrations/glucose_meter_transport.dart';
 import '../integrations/glucose_meter_transport_fbp.dart';
 import '../integrations/nightscout.dart';
+import '../integrations/nightscout_pull.dart';
 import '../logging/app_log.dart';
 import '../logging/device_changes.dart';
 import '../data/database.dart';
@@ -1920,6 +1921,58 @@ class ConnectionAlertService {
         } catch (_) {}
       });
     }
+  }
+}
+
+/// Nightscout follower polling (issue #75).
+///
+/// Only ticks when follower mode is on; the puller itself also re-checks, so flipping
+/// the setting off mid-flight can't leave a poll running against a site the user just
+/// stopped following.
+final nightscoutFollowerProvider = Provider<NightscoutFollowerService>((ref) {
+  final service = NightscoutFollowerService(ref);
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+class NightscoutFollowerService {
+  NightscoutFollowerService(this._ref) {
+    // 5 minutes matches a CGM's own cadence: polling faster cannot surface a reading
+    // that does not exist yet, and only costs battery and someone else's server.
+    _timer = Timer.periodic(const Duration(minutes: 5), (_) => pullNow());
+  }
+
+  final Ref _ref;
+  Timer? _timer;
+  bool _inFlight = false;
+
+  Future<NightscoutPullResult> pullNow() async {
+    // A slow or hung site must not stack overlapping polls, each re-fetching the same
+    // window and racing to write the same rows.
+    if (_inFlight) return const NightscoutPullResult(skipped: true);
+    _inFlight = true;
+    try {
+      final puller = NightscoutPuller(
+        client: _ref.read(nightscoutClientProvider),
+        repository: _ref.read(historyRepositoryProvider),
+      );
+      final result = await puller.pull();
+      if (result.ingested > 0) {
+        appLog.info('nightscout',
+            'follower pulled ${result.ingested} new of ${result.fetched}');
+      }
+      return result;
+    } catch (e) {
+      appLog.error('nightscout', 'follower pull failed', error: e);
+      return const NightscoutPullResult();
+    } finally {
+      _inFlight = false;
+    }
+  }
+
+  void dispose() {
+    _timer?.cancel();
+    _timer = null;
   }
 }
 
