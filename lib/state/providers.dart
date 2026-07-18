@@ -36,6 +36,8 @@ import '../insights/a1c_goal.dart';
 import '../insights/alcohol_watch.dart';
 import '../insights/effective_low_threshold.dart';
 import '../insights/alert_thresholds.dart';
+import '../insights/ask_data.dart';
+import '../insights/ask_data_service.dart';
 import '../insights/daily_narrative.dart';
 import '../insights/exercise_mode.dart';
 import '../insights/illness_mode.dart';
@@ -592,6 +594,32 @@ final todayMetricsProvider = Provider<GlucoseMetrics>((ref) {
   final day = ref.watch(dayDataProvider);
   return const MetricsCalculator().compute(day.cgm);
 });
+
+/// Issue #80: metrics over an arbitrary window, so a question about "this month"
+/// is answered from that month rather than from today.
+final askMetricsProvider =
+    FutureProvider.family<GlucoseMetrics, AskPeriod>((ref, period) async {
+  final repo = ref.watch(historyRepositoryProvider);
+  final now = DateTime.now();
+  final cgm = await repo.cgm(now.subtract(period.duration), now);
+  return const MetricsCalculator().compute(cgm);
+});
+
+/// Phrases an ask-your-data answer using the optional on-device model. Without one the
+/// service states the retrieved facts directly — less conversational, equally true.
+final askPhraserProvider = Provider<AskPhraser>((ref) =>
+    ref.watch(panelModelProvider).installed
+        ? GemmaAskPhraser(
+            onModelLoadFailed: (e) {
+              appLog.error('ask_data', 'model failed to load — clearing installed state',
+                  error: e);
+              unawaited(ref.read(panelModelProvider.notifier).markLoadFailed());
+            },
+          )
+        : const NoopAskPhraser());
+
+final askDataServiceProvider = Provider<AskDataService>(
+    (ref) => AskDataService(phraser: ref.watch(askPhraserProvider)));
 
 /// The user's GMI (estimated A1c) goal, as a GMI percentage. Persisted.
 final a1cTargetProvider =
