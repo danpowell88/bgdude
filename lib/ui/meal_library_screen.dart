@@ -228,6 +228,56 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
   /// Photograph the nutrition panel and read carbs/fat/protein off it on-device (OCR, with
   /// an optional small-LLM fallback). Everything lands in the editable fields to confirm —
   /// the scan never doses anything by itself.
+  /// Issue #79: estimate macros from a typed description. The result always lands in
+  /// the editable fields below and is labelled an estimate — it is never a dose.
+  Future<void> _describeMeal() async {
+    final description = await showDialog<String>(
+      context: context,
+      builder: (context) => const _DescribeMealDialog(),
+    );
+    if (description == null || description.trim().isEmpty || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final service = ref.read(mealEstimateServiceProvider);
+    if (service == null) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Food data is still loading — try again.')));
+      return;
+    }
+    messenger.showSnackBar(const SnackBar(content: Text('Estimating…')));
+
+    final estimate = await service.estimate(description);
+    if (!mounted) return;
+    if (estimate == null) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text(
+              "Couldn't estimate that one — try naming the dishes separately, or "
+              'enter it manually.')));
+      return;
+    }
+
+    setState(() {
+      _name.text = description.trim();
+      _carbs.text = estimate.totalCarbsG.round().toString();
+      _fat.text = estimate.totalFatG.round().toString();
+      _protein.text = estimate.totalProteinG.round().toString();
+      _refreshFatProteinHeavy();
+    });
+
+    final unmatched = estimate.items
+        .where((i) => i.carbsG == null && i.fatG == null && i.proteinG == null)
+        .map((i) => i.name)
+        .toList();
+    messenger.showSnackBar(SnackBar(
+      content: Text(unmatched.isEmpty
+          // Always say it is an estimate. It is the user's job to sanity-check it.
+          ? 'Estimate only — check the values below before saving.'
+          : "Estimate only — couldn't find ${unmatched.join(', ')}, so "
+              "${unmatched.length == 1 ? 'it is' : 'they are'} not counted."),
+      duration: const Duration(seconds: 6),
+    ));
+  }
+
   Future<void> _scanLabel() async {
     final messenger = ScaffoldMessenger.of(context);
     final picker = ImagePicker();
@@ -313,6 +363,14 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
                 icon: const Icon(Icons.document_scanner_outlined),
                 label: const Text('Scan nutrition label'),
                 onPressed: _scanLabel,
+              ),
+              const SizedBox(height: 8),
+              // Issue #79: type the meal instead of looking each item up.
+              OutlinedButton.icon(
+                key: const Key('describe-meal-button'),
+                icon: const Icon(Icons.edit_note),
+                label: const Text('Describe the meal'),
+                onPressed: _describeMeal,
               ),
               const SizedBox(height: 12),
               TextField(
@@ -488,6 +546,65 @@ class _FoodSearchDialogState extends State<_FoodSearchDialog> {
         TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cancel')),
+      ],
+    );
+  }
+}
+
+/// Asks for a free-text meal description (issue #79).
+class _DescribeMealDialog extends StatefulWidget {
+  const _DescribeMealDialog();
+
+  @override
+  State<_DescribeMealDialog> createState() => _DescribeMealDialogState();
+}
+
+class _DescribeMealDialogState extends State<_DescribeMealDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Describe the meal'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            key: const Key('describe-meal-field'),
+            controller: _controller,
+            autofocus: true,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'chicken burrito, chips and a coke',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (v) => Navigator.of(context).pop(v),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'This produces an estimate you can edit — not a dose. Check it before '
+            'you save.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: const Key('describe-meal-submit'),
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Estimate'),
+        ),
       ],
     );
   }

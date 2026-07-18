@@ -9,6 +9,8 @@ library;
 
 import 'package:flutter_gemma/flutter_gemma.dart';
 
+import 'meal_estimate.dart';
+import 'meal_estimate_service.dart';
 import 'nutrition_panel.dart';
 import 'panel_llm.dart';
 
@@ -47,6 +49,55 @@ class GemmaPanelExtractor implements PanelLlmExtractor {
       final response =
           await session.getResponse().timeout(const Duration(seconds: 45));
       return parsePanelLlmJson(response, rawText: ocrText);
+    } catch (_) {
+      return null;
+    } finally {
+      try {
+        await session?.close();
+      } catch (_) {}
+      try {
+        await model?.close();
+      } catch (_) {}
+    }
+  }
+}
+
+/// Free-text meal estimation on the same on-device model (issue #79).
+///
+/// Mirrors [GemmaPanelExtractor]'s session handling — greedy decoding, a hard timeout,
+/// and close-after-use — because the failure that matters is the same one: a session
+/// left open holds the model in memory and the next scan OOMs.
+class GemmaMealEstimator implements MealEstimator {
+  const GemmaMealEstimator({this.onModelLoadFailed});
+
+  /// See [GemmaPanelExtractor.onModelLoadFailed] — signals a corrupt/truncated file
+  /// rather than an inference failure, so the caller can clear the installed flag.
+  final void Function(Object error)? onModelLoadFailed;
+
+  @override
+  bool get available => true;
+
+  @override
+  Future<MealEstimate?> estimate(String description) async {
+    InferenceModel? model;
+    InferenceModelSession? session;
+    try {
+      try {
+        model = await FlutterGemma.getActiveModel(
+          maxTokens: 2048,
+          preferredBackend: PreferredBackend.cpu,
+        );
+      } catch (e) {
+        onModelLoadFailed?.call(e);
+        rethrow;
+      }
+      // Greedy: we want a consistent estimate, not a creative one.
+      session = await model.createSession(temperature: 0.0, topK: 1);
+      await session.addQueryChunk(
+          Message.text(text: buildMealEstimatePrompt(description), isUser: true));
+      final response =
+          await session.getResponse().timeout(const Duration(seconds: 45));
+      return parseMealEstimateJson(response);
     } catch (_) {
       return null;
     } finally {

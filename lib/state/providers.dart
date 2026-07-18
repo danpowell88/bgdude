@@ -26,6 +26,7 @@ import '../feedback/pending_confirmation.dart';
 import '../food/food_database.dart';
 import '../food/offline_afcd.dart';
 import '../food/open_food_facts.dart';
+import '../food/meal_estimate_service.dart';
 import '../food/panel_llm.dart';
 import '../food/panel_llm_gemma.dart';
 import '../food/panel_model_manager.dart';
@@ -199,6 +200,32 @@ final panelLlmProvider = Provider<PanelLlmExtractor>((ref) =>
             },
           )
         : const NoopPanelLlm());
+
+/// Free-text meal → macros (issue #79). Uses the same optional on-device model as the
+/// label scanner, and falls back to a food-database name search when none is installed
+/// — the model is a large optional download, so no-model is the common case.
+final mealEstimatorProvider = Provider<MealEstimator>((ref) =>
+    ref.watch(panelModelProvider).installed
+        ? GemmaMealEstimator(
+            onModelLoadFailed: (e) {
+              appLog.error(
+                  'meal_estimate', 'model failed to load — clearing installed state',
+                  error: e);
+              unawaited(ref.read(panelModelProvider.notifier).markLoadFailed());
+            },
+          )
+        : const NoopMealEstimator());
+
+/// Estimates macros for a typed meal description. Null while the food database is
+/// still loading, so callers can show progress rather than a premature "no result".
+final mealEstimateServiceProvider = Provider<MealEstimateService?>((ref) {
+  final foods = ref.watch(foodDatabaseProvider).valueOrNull;
+  if (foods == null) return null;
+  return MealEstimateService(
+    estimator: ref.watch(mealEstimatorProvider),
+    foods: foods,
+  );
+});
 
 /// State of the downloadable nutrition-panel LLM model.
 class PanelModelStatus {
