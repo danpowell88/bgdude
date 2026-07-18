@@ -47,6 +47,14 @@ class UncertaintyCalibrator {
       mgdl: f.mgdl,
       lowerMgdl: (f.mgdl - kForecastZ90 * sigma).clamp(39.0, 400.0),
       upperMgdl: (f.mgdl + kForecastZ90 * sigma).clamp(39.0, 400.0),
+      // Carried through, not recomputed — the calibrator only touches the band.
+      residualMgdl: f.residualMgdl,
+      // Issue #73: only claim liveError when recent error ACTUALLY widened the band.
+      // Reporting it whenever a recent RMSE merely exists would tell the user the
+      // model is underperforming when the calibrator changed nothing.
+      bandSource: sigma > modelSigma
+          ? ForecastBandSource.liveError
+          : f.bandSource,
     );
   }
 
