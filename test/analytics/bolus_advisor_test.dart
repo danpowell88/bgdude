@@ -340,4 +340,72 @@ void main() {
       expect(suggested, isNot(contains('1.24')));
     });
   });
+
+  group('sensitivity adjustment is shown in the working (issue #74)', () {
+    String? sensitivityLine(BolusAdvice advice) {
+      for (final step in advice.working) {
+        if (step.label == 'Sensitivity') return step.value;
+      }
+      return null;
+    }
+
+    test('a detected shift names the factor, its drivers, and both ISF values', () {
+      // 1.25x resistance at full confidence: effective ISF 50 -> 40 mg/dL/U.
+      const ctx = SensitivityContext(
+        resistanceMultiplier: 1.25,
+        confidence: 1.0,
+        reasons: ['short sleep', 'post-exercise'],
+      );
+
+      final advice = BolusAdvisor().advise(state(bg: 200, ctx: ctx));
+      final line = sensitivityLine(advice);
+
+      expect(line, isNotNull,
+          reason: 'the working must not show an adjusted ISF silently');
+      expect(line, contains('1.25'));
+      // The drivers are why the user can sanity-check it rather than just accept it.
+      expect(line, contains('short sleep'));
+      expect(line, contains('post-exercise'));
+    });
+
+    test('no line when sensitivity is neutral', () {
+      // A permanent "x1.00" row is noise that trains the reader to skip the working.
+      final advice =
+          BolusAdvisor().advise(state(bg: 200, ctx: SensitivityContext.neutral));
+
+      expect(sensitivityLine(advice), isNull);
+    });
+
+    test('a low-confidence signal barely moves ISF and stays off the working', () {
+      // effectiveMultiplier blends toward 1.0 by confidence, so a weak signal must
+      // not produce a "Sensitivity" row implying the dose was meaningfully adjusted.
+      const ctx = SensitivityContext(
+        resistanceMultiplier: 1.4,
+        confidence: 0.01,
+        reasons: ['low HRV'],
+      );
+
+      expect(sensitivityLine(BolusAdvisor().advise(state(bg: 200, ctx: ctx))),
+          isNull);
+    });
+
+    test('the shown ISF matches the one the correction actually used', () {
+      const ctx = SensitivityContext(
+          resistanceMultiplier: 1.25, confidence: 1.0, reasons: ['illness']);
+
+      // mg/dL so the assertions read in the same units as the therapy setting
+      // (ISF 50 -> 40); in the mmol default these are 2.8 -> 2.2.
+      final advice = BolusAdvisor()
+          .advise(state(bg: 200, ctx: ctx), displayUnit: GlucoseUnit.mgdl);
+      final isfLine =
+          advice.working.firstWhere((s) => s.label == 'ISF').value;
+
+      // The whole point of the new row is that these two agree and the difference
+      // from the therapy setting is explained — not that a third number appears.
+      expect(isfLine, contains('40'));
+      expect(sensitivityLine(advice), contains('40'));
+      expect(sensitivityLine(advice), contains('50'));
+    });
+  });
+
 }
