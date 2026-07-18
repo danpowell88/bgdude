@@ -93,7 +93,8 @@ files so there is one source of truth.)
 
 - `main` only gains task code through a PR with `analyze` (--fatal-infos),
   `coverage-gate`, `apk-build`, `native-tests`, `actionlint`, `android-lint`
-  (warningsAsErrors + baseline), and `dependency-review` green, plus CodeQL results
+  (warningsAsErrors + baseline), `detekt` (Kotlin complexity/idiom, baseline —
+  issue #333), and `dependency-review` green, plus CodeQL results
   clean of medium+ security / warning-level alerts introduced by the PR (GitHub ruleset
   "main merge gate: PR + green CI", decisions 10, 11, 14).
 - **An item only reaches `Needs Review` with its PR's CI checks green** — the implementer
@@ -101,6 +102,9 @@ files so there is one source of truth.)
   quota on substance, not mechanical failures.
 - `coverage-gate` on a PR enforces the floor AND the no-drop ratchet vs the latest
   successful `main` run: coverage that regresses fails the check — add tests, don't argue.
+- `detekt` and `android-lint` both run against a committed baseline, so only NEW
+  findings fail. Regenerating a baseline to clear a finding you just introduced defeats
+  the gate — fix the finding, or argue it in review, but don't re-baseline it away.
 - Implementers never merge; the reviewer never merges its own work; nobody uses
   `gh pr merge --admin`.
 - Agents never close a task issue — that is Summer's verdict on a verification batch

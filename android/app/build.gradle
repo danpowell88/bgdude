@@ -2,6 +2,41 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
+    id "io.gitlab.arturbosch.detekt"
+}
+
+// Issue #333: static analysis of the Kotlin surface — complexity, idiom and style —
+// which Android Lint (#331) does not cover. Runs standalone (`./gradlew :app:detekt`)
+// without needing the Flutter/AGP variant graph, so it stays fast in CI.
+//
+// The baseline freezes today's findings so only NEW ones fail; it is a tracked
+// burn-down, not a permanent exemption. Regenerate deliberately with
+// `./gradlew :app:detektBaseline` — doing so after introducing a finding would
+// silence it, which is the one misuse worth calling out.
+detekt {
+    toolVersion = "1.23.8"
+    // Analyse hand-written sources only. Generated Flutter/AGP output under build/
+    // would otherwise dominate the report with findings nobody can act on.
+    source.setFrom("src/main/kotlin", "src/main/java", "src/test/kotlin")
+    buildUponDefaultConfig = true
+    // Only the deliberate deviations from detekt's defaults; see the file's header
+    // for why each exists. Test sources are analysed, not excluded — just relieved
+    // of the rules that are idiomatic in test doubles.
+    config.setFrom("detekt.yml")
+    parallel = true
+    baseline = file("detekt-baseline.xml")
+    ignoreFailures = false
+}
+
+tasks.named("detekt").configure {
+    reports {
+        xml.required = true
+        html.required = true
+        // SARIF is what a code-scanning upload would consume later; cheap to emit now.
+        sarif.required = true
+        txt.required = false
+        md.required = false
+    }
 }
 
 def localProperties = new Properties()

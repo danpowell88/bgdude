@@ -23,7 +23,11 @@ commit when it all passes:
    analyze and unit tests miss. Do not skip it.
 6. When native Kotlin changed: `cd android && ./gradlew :app:testDebugUnitTest` — the native
    suite is BLOCKING in CI (`ProtocolProbeTest` guards the read-only-pump charter,
-   `PumpResponseMapperTest` guards the mU→U conversions).
+   `PumpResponseMapperTest` guards the mU→U conversions) — **and**
+   `cd android && ./gradlew :app:detekt` (issue #333), also blocking. detekt runs against
+   `android/app/detekt-baseline.xml`, so only NEW findings fail. If it flags your change,
+   fix the finding — do NOT run `:app:detektBaseline`, which would silence it by folding it
+   into the baseline and defeat the gate.
 
 If any step fails, fix it before committing — do not push a change that turns CI red. If CI
 is already red on `main`, treat getting it green as part of the current task.

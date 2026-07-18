@@ -640,3 +640,76 @@ jobs:
           if [ "$fail" -ne 0 ]; then
             echo "::error::one or more 64-bit native libraries are not 16 KB page-aligned"; exit 1
           fi
+
+  # Issue #333: Kotlin complexity/idiom/style analysis — the gap Android Lint (#331)
+  # leaves, and what GitHub Code Quality would cover if it supported Kotlin.
+  # detekt over ktlint deliberately: ktlint is a formatter (closer in scope to #332),
+  # detekt does the structural analysis this gate is for.
+  #
+  # A committed baseline (android/app/detekt-baseline.xml) freezes the 73 findings
+  # present when this landed, so ONLY NEW findings fail — a tracked burn-down, same
+  # shape as the Android Lint baseline. Verified the gate actually bites by
+  # introducing a deliberate violation and watching the build go red.
+  #
+  # No build_runner and no APK: `:app:detekt` parses Kotlin sources directly and
+  # doesn't consume Dart-generated output, so this stays a fast, independent job.
+  # `pub get` is still needed — the Flutter Gradle plugin reads
+  # .flutter-plugins-dependencies to configure the :app project at all.
+  detekt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: 3.44.4
+          cache: true
+
+      - name: Install dependencies
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: flutter pub get
+
+      # Same deterministic write as native-tests / android-lint.
+      - name: Write local.properties
+        run: |
+          FLUTTER_SDK="${FLUTTER_ROOT:-$(dirname "$(dirname "$(command -v flutter)")")}"
+          ANDROID_SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$FLUTTER_SDK" ] || [ -z "$ANDROID_SDK" ]; then
+            echo "::error::Could not resolve FLUTTER_SDK ('$FLUTTER_SDK') or ANDROID_SDK ('$ANDROID_SDK')"; exit 1
+          fi
+          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_SDK" "$ANDROID_SDK" > android/local.properties
+
+      # Not retried: by this point dependencies are resolved, so a failure here is a
+      # real finding, not a network blip, and must fail the build rather than get a
+      # free second attempt (the TASK-301 lesson from native-tests).
+      - name: Run detekt
+        run: cd android && ./gradlew :app:detekt --no-daemon
+
+      # The HTML/SARIF reports make a failure diagnosable without re-running locally.
+      - name: Upload detekt reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: detekt-reports
+          path: build/app/reports/detekt/
+          if-no-files-found: ignore

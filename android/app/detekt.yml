@@ -1,0 +1,30 @@
+# detekt overrides for bgdude (issue #333). Layered on top of detekt's default
+# ruleset (`buildUponDefaultConfig = true` in app/build.gradle) — only the
+# deliberate deviations live here, so this file stays readable and every entry
+# has to justify itself.
+#
+# Test sources ARE analysed rather than excluded wholesale: a real complexity or
+# correctness smell in a test matters, and the native suite guards the
+# read-only-pump charter. What's relaxed below is the narrow set of rules whose
+# findings are *idiomatic* in test doubles, so they would otherwise fire on every
+# new fake — the kind of recurring false positive that trains people to
+# re-baseline instead of fix.
+
+empty-blocks:
+  EmptyFunctionBlock:
+    # A fake listener implementing an interface it doesn't care about has empty
+    # overrides by design; that IS the double. Six of these were in the initial
+    # baseline and every future fake would add another.
+    excludes: ['**/test/**']
+
+exceptions:
+  TooGenericExceptionThrown:
+    # Tests that verify error handling have to throw something generic on purpose
+    # (SafeCallbacksTest throws RuntimeException precisely to prove it's caught).
+    excludes: ['**/test/**']
+
+complexity:
+  LongParameterList:
+    # Fixture builders in tests legitimately take many parameters — that's the
+    # fixture being explicit rather than hiding state.
+    excludes: ['**/test/**']
