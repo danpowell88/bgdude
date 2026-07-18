@@ -16,6 +16,8 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV2R
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentEGVGuiDataResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.InsulinStatusResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.LastBolusStatusV2Response
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.PumpGlobalsResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.PumpSettingsResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.PumpVersionResponse
 
 /**
@@ -33,6 +35,17 @@ object PumpResponseMapper {
     fun apply(message: Message, snapshot: MutableSnapshot) {
         when (message) {
             // Ibc (internal battery capacity) is the value the pump UI shows as %.
+            // Issue #85: the pump's own configuration, read-only. Ints on the wire;
+            // cannula prime is in hundredths of a unit (0x1e = 30 -> 0.30 U).
+            is PumpSettingsResponse -> {
+                snapshot.autoShutdownEnabled = message.autoShutdownEnabled != 0
+                snapshot.autoShutdownHours = message.autoShutdownDuration
+                snapshot.lowInsulinThresholdUnits = message.lowInsulinThreshold
+                snapshot.cannulaPrimeSizeUnits = message.cannulaPrimeSize / 100.0
+                snapshot.featureLocked = message.featureLock != 0
+            }
+            is PumpGlobalsResponse ->
+                snapshot.quickBolusEnabled = message.quickBolusEnabled
             is CurrentBatteryV1Response ->
                 snapshot.batteryPercent = message.currentBatteryIbc
             is CurrentBatteryV2Response -> {

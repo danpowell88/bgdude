@@ -5,6 +5,8 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV2Re
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV1Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentEGVGuiDataResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.InsulinStatusResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.PumpGlobalsResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.PumpSettingsResponse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -154,4 +156,54 @@ class PumpResponseMapperTest {
         assertEquals(null, snapshot.cgmMgdl)
         assertEquals(null, snapshot.batteryPercent)
     }
+
+    /**
+     * Issue #85: PumpSettings from the complete captured cargo in doc/pump-protocol.md
+     * — `14 1e 01 0c 00 00 0f 48 00`, documented as autoShutdownEnabled=1,
+     * autoShutdownDuration=12 h, lowInsulinThreshold=20 U, oledTimeout=15 s,
+     * featureLock=0, and byte 2 (0x1e=30) the cannula-prime size.
+     */
+    @Test
+    fun pump_settings_decode_from_the_captured_cargo() {
+        val response = PumpSettingsResponse()
+        response.parse(byteArrayOf(0x14, 0x1e, 0x01, 0x0c, 0, 0, 0x0f, 0x48, 0))
+
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(response, snapshot)
+
+        assertEquals(true, snapshot.autoShutdownEnabled)
+        assertEquals(12, snapshot.autoShutdownHours)
+        assertEquals(20, snapshot.lowInsulinThresholdUnits)
+        assertEquals(false, snapshot.featureLocked)
+        // Hundredths of a unit on the wire: 0x1e = 30 -> 0.30 U.
+        assertEquals(0.30, snapshot.cannulaPrimeSizeUnits!!, 0.001)
+    }
+
+    /**
+     * Issue #85: PumpGlobals, likewise from its complete captured cargo
+     * `01 f4 01 d0 07 00 01 03 01 01 01 01 01 01` (quick bolus enabled).
+     */
+    @Test
+    fun pump_globals_decode_quick_bolus_enabled() {
+        val response = PumpGlobalsResponse()
+        response.parse(
+            byteArrayOf(
+                0x01, 0xf4.toByte(), 0x01, 0xd0.toByte(), 0x07, 0x00,
+                0x01, 0x03, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+            ),
+        )
+
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(response, snapshot)
+
+        assertEquals(true, snapshot.quickBolusEnabled)
+    }
+
+    /** Absent until the pump answers — an unconfigured pump and an unasked one differ. */
+    @Test
+    fun pump_settings_absent_until_answered() {
+        val json = MutableSnapshot().toJson()
+        assertTrue(!json.contains("lowInsulinThresholdUnits"))
+    }
+
 }

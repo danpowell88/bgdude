@@ -114,6 +114,12 @@ class PumpSnapshot {
     this.lastBolusTime,
     this.apiVersion,
     this.firmwareVersion,
+    this.autoShutdownEnabled,
+    this.autoShutdownHours,
+    this.lowInsulinThresholdUnits,
+    this.cannulaPrimeSizeUnits,
+    this.featureLocked,
+    this.quickBolusEnabled,
     this.activeAlerts = const [],
     this.activeAlarms = const [],
   });
@@ -152,6 +158,18 @@ class PumpSnapshot {
   final DateTime? lastBolusTime;
   final String? apiVersion;
   final String? firmwareVersion;
+
+  /// The pump's own configuration (issue #85), read-only. Null until reported.
+  final bool? autoShutdownEnabled;
+  final int? autoShutdownHours;
+  final int? lowInsulinThresholdUnits;
+  final double? cannulaPrimeSizeUnits;
+  final bool? featureLocked;
+  final bool? quickBolusEnabled;
+
+  /// Whether the pump has reported its configuration at all.
+  bool get hasPumpConfiguration =>
+      autoShutdownEnabled != null || lowInsulinThresholdUnits != null;
 
   /// Active pump alerts (informational) and alarms (higher severity), by name.
   final List<String> activeAlerts;
@@ -236,6 +254,14 @@ class PumpSnapshot {
         lastBolusTime: _time(j['lastBolusTimestampEpochMs'] as num?),
         apiVersion: j['apiVersion'] as String?,
         firmwareVersion: j['firmwareVersion'] as String?,
+        autoShutdownEnabled: j['autoShutdownEnabled'] as bool?,
+        autoShutdownHours: (j['autoShutdownHours'] as num?)?.toInt(),
+        lowInsulinThresholdUnits:
+            (j['lowInsulinThresholdUnits'] as num?)?.toInt(),
+        cannulaPrimeSizeUnits:
+            (j['cannulaPrimeSizeUnits'] as num?)?.toDouble(),
+        featureLocked: j['featureLocked'] as bool?,
+        quickBolusEnabled: j['quickBolusEnabled'] as bool?,
         activeAlerts: _stringList(j['activeAlerts']),
         activeAlarms: _stringList(j['activeAlarms']),
       );
