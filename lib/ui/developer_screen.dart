@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../pump/pump_snapshot.dart';
 import '../state/providers.dart';
 import 'protocol_explorer_screen.dart';
+import 'log_viewer_screen.dart';
 
 /// Developer menu — the home for low-level, non-consumer tools. Kept out of the main
 /// Settings flow so day-to-day use isn't cluttered; everything here is diagnostic and
@@ -28,6 +29,18 @@ class DeveloperScreen extends ConsumerWidget {
               'Low-level diagnostics. Everything here is read-only — nothing can affect '
               'insulin delivery.',
               style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          // Issue #95: the app_log ring buffer belongs in the developer console
+          // alongside the pump diagnostics, not only under Advanced — this is where
+          // you come when something has gone wrong and you want to see why.
+          ListTile(
+            leading: const Icon(Icons.receipt_long_outlined),
+            title: const Text('Diagnostics log'),
+            subtitle: const Text(
+                'Recent on-device errors and events (read-only, never sent anywhere)'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const LogViewerScreen()),
             ),
           ),
           ListTile(
