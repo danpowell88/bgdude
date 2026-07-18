@@ -50,11 +50,18 @@ class _FakeNotificationService extends NotificationService {
 }
 
 Future<void> _pumpSettings(
-    WidgetTester tester, NotificationService service) async {
+  WidgetTester tester,
+  NotificationService service, {
+  Future<void> Function()? openSettings,
+}) async {
   await tester.binding.setSurfaceSize(const Size(500, 1400));
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [notificationServiceProvider.overrideWithValue(service)],
+      overrides: [
+        notificationServiceProvider.overrideWithValue(service),
+        if (openSettings != null)
+          appSettingsOpenerProvider.overrideWithValue(openSettings),
+      ],
       child: const MaterialApp(home: SettingsScreen()),
     ),
   );
@@ -117,4 +124,32 @@ void main() {
     expect(find.text('Alerts are turned off'), findsOneWidget,
         reason: 'the tap changed nothing, so the warning must persist');
   });
+
+  testWidgets('after a request that changes nothing, it offers system settings',
+      (tester) async {
+    // Permanent denial: Android resolves the request with no dialog. Re-requesting
+    // can never succeed from here, so continuing to tell the user to tap and turn
+    // them on would be advice that cannot work (issue #376 AC#6).
+    var opened = 0;
+    final service =
+        _FakeNotificationService(enabled: false, grantOnRequest: false);
+    await _pumpSettings(tester, service, openSettings: () async => opened++);
+
+    await tester.tap(find.text('Alerts are turned off'));
+    await tester.pumpAndSettle();
+
+    expect(service.requestCount, 1);
+    expect(find.textContaining('open system settings'), findsOneWidget,
+        reason: 'the tile must change its advice once asking stopped working');
+    expect(opened, 0, reason: 'the first tap asks; it does not jump to settings');
+
+    // The second tap now deep-links instead of asking again.
+    await tester.tap(find.text('Alerts are turned off'));
+    await tester.pumpAndSettle();
+
+    expect(opened, 1);
+    expect(service.requestCount, 1,
+        reason: 'it must not keep firing a request that provably does nothing');
+  });
+
 }

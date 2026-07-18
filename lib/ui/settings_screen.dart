@@ -10,6 +10,16 @@ import '../state/ble_permissions.dart';
 import '../state/providers.dart';
 import 'app_routes.dart';
 
+/// Opens the OS app-settings page for bgdude.
+///
+/// A provider purely so a widget test can assert the deep-link fired without
+/// invoking the real `openAppSettings` platform channel, which has no
+/// implementation in a unit-test binding. Declared here rather than in
+/// providers.dart because it is a UI concern and that file is contended by other
+/// in-flight branches.
+final appSettingsOpenerProvider =
+    Provider<Future<void> Function()>((ref) => openAppSettings);
+
 /// Nightscout upload configuration section.
 class _NightscoutSection extends ConsumerStatefulWidget {
   const _NightscoutSection();
@@ -361,15 +371,20 @@ class SettingsScreen extends ConsumerWidget {
 /// callback delivery and defers the WorkManager summary backstop on an idle
 /// phone; a continuous glucose monitor needs the exemption. Shows the current
 /// state (no nagging) and only asks when tapped.
-class _BatteryExemptionTile extends StatefulWidget {
+class _BatteryExemptionTile extends ConsumerStatefulWidget {
   const _BatteryExemptionTile();
 
   @override
-  State<_BatteryExemptionTile> createState() => _BatteryExemptionTileState();
+  ConsumerState<_BatteryExemptionTile> createState() =>
+      _BatteryExemptionTileState();
 }
 
-class _BatteryExemptionTileState extends State<_BatteryExemptionTile> {
+class _BatteryExemptionTileState extends ConsumerState<_BatteryExemptionTile> {
   bool? _granted;
+
+  /// See the notification tile: set once a request resolved without changing
+  /// anything, which is what a permanent denial looks like from here.
+  bool _requestDidNothing = false;
 
   @override
   void initState() {
@@ -397,9 +412,23 @@ class _BatteryExemptionTileState extends State<_BatteryExemptionTile> {
       onTap: granted == true
           ? null
           : () async {
+              // Issue #376 AC#6: a permanently-denied exemption can only be granted
+              // from system settings — re-requesting resolves silently forever. Same
+              // shape as the notification tile: ask once, then offer the only route
+              // that can still work.
+              if (_requestDidNothing) {
+                await ref.read(appSettingsOpenerProvider)();
+                final now = await Permission.ignoreBatteryOptimizations.isGranted;
+                if (mounted) setState(() => _granted = now);
+                return;
+              }
               final status =
                   await Permission.ignoreBatteryOptimizations.request();
-              if (mounted) setState(() => _granted = status.isGranted);
+              if (!mounted) return;
+              setState(() {
+                _granted = status.isGranted;
+                _requestDidNothing = !status.isGranted;
+              });
             },
     );
   }
@@ -429,6 +458,13 @@ class _NotificationsDisabledTileState
     extends ConsumerState<_NotificationsDisabledTile> {
   bool? _enabled;
 
+  /// Set once a request has been made and changed nothing — which is exactly what a
+  /// PERMANENT denial looks like from here: Android resolves it with no dialog at
+  /// all. From that point re-requesting can never succeed, so the tile switches to
+  /// the only route that can (issue #376 AC#6). Without this the user is told to tap
+  /// something that silently does nothing, forever.
+  bool _requestDidNothing = false;
+
   @override
   void initState() {
     super.initState();
@@ -450,17 +486,28 @@ class _NotificationsDisabledTileState
       leading: Icon(Icons.notifications_off,
           color: Theme.of(context).colorScheme.error),
       title: const Text('Alerts are turned off'),
-      subtitle: const Text(
-          'Android is blocking bgdude\'s notifications, so NO alerts can reach '
-          'you — including urgent lows. Tap to turn them back on.'),
+      subtitle: Text(
+        'Android is blocking bgdude\'s notifications, so NO alerts can reach '
+        'you — including urgent lows. '
+        '${_requestDidNothing ? 'Android won\'t ask again — tap to open system settings and turn them on there.' : 'Tap to turn them back on.'}',
+      ),
       onTap: () async {
-        // After a permanent denial this returns without showing any dialog, so the
-        // re-check below is what keeps the warning visible instead of implying the
-        // tap fixed it.
+        if (_requestDidNothing) {
+          await ref.read(appSettingsOpenerProvider)();
+          // They may grant it while away, so re-check when they return.
+          await _refresh();
+          return;
+        }
         await ref
             .read(notificationServiceProvider)
             .requestNotificationsPermission();
         await _refresh();
+        // Still off after asking means Android showed no dialog, i.e. the denial is
+        // permanent — switch the tile to the deep-link rather than leaving the user
+        // tapping something that can never work.
+        if (mounted && _enabled == false) {
+          setState(() => _requestDidNothing = true);
+        }
       },
     );
   }
