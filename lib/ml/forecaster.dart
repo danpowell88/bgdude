@@ -26,6 +26,23 @@ const double kForecastZ90 = 1.64;
 double fallbackSigma(int horizonMinutes) => 9 + horizonMinutes * 0.30;
 
 /// Forecast at a single horizon.
+/// Where a forecast's uncertainty band came from — shown in the advanced-mode
+/// "why this forecast" panel (issue #73) so the band can be read as evidence rather
+/// than as a decoration.
+enum ForecastBandSource {
+  /// No trained residual model yet: a heuristic band that simply widens with the
+  /// horizon. Honest, but it reflects no knowledge of THIS user.
+  fallback,
+
+  /// The residual model's own trained sigma — the band the model learned.
+  trained,
+
+  /// Widened to match recent live error, which exceeded the model's own sigma. The
+  /// most informative case: the model is currently doing worse in practice than it
+  /// believed it would, and the band says so instead of staying reassuringly narrow.
+  liveError,
+}
+
 class HorizonForecast {
   /// Values arrive as raw doubles from the model math and are CARRIED as
   /// [Mgdl] (TASK-119); non-const because the wrapping initializer isn't a
@@ -35,6 +52,8 @@ class HorizonForecast {
     required double mgdl,
     required double lowerMgdl,
     required double upperMgdl,
+    this.residualMgdl = 0,
+    this.bandSource = ForecastBandSource.fallback,
   })  : mgdl = Mgdl(mgdl),
         lowerMgdl = Mgdl(lowerMgdl),
         upperMgdl = Mgdl(upperMgdl);
@@ -46,6 +65,15 @@ class HorizonForecast {
   /// band with horizon for the deterministic-only case).
   final Mgdl lowerMgdl;
   final Mgdl upperMgdl;
+
+  /// How far the learned residual model moved this horizon off the physiological
+  /// baseline, in mg/dL. Signed: negative means the model pulled the forecast down.
+  /// Zero when no residual model is trained, which is also what [bandSource]
+  /// `fallback` means — the two travel together.
+  final double residualMgdl;
+
+  /// Provenance of [lowerMgdl]/[upperMgdl]. Informational only: nothing doses off it.
+  final ForecastBandSource bandSource;
 
   double get intervalWidth => upperMgdl - lowerMgdl;
 }
@@ -117,6 +145,10 @@ class Forecaster {
         mgdl: mgdl,
         lowerMgdl: (mgdl - kForecastZ90 * c.sigma).clamp(39.0, 400.0),
         upperMgdl: (mgdl + kForecastZ90 * c.sigma).clamp(39.0, 400.0),
+        residualMgdl: c.residual,
+        bandSource: _residual.trainingSigma(h) == null
+            ? ForecastBandSource.fallback
+            : ForecastBandSource.trained,
       ));
     }
     return out;

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../analytics/forecast_decomposition.dart';
+import '../analytics/predictor.dart';
 import '../ml/event_detectors.dart';
 import '../ml/forecast_features.dart';
 import '../state/providers.dart';
 import 'app_routes.dart';
 import 'log_viewer_screen.dart';
 import 'model_accuracy_screen.dart';
+import 'widgets/forecast_explain_card.dart';
 import 'widgets/error_grid_chart.dart';
 
 /// Advanced mode: the model internals the simple UI hides — the effective sensitivity
@@ -42,6 +45,23 @@ class AdvancedScreen extends ConsumerWidget {
                 ref.read(advancedModeProvider.notifier).state = v,
           ),
           const Divider(),
+
+          // Issue #73: the toggle above promises "prediction decomposition"; this is
+          // it. Gated on `advanced` so the promise and the payload agree — and it is
+          // presentation only, so nothing here is persisted.
+          if (advanced) ...[
+            Builder(builder: (context) {
+              final state = ref.watch(livePredictionStateProvider);
+              if (state == null) return const SizedBox.shrink();
+              return ForecastExplainCard(
+                decompositions:
+                    const ForecastDecomposer().decompose(GlucosePredictor(), state),
+                forecasts: ref.watch(calibratedForecastsProvider),
+                unit: ref.watch(glucoseUnitProvider),
+              );
+            }),
+            const SizedBox(height: 8),
+          ],
 
           Text('CGM data quality', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
