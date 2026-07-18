@@ -62,6 +62,54 @@ void main() {
               'active urgent-low condition must re-fire once after restart');
     });
 
+    // The test above pins "re-fires at least once"; AC#2 asks for EXACTLY once.
+    // Without this, a regression that stopped the post-restart gate recording its
+    // own fire would turn the accepted single redundant alert into an alert storm
+    // — every evaluation cycle re-firing an urgent low — and nothing would catch
+    // it, because the fresh-gate assertion above would still pass.
+    test('the post-restart re-fire happens exactly once, not every cycle', () {
+      const cooldown = Duration(minutes: 30);
+      final crashedAt = DateTime(2026, 7, 4, 8);
+      final relaunchedAt = crashedAt.add(const Duration(minutes: 1));
+
+      // The pre-crash process fired, then died mid-cooldown. Had it survived,
+      // this same gate would have suppressed at the relaunch moment — that
+      // contrast is the whole reason the restart costs one extra alert.
+      final beforeCrash = CooldownGate();
+      beforeCrash.markFired(NotificationCategory.urgentLow, crashedAt);
+      expect(
+          beforeCrash.passed(
+              NotificationCategory.urgentLow, relaunchedAt, cooldown),
+          isFalse);
+
+      // The relaunched process: one re-fire is the accepted cost of not
+      // persisting cooldown state (see the decision comment above).
+      final afterCrash = CooldownGate();
+      expect(
+          afterCrash.passed(
+              NotificationCategory.urgentLow, relaunchedAt, cooldown),
+          isTrue);
+      afterCrash.markFired(NotificationCategory.urgentLow, relaunchedAt);
+
+      // ...and then it must behave like any other cooldown. The alert loop
+      // evaluates on every snapshot, so "suppressed for the rest of the window"
+      // is what makes it once rather than continuous.
+      for (final minutes in [1, 5, 29]) {
+        expect(
+            afterCrash.passed(NotificationCategory.urgentLow,
+                relaunchedAt.add(Duration(minutes: minutes)), cooldown),
+            isFalse,
+            reason: 'still inside the post-restart cooldown at +$minutes min');
+      }
+
+      // Past the window the condition is allowed to alert again — the gate is a
+      // repeat-rate limit, not a one-shot latch.
+      expect(
+          afterCrash.passed(NotificationCategory.urgentLow,
+              relaunchedAt.add(const Duration(minutes: 31)), cooldown),
+          isTrue);
+    });
+
     test('two ProviderContainers each get their own AlertService instance', () {
       final sim = RestartSimulation();
       final c1 = sim.buildContainer();
