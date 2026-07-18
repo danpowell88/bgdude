@@ -12,7 +12,15 @@ import 'annotations.dart';
 
 /// The kinds of events that can be queued for confirmation. Extensible — add a source in
 /// `ConfirmationService` and a case here.
-enum ConfirmationType { unannouncedMeal, compressionLow, illness, siteFailure }
+enum ConfirmationType {
+  unannouncedMeal,
+  compressionLow,
+  illness,
+  siteFailure,
+
+  /// A finger-prick disagreed with the sensor at the same moment (issue #77).
+  calibrationMismatch,
+}
 
 extension ConfirmationTypeX on ConfirmationType {
   /// The annotation written when the user confirms this item.
@@ -21,6 +29,7 @@ extension ConfirmationTypeX on ConfirmationType {
         ConfirmationType.compressionLow => AnnotationKind.compressionLow,
         ConfirmationType.illness => AnnotationKind.illness,
         ConfirmationType.siteFailure => AnnotationKind.siteFailure,
+        ConfirmationType.calibrationMismatch => AnnotationKind.sensorInaccurate,
       };
 }
 

@@ -22,6 +22,7 @@ enum AnnotationKind {
   // stores the raw int), so inserting anywhere but the end would silently relabel
   // every already-persisted annotation whose kind shifted -- always append here.
   medication, // context: raises resistance (e.g. a steroid course), TASK-261
+  sensorInaccurate, // exclude: fingerstick disagreed with the sensor (issue #77)
 }
 
 extension AnnotationKindX on AnnotationKind {
@@ -30,6 +31,10 @@ extension AnnotationKindX on AnnotationKind {
         AnnotationKind.siteFailure => true,
         AnnotationKind.sensorWarmup => true,
         AnnotationKind.compressionLow => true,
+        // Issue #77: a confirmed fingerstick/sensor disagreement means the sensor
+        // trace was wrong there. Training on it teaches the model to reproduce a
+        // measurement error.
+        AnnotationKind.sensorInaccurate => true,
         _ => false,
       };
 
@@ -63,6 +68,7 @@ extension AnnotationKindX on AnnotationKind {
         AnnotationKind.stress => 'Stress',
         AnnotationKind.mood => 'Mood',
         AnnotationKind.alcohol => 'Alcohol',
+        AnnotationKind.sensorInaccurate => 'Sensor reading off',
         AnnotationKind.other => 'Other',
       };
 }
