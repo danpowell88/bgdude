@@ -307,7 +307,32 @@ class GlucosePredictor {
 
     final boluses = [...s.boluses, if (extraBolus != null) extraBolus];
     final carbs = [...s.carbs, if (extraCarb != null) extraCarb];
-    final basal = suspendBasal ? const <BasalSegment>[] : s.basal;
+
+    // Issue #16: insulin effect comes from NET basal — delivered minus scheduled —
+    // so a well-tuned user's basal no longer reads as a large standing downward
+    // force with nothing representing endogenous glucose production against it.
+    //
+    // `s.basal` is history only (`repo.basal(from, now)`), and future delivery at the
+    // scheduled rate nets to exactly zero, so the ordinary lines need no forward basal
+    // term at all — omitting it is now correct rather than an approximation.
+    final netBasal = netBasalSegments(s.basal, s.settings);
+    final basal = suspendBasal
+        ? [
+            ...netBasal,
+            // A zero temp basal is delivery of 0 against a non-zero schedule, i.e. a
+            // real net-NEGATIVE (upward) force. Modelling it by deleting basal — as
+            // this line did while basal was gross — now means "delivered exactly as
+            // scheduled", the opposite of suspended, which would silently flatten the
+            // one line whose job is to show whether suspending rescues a low.
+            ...netBasalSegments([
+              BasalSegment(
+                start: s.now,
+                end: s.now.add(Duration(minutes: horizonMinutes)),
+                unitsPerHour: 0,
+              ),
+            ], s.settings),
+          ]
+        : netBasal;
 
     final points = <({DateTime time, double mgdl})>[];
     var bg = s.currentMgdl;
