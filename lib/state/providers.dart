@@ -38,6 +38,7 @@ import '../insights/effective_low_threshold.dart';
 import '../insights/alert_thresholds.dart';
 import '../insights/daily_narrative.dart';
 import '../insights/exercise_mode.dart';
+import '../insights/alarm_fatigue.dart';
 import '../insights/illness_mode.dart';
 import '../insights/lab_a1c.dart';
 import '../insights/medication_mode.dart';
@@ -2032,8 +2033,22 @@ class AlertService {
         Duration(minutes: pref.repeatMinutes > 0 ? pref.repeatMinutes : 30));
   }
 
-  void _markFired(NotificationCategory c, DateTime now) =>
-      _cooldowns.markFired(c, now);
+  /// Records a firing in BOTH places it has to live: the in-memory cooldown gate
+  /// (which decides the next repeat) and the durable alert log (issue #171), which is
+  /// what alarm-fatigue analytics reads. Every path that fires an alert already funnels
+  /// through here, so hooking it here rather than at each call site is what keeps the
+  /// two from drifting apart.
+  ///
+  /// The history write is fire-and-forget and swallows its error: failing to RECORD an
+  /// alert must never stop the alert itself, and this runs inside the alert cycle.
+  void _markFired(NotificationCategory c, DateTime now) {
+    _cooldowns.markFired(c, now);
+    unawaited(_ref
+        .read(historyRepositoryProvider)
+        .saveAlertEvent(AlertEvent(category: c, firedAt: now))
+        .catchError((Object e) =>
+            appLog.error('alerts', 'alert-event write failed', error: e)));
+  }
 
   /// Cooldown check that also records the fire immediately. Kept for the non-critical
   /// alerts where an optimistic mark is fine; the urgent path uses [_coolPassed] +

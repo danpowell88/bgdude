@@ -3522,6 +3522,226 @@ class AppKvCompanion extends UpdateCompanion<AppKvRow> {
   }
 }
 
+class $AlertEventsTable extends AlertEvents
+    with TableInfo<$AlertEventsTable, AlertEventRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AlertEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _firedAtMeta =
+      const VerificationMeta('firedAt');
+  @override
+  late final GeneratedColumn<DateTime> firedAt = GeneratedColumn<DateTime>(
+      'fired_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [id, category, firedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'alert_events';
+  @override
+  VerificationContext validateIntegrity(Insertable<AlertEventRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('category')) {
+      context.handle(_categoryMeta,
+          category.isAcceptableOrUnknown(data['category']!, _categoryMeta));
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('fired_at')) {
+      context.handle(_firedAtMeta,
+          firedAt.isAcceptableOrUnknown(data['fired_at']!, _firedAtMeta));
+    } else if (isInserting) {
+      context.missing(_firedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AlertEventRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AlertEventRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category'])!,
+      firedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}fired_at'])!,
+    );
+  }
+
+  @override
+  $AlertEventsTable createAlias(String alias) {
+    return $AlertEventsTable(attachedDatabase, alias);
+  }
+}
+
+class AlertEventRow extends DataClass implements Insertable<AlertEventRow> {
+  final int id;
+
+  /// [NotificationCategory.name] — stored as text, not the enum index, so inserting a
+  /// category into the enum can't silently re-label historical rows.
+  final String category;
+  final DateTime firedAt;
+  const AlertEventRow(
+      {required this.id, required this.category, required this.firedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['category'] = Variable<String>(category);
+    map['fired_at'] = Variable<DateTime>(firedAt);
+    return map;
+  }
+
+  AlertEventsCompanion toCompanion(bool nullToAbsent) {
+    return AlertEventsCompanion(
+      id: Value(id),
+      category: Value(category),
+      firedAt: Value(firedAt),
+    );
+  }
+
+  factory AlertEventRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AlertEventRow(
+      id: serializer.fromJson<int>(json['id']),
+      category: serializer.fromJson<String>(json['category']),
+      firedAt: serializer.fromJson<DateTime>(json['firedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'category': serializer.toJson<String>(category),
+      'firedAt': serializer.toJson<DateTime>(firedAt),
+    };
+  }
+
+  AlertEventRow copyWith({int? id, String? category, DateTime? firedAt}) =>
+      AlertEventRow(
+        id: id ?? this.id,
+        category: category ?? this.category,
+        firedAt: firedAt ?? this.firedAt,
+      );
+  AlertEventRow copyWithCompanion(AlertEventsCompanion data) {
+    return AlertEventRow(
+      id: data.id.present ? data.id.value : this.id,
+      category: data.category.present ? data.category.value : this.category,
+      firedAt: data.firedAt.present ? data.firedAt.value : this.firedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AlertEventRow(')
+          ..write('id: $id, ')
+          ..write('category: $category, ')
+          ..write('firedAt: $firedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, category, firedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AlertEventRow &&
+          other.id == this.id &&
+          other.category == this.category &&
+          other.firedAt == this.firedAt);
+}
+
+class AlertEventsCompanion extends UpdateCompanion<AlertEventRow> {
+  final Value<int> id;
+  final Value<String> category;
+  final Value<DateTime> firedAt;
+  const AlertEventsCompanion({
+    this.id = const Value.absent(),
+    this.category = const Value.absent(),
+    this.firedAt = const Value.absent(),
+  });
+  AlertEventsCompanion.insert({
+    this.id = const Value.absent(),
+    required String category,
+    required DateTime firedAt,
+  })  : category = Value(category),
+        firedAt = Value(firedAt);
+  static Insertable<AlertEventRow> custom({
+    Expression<int>? id,
+    Expression<String>? category,
+    Expression<DateTime>? firedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (category != null) 'category': category,
+      if (firedAt != null) 'fired_at': firedAt,
+    });
+  }
+
+  AlertEventsCompanion copyWith(
+      {Value<int>? id, Value<String>? category, Value<DateTime>? firedAt}) {
+    return AlertEventsCompanion(
+      id: id ?? this.id,
+      category: category ?? this.category,
+      firedAt: firedAt ?? this.firedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (firedAt.present) {
+      map['fired_at'] = Variable<DateTime>(firedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AlertEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('category: $category, ')
+          ..write('firedAt: $firedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3535,6 +3755,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ModelRunsTable modelRuns = $ModelRunsTable(this);
   late final $SavedMealsTable savedMeals = $SavedMealsTable(this);
   late final $AppKvTable appKv = $AppKvTable(this);
+  late final $AlertEventsTable alertEvents = $AlertEventsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3549,7 +3770,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         predictions,
         modelRuns,
         savedMeals,
-        appKv
+        appKv,
+        alertEvents
       ];
 }
 
@@ -5383,6 +5605,143 @@ typedef $$AppKvTableProcessedTableManager = ProcessedTableManager<
     (AppKvRow, BaseReferences<_$AppDatabase, $AppKvTable, AppKvRow>),
     AppKvRow,
     PrefetchHooks Function()>;
+typedef $$AlertEventsTableCreateCompanionBuilder = AlertEventsCompanion
+    Function({
+  Value<int> id,
+  required String category,
+  required DateTime firedAt,
+});
+typedef $$AlertEventsTableUpdateCompanionBuilder = AlertEventsCompanion
+    Function({
+  Value<int> id,
+  Value<String> category,
+  Value<DateTime> firedAt,
+});
+
+class $$AlertEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $AlertEventsTable> {
+  $$AlertEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get firedAt => $composableBuilder(
+      column: $table.firedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$AlertEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AlertEventsTable> {
+  $$AlertEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get firedAt => $composableBuilder(
+      column: $table.firedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AlertEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AlertEventsTable> {
+  $$AlertEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get firedAt =>
+      $composableBuilder(column: $table.firedAt, builder: (column) => column);
+}
+
+class $$AlertEventsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AlertEventsTable,
+    AlertEventRow,
+    $$AlertEventsTableFilterComposer,
+    $$AlertEventsTableOrderingComposer,
+    $$AlertEventsTableAnnotationComposer,
+    $$AlertEventsTableCreateCompanionBuilder,
+    $$AlertEventsTableUpdateCompanionBuilder,
+    (
+      AlertEventRow,
+      BaseReferences<_$AppDatabase, $AlertEventsTable, AlertEventRow>
+    ),
+    AlertEventRow,
+    PrefetchHooks Function()> {
+  $$AlertEventsTableTableManager(_$AppDatabase db, $AlertEventsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AlertEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AlertEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AlertEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> category = const Value.absent(),
+            Value<DateTime> firedAt = const Value.absent(),
+          }) =>
+              AlertEventsCompanion(
+            id: id,
+            category: category,
+            firedAt: firedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String category,
+            required DateTime firedAt,
+          }) =>
+              AlertEventsCompanion.insert(
+            id: id,
+            category: category,
+            firedAt: firedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AlertEventsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AlertEventsTable,
+    AlertEventRow,
+    $$AlertEventsTableFilterComposer,
+    $$AlertEventsTableOrderingComposer,
+    $$AlertEventsTableAnnotationComposer,
+    $$AlertEventsTableCreateCompanionBuilder,
+    $$AlertEventsTableUpdateCompanionBuilder,
+    (
+      AlertEventRow,
+      BaseReferences<_$AppDatabase, $AlertEventsTable, AlertEventRow>
+    ),
+    AlertEventRow,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5407,4 +5766,6 @@ class $AppDatabaseManager {
       $$SavedMealsTableTableManager(_db, _db.savedMeals);
   $$AppKvTableTableManager get appKv =>
       $$AppKvTableTableManager(_db, _db.appKv);
+  $$AlertEventsTableTableManager get alertEvents =>
+      $$AlertEventsTableTableManager(_db, _db.alertEvents);
 }
