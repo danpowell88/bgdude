@@ -64,6 +64,7 @@ import '../data/history_repository.dart';
 import '../data/kv_store.dart';
 import '../dev/demo_history.dart';
 import '../dev/sim_data.dart';
+import '../dev/simulated_scenario.dart';
 import '../meals/meal_library.dart';
 import '../meals/meal_log.dart';
 import '../meals/meal_outcome_service.dart';
@@ -486,10 +487,18 @@ final demoClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 /// The active pump data source — real native bridge, or the simulator in dev mode.
 /// Recreated when [devModeProvider] flips so switching modes takes effect live.
+/// Issue #235: pins demo mode to a scripted scenario. Overridden by the integration
+/// harness; `none` everywhere else, so ordinary demo mode is unchanged.
+final demoScenarioProvider =
+    Provider<SimulatedScenario>((ref) => SimulatedScenario.none);
+
 final pumpClientProvider = Provider<PumpSource>((ref) {
   final devMode = ref.watch(devModeProvider);
   final PumpSource client = devMode
-      ? SimulatedPumpClient(clock: ref.watch(demoClockProvider))
+      ? SimulatedPumpClient(
+          clock: ref.watch(demoClockProvider),
+          scenario: ref.watch(demoScenarioProvider),
+        )
       : PumpClient();
   client.start();
   ref.onDispose(client.dispose);
