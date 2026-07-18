@@ -13,6 +13,7 @@ library;
 import 'dart:math' as math;
 
 import '../core/samples.dart';
+import 'therapy_settings.dart';
 
 /// Parameters of the exponential insulin activity curve.
 class InsulinModel {
@@ -157,4 +158,57 @@ class IobCalculator {
       activityUnitsPerMin: b.activityUnitsPerMin + s.activityUnitsPerMin,
     );
   }
+}
+
+/// Re-expresses delivered basal as **net** basal — delivered minus scheduled — for
+/// the prediction/effect path (issue #16).
+///
+/// The model previously treated every delivered basal unit as active drug pushing
+/// glucose down, with nothing representing the liver's endogenous glucose production
+/// (EGP) pushing it up. For a user whose basal is well tuned those two very nearly
+/// cancel all day, so counting basal gross made the app see a large permanent
+/// downward force that reality wasn't showing — which reads back as extreme insulin
+/// resistance and collapses correction doses toward zero.
+///
+/// Netting encodes the assumption that **scheduled basal exactly offsets EGP**, so
+/// only the deviation from schedule is a real glucose-moving force. Summer chose this
+/// over an explicit EGP term (issue #16, 2026-07-18); the trade-off — chiefly that a
+/// mis-tuned basal hides inside the assumption rather than surfacing as a bad
+/// parameter — is written up on that issue.
+///
+/// Output segments may have a NEGATIVE [BasalSegment.unitsPerHour]: delivering less
+/// than scheduled (a pump suspend, or Control-IQ backing off) is a genuine upward
+/// force relative to the baseline, and the sign carries that. Callers computing
+/// displayed IOB must keep using the gross segments — a pump shows total insulin on
+/// board, and netting there would make the app disagree with the pump for no
+/// clinical benefit.
+///
+/// Segments are split at schedule boundaries so each output slice has one scheduled
+/// rate; [stepMinutes] bounds how finely a segment is subdivided when it spans
+/// several therapy segments.
+List<BasalSegment> netBasalSegments(
+  Iterable<BasalSegment> delivered,
+  TherapySettings settings, {
+  int stepMinutes = 5,
+}) {
+  final out = <BasalSegment>[];
+  for (final seg in delivered) {
+    if (!seg.end.isAfter(seg.start)) continue;
+    var cursor = seg.start;
+    while (cursor.isBefore(seg.end)) {
+      var next = cursor.add(Duration(minutes: stepMinutes));
+      if (next.isAfter(seg.end)) next = seg.end;
+      // segmentAt needs local wall-clock time (TASK-131); a UTC instant would pick
+      // the wrong therapy row by the whole UTC offset and silently net against the
+      // wrong scheduled rate.
+      final scheduled = settings.segmentAt(cursor.toLocal()).basalUnitsPerHour;
+      out.add(BasalSegment(
+        start: cursor,
+        end: next,
+        unitsPerHour: seg.unitsPerHour - scheduled,
+      ));
+      cursor = next;
+    }
+  }
+  return out;
 }
