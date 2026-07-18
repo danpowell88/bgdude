@@ -17,6 +17,7 @@ import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/feedback/annotations.dart';
 import 'package:bgdude/insights/notification_prefs.dart';
 import 'package:bgdude/insights/notifications.dart';
+import 'package:bgdude/insights/alarm_fatigue.dart';
 import 'package:bgdude/pump/probe_event.dart';
 import 'package:bgdude/pump/pump_snapshot.dart';
 import 'package:bgdude/pump/pump_source.dart';
@@ -55,6 +56,18 @@ class FaultInjectingHistoryRepository implements HistoryRepository {
   Future<void> saveCgm(List<CgmSample> samples) async {
     _maybeThrow('saveCgm');
     return _delegate.saveCgm(samples);
+  }
+
+  @override
+  Future<void> saveAlertEvent(AlertEvent event) async {
+    _maybeThrow('saveAlertEvent');
+    return _delegate.saveAlertEvent(event);
+  }
+
+  @override
+  Future<List<AlertEvent>> alertEvents(DateTime from, DateTime to) async {
+    _maybeThrow('alertEvents');
+    return _delegate.alertEvents(from, to);
   }
 
   @override

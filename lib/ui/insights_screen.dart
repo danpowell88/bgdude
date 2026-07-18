@@ -6,6 +6,7 @@ import '../core/samples.dart';
 import '../insights/lab_a1c.dart';
 import '../insights/morning_summary.dart';
 import '../state/providers.dart';
+import 'widgets/alarm_fatigue_card.dart';
 
 /// The unified Insights page: the daily briefing, insulin-sensitivity readiness, and
 /// model status — the things that used to be scattered across separate screens, now read
@@ -82,6 +83,7 @@ class InsightsScreen extends ConsumerWidget {
             style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         _SensitivityCard(mult: ctx.effectiveMultiplier, reasons: ctx.reasons),
+        const AlarmFatigueCard(),
 
         const SizedBox(height: 16),
         // --- A1c / GMI goal ---

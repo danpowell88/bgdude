@@ -13,6 +13,8 @@ import 'package:drift/drift.dart';
 
 import '../core/samples.dart';
 import '../feedback/annotations.dart';
+import '../insights/alarm_fatigue.dart';
+import '../insights/notification_prefs.dart';
 import '../logging/app_log.dart';
 import 'database.dart';
 import 'health_sync.dart';
@@ -95,6 +97,13 @@ abstract interface class HistoryRepository {
   /// health samples older than 180 days. Glucose and insulin history (CGM/bolus/carb/basal)
   /// is the training corpus and is always kept. Returns the number of rows deleted.
   Future<int> pruneOldData(DateTime now);
+
+  /// Record that an alert fired (issue #171) — the data alarm-fatigue analytics
+  /// needs. Append-only; the cooldown gate stays in memory, this is history.
+  Future<void> saveAlertEvent(AlertEvent event);
+
+  /// Alert firings in [from, to], oldest first.
+  Future<List<AlertEvent>> alertEvents(DateTime from, DateTime to);
 
   /// Earliest CGM timestamp on record (null when empty) — used to decide backfill.
   Future<DateTime?> earliestCgm();
@@ -477,6 +486,38 @@ class DriftHistoryRepository implements HistoryRepository {
   }
 
   @override
+  Future<void> saveAlertEvent(AlertEvent event) async {
+    await _db.into(_db.alertEvents).insert(AlertEventsCompanion.insert(
+          category: event.category.name,
+          firedAt: event.firedAt,
+        ));
+  }
+
+  @override
+  Future<List<AlertEvent>> alertEvents(DateTime from, DateTime to) async {
+    final rows = await (_db.select(_db.alertEvents)
+          ..where((t) => t.firedAt.isBetweenValues(from, to))
+          ..orderBy([(t) => OrderingTerm(expression: t.firedAt)]))
+        .get();
+    return [
+      for (final r in rows)
+        if (_categoryByName(r.category) case final c?)
+          AlertEvent(category: c, firedAt: r.firedAt),
+    ];
+  }
+
+  /// Rows store the category NAME, so a category deleted from the enum in a later
+  /// release leaves rows that no longer map. Those are skipped rather than crashing
+  /// the rollup — history should degrade, not take the screen down with it.
+  static NotificationCategory? _categoryByName(String name) {
+    for (final c in NotificationCategory.values) {
+      if (c.name == name) return c;
+    }
+    return null;
+  }
+
+
+  @override
   Future<void> saveModelRun(ModelRunRecord run) => _db.saveModelRunRow(
         ModelRunsCompanion.insert(
           id: run.id,
@@ -635,6 +676,16 @@ class InMemoryHistoryRepository implements HistoryRepository {
     if (_cgm.isEmpty) return null;
     return _cgm.map((s) => s.time).reduce((a, b) => a.isBefore(b) ? a : b);
   }
+
+  final List<AlertEvent> _alertEvents = [];
+
+  @override
+  Future<void> saveAlertEvent(AlertEvent event) async => _alertEvents.add(event);
+
+  @override
+  Future<List<AlertEvent>> alertEvents(DateTime from, DateTime to) async =>
+      _between(_alertEvents, from, to, (e) => e.firedAt);
+
 
   @override
   Future<void> saveModelRun(ModelRunRecord run) async => _modelRuns.add(run);

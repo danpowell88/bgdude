@@ -204,22 +204,28 @@ void main() {
     });
 
     test(
-        'opening a file stamped user_version=5 under schemaVersion 4 throws '
+        'opening a file stamped one version PAST this build throws '
         'DatabaseDowngradeException, and the file is left untouched', () async {
       final dbFile = File(p.join(dir.path, 'downgrade.db'));
       // Stand in for "this file was already migrated by a newer app build": a
       // plain (unencrypted -- SQLCipher can't open on this desktop test host)
       // sqlite3 file stamped past this build's schemaVersion, written with a
       // raw sqlite3 connection BEFORE drift ever touches it.
+      //
+      // Derived from schemaVersion rather than hard-coded: this previously pinned
+      // "5" as the future version, so bumping the schema to 5 turned the scenario
+      // into a same-version open and the test started failing for a reason that had
+      // nothing to do with the guard it covers.
+      final futureVersion = AppDatabase(NativeDatabase.memory()).schemaVersion + 1;
       final raw = sqlite3.sqlite3.open(dbFile.path);
-      raw.execute('PRAGMA user_version = 5;');
+      raw.execute('PRAGMA user_version = $futureVersion;');
       raw.dispose();
 
       final appDb = AppDatabase(NativeDatabase(dbFile));
       await expectLater(
         appDb.customSelect('select 1').get(),
         throwsA(isA<DatabaseDowngradeException>()
-            .having((e) => e.from, 'from', 5)
+            .having((e) => e.from, 'from', futureVersion)
             .having((e) => e.to, 'to', appDb.schemaVersion)),
       );
       await appDb.close();
@@ -231,7 +237,7 @@ void main() {
       final verify = sqlite3.sqlite3.open(dbFile.path);
       final version =
           verify.select('PRAGMA user_version;').first.values.first as int;
-      expect(version, 5);
+      expect(version, futureVersion);
       final tables = verify
           .select("SELECT name FROM sqlite_master WHERE type = 'table';")
           .map((r) => r.values.first as String)

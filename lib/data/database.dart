@@ -148,6 +148,25 @@ class Predictions extends Table {
   TextColumn get modelId => text().withDefault(const Constant('deterministic'))();
 }
 
+/// Every alert this app actually fired (issue #171).
+///
+/// `AlertService`'s cooldown gate is in-memory only, so nothing recorded WHICH alerts
+/// fired — the app could not answer "34 predicted-low alerts this week, 60% of them
+/// overnight", which is the measurement alarm-fatigue tuning needs. Alarm fatigue is
+/// the top reason people abandon alerting, and you cannot tune what you do not record.
+///
+/// Deliberately append-only and tiny: category + when. No message text, because the
+/// wording changes between releases and would make week-over-week counts incomparable.
+@DataClassName('AlertEventRow')
+class AlertEvents extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// [NotificationCategory.name] — stored as text, not the enum index, so inserting a
+  /// category into the enum can't silently re-label historical rows.
+  TextColumn get category => text()();
+  DateTimeColumn get firedAt => dateTime()();
+}
+
 /// Encrypted key-value store for app state that used to live in SharedPreferences
 /// (therapy profile, illness/device state, meals, model blob, goals…) — consolidated
 /// here so it is AES-256 encrypted at rest like the rest of the health data.
@@ -185,13 +204,14 @@ class ModelRuns extends Table {
     ModelRuns,
     SavedMeals,
     AppKv,
+    AlertEvents,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   /// Read a value from the encrypted key-value store.
   Future<String?> readKv(String key) async {
@@ -242,6 +262,12 @@ class AppDatabase extends _$AppDatabase {
                 '(SELECT MIN(id) FROM basal_segments GROUP BY start)');
             await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS '
                 'uq_basal_start ON basal_segments(start)');
+          }
+          if (from < 5) {
+            // Issue #171: alert history for alarm-fatigue analytics. Purely additive —
+            // a new table, no existing row touched, so there is nothing to back-fill
+            // and nothing a partial migration could corrupt.
+            await m.createTable(alertEvents);
           }
         },
         beforeOpen: (details) async {
