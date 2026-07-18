@@ -430,6 +430,7 @@
   <p class="lead">Settings → <b>Pump</b>. A read-only view of live and derived pump data:</p>
   <ul class="tight">
     <li><b>Live status</b> — glucose + trend, insulin-on-board, basal rate, last bolus, and <b>Control-IQ</b> which shows the closed loop's state and current mode (e.g. "Active · Sleep").</li>
+    <li><b>CGM on the pump</b> — your transmitter id, and the glucose alert thresholds configured <em>on the pump</em> shown next to bgdude's own. When the two differ it says which one warns first — the answer to "why did my pump beep and the app didn't" (or the reverse). bgdude does <b>not</b> silently change its own thresholds to match: the pump's alarms are your safety net and are set on the pump, so moving bgdude's boundary to follow them is a decision that stays yours. The card only appears once the pump has reported these.</li>
     <li><b>Safety limits</b> — the pump's own configured <b>max bolus</b> and <b>max basal</b> rate. The bolus advisor never suggests more than your pump's max bolus.</li>
     <li><b>Insulin today</b> — total, bolus/basal split.</li>
     <li><b>Reservoir</b> — units left + a runway estimate.</li>

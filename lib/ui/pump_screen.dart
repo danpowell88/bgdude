@@ -8,6 +8,7 @@ import '../logging/device_changes.dart';
 import '../pump/pump_events.dart';
 import '../pump/pump_snapshot.dart';
 import '../state/providers.dart';
+import 'widgets/cgm_diagnostics_card.dart';
 
 /// Read-only view of everything we sync from the pump: live status, insulin totals,
 /// reservoir runway, site age, active alarms/alerts, and a recent-events timeline.
@@ -48,6 +49,14 @@ class PumpScreen extends ConsumerWidget {
                             alarms: snap.activeAlarms,
                             alerts: snap.activeAlerts),
                       _StatusCard(snap: snap, unit: unit),
+                      // Issue #90: CGM diagnostics + the pump's own alert
+                      // thresholds, so a divergence between the two alerting
+                      // systems is explainable rather than mysterious.
+                      CgmDiagnosticsCard(
+                        snapshot: snap,
+                        appThresholds: ref.watch(alertThresholdsProvider),
+                        unit: unit,
+                      ),
                       _InsulinTodayCard(totals: totals),
                       _ReservoirCard(snap: snap),
                       _SiteCard(devices: devices, now: now),
