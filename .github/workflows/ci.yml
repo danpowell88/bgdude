@@ -314,7 +314,8 @@ jobs:
       # red the build rather than quietly lower the denominator.
       #
       # The floor is a floor, not a target: raise it as coverage grows. History:
-      # 65% pre-exclusion (67.4-67.6% actual, TASK-245/275); re-based to 80% on
+      # 65% floor pre-exclusion, with main actually sitting at 71.3% immediately
+      # before this change (67.4-67.6% back at TASK-245/275). Re-based to 80% on
       # 2026-07-18 (issue #378) once UI/generated/vendor-adapter code left the
       # denominator and the remaining logic measured 85.6%. The real per-PR gate is
       # the no-drop ratchet below.

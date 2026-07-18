@@ -47,13 +47,20 @@ developer can no longer measure a different number than the gate enforces — pr
 and the `coverage-ratchet` skill's hand-written instructions were two implementations that could
 drift apart.
 
-**Floor re-based from 65% to 80%**, with the post-exclusion measurement at **85.6%**. The floor
-catches collapse; the per-PR no-drop ratchet against `main` remains the real gate.
+**Floor re-based from 65% to 80%**, with the post-exclusion measurement at **85.6%** (`main` was
+sitting at 71.3% on the old blended metric immediately before this change). The floor catches
+collapse; the per-PR no-drop ratchet against `main` remains the real gate.
+
+Note the two numbers measure different things and the jump is not a coverage *gain* — 71.3% was
+UI-diluted, 85.6% is the same test suite measured against non-UI logic only. The genuine gain
+from this change's new tests is the +31 tests, worth about 1.7 points.
 
 ## Consequences
 
 - The number now means one thing, and 85.6% is a level worth defending. Ratcheting from a
-  meaningful baseline is what makes the gate load-bearing.
+  meaningful baseline is what makes the gate load-bearing. Verified end-to-end in CI: the
+  4-shard merge reports the same 85.6% as a local single-tracefile run (7549 vs 7548 hit lines —
+  one line differing between a sharded and unsharded run, not a merge error).
 - **Widget tests under `test/ui/` still run and still fail on regressions, but no longer
   contribute to the gated number.** This is the accepted cost of a single clear semantic: their
   protection comes from the assertions themselves, not from coverage accounting. The script
