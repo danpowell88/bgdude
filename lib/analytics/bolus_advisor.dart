@@ -44,6 +44,10 @@ enum FatProteinLevel {
       };
 }
 
+/// Below this the multiplier rounds to ×1.00 and a "Sensitivity" line would say
+/// nothing — showing "×1.00" every time trains the reader to skip the row.
+const double _sensitivityShownThreshold = 0.01;
+
 /// One line of the shown "working".
 class AdviceStep {
   const AdviceStep(this.label, this.value);
@@ -513,9 +517,25 @@ class BolusAdvisor {
     } else {
       working
         ..add(AdviceStep('Glucose', Mgdl(c.currentMgdl).display(unit)))
-        ..add(AdviceStep('Target', Mgdl(c.targetMgdl).display(unit)))
-        ..add(AdviceStep('ISF',
-            '1U : ${Mgdl(c.isf).display(unit)} ${unit.label}'));
+        ..add(AdviceStep('Target', Mgdl(c.targetMgdl).display(unit)));
+      // Issue #74: the ISF line below is the user's therapy ISF DIVIDED by the
+      // current sensitivity multiplier, so when the app has detected a shift the
+      // number silently disagrees with what Therapy settings shows. Showing the
+      // adjusted value without saying it was adjusted is the confusing half of a
+      // good idea — name the factor and its drivers so the working can be checked
+      // against the settings screen.
+      if ((c.mult - 1.0).abs() >= _sensitivityShownThreshold) {
+        final baseIsf = c.isf * c.mult;
+        final drivers =
+            c.contextReasons.isEmpty ? '' : ' (${c.contextReasons.join(', ')})';
+        working.add(AdviceStep(
+          'Sensitivity',
+          '×${c.mult.toStringAsFixed(2)}$drivers — ISF '
+              '${Mgdl(baseIsf).display(unit)} → ${Mgdl(c.isf).display(unit)}',
+        ));
+      }
+      working.add(AdviceStep('ISF',
+          '1U : ${Mgdl(c.isf).display(unit)} ${unit.label}'));
       working.add(AdviceStep('Correction',
           '(${Mgdl(c.currentMgdl).display(unit)} − ${Mgdl(c.targetMgdl).display(unit)}) ÷ ISF − bolus IOB ${c.iob.toStringAsFixed(2)} = ${c.correctionAfterIob.toStringAsFixed(2)} U'));
       if (c.iobCoveredCorrection) {
