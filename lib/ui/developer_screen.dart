@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../pump/pump_snapshot.dart';
 import '../state/providers.dart';
+import 'message_monitor_screen.dart';
 import 'protocol_explorer_screen.dart';
 
 /// Developer menu — the home for low-level, non-consumer tools. Kept out of the main
@@ -28,6 +29,18 @@ class DeveloperScreen extends ConsumerWidget {
               'Low-level diagnostics. Everything here is read-only — nothing can affect '
               'insulin delivery.',
               style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          // Issue #92: what the pump sends unprompted, as opposed to the Explorer's
+          // ask-and-see flow.
+          ListTile(
+            leading: const Icon(Icons.stream),
+            title: const Text('Message monitor'),
+            subtitle: const Text(
+                'Live tail of everything the pump sends, with a bounded history'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const MessageMonitorScreen()),
             ),
           ),
           ListTile(
