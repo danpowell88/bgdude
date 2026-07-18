@@ -1,5 +1,7 @@
 package com.bgdude.app.pump
 
+import com.jwoglom.pumpx2.pump.messages.models.MultiDay
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQSleepScheduleResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQIOBResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV2Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV1Response
@@ -153,5 +155,76 @@ class PumpResponseMapperTest {
 
         assertEquals(null, snapshot.cgmMgdl)
         assertEquals(null, snapshot.batteryPercent)
+    }
+
+    /**
+     * Slot bytes are enabled(1), days-bitmask(1), start(2 LE mins), end(2 LE mins).
+     * The first slot is the real captured prefix from doc/pump-protocol.md
+     * (`01 7f 28 05 a4 01` = every day, 22:00 -> 07:00); the pump reports four slots, and
+     * the three unused ones came back zeroed.
+     */
+    @Test
+    fun sleep_schedule_decodes_the_captured_overnight_window() {
+        val response = ControlIQSleepScheduleResponse()
+        response.parse(
+            byteArrayOf(0x01, 0x7f, 0x28, 0x05, 0xa4.toByte(), 0x01) + ByteArray(18),
+        )
+
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(response, snapshot)
+
+        // Only the enabled slot: three disabled slots must not become "00:00-00:00" rows.
+        assertEquals(listOf("127:1320:420"), snapshot.sleepSchedules)
+        assertTrue(snapshot.sleepScheduleRead)
+    }
+
+    @Test
+    fun all_slots_off_is_read_but_empty() {
+        // "Control-IQ never enters sleep" must be distinguishable from "not asked yet".
+        val response = ControlIQSleepScheduleResponse()
+        response.parse(ByteArray(24))
+
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(response, snapshot)
+
+        assertTrue(snapshot.sleepScheduleRead)
+        assertTrue(snapshot.sleepSchedules.isEmpty())
+    }
+
+    @Test
+    fun a_weekday_only_second_slot_is_decoded_alongside_the_first() {
+        // The captured pump only used slot 0, so the multi-slot path is built explicitly:
+        // slot 1 = Mon-Fri (0x1f), 23:30 -> 06:15.
+        val response = ControlIQSleepScheduleResponse()
+        response.parse(
+            byteArrayOf(0x01, 0x7f, 0x28, 0x05, 0xa4.toByte(), 0x01) +
+                byteArrayOf(0x01, 0x1f, 0x82.toByte(), 0x05, 0x8b.toByte(), 0x01) +
+                ByteArray(12),
+        )
+
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(response, snapshot)
+
+        assertEquals(listOf("127:1320:420", "31:1410:395"), snapshot.sleepSchedules)
+    }
+
+    @Test
+    fun sleep_schedule_absent_until_answered() {
+        val snapshot = MutableSnapshot()
+        assertTrue(!snapshot.sleepScheduleRead)
+        assertTrue(snapshot.sleepSchedules.isEmpty())
+    }
+
+
+    /**
+     * Guards the workaround above. pumpx2 1.9.0's MultiDay.fromBitmask collapses any mask
+     * to [MONDAY], so a schedule read through activeDays() would claim "Mondays only" for
+     * an every-night window. If a future pumpx2 fixes this, this test fails and the
+     * workaround in PumpResponseMapper can be reverted.
+     */
+    @Test
+    fun pumpx2_multiday_bitmask_helpers_are_still_broken() {
+        assertEquals(setOf(MultiDay.MONDAY), MultiDay.fromBitmask(0x7f))
+        assertEquals(1, MultiDay.toBitmask(*MultiDay.ALL_DAYS.toTypedArray()))
     }
 }

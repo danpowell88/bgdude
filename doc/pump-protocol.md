@@ -100,6 +100,30 @@ Also confirmed live: `ApiVersion` = 3.4 (`03 00 04 00`), `PumpVersion` armSwVer 
 `ControlIQInfoV2` (op 179) closed-loop state, `ProfileStatus`→`IDPSettings("Gym only")`→7×`IDPSegment`
 matching the decode table above, and a full `HistoryLogStream` (op 129) backfill.
 
+### ControlIQSleepSchedule (op 107) slot layout — decoded (issue #87)
+
+The captured cargo above is recorded truncated, but the prefix decodes exactly. The
+response is **four fixed 6-byte slots** (24 bytes total):
+
+| Offset | Bytes | Meaning |
+|---|---|---|
+| +0 | 1 | `enabled` (0 = slot unused) |
+| +1 | 1 | days bitmask, **bit 0 = Monday** … bit 6 = Sunday |
+| +2 | 2 | start, minutes-of-day, little-endian |
+| +4 | 2 | end, minutes-of-day, little-endian |
+
+So `01 7f 28 05 a4 01` = enabled, all seven days, `0x0528`=1320 (22:00) to `0x01a4`=420
+(07:00). An end <= start runs past midnight. On the captured pump only slot 0 was in use;
+the other three came back zeroed.
+
+> **pumpx2 1.9.0 footgun.** `MultiDay.fromBitmask` collapses *any* mask to `[MONDAY]`, and
+> `MultiDay.toBitmask(ALL_DAYS)` returns `1`. The enum's `id()` values are correct bit flags
+> (1, 2, 4 … 64) — it's the two helpers that are broken. Anything reading days via
+> `SleepSchedule.activeDays()` will therefore under-report an every-night schedule as
+> "Mondays only". Read the raw days byte instead: `slot.build()[1]` round-trips the slot
+> bytes faithfully. `PumpResponseMapperTest.pumpx2_multiday_bitmask_helpers_are_still_broken`
+> pins this so the workaround can be dropped when upstream fixes it.
+
 Requests that returned **no response** on this pump/firmware (likely unsupported opcodes):
 `SecretMenu`, `UnknownMobiOpcode110`, `StreamDataReadiness`, `ActiveAamBits`, `HighestAam`,
 `BasalIQ*`, `CommonSoftwareInfo`, `BleSoftwareInfo`, `PumpVersionB`, `LoadStatus`,

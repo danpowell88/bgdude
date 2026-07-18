@@ -64,6 +64,16 @@ class MutableSnapshot {
 
     var apiVersion: String? = null
     var firmwareVersion: String? = null
+    /**
+     * Control-IQ sleep schedules (issue #87), one entry per ENABLED slot, encoded
+     * "<daysBitmask>:<startMins>:<endMins>". Disabled slots are dropped rather than
+     * emitted as zeros so an empty list means "Control-IQ never enters sleep" — a real
+     * statement, and a different one from "the pump hasn't told us", which is
+     * [sleepScheduleRead] being false.
+     */
+    var sleepSchedules: MutableList<String> = mutableListOf()
+    var sleepScheduleRead: Boolean = false
+
     var activeAlerts: MutableList<String> = mutableListOf()
     var activeAlarms: MutableList<String> = mutableListOf()
 
@@ -116,6 +126,8 @@ class MutableSnapshot {
             val items = values.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" }
             parts.add("\"$name\":[$items]")
         }
+        field("sleepScheduleRead", if (sleepScheduleRead) true else null)
+        stringArray("sleepSchedules", sleepSchedules)
         stringArray("activeAlerts", activeAlerts)
         stringArray("activeAlarms", activeAlarms)
         return parts.joinToString(",", prefix = "{", postfix = "}")
