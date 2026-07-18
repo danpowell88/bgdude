@@ -11,6 +11,7 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV2Re
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.BasalLimitSettingsResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBasalStatusResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.GlobalMaxBolusSettingsResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.HomeScreenMirrorResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV1Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV2Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentEGVGuiDataResponse
@@ -33,6 +34,21 @@ object PumpResponseMapper {
     fun apply(message: Message, snapshot: MutableSnapshot) {
         when (message) {
             // Ibc (internal battery capacity) is the value the pump UI shows as %.
+            // Issue #84: the icons the pump is showing on its own screen (op 57).
+            // Enum NAMES, not ordinals — the JSON contract is additive-only and an
+            // ordinal would silently re-map if pumpx2 inserts an enum constant.
+            // Every getter is nullable in practice on firmware that doesn't answer
+            // op 57, so `?.name` keeps a partial response from nulling the rest.
+            is HomeScreenMirrorResponse -> {
+                snapshot.basalStatusIcon = message.basalStatusIcon?.name
+                snapshot.apControlStateIcon = message.apControlStateIcon?.name
+                snapshot.cgmTrendIcon = message.cgmTrendIcon?.name
+                snapshot.cgmAlertIcon = message.cgmAlertIcon?.name
+                snapshot.bolusStatusIcon = message.bolusStatusIcon?.name
+                snapshot.statusIcon0 = message.statusIcon0?.name
+                snapshot.statusIcon1 = message.statusIcon1?.name
+                snapshot.cgmDisplayData = message.cgmDisplayData
+            }
             is CurrentBatteryV1Response ->
                 snapshot.batteryPercent = message.currentBatteryIbc
             is CurrentBatteryV2Response -> {

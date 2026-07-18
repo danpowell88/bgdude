@@ -62,6 +62,24 @@ class MutableSnapshot {
     var lastBolusUnits: Double? = null
     var lastBolusTimestampEpochMs: Long? = null
 
+    /**
+     * HomeScreenMirror (op 57) — the icons the pump is showing on its own screen right
+     * now (issue #84). Stored as the pumpx2 enum NAMES rather than ordinals: the wire
+     * format is additive-only (see SCHEMA_VERSION), and an ordinal would silently
+     * re-map if pumpx2 ever inserts an enum constant.
+     *
+     * All null until the pump answers op 57 — an older firmware that doesn't may never
+     * populate these, so every consumer must treat null as "unknown", not "off".
+     */
+    var basalStatusIcon: String? = null
+    var apControlStateIcon: String? = null
+    var cgmTrendIcon: String? = null
+    var cgmAlertIcon: String? = null
+    var bolusStatusIcon: String? = null
+    var statusIcon0: String? = null
+    var statusIcon1: String? = null
+    var cgmDisplayData: Boolean? = null
+
     var apiVersion: String? = null
     var firmwareVersion: String? = null
     var activeAlerts: MutableList<String> = mutableListOf()
@@ -109,6 +127,16 @@ class MutableSnapshot {
         field("cgmTimestampEpochMs", cgmTimestampEpochMs)
         field("lastBolusUnits", lastBolusUnits)
         field("lastBolusTimestampEpochMs", lastBolusTimestampEpochMs)
+        // Issue #84 — appended, per the additive-only policy above: an older Dart
+        // parser simply ignores them, so SCHEMA_VERSION stays at 1.
+        field("basalStatusIcon", basalStatusIcon)
+        field("apControlStateIcon", apControlStateIcon)
+        field("cgmTrendIcon", cgmTrendIcon)
+        field("cgmAlertIcon", cgmAlertIcon)
+        field("bolusStatusIcon", bolusStatusIcon)
+        field("statusIcon0", statusIcon0)
+        field("statusIcon1", statusIcon1)
+        field("cgmDisplayData", cgmDisplayData)
         field("apiVersion", apiVersion)
         field("firmwareVersion", firmwareVersion)
         fun stringArray(name: String, values: List<String>) {

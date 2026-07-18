@@ -3,6 +3,7 @@ package com.bgdude.app.pump
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQIOBResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV2Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV1Response
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.HomeScreenMirrorResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentEGVGuiDataResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.InsulinStatusResponse
 import org.junit.Assert.assertEquals
@@ -154,4 +155,72 @@ class PumpResponseMapperTest {
         assertEquals(null, snapshot.cgmMgdl)
         assertEquals(null, snapshot.batteryPercent)
     }
+
+    /**
+     * Issue #84: decode HomeScreenMirror (op 57) from the REAL captured cargo recorded in
+     * doc/pump-protocol.md, not a hand-built object. That distinction matters — building
+     * the response via its constructor would test the mapper against my own understanding
+     * of the wire format; parsing the captured bytes tests it against the pump's.
+     *
+     * Cargo:  00 ff c8 c8 c8 04 00 00 00
+     * Expected (from the same doc line): apControlStateIcon=STATE_GRAY,
+     * basalStatusIcon=SUSPEND, bolusStatusIcon=HIDE_ICON, cgmAlertIcon=NO_ERROR,
+     * cgmTrendIcon=NO_ARROW, cgmDisplayData=false, statusIcon0/1=HIDE_ICON.
+     */
+    @Test
+    fun home_screen_mirror_decodes_the_captured_cargo() {
+        val cargo = byteArrayOf(
+            0x00, 0xff.toByte(), 0xc8.toByte(), 0xc8.toByte(), 0xc8.toByte(),
+            0x04, 0x00, 0x00, 0x00,
+        )
+        val response = HomeScreenMirrorResponse()
+        response.parse(cargo)
+
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(response, snapshot)
+
+        assertEquals("STATE_GRAY", snapshot.apControlStateIcon)
+        assertEquals("SUSPEND", snapshot.basalStatusIcon)
+        assertEquals("HIDE_ICON", snapshot.bolusStatusIcon)
+        assertEquals("NO_ERROR", snapshot.cgmAlertIcon)
+        assertEquals("NO_ARROW", snapshot.cgmTrendIcon)
+        assertEquals("HIDE_ICON", snapshot.statusIcon0)
+        assertEquals("HIDE_ICON", snapshot.statusIcon1)
+        assertEquals(false, snapshot.cgmDisplayData)
+    }
+
+    /**
+     * Names, not ordinals, reach the wire. An ordinal would silently re-map every
+     * historical value if pumpx2 ever inserts an enum constant, and the JSON contract
+     * is additive-only precisely so that cannot happen.
+     */
+    @Test
+    fun home_screen_mirror_serialises_enum_names_not_ordinals() {
+        val cargo = byteArrayOf(
+            0x00, 0xff.toByte(), 0xc8.toByte(), 0xc8.toByte(), 0xc8.toByte(),
+            0x04, 0x00, 0x00, 0x00,
+        )
+        val response = HomeScreenMirrorResponse()
+        response.parse(cargo)
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(response, snapshot)
+
+        val json = snapshot.toJson()
+        assertTrue(json.contains("\"basalStatusIcon\":\"SUSPEND\""))
+        assertTrue(json.contains("\"cgmDisplayData\":false"))
+    }
+
+    /**
+     * A snapshot from firmware that never answers op 57 must leave these absent rather
+     * than emitting a default — "unknown" and "off" are different claims, and the panel
+     * that renders them has to be able to tell them apart.
+     */
+    @Test
+    fun home_screen_mirror_fields_are_absent_until_the_pump_answers() {
+        val json = MutableSnapshot().toJson()
+
+        assertTrue(!json.contains("basalStatusIcon"))
+        assertTrue(!json.contains("cgmDisplayData"))
+    }
+
 }
