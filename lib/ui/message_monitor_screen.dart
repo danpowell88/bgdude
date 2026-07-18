@@ -16,7 +16,11 @@ import '../state/providers.dart';
 import 'widgets/message_tail_view.dart';
 
 class MessageMonitorScreen extends ConsumerStatefulWidget {
-  const MessageMonitorScreen({super.key});
+  const MessageMonitorScreen({super.key, this.bufferOverride});
+
+  /// Test seam: the real buffer is filled by a stream from the pump client, which does
+  /// not exist on a unit-test host.
+  final MessageRingBuffer? bufferOverride;
 
   @override
   ConsumerState<MessageMonitorScreen> createState() =>
@@ -46,9 +50,10 @@ class _MessageMonitorScreenState extends ConsumerState<MessageMonitorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final monitor = ref.watch(messageMonitorProvider);
+    final buffer =
+        widget.bufferOverride ?? ref.watch(messageMonitorProvider).buffer;
     final events = filterEvents(
-      monitor.buffer.newestFirst,
+      buffer.newestFirst,
       query: _query,
       direction: _direction,
     );
@@ -61,7 +66,7 @@ class _MessageMonitorScreenState extends ConsumerState<MessageMonitorScreen> {
             key: const Key('message-monitor-clear'),
             icon: const Icon(Icons.delete_outline),
             tooltip: 'Clear',
-            onPressed: () => setState(monitor.buffer.clear),
+            onPressed: () => setState(buffer.clear),
           ),
         ],
       ),
@@ -97,7 +102,7 @@ class _MessageMonitorScreenState extends ConsumerState<MessageMonitorScreen> {
                     ),
                   ),
                 const Spacer(),
-                Text('${monitor.buffer.length}',
+                Text('${buffer.length}',
                     style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
@@ -106,7 +111,7 @@ class _MessageMonitorScreenState extends ConsumerState<MessageMonitorScreen> {
           Expanded(
             child: MessageTailView(
               events: events,
-              dropped: monitor.buffer.dropped,
+              dropped: buffer.dropped,
               capturing: true,
             ),
           ),
