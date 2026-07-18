@@ -100,8 +100,16 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          // Demo mode can only be *entered* during onboarding — there's no manual switch
-          // in here. When it's on, show a read-only status row with a one-tap exit.
+          // Demo mode can only be *entered* during onboarding (or, on debug builds, from
+          // the Developer menu — issue #96). When it's on, show a read-only status row
+          // with a one-tap exit.
+          //
+          // This EXIT stays in consumer Settings deliberately. #96 moves dev toggles into
+          // the Developer menu, but that menu only exists in debug builds, and demo mode
+          // is entered by ordinary users during onboarding on release builds. Moving the
+          // only way out behind it would strand them in simulated data with no route back
+          // to their real pump. A status row with an exit is user-facing state, not a dev
+          // toggle.
           if (devMode) ...[
             ListTile(
               leading: const Icon(Icons.science_outlined),
