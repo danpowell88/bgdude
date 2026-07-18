@@ -31,6 +31,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
+    # Issue #237: run the suite on the API level people are actually on (34) AND on
+    # the floor the app claims to support (minSdk 29). A floor that is declared but
+    # never exercised is a guess — the version-gated paths (pre-31 BLE permissions,
+    # the untyped startForeground fallback) only run down there.
+    #
+    # continue-on-error on the floor image so a flake on an old, slow AVD reports as
+    # a signal rather than redding the nightly and training everyone to ignore it.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api-level: 34
+            label: baseline
+            required: true
+          - api-level: 29
+            label: floor
+            required: false
+
+    continue-on-error: ${{ !matrix.required }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -80,13 +100,13 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-api34-x86_64-v1
+          key: avd-api${{ matrix.api-level }}-x86_64-v1
 
       - name: Create AVD + generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
-          api-level: 34
+          api-level: ${{ matrix.api-level }}
           target: google_apis
           arch: x86_64
           force-avd-creation: false
@@ -97,7 +117,7 @@ jobs:
       - name: Run the functional integration suite
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
-          api-level: 34
+          api-level: ${{ matrix.api-level }}
           target: google_apis
           arch: x86_64
           force-avd-creation: false
