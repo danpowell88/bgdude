@@ -1287,6 +1287,22 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
 /// model context, refined by the learned time-of-day profile, then overlaid with
 /// illness mode when active. Watch THIS, not [sensitivityContextProvider], anywhere
 /// dosing math happens.
+/// This week's alert activity vs last week (issue #171), for the Insights surface.
+///
+/// Reads a 14-day window so [rollupWeek] can compute the week-over-week delta itself.
+///
+/// Uses the wall clock directly: `clockProvider` (issue #53) is not on this branch yet.
+/// Once it merges this should read it, so the windows are pinnable. Tests of the card
+/// override THIS provider with a fixed rollup rather than pinning time, so nothing here
+/// depends on when the suite runs.
+final alarmFatigueProvider = FutureProvider<AlarmFatigueRollup>((ref) async {
+  final now = DateTime.now(); // now-ok: the rollup windows are relative to real time
+  final events = await ref
+      .watch(historyRepositoryProvider)
+      .alertEvents(now.subtract(const Duration(days: 14)), now);
+  return rollupWeek(events, now);
+});
+
 final effectiveSensitivityProvider = Provider<SensitivityContext>((ref) {
   var daily = ref.watch(sensitivityContextProvider);
   // Before the model is trained, fall back to the transparent context heuristic so
