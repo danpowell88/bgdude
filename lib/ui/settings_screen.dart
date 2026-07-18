@@ -183,6 +183,9 @@ class SettingsScreen extends ConsumerWidget {
                 'On a steroid course? Raise expected insulin needs while active'),
             onTap: () => AppRoutes.push(context, AppRoute.medicationMode),
           ),
+          // Issue #376: first of the three, deliberately — if notifications are
+          // off, nothing below it can reach the user anyway.
+          const _NotificationsDisabledTile(),
           const _BatteryExemptionTile(), // TASK-183
           const _ExactAlarmExemptionTile(), // TASK-239
           ListTile(
@@ -398,6 +401,67 @@ class _BatteryExemptionTileState extends State<_BatteryExemptionTile> {
                   await Permission.ignoreBatteryOptimizations.request();
               if (mounted) setState(() => _granted = status.isGranted);
             },
+    );
+  }
+}
+
+/// Issue #376: surfaces a denied/revoked `POST_NOTIFICATIONS` grant.
+///
+/// The audit on that issue found this was the highest-consequence gap in the
+/// permission flow: `init()` requests the permission once at first run and nothing
+/// ever read the result, so a refusal — or a later revocation in system settings —
+/// left every alert silently undeliverable with no indication anywhere. Battery
+/// optimisation, which matters less, was already re-checked and re-offered here.
+///
+/// Follows [_ExactAlarmExemptionTile]'s shape: shown ONLY in the bad state, so it is
+/// a warning rather than a permanent "all good" row. It is worded more urgently than
+/// its siblings because the failure it describes is total — no alarms at all,
+/// including urgent lows — rather than degraded timing.
+class _NotificationsDisabledTile extends ConsumerStatefulWidget {
+  const _NotificationsDisabledTile();
+
+  @override
+  ConsumerState<_NotificationsDisabledTile> createState() =>
+      _NotificationsDisabledTileState();
+}
+
+class _NotificationsDisabledTileState
+    extends ConsumerState<_NotificationsDisabledTile> {
+  bool? _enabled;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final enabled =
+        await ref.read(notificationServiceProvider).areNotificationsEnabled();
+    if (mounted) setState(() => _enabled = enabled);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Null (still checking) and true both render nothing — a warning that flashes
+    // up during the async check and then vanishes would be worse than none.
+    if (_enabled != false) return const SizedBox.shrink();
+    return ListTile(
+      leading: Icon(Icons.notifications_off,
+          color: Theme.of(context).colorScheme.error),
+      title: const Text('Alerts are turned off'),
+      subtitle: const Text(
+          'Android is blocking bgdude\'s notifications, so NO alerts can reach '
+          'you — including urgent lows. Tap to turn them back on.'),
+      onTap: () async {
+        // After a permanent denial this returns without showing any dialog, so the
+        // re-check below is what keeps the warning visible instead of implying the
+        // tap fixed it.
+        await ref
+            .read(notificationServiceProvider)
+            .requestNotificationsPermission();
+        await _refresh();
+      },
     );
   }
 }
