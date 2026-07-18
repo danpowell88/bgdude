@@ -7,6 +7,7 @@ import '../meals/meal_library.dart';
 import '../state/providers.dart';
 import 'barcode_scan_screen.dart';
 import 'meal_detail_screen.dart';
+import '../food/ocr_script.dart';
 
 /// The saved-meal library: searchable list plus an add-meal sheet. Each meal carries
 /// its personally learned absorption curve; tapping through opens the detail screen
@@ -242,10 +243,17 @@ class _AddMealSheetState extends ConsumerState<_AddMealSheet> {
       final result = await ref.read(panelScanServiceProvider).scan(shot.path);
       if (!mounted) return;
       if (!result.hasResult || !result.panel!.hasCarbs) {
-        messenger.showSnackBar(const SnackBar(
-            content: Text(
-                'Couldn\'t read the panel — try a straight, well-lit photo, or enter it '
-                'manually.')));
+        // Issue #103: the recognizer is Latin-only, and on a CJK/Cyrillic/Thai label
+        // it returns confident nonsense rather than failing. Saying "try a better
+        // photo" there sends people to re-photograph a label that will never read.
+        final script = detectUnsupportedScript(result.ocrText);
+        messenger.showSnackBar(SnackBar(
+          content: Text(script != null
+              ? unsupportedScriptMessage(script)
+              : "Couldn't read the panel — try a straight, well-lit photo, or "
+                  'enter it manually.'),
+          duration: const Duration(seconds: 8),
+        ));
         return;
       }
       final name =
