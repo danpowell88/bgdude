@@ -21,6 +21,8 @@ pubspec.lock
 
 # Android
 android/.gradle/
+# Kotlin compiler-daemon session files, written into the source tree by KGP 2.x.
+android/.kotlin/
 android/local.properties
 android/key.properties
 android/app/*.jks

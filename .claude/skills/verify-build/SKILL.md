@@ -16,9 +16,11 @@ commit when it all passes:
    deps (drift / build_runner).
 3. `flutter analyze --fatal-infos` — must be clean. CI fails on **info**-level lints too, so
    anything analyze reports fails the gate.
-4. `flutter test --coverage test/` — green, and **line coverage must not drop** (see the
-   `coverage-ratchet` skill). This is the scope CI uses; the `integration_test/` suite needs
-   an emulator and is separate (see `integration_test/harness.dart`).
+4. `flutter test --coverage test/` — green, and **line coverage must not drop**. Check it with
+   `dart tools/coverage_report.dart --uncovered 20`, which is the exact script CI's
+   `coverage-gate` runs, so the local number is the gated number (see the `coverage-ratchet`
+   skill for the exclusion policy / decision-16). This is the scope CI uses; the
+   `integration_test/` suite needs an emulator and is separate (see `integration_test/harness.dart`).
 5. `flutter build apk --debug` — **required**. Catches Android/Gradle/manifest breakage that
    analyze and unit tests miss. Do not skip it.
 6. When native Kotlin changed: `cd android && ./gradlew :app:testDebugUnitTest` — the native

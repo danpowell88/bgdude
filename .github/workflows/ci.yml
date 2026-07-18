@@ -281,50 +281,50 @@ jobs:
       contents: read
       actions: read
     steps:
+      # Needed for tools/coverage_report.dart and its exclusion list. The script
+      # imports nothing but dart:io, so it runs straight off a bare checkout with
+      # no `pub get` / package_config resolution.
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: 3.44.4
+          cache: true
+
       - name: Download shard coverage
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: coverage-shard-*
           path: shard-coverage
 
-      # TASK-301: `empty` deliberately dropped from --ignore-errors -- it was
-      # silently tolerating a shard that contributed zero coverage (e.g. a
-      # shard whose `flutter test` step failed to even write lcov.info), the
-      # one signal that would otherwise catch a shard silently missing from
-      # the merge. `inconsistent,corrupt` stay ignored: expected, benign
-      # cross-shard warnings when the same source file is touched by more
-      # than one shard's run.
-      - name: Merge shard coverage
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq lcov
-          mkdir -p coverage
-          args=()
-          for f in shard-coverage/*/lcov.info; do args+=(--add-tracefile "$f"); done
-          lcov "${args[@]}" -o coverage/lcov.info --ignore-errors inconsistent,corrupt
-
-      # Coverage gate (TASK-159): fail on a coverage collapse. Threshold is
-      # a floor, not a target — raise it as coverage grows (67.6% on
-      # 2026-07-08, TASK-245; 67.4% on 2026-07-08, TASK-275). Generated
-      # files (lib/data/database.g.dart -- drift's generated schema/query
-      # code, the one *.g.dart committed to the repo, see SETUP.md) are
-      # excluded (TASK-274): most of its lines are boilerplate the app
-      # never calls, and it dilutes the score without reflecting real
-      # hand-written-code coverage. UI screens (lib/ui/**) are deliberately
-      # NOT chased here — they're covered by integration_test/ (see
-      # CLAUDE.md), not unit tests; the floor leaves headroom for that gap
-      # rather than penalizing it.
+      # Merge + exclude + gate in one step (issue #378). This replaces the old
+      # `lcov --add-tracefile` merge and the inline `awk` filename match that
+      # hard-excluded exactly one generated file. What counts now lives in
+      # tools/coverage_exclusions.txt — one reviewable list, each entry carrying its
+      # rationale — and the SAME script computes the number locally, so a developer
+      # can no longer see a different percentage than the one this gate enforces.
+      #
+      # The script merges by summing per-line hit counts (identical semantics to
+      # `lcov --add-tracefile`, so a file touched by more than one shard is counted
+      # once, not double-counted), and fails if it finds no tracefiles at all —
+      # keeping TASK-301's signal that a shard silently missing from the merge must
+      # red the build rather than quietly lower the denominator.
+      #
+      # The floor is a floor, not a target: raise it as coverage grows. History:
+      # 65% floor pre-exclusion, with main actually sitting at 71.3% immediately
+      # before this change (67.4-67.6% back at TASK-245/275). Re-based to 80% on
+      # 2026-07-18 (issue #378) once UI/generated/vendor-adapter code left the
+      # denominator and the remaining logic measured 85.6%. The real per-PR gate is
+      # the no-drop ratchet below.
       - name: Coverage gate
         run: |
-          read -r hit total <<< "$(awk -F: '
-            /^SF:/ { skip = ($0 ~ /database\.g\.dart$/) }
-            /^LH:/ && !skip { h += $2 }
-            /^LF:/ && !skip { t += $2 }
-            END { print h, t }
-          ' coverage/lcov.info)"
-          pct=$(awk "BEGIN {printf \"%.1f\", 100*$hit/$total}")
-          echo "Line coverage: $pct% ($hit/$total lines, excluding generated files)"
-          echo "$pct" > coverage-percent.txt
-          awk "BEGIN {exit !($pct >= 65.0)}" || { echo "::error::Line coverage $pct% is below the 65% minimum"; exit 1; }
+          dart tools/coverage_report.dart shard-coverage \
+            --min 80.0 \
+            --emit coverage-percent.txt \
+            --uncovered 15
 
       # Baseline for the no-drop ratchet below: every successful run (main pushes are the
       # ones the ratchet consumes) publishes its coverage percentage as a tiny artifact.

@@ -1,0 +1,76 @@
+# Coverage exclusions — the single source of truth (issue #378).
+#
+# Files matching any glob below are removed from BOTH the numerator and the
+# denominator of the line-coverage number that `tools/coverage_report.dart`
+# computes and that CI's `coverage-gate` job enforces.
+#
+# The bar for adding a line here is "this code cannot be meaningfully unit
+# tested", NOT "this code isn't covered yet". Anything that is merely untested
+# gets a test, not an exclusion. Every entry carries its rationale; a bare glob
+# with no reason is a review failure.
+#
+# Format: one glob per line. `**` matches across directory separators, `*`
+# matches within a path segment, `?` matches one character. Blank lines and
+# `#` comments are ignored. Paths are repo-relative with forward slashes.
+#
+# See doc/decisions/decision-16 for the standing policy.
+
+# --- Generated code -----------------------------------------------------------
+# Machine-authored by build_runner (drift, json_serializable, riverpod). Nobody
+# writes or reviews these lines, most of the emitted API surface is boilerplate
+# the app never calls, and the generators are themselves tested upstream. The
+# hand-written code that drives them IS covered. Only lib/data/database.g.dart is
+# committed today (see SETUP.md); the glob covers future generated output too.
+lib/**.g.dart
+
+# Drift table DSL: `TextColumn get id => text()();` and friends are read by the
+# code generator at BUILD time and never executed at runtime — drift's generated
+# `$SavedMealsTable extends SavedMeals` overrides every one of these getters (see
+# database.g.dart). They are structurally unreachable, so no test can cover them;
+# the schema they describe is verified through the real database in test/data/.
+# Scoped to this file because it is table declarations only — lib/data/database.dart
+# also declares tables but carries real logic alongside them, so it stays included.
+lib/data/meal_tables.dart
+
+# --- App bootstrap ------------------------------------------------------------
+# The composition root: WidgetsFlutterBinding.ensureInitialized, provider-container
+# construction, runApp, and the top-level error handlers that hand off to code that
+# IS unit tested. Exercising it means booting the real app, which is exactly what
+# integration_test/ does. No branching business logic lives here — if any appears,
+# it belongs in a testable collaborator, not behind this exclusion.
+lib/main.dart
+
+# --- UI (covered on-device, not by unit tests) --------------------------------
+# Standing project decision (decision-5, CLAUDE.md "Emulator (integration) tests for
+# every feature"): screens, panels and widgets are covered by the integration_test/
+# suite running against a real device, not by widget unit tests. They were previously
+# left in the denominator, which silently dragged the number down and made the gate
+# unable to distinguish "logic is untested" from "UI is tested elsewhere". Excluding
+# them here makes the gate mean one thing: the coverage of non-UI Dart logic.
+lib/ui/**
+
+# --- Vendor-SDK adapters behind an interface seam -----------------------------
+# Each of these is the single concrete implementation of an abstract interface that
+# the rest of the app depends on, and each does nothing but drive a third-party SDK's
+# STATIC API (flutter_blue_plus, ML Kit). There is no seam to inject inside them —
+# that is the point: the seam is the interface they implement, and the orchestration
+# logic on the other side of it is fully unit tested against fakes
+# (glucose_meter_service_test.dart, glucose_meter_controller_test.dart). Covering the
+# adapter itself would mean mocking a static vendor API and asserting that we called
+# our own mock — a hollow test by the bug-sweep skill's definition. Real verification
+# is on-device.
+#
+# The bar these meet, and which any future addition here must also meet: (1) it
+# implements an interface the app codes against, (2) its body is only vendor-SDK
+# calls, (3) no dependency can be injected to observe it, (4) the logic that uses it
+# is tested against a fake. Fail any of the four and it gets tests instead.
+lib/integrations/glucose_meter_transport_fbp.dart
+lib/food/panel_ocr_mlkit.dart
+
+# --- Deliberately NOT excluded (recorded so it isn't re-litigated) -------------
+# lib/pump/pump_client.dart looks like platform plumbing, but its constructor takes
+# injectable EventChannel/MethodChannel instances and it owns real logic (event
+# demultiplexing across six streams, MissingPluginException swallowing). A DI seam
+# exists, so it is testable-but-untested: it gets tests, not an exclusion.
+# lib/pump/channels.dart is `static const` name constants — no executable lines to
+# cover either way.
