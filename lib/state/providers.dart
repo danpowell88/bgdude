@@ -85,6 +85,7 @@ import '../ml/uncertainty_calibrator.dart';
 import '../pump/battery_drain.dart';
 import '../pump/battery_history.dart';
 import '../pump/history_backfill.dart';
+import '../pump/message_ring_buffer.dart';
 import '../pump/probe_event.dart';
 import '../pump/pump_client.dart';
 import '../pump/pump_events.dart';
@@ -536,6 +537,36 @@ final pumpTherapyProfileProvider = StreamProvider<String>((ref) {
 final pumpProbeEventProvider = StreamProvider<ProbeEvent>((ref) {
   return ref.watch(pumpClientProvider).probeEvents;
 });
+
+/// Issue #92: the always-on message tail. Records every probe event into a bounded
+/// ring buffer for as long as the app is running, independent of the Protocol Explorer
+/// being open — the point is to catch what the pump sends during NORMAL operation.
+final messageMonitorProvider = Provider<MessageMonitor>((ref) {
+  final monitor = MessageMonitor(ref);
+  ref.onDispose(monitor.dispose);
+  return monitor;
+});
+
+class MessageMonitor {
+  MessageMonitor(this._ref) {
+    _sub = _ref.read(pumpClientProvider).probeEvents.listen(
+          buffer.add,
+          // A firehose error must not kill the subscription and silently stop the tail
+          // for the rest of the session.
+          onError: (Object e) =>
+              appLog.error('message_monitor', 'probe stream error', error: e),
+        );
+  }
+
+  final Ref _ref;
+  final MessageRingBuffer buffer = MessageRingBuffer();
+  StreamSubscription<ProbeEvent>? _sub;
+
+  void dispose() {
+    _sub?.cancel();
+    _sub = null;
+  }
+}
 
 /// TASK-41: thin facade so `lib/ui` (the Protocol Explorer screen) never imports the
 /// `PumpSource` interface directly — it only ever sees this plain controller.
