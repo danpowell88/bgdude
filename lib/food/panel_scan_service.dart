@@ -8,6 +8,7 @@ import '../logging/app_log.dart';
 import 'nutrition_panel.dart';
 import 'nutrition_panel_parser.dart';
 import 'panel_llm.dart';
+import 'panel_geometry.dart';
 import 'panel_ocr.dart';
 
 class PanelScanResult {
@@ -49,6 +50,38 @@ class PanelScanService {
   // grounded fields — a hallucinated-complete panel can no longer beat an honest one.
   static const double _llmThreshold = 0.7;
 
+  /// Row-reconstructed OCR text, or null when this OCR has no geometry (or it failed).
+  Future<String?> _reconstructedText(String imagePath) async {
+    final source = ocr;
+    if (source is! PanelOcrWithGeometry) return null;
+    try {
+      final lines = await source.readLines(imagePath);
+      if (lines.isEmpty) return null;
+      final rebuilt = reconstructColumns(lines);
+      return rebuilt.trim().isEmpty ? null : rebuilt;
+    } catch (e) {
+      // Geometry is an optimisation; never let it break a scan that flat text can serve.
+      appLog.error('panel_scan', 'column reconstruction failed', error: e);
+      return null;
+    }
+  }
+
+  /// Parses both candidate texts and keeps the better result.
+  ///
+  /// Ties go to the reconstructed text: when both parse equally well, the row-aligned
+  /// version is the one whose per-serve/per-100 g split is actually trustworthy — a flat
+  /// parse can score the same having guessed the column order.
+  PanelNutrition? _bestParse(String flat, String? rebuilt) {
+    final flatParse = _parser.parse(flat);
+    if (rebuilt == null) return flatParse;
+    final rebuiltParse = _parser.parse(rebuilt);
+    if (rebuiltParse == null) return flatParse;
+    if (flatParse == null) return rebuiltParse;
+    return rebuiltParse.confidence >= flatParse.confidence
+        ? rebuiltParse
+        : flatParse;
+  }
+
   Future<PanelScanResult> scan(String imagePath) async {
     final String text;
     try {
@@ -63,7 +96,15 @@ class PanelScanService {
     }
     if (text.trim().isEmpty) return PanelScanResult(ocrText: text);
 
-    final deterministic = _parser.parse(text);
+    // Issue #104: when the recogniser can give us geometry, try rebuilding the panel's
+    // visual rows first. ML Kit often returns one block per COLUMN, so the flat text
+    // reads every label, then every per-serve number, then every per-100 g number —
+    // which the parser cannot align. Row reconstruction fixes that without the LLM.
+    //
+    // Kept as a candidate rather than a replacement: reconstruction depends on the
+    // bounding boxes being sane, and a bad photo can produce geometry that scrambles a
+    // panel the flat text would have parsed fine. Whichever text parses better wins.
+    final deterministic = _bestParse(text, await _reconstructedText(imagePath));
     final goodEnough =
         deterministic != null && deterministic.confidence >= _llmThreshold;
 

@@ -4,9 +4,10 @@ library;
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
+import 'panel_geometry.dart';
 import 'panel_ocr.dart';
 
-class MlKitPanelOcr implements PanelOcr {
+class MlKitPanelOcr implements PanelOcrWithGeometry {
   MlKitPanelOcr()
       : _recognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
@@ -17,6 +18,23 @@ class MlKitPanelOcr implements PanelOcr {
     final input = InputImage.fromFilePath(imagePath);
     final result = await _recognizer.processImage(input);
     return result.text;
+  }
+
+  @override
+  Future<List<OcrLine>> readLines(String imagePath) async {
+    final input = InputImage.fromFilePath(imagePath);
+    final result = await _recognizer.processImage(input);
+    return [
+      for (final block in result.blocks)
+        for (final line in block.lines)
+          OcrLine(
+            text: line.text,
+            left: line.boundingBox.left.toDouble(),
+            top: line.boundingBox.top.toDouble(),
+            right: line.boundingBox.right.toDouble(),
+            bottom: line.boundingBox.bottom.toDouble(),
+          ),
+    ];
   }
 
   Future<void> dispose() => _recognizer.close();
