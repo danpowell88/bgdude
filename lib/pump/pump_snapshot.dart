@@ -114,6 +114,11 @@ class PumpSnapshot {
     this.lastBolusTime,
     this.apiVersion,
     this.firmwareVersion,
+    this.cgmTransmitterId,
+    this.cgmHighAlertMgdl,
+    this.cgmLowAlertMgdl,
+    this.cgmHighAlertEnabled,
+    this.cgmLowAlertEnabled,
     this.activeAlerts = const [],
     this.activeAlarms = const [],
   });
@@ -152,6 +157,15 @@ class PumpSnapshot {
   final DateTime? lastBolusTime;
   final String? apiVersion;
   final String? firmwareVersion;
+
+  /// CGM diagnostics and the pump's OWN glucose alert thresholds (issue #90).
+  /// Null until the pump answers — the card renders nothing rather than implying
+  /// the pump has no alerts configured.
+  final String? cgmTransmitterId;
+  final int? cgmHighAlertMgdl;
+  final int? cgmLowAlertMgdl;
+  final bool? cgmHighAlertEnabled;
+  final bool? cgmLowAlertEnabled;
 
   /// Active pump alerts (informational) and alarms (higher severity), by name.
   final List<String> activeAlerts;
@@ -236,6 +250,11 @@ class PumpSnapshot {
         lastBolusTime: _time(j['lastBolusTimestampEpochMs'] as num?),
         apiVersion: j['apiVersion'] as String?,
         firmwareVersion: j['firmwareVersion'] as String?,
+        cgmTransmitterId: j['cgmTransmitterId'] as String?,
+        cgmHighAlertMgdl: (j['cgmHighAlertMgdl'] as num?)?.toInt(),
+        cgmLowAlertMgdl: (j['cgmLowAlertMgdl'] as num?)?.toInt(),
+        cgmHighAlertEnabled: j['cgmHighAlertEnabled'] as bool?,
+        cgmLowAlertEnabled: j['cgmLowAlertEnabled'] as bool?,
         activeAlerts: _stringList(j['activeAlerts']),
         activeAlarms: _stringList(j['activeAlarms']),
       );

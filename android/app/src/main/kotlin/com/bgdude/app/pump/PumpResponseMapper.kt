@@ -13,6 +13,8 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBasalStatu
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.GlobalMaxBolusSettingsResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV1Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV2Response
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CGMGlucoseAlertSettingsResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CGMHardwareInfoResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentEGVGuiDataResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.InsulinStatusResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.LastBolusStatusV2Response
@@ -33,6 +35,20 @@ object PumpResponseMapper {
     fun apply(message: Message, snapshot: MutableSnapshot) {
         when (message) {
             // Ibc (internal battery capacity) is the value the pump UI shows as %.
+            // Issue #90: CGM diagnostics. The transmitter id arrives as ASCII bytes;
+            // pumpx2 has already decoded it to a String by this point.
+            is CGMHardwareInfoResponse ->
+                snapshot.cgmTransmitterId = message.hardwareInfoString?.trim()?.ifEmpty { null }
+
+            // The pump's OWN alert thresholds, mirrored so the app can explain a
+            // divergence rather than leaving the user to wonder why only one alerted.
+            // `enabled` is an int on the wire; anything non-zero means on.
+            is CGMGlucoseAlertSettingsResponse -> {
+                snapshot.cgmHighAlertMgdl = message.highGlucoseAlertThreshold
+                snapshot.cgmLowAlertMgdl = message.lowGlucoseAlertThreshold
+                snapshot.cgmHighAlertEnabled = message.highGlucoseAlertEnabled != 0
+                snapshot.cgmLowAlertEnabled = message.lowGlucoseAlertEnabled != 0
+            }
             is CurrentBatteryV1Response ->
                 snapshot.batteryPercent = message.currentBatteryIbc
             is CurrentBatteryV2Response -> {

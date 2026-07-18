@@ -19,6 +19,8 @@ import com.jwoglom.pumpx2.pump.messages.models.PairingCodeType as X2PairingCodeT
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.AlarmStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.AlertStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.BasalLimitSettingsRequest
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CGMGlucoseAlertSettingsRequest
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CGMHardwareInfoRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.GlobalMaxBolusSettingsRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.ControlIQIOBRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.CurrentBasalStatusRequest
@@ -280,6 +282,9 @@ class PumpCommHandler(
         // TASK-72: the pump's configured max bolus + basal limits (read-only).
         sendCommand(p, GlobalMaxBolusSettingsRequest())
         sendCommand(p, BasalLimitSettingsRequest())
+        // Issue #90: CGM diagnostics + the pump's own alert thresholds (read-only).
+        sendCommand(p, CGMHardwareInfoRequest())
+        sendCommand(p, CGMGlucoseAlertSettingsRequest())
     }
 
     /**

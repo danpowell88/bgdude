@@ -2,6 +2,8 @@ package com.bgdude.app.pump
 
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQIOBResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV2Response
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CGMGlucoseAlertSettingsResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CGMHardwareInfoResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV1Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentEGVGuiDataResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.InsulinStatusResponse
@@ -154,4 +156,51 @@ class PumpResponseMapperTest {
         assertEquals(null, snapshot.cgmMgdl)
         assertEquals(null, snapshot.batteryPercent)
     }
+
+    /**
+     * Issue #90: the pump's own CGM alert thresholds, from the complete captured cargo
+     * in doc/pump-protocol.md — `c8 00 00 00 00 03 50 00 00 00 00 03`, decoding to
+     * high 200 / low 80 mg/dL.
+     */
+    @Test
+    fun cgm_alert_thresholds_decode_from_the_captured_cargo() {
+        val response = CGMGlucoseAlertSettingsResponse()
+        response.parse(
+            byteArrayOf(
+                0xc8.toByte(), 0, 0, 0, 0, 3,
+                0x50, 0, 0, 0, 0, 3,
+            ),
+        )
+
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(response, snapshot)
+
+        assertEquals(200, snapshot.cgmHighAlertMgdl)
+        assertEquals(80, snapshot.cgmLowAlertMgdl)
+    }
+
+    /**
+     * The transmitter id is built rather than parsed from captured bytes ON PURPOSE:
+     * doc/pump-protocol.md records this cargo TRUNCATED (`38 42 54 31 41 58 00 … 02`),
+     * so the exact byte length isn't known here and a hand-guessed cargo would be
+     * testing my invention rather than the pump's. This covers the mapper; the byte
+     * parse needs a full capture from a device.
+     */
+    @Test
+    fun cgm_transmitter_id_reaches_the_snapshot() {
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(CGMHardwareInfoResponse("8BT1AX", 2), snapshot)
+
+        assertEquals("8BT1AX", snapshot.cgmTransmitterId)
+    }
+
+    /** An empty/blank id must read as unknown, not as an empty-string transmitter. */
+    @Test
+    fun cgm_blank_transmitter_id_is_null() {
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(CGMHardwareInfoResponse("   ", 2), snapshot)
+
+        assertEquals(null, snapshot.cgmTransmitterId)
+    }
+
 }

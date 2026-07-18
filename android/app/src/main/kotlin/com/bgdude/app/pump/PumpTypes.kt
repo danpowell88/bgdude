@@ -62,6 +62,17 @@ class MutableSnapshot {
     var lastBolusUnits: Double? = null
     var lastBolusTimestampEpochMs: Long? = null
 
+    /**
+     * CGM diagnostics + the pump's OWN glucose alert thresholds (issue #90).
+     * Mirroring the pump's thresholds is what lets the app explain why it and the pump
+     * alerted at different moments — the commonest "why didn't it warn me" question.
+     */
+    var cgmTransmitterId: String? = null
+    var cgmHighAlertMgdl: Int? = null
+    var cgmLowAlertMgdl: Int? = null
+    var cgmHighAlertEnabled: Boolean? = null
+    var cgmLowAlertEnabled: Boolean? = null
+
     var apiVersion: String? = null
     var firmwareVersion: String? = null
     var activeAlerts: MutableList<String> = mutableListOf()
@@ -109,6 +120,11 @@ class MutableSnapshot {
         field("cgmTimestampEpochMs", cgmTimestampEpochMs)
         field("lastBolusUnits", lastBolusUnits)
         field("lastBolusTimestampEpochMs", lastBolusTimestampEpochMs)
+        field("cgmTransmitterId", cgmTransmitterId)
+        field("cgmHighAlertMgdl", cgmHighAlertMgdl)
+        field("cgmLowAlertMgdl", cgmLowAlertMgdl)
+        field("cgmHighAlertEnabled", cgmHighAlertEnabled)
+        field("cgmLowAlertEnabled", cgmLowAlertEnabled)
         field("apiVersion", apiVersion)
         field("firmwareVersion", firmwareVersion)
         fun stringArray(name: String, values: List<String>) {
