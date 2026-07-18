@@ -15,17 +15,28 @@ higher. Rules:
   a durable gain, bump the floor in `ci.yml` so it's locked in.
 
 ## Compute it the way CI does (match locally)
-1. `flutter test --coverage test/`
-2. Sum `LH:` / `LF:` over `coverage/lcov.info`, **excluding `lib/data/database.g.dart`**
-   (drift's generated code — mostly uncalled boilerplate that dilutes the score without
-   reflecting hand-written coverage).
-3. Floor is **65%** in `ci.yml` (a floor, not a target — the real gate is the no-drop ratchet
-   vs `main`). Actual sustained level is higher.
+```
+flutter test --coverage test/
+dart tools/coverage_report.dart --uncovered 20
+```
+CI's `coverage-gate` job runs that **same script** on the merged shard tracefiles, so the
+number you see locally is the number the gate enforces — there is no second implementation to
+drift out of sync. `--uncovered N` lists the N worst included files by uncovered lines, which
+is where to aim tests. Floor is **80%** in `ci.yml`, measured at **85.6%** (2026-07-18); it's a
+floor, not a target — the real gate is the no-drop ratchet vs `main`.
 
-## What NOT to chase
-UI screens (`lib/ui/**`) are covered by the `integration_test/` suite on a device, not unit
-tests — don't chase their unit-coverage lines. The floor deliberately leaves headroom for
-that gap rather than penalizing it.
+## What counts, and what doesn't (decision-16)
+The gated number is **non-UI Dart logic**. What's excluded lives in one reviewable file,
+`tools/coverage_exclusions.txt`, each entry with its rationale: generated code, the drift table
+DSL (structurally unreachable — the generated table subclass overrides every getter),
+`lib/main.dart`, vendor-SDK adapters behind an interface seam, and `lib/ui/**` (covered by
+`integration_test/` on a device per decision-5 — don't chase their unit-coverage lines).
+
+**Adding an exclusion is a last resort, and it's a reviewed diff.** The bar is "this cannot be
+meaningfully unit tested", never "this isn't covered yet". If a seam exists to inject a fake,
+the code is testable and gets a test. Before excluding a vendor adapter, check all four:
+it implements an interface the app codes against, its body is only vendor-SDK calls, nothing
+can be injected to observe it, and the logic using it is already tested against a fake.
 
 ## Every bug fix ships a failing-first test
 A fix's negative-case test must assert on the real invariant/output (not `returnsNormally` /
