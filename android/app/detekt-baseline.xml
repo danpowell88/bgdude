@@ -1,0 +1,44 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:PumpBridge.kt$PumpBridge$fun attach()</ID>
+    <ID>CyclomaticComplexMethod:PumpResponseMapper.kt$PumpResponseMapper$fun apply(message: Message, snapshot: MutableSnapshot)</ID>
+    <ID>CyclomaticComplexMethod:WidgetRenderModel.kt$WidgetRenderModel$fun fields(cgmMgdl: Int?, trend: String?, iobUnits: Double?, unitLabel: String?): Fields</ID>
+    <ID>CyclomaticComplexMethod:WidgetRenderModel.kt$WidgetRenderModel$fun render(range: String?, cgmEpochMs: Long?, nowMs: Long): Rendered</ID>
+    <ID>LongMethod:PumpBridge.kt$PumpBridge$fun attach()</ID>
+    <ID>MagicNumber:GarminIntegration.kt$GarminIntegration$1000L</ID>
+    <ID>MagicNumber:ProtocolProbe.kt$ProtocolProbe$0xFF</ID>
+    <ID>MagicNumber:PumpHistoryMapper.kt$PumpHistoryMapper$1000L</ID>
+    <ID>MagicNumber:PumpProfileMapper.kt$PumpProfileMapper$1000.0</ID>
+    <ID>MagicNumber:PumpProfileMapper.kt$PumpProfileMapper$25</ID>
+    <ID>MagicNumber:PumpProfileMapper.kt$PumpProfileMapper$360</ID>
+    <ID>MagicNumber:PumpProfileMapper.kt$PumpProfileMapper$75</ID>
+    <ID>MagicNumber:PumpResponseMapper.kt$PumpResponseMapper$10</ID>
+    <ID>MagicNumber:PumpResponseMapper.kt$PumpResponseMapper$1000.0</ID>
+    <ID>MagicNumber:PumpResponseMapper.kt$PumpResponseMapper$1000L</ID>
+    <ID>MagicNumber:PumpResponseMapper.kt$PumpResponseMapper$20</ID>
+    <ID>MagicNumber:PumpResponseMapper.kt$PumpResponseMapper$30</ID>
+    <ID>MagicNumber:WidgetNativePush.kt$WidgetNativePush$4177</ID>
+    <ID>MagicNumber:WidgetRenderModel.kt$WidgetRenderModel$180</ID>
+    <ID>MagicNumber:WidgetRenderModel.kt$WidgetRenderModel$60</ID>
+    <ID>MagicNumber:WidgetRenderModel.kt$WidgetRenderModel$60L</ID>
+    <ID>MagicNumber:WidgetRenderModel.kt$WidgetRenderModel$60_000L</ID>
+    <ID>MagicNumber:WidgetRenderModel.kt$WidgetRenderModel$70</ID>
+    <ID>ReturnCount:GarminSender.kt$GarminSender$fun send(payload: Map&lt;String, Any?&gt;)</ID>
+    <ID>ReturnCount:ProtocolProbe.kt$ProtocolProbe$fun buildSafeRequest(simpleName: String, arg1: Int? = null, arg2: Int? = null): Result</ID>
+    <ID>ReturnCount:ProtocolProbe.kt$ProtocolProbe$private fun gate(message: Message): String?</ID>
+    <ID>ReturnCount:PumpCommHandler.kt$PumpCommHandler$private fun handleHistoryMessage(peripheral: BluetoothPeripheral, message: Message)</ID>
+    <ID>ReturnCount:PumpService.kt$PumpService$private fun maybeFireUrgentLowBackstop(cgmMgdl: Int?)</ID>
+    <ID>ReturnCount:ServiceRestartPolicy.kt$ServiceRestartPolicy$fun shouldResume( nullIntent: Boolean, autoReconnectExtra: Boolean, hasBluetoothPermission: Boolean, hasSavedMac: Boolean, ): Boolean</ID>
+    <ID>SwallowedException:ProtocolProbe.kt$ProtocolProbe$e: ClassNotFoundException</ID>
+    <ID>TooGenericExceptionCaught:GarminIntegration.kt$GarminIntegration$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:GarminSender.kt$GarminSender$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:ProtocolProbe.kt$ProtocolProbe$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:PumpHostApiImpl.kt$PumpHostApiImpl$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:PumpService.kt$PumpService$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SafeCallbacks.kt$SafeCallbacks$t: Throwable</ID>
+    <ID>TooManyFunctions:PumpCommHandler.kt$PumpCommHandler : TandemPump</ID>
+    <ID>TooManyFunctions:PumpService.kt$PumpService : ServiceListener</ID>
+  </CurrentIssues>
+</SmellBaseline>
