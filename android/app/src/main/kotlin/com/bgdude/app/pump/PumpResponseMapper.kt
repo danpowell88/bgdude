@@ -5,6 +5,7 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.AlarmStatusRespon
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.AlertStatusResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ApiVersionResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQIOBResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQSleepScheduleResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoAbstractResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV1Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV2Response
@@ -50,6 +51,28 @@ object PumpResponseMapper {
             is GlobalMaxBolusSettingsResponse ->
                 snapshot.maxBolusUnits = message.maxBolus / 1000.0
 
+            is ControlIQSleepScheduleResponse -> {
+                // Recorded even when every slot is off: "Control-IQ never sleeps" is
+                // information, and is only distinguishable from "not asked yet" by this flag.
+                snapshot.sleepScheduleRead = true
+                snapshot.sleepSchedules.clear()
+                listOf(
+                    message.schedule0,
+                    message.schedule1,
+                    message.schedule2,
+                    message.schedule3,
+                ).forEach { slot ->
+                    if (slot == null || slot.enabled == 0) return@forEach
+                    // The raw days byte, NOT slot.activeDays(): pumpx2 1.9.0's
+                    // MultiDay.fromBitmask/toBitmask are broken (fromBitmask(0x7f) returns
+                    // just [MONDAY]; toBitmask(ALL_DAYS) returns 1), so the decoded Set
+                    // silently loses days. build() round-trips the slot bytes faithfully.
+                    val days = slot.build()[1].toInt() and 0xff
+                    snapshot.sleepSchedules.add(
+                        "$days:${slot.startTime().encode()}:${slot.endTime().encode()}",
+                    )
+                }
+            }
             is BasalLimitSettingsResponse ->
                 snapshot.maxBasalUnitsPerHour = message.basalLimit / 1000.0
 

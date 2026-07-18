@@ -9,6 +9,8 @@ import '../ml/threshold_duration.dart';
 import '../state/providers.dart';
 import 'widgets/on_board_forecast_chart.dart';
 import 'widgets/prediction_chart.dart';
+import '../pump/sleep_schedule.dart';
+import 'widgets/sleep_window_note.dart';
 
 /// Every model's forward-looking output in one place: the BG forecaster horizons
 /// (with uncertainty), the decomposed scenario lines, a what-if explorer, an overnight
@@ -111,6 +113,18 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
         _SensitivityCard(context0: ctx),
         const SizedBox(height: 20),
         _OvernightCard(state: state, predictor: predictor, unit: unit),
+        // Issue #87: why the shaded window on the chart above behaves differently.
+        SleepWindowNote(
+          schedules: <SleepSchedule>[
+            for (final e in ref
+                    .watch(pumpSnapshotProvider)
+                    .valueOrNull
+                    ?.sleepSchedules ??
+                const <String>[])
+              if (SleepSchedule.tryParse(e) case final parsed?) parsed,
+          ],
+          now: state.now,
+        ),
         const SizedBox(height: 20),
         Text('What-if explorer', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),

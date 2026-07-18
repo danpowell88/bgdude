@@ -8,6 +8,7 @@ import '../../analytics/predictor.dart';
 import '../../core/units.dart';
 import '../../state/providers.dart';
 import '../timeline_screen.dart' show explainDayEvent;
+import '../../pump/sleep_schedule.dart';
 
 /// Prediction chart: a trailing CGM trace leading into the forward forecast, with the
 /// target range shaded, a glucose y-axis (with units), and a "now" marker. Showing recent
@@ -105,6 +106,24 @@ class PredictionChart extends ConsumerWidget {
     // a curve's shape can be read against what caused it.
     final events = ref.watch(dayEventsProvider);
 
+    // Issue #87: shade Control-IQ's sleep window. Overnight traces are flatter and
+    // corrections behave differently inside it because Control-IQ aims at a tighter
+    // target there — without the shading that shows up as unexplained flatness.
+    final schedules = <SleepSchedule>[
+      for (final e in ref
+              .watch(pumpSnapshotProvider)
+              .valueOrNull
+              ?.sleepSchedules ??
+          const <String>[])
+        if (SleepSchedule.tryParse(e) case final s?) s,
+    ];
+    final sleepWindows = sleepWindowsInRange(
+      schedules,
+      now,
+      -_historyMinutes.toDouble(),
+      240,
+    );
+
     final chart = LineChart(
       LineChartData(
         minX: -_historyMinutes.toDouble(),
@@ -155,7 +174,14 @@ class PredictionChart extends ConsumerWidget {
           ),
         ),
         borderData: FlBorderData(show: false),
-        rangeAnnotations: RangeAnnotations(horizontalRangeAnnotations: [
+        rangeAnnotations: RangeAnnotations(verticalRangeAnnotations: [
+          for (final w in sleepWindows)
+            VerticalRangeAnnotation(
+              x1: w.startMinutesFromNow,
+              x2: w.endMinutesFromNow,
+              color: cs.tertiary.withValues(alpha: 0.10),
+            ),
+        ], horizontalRangeAnnotations: [
           HorizontalRangeAnnotation(
             y1: toDisplay(GlucoseThresholds.low),
             y2: toDisplay(GlucoseThresholds.high),

@@ -114,6 +114,8 @@ class PumpSnapshot {
     this.lastBolusTime,
     this.apiVersion,
     this.firmwareVersion,
+    this.sleepSchedules = const [],
+    this.sleepScheduleRead = false,
     this.activeAlerts = const [],
     this.activeAlarms = const [],
   });
@@ -154,6 +156,12 @@ class PumpSnapshot {
   final String? firmwareVersion;
 
   /// Active pump alerts (informational) and alarms (higher severity), by name.
+  /// Control-IQ sleep slots (issue #87), each `"<daysBitmask>:<startMins>:<endMins>"`.
+  /// Empty with [sleepScheduleRead] true means Control-IQ never enters sleep — which is
+  /// different from the pump not having answered yet.
+  final List<String> sleepSchedules;
+  final bool sleepScheduleRead;
+
   final List<String> activeAlerts;
   final List<String> activeAlarms;
 
@@ -236,6 +244,8 @@ class PumpSnapshot {
         lastBolusTime: _time(j['lastBolusTimestampEpochMs'] as num?),
         apiVersion: j['apiVersion'] as String?,
         firmwareVersion: j['firmwareVersion'] as String?,
+        sleepSchedules: _stringList(j['sleepSchedules']),
+        sleepScheduleRead: j['sleepScheduleRead'] as bool? ?? false,
         activeAlerts: _stringList(j['activeAlerts']),
         activeAlarms: _stringList(j['activeAlarms']),
       );
