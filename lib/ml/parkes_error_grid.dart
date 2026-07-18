@@ -18,6 +18,14 @@
 /// extended to [_farMgdl] (well past any real CGM/meter reading) rather than a
 /// data-dependent plot limit, since that's a plotting concern the R package needed and
 /// this classifier doesn't.
+///
+/// **One deliberate deviation from `ega` (issue #381).** Its Type 1 D-lower boundary
+/// extrapolates from (410, 110), a point that is not on the line its own slope is
+/// defined from — a copy-paste from the Type 2 block, where (410, 110) IS a real vertex.
+/// The result is a boundary that drifts progressively above Table 1 (by ~4.5 mg/dL at a
+/// reference of 550), reporting some pairs as zone D that the published grid puts in
+/// zone C. We follow Table 1, not `ega`, and anchor on (250, 40). If you are diffing this
+/// file against the R source, that difference is intentional — do not "fix" it back.
 library;
 
 enum ParkesZone { a, b, c, d, e }
@@ -109,7 +117,14 @@ class ParkesErrorGrid {
   static _Polygon get _zoneDLower => [
         (250, 0),
         (250, 40),
-        (_farMgdl, _yAt(410, 110, _farMgdl, _cDl)),
+        // Issue #381: extrapolate from (250, 40) — this polygon's OWN vertex, and the
+        // point _cDl's slope is defined from. The `ega` R package anchors this on
+        // (410, 110) instead, which is not on that line (the line is at 98.67 there),
+        // so its top edge runs at slope 0.38178 rather than Table 1's 0.36667 and
+        // drifts further above the published boundary the higher the reference value.
+        // That is an upstream bug, faithfully ported and now corrected; every other
+        // polygon here (e.g. _zoneCLower) already anchors on its own vertex.
+        (_farMgdl, _yAt(250, 40, _farMgdl, _cDl)),
         (_farMgdl, 0),
       ];
 
