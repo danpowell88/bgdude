@@ -1,5 +1,6 @@
 package com.bgdude.app.garmin
 
+import android.app.Application
 import android.content.Context
 import android.util.Log
 import org.json.JSONObject
@@ -31,7 +32,11 @@ object GarminIntegration {
 
     fun init(context: Context) {
         if (sender == null) {
-            sender = GarminSender(context.applicationContext).also { it.initialize() }
+            // applicationContext is the process-lifetime Application instance; the
+            // as? keeps a non-standard Context (only really possible in a test double)
+            // from crashing service startup over the watch integration.
+            val app = context.applicationContext as? Application ?: return
+            sender = GarminSender(app).also { it.initialize() }
         }
     }
 

@@ -1,6 +1,6 @@
 package com.bgdude.app.garmin
 
-import android.content.Context
+import android.app.Application
 import android.util.Log
 import com.garmin.android.connectiq.ConnectIQ
 import com.garmin.android.connectiq.IQApp
@@ -17,7 +17,12 @@ import com.garmin.android.connectiq.exception.ServiceUnavailableException
  * paired, or the watch app isn't installed, every path logs and returns — the pump
  * service must never be destabilised by watch delivery.
  */
-class GarminSender(private val context: Context) {
+// Takes an [Application], not a bare [Context], deliberately: GarminIntegration holds
+// this instance in a static (object) field for the process lifetime, and an Application
+// is the one Context that legitimately lives that long. Typing it here encodes the
+// invariant instead of relying on every call site remembering `.applicationContext`
+// — and is what clears Android Lint's StaticFieldLeak without a suppression (issue #334).
+class GarminSender(private val context: Application) {
 
     /**
      * The bgdude Connect IQ products the phone pushes to — the widget, watch face and data

@@ -1,4 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Android Lint baseline (issues #331, #334).
+
+  Burned down from 44 entries to 34 in #334. Every entry that REMAINS is justified
+  below; nothing here is a "we'll get to it". The baseline may only ever shrink — if a
+  fix removes one, regenerate (delete this file, run `./gradlew :app:lintDebug`) and
+  RE-ADD THIS HEADER, which regeneration discards.
+
+  Per issue #334 AC#2, no @SuppressLint / tools:ignore annotations were added anywhere
+  to dodge a fix. The 10 that went were real fixes:
+  UseKtx x3 (SharedPreferences.edit {}), HardcodedText x3 (widget placeholders moved to
+  string resources), ObsoleteSdkInt x1 (drawable-v21 merged into drawable — minSdk 29
+  means the v21 qualifier could never lose), UnusedResources x1 (bg_widget_label was
+  orphaned; wired it to the widget receiver, which is what it was written for), and
+  StaticFieldLeak x1 (GarminSender now takes an Application rather than a bare Context,
+  encoding in the type the invariant every call site was already honouring).
+
+  REMAINING, and why:
+
+  * LogNotTimber (24) — INAPPLICABLE. Lint sees com.jakewharton.timber on the classpath
+    and suggests it over android.util.Log, but Timber is a TRANSITIVE dependency (it
+    arrives via pumpx2), not one this app chose. Adopting a transitive library as the
+    native logging framework would couple our logging to pumpx2's dependency graph and
+    break on any upgrade that drops it. The native side uses android.util.Log
+    deliberately; the Dart side has its own appLog. Revisit only if Timber ever becomes
+    a direct, intentional dependency.
+
+  * UnusedAttribute (5) — DELIBERATE FORWARD COMPATIBILITY. usesPermissionFlags (API
+    31+), enableOnBackInvokedCallback (API 33+), previewLayout / targetCellWidth /
+    targetCellHeight (API 31+). All are correct on the devices that read them and are
+    ignored below; minSdk is 29. bg_widget_info.xml says as much in its own comment.
+    Removing them would degrade behaviour on modern devices to silence a warning.
+
+  * GradleDependency (3) — OWNED BY DEPENDABOT (decision-14). desugar_jdk_libs,
+    androidx.core:core-ktx and androidx.test:core have newer releases. Version currency
+    is Dependabot's job; bumping them by hand here would race its PRs and mix an
+    unreviewed upgrade into an unrelated change. These entries are expected to churn as
+    new versions ship — that is the mechanism working, not a debt.
+
+  * TypographyDashes (1) — WRONG SUGGESTION HERE. Lint wants an em dash in the widget's
+    "--" placeholder, but that string must byte-match what WidgetRenderModel writes at
+    runtime for the no-reading case (WidgetRenderModel.kt: `cgmMgdl == null -> "--"`).
+    Using an em dash would make the pre-data widget render differently from the live
+    no-data state. Introduced by #334's own HardcodedText fix, and accepted knowingly:
+    net effect of that fix is still -3 warnings.
+-->
 <issues format="6" by="lint 8.9.1" type="baseline" client="gradle" dependencies="false" name="AGP (8.9.1)" variant="all" version="8.9.1">
 
     <issue
@@ -15,7 +61,7 @@
     <issue
         id="UnusedAttribute"
         message="Attribute `enableOnBackInvokedCallback` is only used in API level 33 and higher (current min is 29)"
-        errorLine1="        android:enableOnBackInvokedCallback=&quot;true&quot;>"
+        errorLine1="        android:enableOnBackInvokedCallback=&quot;true&quot;"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/AndroidManifest.xml"
@@ -80,45 +126,12 @@
 
     <issue
         id="GradleDependency"
-        message="A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-android than 1.8.1 is available: 1.10.2"
-        errorLine1="    implementation &quot;org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1&quot;"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="build.gradle"
-            line="103"
-            column="20"/>
-    </issue>
-
-    <issue
-        id="GradleDependency"
-        message="A newer version of org.robolectric:robolectric than 4.13 is available: 4.16"
-        errorLine1="    testImplementation &quot;org.robolectric:robolectric:4.13&quot;"
-        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="build.gradle"
-            line="112"
-            column="24"/>
-    </issue>
-
-    <issue
-        id="GradleDependency"
         message="A newer version of androidx.test:core than 1.6.1 is available: 1.7.0"
         errorLine1="    testImplementation &quot;androidx.test:core:1.6.1&quot;"
         errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="build.gradle"
             line="113"
-            column="24"/>
-    </issue>
-
-    <issue
-        id="GradleDependency"
-        message="A newer version of org.mockito:mockito-core than 5.14.2 is available: 5.23.0"
-        errorLine1="    testImplementation &quot;org.mockito:mockito-core:5.14.2&quot;"
-        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="build.gradle"
-            line="116"
             column="24"/>
     </issue>
 
@@ -140,7 +153,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/bgdude/app/garmin/GarminIntegration.kt"
-            line="85"
+            line="90"
             column="13"/>
     </issue>
 
@@ -151,7 +164,7 @@
         errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/bgdude/app/garmin/GarminSender.kt"
-            line="111"
+            line="116"
             column="21"/>
     </issue>
 
@@ -162,7 +175,7 @@
         errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/bgdude/app/garmin/GarminSender.kt"
-            line="115"
+            line="120"
             column="21"/>
     </issue>
 
@@ -173,7 +186,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/bgdude/app/garmin/GarminSender.kt"
-            line="125"
+            line="130"
             column="13"/>
     </issue>
 
@@ -184,7 +197,7 @@
         errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/bgdude/app/garmin/GarminSender.kt"
-            line="153"
+            line="158"
             column="25"/>
     </issue>
 
@@ -195,7 +208,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/bgdude/app/garmin/GarminSender.kt"
-            line="164"
+            line="169"
             column="13"/>
     </issue>
 
@@ -206,7 +219,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/bgdude/app/garmin/GarminSender.kt"
-            line="167"
+            line="172"
             column="13"/>
     </issue>
 
@@ -217,7 +230,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/bgdude/app/garmin/GarminSender.kt"
-            line="170"
+            line="175"
             column="13"/>
     </issue>
 
@@ -387,98 +400,14 @@
     </issue>
 
     <issue
-        id="ObsoleteSdkInt"
-        message="This folder configuration (`v21`) is unnecessary; `minSdkVersion` is 29. Merge all the resources in this folder into `drawable`.">
-        <location
-            file="src/main/res/drawable-v21"/>
-    </issue>
-
-    <issue
-        id="StaticFieldLeak"
-        message="Do not place Android context classes in static fields (static reference to `GarminSender` which has field `context` pointing to `Context`); this is a memory leak"
-        errorLine1="    private var sender: GarminSender? = null"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/bgdude/app/garmin/GarminIntegration.kt"
-            line="17"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedResources"
-        message="The resource `R.string.bg_widget_label` appears to be unused"
-        errorLine1="    &lt;string name=&quot;bg_widget_label&quot;>Blood glucose&lt;/string>"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        id="TypographyDashes"
+        message="Replace &quot;--&quot; with an &quot;em dash&quot; character (—, &amp;#8212;) ?"
+        errorLine1="    &lt;string name=&quot;bg_widget_placeholder_iob&quot;>IOB --&lt;/string>"
+        errorLine2="                                             ~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="4"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)"
-        errorLine2="        ^">
-        <location
-            file="src/main/kotlin/com/bgdude/app/pump/PairedPump.kt"
-            line="16"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)"
-        errorLine2="        ^">
-        <location
-            file="src/main/kotlin/com/bgdude/app/pump/PairedPump.kt"
-            line="25"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        prefs.edit()"
-        errorLine2="        ~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/bgdude/app/widget/WidgetNativePush.kt"
-            line="43"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;--&quot;, should use `@string` resource"
-        errorLine1="        android:text=&quot;--&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/bg_widget.xml"
-            line="24"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;IOB --&quot;, should use `@string` resource"
-        errorLine1="            android:text=&quot;IOB --&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/bg_widget.xml"
-            line="62"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="HardcodedText"
-        message="Hardcoded string &quot;no data&quot;, should use `@string` resource"
-        errorLine1="            android:text=&quot;no data&quot;"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/bg_widget.xml"
-            line="71"
-            column="13"/>
+            line="11"
+            column="46"/>
     </issue>
 
 </issues>

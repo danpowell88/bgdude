@@ -3,4 +3,11 @@
     <!-- Home-screen widget metadata. -->
     <string name="bg_widget_label">Blood glucose</string>
     <string name="bg_widget_description">Current BG, trend, and insulin on board from your pump.</string>
+
+    <!-- Placeholders shown in the widget before the first snapshot arrives; every one
+         is overwritten at runtime by WidgetNativePush. They live here rather than
+         inline in the layout so the widget stays translatable. -->
+    <string name="bg_widget_placeholder_bg">--</string>
+    <string name="bg_widget_placeholder_iob">IOB --</string>
+    <string name="bg_widget_placeholder_updated">no data</string>
 </resources>
