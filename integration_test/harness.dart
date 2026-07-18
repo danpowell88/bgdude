@@ -9,6 +9,7 @@ import 'package:bgdude/app.dart';
 import 'package:bgdude/data/kv_store.dart';
 import 'package:bgdude/insights/notifications.dart';
 import 'package:bgdude/state/providers.dart';
+import 'package:bgdude/dev/simulated_scenario.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,6 +52,7 @@ Future<void> pumpDemoApp(
   bool devMode = true,
   String? dbOpenError,
   DateTime? fixedNow,
+  SimulatedScenario scenario = SimulatedScenario.none,
 }) async {
   addTearDown(() => tearDownDemoHarness(tester));
   await tester.pumpWidget(
@@ -62,6 +64,9 @@ Future<void> pumpDemoApp(
         dbOpenErrorProvider.overrideWithValue(dbOpenError),
         if (fixedNow != null)
           demoClockProvider.overrideWithValue(() => fixedNow),
+        // Issue #235: pin the simulated day to a scripted state so alert flows are
+        // reachable on demand.
+        demoScenarioProvider.overrideWithValue(scenario),
       ],
       child: const BgDudeApp(),
     ),

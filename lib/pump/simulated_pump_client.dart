@@ -10,15 +10,27 @@ import 'dart:async';
 
 import '../core/units.dart';
 import '../dev/sim_data.dart';
+import '../dev/simulated_scenario.dart';
 import 'probe_event.dart';
 import 'pump_snapshot.dart';
 import 'pump_source.dart';
 import '../core/sleep_window.dart';
 
 class SimulatedPumpClient implements PumpSource {
-  SimulatedPumpClient({SimulatedDay? day, DateTime Function()? clock})
-      : _clock = clock ?? DateTime.now,
-        day = day ?? SimulatedDay.generate(now: (clock ?? DateTime.now)());
+  SimulatedPumpClient({
+    SimulatedDay? day,
+    DateTime Function()? clock,
+    this.scenario = SimulatedScenario.none,
+  })  : _clock = clock ?? DateTime.now,
+        day = applyScenario(
+          day ?? SimulatedDay.generate(now: (clock ?? DateTime.now)()),
+          scenario,
+        );
+
+  /// Issue #235: pins demo mode to a specific state (urgent low, pump alarm, …) so the
+  /// alert paths are reachable on demand instead of only when a generated day happens
+  /// to produce one — which, for an urgent low, is never.
+  final SimulatedScenario scenario;
 
   final DateTime Function() _clock;
 
@@ -97,6 +109,8 @@ class SimulatedPumpClient implements PumpSource {
       lastBolusTime: day.boluses.isEmpty ? null : day.boluses.last.time,
       apiVersion: 'sim',
       firmwareVersion: 'sim-1.0',
+      activeAlarms: scenarioAlarms(scenario),
+      activeAlerts: scenarioAlerts(scenario),
     );
     _lastSnapshot = snapshot;
     _snapshots.add(snapshot);
