@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../pump/pump_snapshot.dart';
 import '../state/providers.dart';
 import 'protocol_explorer_screen.dart';
+import '../pump/history_log_coverage.dart';
+import 'history_coverage_screen.dart';
 
 /// Developer menu — the home for low-level, non-consumer tools. Kept out of the main
 /// Settings flow so day-to-day use isn't cluttered; everything here is diagnostic and
@@ -28,6 +30,18 @@ class DeveloperScreen extends ConsumerWidget {
               'Low-level diagnostics. Everything here is read-only — nothing can affect '
               'insulin delivery.',
               style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          // Issue #94: which pump events the app actually understands.
+          ListTile(
+            leading: const Icon(Icons.fact_check_outlined),
+            title: const Text('History decode coverage'),
+            subtitle: Text(
+                '$decodedHistoryLogCount of ${historyLogTypes.length} pump event '
+                'types decoded'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const HistoryCoverageScreen()),
             ),
           ),
           ListTile(
