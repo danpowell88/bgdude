@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:bgdude/core/samples.dart';
 import 'package:bgdude/data/database.dart';
 import 'package:bgdude/data/history_repository.dart';
 import 'package:bgdude/data/kv_store.dart';
@@ -99,17 +100,40 @@ void main() {
   });
 
   test('prediction reconciliation runs and logs are safe', () async {
-    // A matured prediction (made 12h ago) gets an actual filled in from stored CGM.
+    // A matured prediction gets an actual filled in from stored CGM.
+    //
+    // Issue #383: this used to target `now - 11h30m` and rely on whatever the
+    // simulated day happened to have there. `reconcilePredictions` discards
+    // artifacts (`!sensorWarmup && !compressionLow && mgdl > 0`), and sim_data
+    // injects a compression low at the CALENDAR time 03:10. Since the target sat
+    // at a fixed offset from the wall clock, the two aligned for ~25 minutes every
+    // day (runner-local 14:35-15:00), scoring 0 and failing the suite on unrelated
+    // PRs. Deterministic given the clock, so it read as a flake but was not one.
+    //
+    // Anchoring 30 days back puts the scenario outside the generated day entirely
+    // ([now-24h, now]), so no artifact can ever land on it and the seeded reading
+    // below cannot collide with a generated one — note InMemoryHistoryRepository
+    // .saveCgm keeps the FIRST sample for a timestamp, so a colliding seed would
+    // be silently dropped rather than winning the slot.
+    final targetTime = now.subtract(const Duration(days: 30));
+    await repo.saveCgm([CgmSample(time: targetTime, mgdl: 138)]);
     await repo.savePrediction(StoredPrediction(
-      madeAt: now.subtract(const Duration(hours: 12)),
+      madeAt: targetTime.subtract(const Duration(minutes: 30)),
       horizonMinutes: 30,
       predictedMgdl: 140,
       lowerMgdl: 120,
       upperMgdl: 160,
       modelId: 'deterministic',
     ));
+
     final updated = await repo.reconcilePredictions(now);
+
     expect(updated, 1);
+    // Assert the value too: "1 row touched" alone would pass even if the wrong
+    // reading were matched, which is the failure the ±5-min window can produce.
+    final scored = await repo.predictions(
+        targetTime.subtract(const Duration(days: 1)), now);
+    expect(scored.single.actualMgdl, 138);
   });
 
   test('runStartup completes without throwing', () async {
