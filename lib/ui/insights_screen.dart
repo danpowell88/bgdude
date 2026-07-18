@@ -6,6 +6,7 @@ import '../core/samples.dart';
 import '../insights/lab_a1c.dart';
 import '../insights/morning_summary.dart';
 import '../state/providers.dart';
+import 'app_routes.dart';
 
 /// The unified Insights page: the daily briefing, insulin-sensitivity readiness, and
 /// model status — the things that used to be scattered across separate screens, now read
@@ -34,6 +35,19 @@ class InsightsScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Issue #80: ask a question about your own data. Placed first because it
+        // is the fastest route to a specific answer when you already know what you
+        // want to know, rather than scrolling the whole page for it.
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.question_answer_outlined),
+            title: const Text('Ask your data'),
+            subtitle: const Text(
+                'Plain-English questions, answered only from your own measurements'),
+            onTap: () => AppRoutes.push(context, AppRoute.askData),
+          ),
+        ),
+        const SizedBox(height: 16),
         // --- Daily briefing ---
         Text('Daily briefing', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
