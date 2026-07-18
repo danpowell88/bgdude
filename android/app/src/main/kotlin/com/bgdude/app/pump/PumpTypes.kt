@@ -62,6 +62,21 @@ class MutableSnapshot {
     var lastBolusUnits: Double? = null
     var lastBolusTimestampEpochMs: Long? = null
 
+    /**
+     * Pump configuration mirror (issue #85): PumpSettings op 83 + PumpGlobals op 87.
+     * Read-only — bgdude never writes pump settings (decision-1).
+     *
+     * lowInsulinThresholdUnits is the pump's OWN low-reservoir warning level, mirrored
+     * for the same reason as the CGM thresholds in #90: it explains why the pump warned
+     * about insulin when bgdude hadn't yet, or vice versa.
+     */
+    var autoShutdownEnabled: Boolean? = null
+    var autoShutdownHours: Int? = null
+    var lowInsulinThresholdUnits: Int? = null
+    var cannulaPrimeSizeUnits: Double? = null
+    var featureLocked: Boolean? = null
+    var quickBolusEnabled: Boolean? = null
+
     var apiVersion: String? = null
     var firmwareVersion: String? = null
     var activeAlerts: MutableList<String> = mutableListOf()
@@ -109,6 +124,12 @@ class MutableSnapshot {
         field("cgmTimestampEpochMs", cgmTimestampEpochMs)
         field("lastBolusUnits", lastBolusUnits)
         field("lastBolusTimestampEpochMs", lastBolusTimestampEpochMs)
+        field("autoShutdownEnabled", autoShutdownEnabled)
+        field("autoShutdownHours", autoShutdownHours)
+        field("lowInsulinThresholdUnits", lowInsulinThresholdUnits)
+        field("cannulaPrimeSizeUnits", cannulaPrimeSizeUnits)
+        field("featureLocked", featureLocked)
+        field("quickBolusEnabled", quickBolusEnabled)
         field("apiVersion", apiVersion)
         field("firmwareVersion", firmwareVersion)
         fun stringArray(name: String, values: List<String>) {

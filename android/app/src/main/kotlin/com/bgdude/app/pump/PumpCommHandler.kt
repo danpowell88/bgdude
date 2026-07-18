@@ -30,6 +30,8 @@ import com.jwoglom.pumpx2.pump.messages.request.currentStatus.IDPSettingsRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.InsulinStatusRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.LastBolusStatusV2Request
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.ProfileStatusRequest
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.PumpGlobalsRequest
+import com.jwoglom.pumpx2.pump.messages.request.currentStatus.PumpSettingsRequest
 import com.jwoglom.pumpx2.pump.messages.request.currentStatus.PumpVersionRequest
 import com.jwoglom.pumpx2.pump.messages.response.authentication.AbstractCentralChallengeResponse
 import com.jwoglom.pumpx2.pump.messages.response.authentication.AbstractPumpChallengeResponse
@@ -280,6 +282,9 @@ class PumpCommHandler(
         // TASK-72: the pump's configured max bolus + basal limits (read-only).
         sendCommand(p, GlobalMaxBolusSettingsRequest())
         sendCommand(p, BasalLimitSettingsRequest())
+        // Issue #85: the pump's own configuration mirror (read-only).
+        sendCommand(p, PumpSettingsRequest())
+        sendCommand(p, PumpGlobalsRequest())
     }
 
     /**
