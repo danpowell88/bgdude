@@ -322,6 +322,16 @@ class SettingsScreen extends ConsumerWidget {
             enabled: !devMode,
             onTap: () => ref.read(pumpClientProvider).unpair(),
           ),
+          const Divider(),
+          // Issue #376: one place to answer "is anything missing?" — grants get
+          // revoked by OS updates and OEM battery managers without telling anyone.
+          ListTile(
+            leading: const Icon(Icons.verified_user_outlined),
+            title: const Text('Permissions'),
+            subtitle: const Text(
+                'What bgdude needs, what is granted, and what breaks without it'),
+            onTap: () => AppRoutes.push(context, AppRoute.permissions),
+          ),
           // Developer menu (Protocol Explorer + low-level diagnostics) is a debug-build
           // tool only — hidden from release builds along with its native logcat dump.
           if (kDebugMode) ...[
