@@ -363,11 +363,17 @@ class UserProfileNotifier extends PersistedStateNotifier<UserProfile> {
 /// than a harmless reset.
 final exercisePlanProvider =
     StateNotifierProvider<ExercisePlanNotifier, ExercisePlan?>(
-        (ref) => ExercisePlanNotifier());
+        (ref) => ExercisePlanNotifier(clock: ref.read(clockProvider)));
 
 class ExercisePlanNotifier extends PersistedStateNotifier<ExercisePlan?> {
-  ExercisePlanNotifier() : super(null);
+  ExercisePlanNotifier({DateTime Function()? clock})
+      : _now = clock ?? DateTime.now,
+        super(null);
   static const _key = 'exercise_plan_v1';
+
+  /// Injected wall clock (issue #53) — decides whether a restored plan's effect
+  /// window has already passed, so a test can restore "into" a chosen time.
+  final DateTime Function() _now;
 
   @override
   Future<ExercisePlan?> load() async {
@@ -378,7 +384,7 @@ class ExercisePlanNotifier extends PersistedStateNotifier<ExercisePlan?> {
           ExercisePlan.fromJson(jsonDecode(raw) as Map<String, dynamic>);
       // AC#2: don't resurrect a plan whose effect window already passed while
       // the app was closed.
-      return DateTime.now().isAfter(plan.effectEnd) ? null : plan;
+      return _now().isAfter(plan.effectEnd) ? null : plan;
     } catch (e) {
       await quarantineCorruptValue(_key, raw, e);
       return null;
@@ -483,6 +489,15 @@ final dbOpenSalvageDbProvider = Provider<AppDatabase?>((ref) => null);
 /// integration tests override this to a fixed value so the simulated feed/history
 /// (and therefore any on-device displayed-value assertion) don't vary by run time.
 final demoClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
+/// The app's wall clock, injected into the time-dependent services (issue #53).
+/// Defaults to [DateTime.now]; a test overrides it to pin quiet hours, alert repeat
+/// windows, mode expiry and job cadence instead of waiting real time out.
+///
+/// DELIBERATELY separate from [demoClockProvider], which exists so *generated demo
+/// data* is deterministic. Conflating them would mean a test that pins app time also
+/// silently regenerates the demo feed underneath itself.
+final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 /// The active pump data source — real native bridge, or the simulator in dev mode.
 /// Recreated when [devModeProvider] flips so switching modes takes effect live.
@@ -1135,17 +1150,24 @@ final pendingConfirmationsProvider =
 final illnessModeProvider = StateNotifierProvider<IllnessModeNotifier, IllnessMode>(
     (ref) => IllnessModeNotifier(
         historyRepository: ref.read(historyRepositoryProvider),
-        notificationService: ref.read(notificationServiceProvider)));
+        notificationService: ref.read(notificationServiceProvider),
+        clock: ref.read(clockProvider)));
 
 class IllnessModeNotifier extends StateNotifier<IllnessMode> {
   IllnessModeNotifier(
       {HistoryRepository? historyRepository,
-      NotificationService? notificationService})
+      NotificationService? notificationService,
+      DateTime Function()? clock})
       : _historyRepository = historyRepository,
         _notificationService = notificationService,
+        _now = clock ?? DateTime.now,
         super(IllnessMode.inactive) {
     _restore();
   }
+
+  /// Injected wall clock (issue #53) — activation stamps the start and the 7-day
+  /// auto-expiry from it, so a test can activate at a chosen time.
+  final DateTime Function() _now;
 
   static const _prefsKey = 'illness_mode_v1';
   final IllnessModeController _controller = IllnessModeController();
@@ -1225,7 +1247,7 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
 
   void activate({double? boost, String? notes}) {
     _controller.activate(
-      now: DateTime.now(),
+      now: _now(),
       expectedResistanceBoost: boost,
       notes: notes,
       // TASK-197: without this, illness mode never expires on its own — a
@@ -1236,7 +1258,7 @@ class IllnessModeNotifier extends StateNotifier<IllnessMode> {
   }
 
   void deactivate() {
-    lastDeactivationAnnotation = _controller.deactivate(DateTime.now());
+    lastDeactivationAnnotation = _controller.deactivate(_now());
     unawaited(_persist());
   }
 
@@ -1314,17 +1336,23 @@ final medicationModeProvider =
     StateNotifierProvider<MedicationModeNotifier, MedicationMode>((ref) =>
         MedicationModeNotifier(
             historyRepository: ref.read(historyRepositoryProvider),
-            notificationService: ref.read(notificationServiceProvider)));
+            notificationService: ref.read(notificationServiceProvider),
+            clock: ref.read(clockProvider)));
 
 class MedicationModeNotifier extends StateNotifier<MedicationMode> {
   MedicationModeNotifier(
       {HistoryRepository? historyRepository,
-      NotificationService? notificationService})
+      NotificationService? notificationService,
+      DateTime Function()? clock})
       : _historyRepository = historyRepository,
         _notificationService = notificationService,
+        _now = clock ?? DateTime.now,
         super(const MedicationMode()) {
     _restore();
   }
+
+  /// Injected wall clock (issue #53) — see [IllnessModeNotifier].
+  final DateTime Function() _now;
   static const _key = 'medication_mode_v1';
 
   /// TASK-261: medication days were never annotated at all (illness gained this in
@@ -1401,7 +1429,7 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
 
   Future<void> start(MedicationIntensity intensity, {String name = 'Steroid'}) async {
     final previous = state;
-    final now = DateTime.now();
+    final now = _now();
     state = MedicationMode(
       active: true,
       startedAt: now,
@@ -1416,7 +1444,7 @@ class MedicationModeNotifier extends StateNotifier<MedicationMode> {
   Future<void> stop() async {
     final previous = state;
     if (previous.active && previous.startedAt != null) {
-      _lastDeactivationAnnotation = _buildAnnotation(previous, DateTime.now());
+      _lastDeactivationAnnotation = _buildAnnotation(previous, _now());
     }
     state = state.copyWith(active: false, startedAt: null, expiresAt: null);
     await _persist(previous);
@@ -1929,23 +1957,29 @@ class ConnectionAlertService {
 /// stage; the alert goes through the normal notification path (enabled/quiet-hours
 /// rules apply).
 final staleDataWatchdogProvider = Provider<StaleDataWatchdogService>((ref) {
-  final service = StaleDataWatchdogService(ref);
+  final service =
+      StaleDataWatchdogService(ref, clock: ref.watch(clockProvider));
   ref.onDispose(service.dispose);
   return service;
 });
 
 class StaleDataWatchdogService {
-  StaleDataWatchdogService(this._ref) {
+  StaleDataWatchdogService(this._ref, {DateTime Function()? clock})
+      : _now = clock ?? DateTime.now {
     _timer = Timer.periodic(const Duration(minutes: 5), (_) => checkNow());
   }
 
   final Ref _ref;
+
+  /// Injected wall clock (issue #53) — last-snapshot age is measured against it,
+  /// so a test can age the feed past the stale threshold without waiting.
+  final DateTime Function() _now;
   final StaleDataMonitor monitor = StaleDataMonitor();
   Timer? _timer;
 
   /// Called from the app root on every snapshot arrival.
   void onSnapshot() {
-    if (monitor.onSnapshot(DateTime.now()) == StaleDataEvent.recovered) {
+    if (monitor.onSnapshot(_now()) == StaleDataEvent.recovered) {
       appLog.info('alerts', 'data feed recovered after a stall');
     }
   }
@@ -1965,8 +1999,8 @@ class StaleDataWatchdogService {
       monitor.reset();
       return;
     }
-    if (monitor.check(DateTime.now()) != StaleDataEvent.becameStale) return;
-    final mins = monitor.age(DateTime.now())?.inMinutes;
+    if (monitor.check(_now()) != StaleDataEvent.becameStale) return;
+    final mins = monitor.age(_now())?.inMinutes;
     try {
       await _ref.read(notificationServiceProvider).show(
             NotificationCategory.dataStale,
@@ -2010,11 +2044,17 @@ class ModeExpiryWatchdogService {
 
 /// Fires real-time predicted-low/high nudges and logs predictions for accuracy
 /// scoring. Driven from the app root on each pump snapshot.
-final alertServiceProvider = Provider<AlertService>((ref) => AlertService(ref));
+final alertServiceProvider = Provider<AlertService>(
+    (ref) => AlertService(ref, clock: ref.watch(clockProvider)));
 
 class AlertService {
-  AlertService(this._ref);
+  AlertService(this._ref, {DateTime Function()? clock})
+      : _now = clock ?? DateTime.now;
   final Ref _ref;
+
+  /// Injected wall clock (issue #53) — every time-dependent decision in this class
+  /// reads it, so a test can pin repeat/cooldown windows instead of waiting them out.
+  final DateTime Function() _now;
   final CooldownGate _cooldowns = CooldownGate();
   DateTime? _lastPredictionLog;
 
@@ -2048,7 +2088,7 @@ class AlertService {
   /// the side effects: cooldown/dedup gating, `NotificationService.show`, battery
   /// history I/O and throttled prediction logging (TASK-116).
   Future<void> onSnapshot() async {
-    final now = DateTime.now();
+    final now = _now();
     final snap = _ref.read(pumpSnapshotProvider).valueOrNull;
 
     // Battery history I/O stays here; the low/soon-empty decision is pure.
@@ -2210,11 +2250,17 @@ class SystemHealthNotifier extends PersistedStateNotifier<SystemHealthReport> {
 
 /// Background jobs run at startup (and on demand): close the meal-outcome loop,
 /// reconcile matured predictions, and retrain the forecaster when enough data exists.
-final appJobsProvider = Provider<AppJobs>((ref) => AppJobs(ref));
+final appJobsProvider =
+    Provider<AppJobs>((ref) => AppJobs(ref, clock: ref.watch(clockProvider)));
 
 class AppJobs {
-  AppJobs(this._ref);
+  AppJobs(this._ref, {DateTime Function()? clock}) : _now = clock ?? DateTime.now;
   final Ref _ref;
+
+  /// Injected wall clock (issue #53) — job cadence (forecaster retrain interval,
+  /// mode expiry, morning-summary window) reads it, so a test can pin those windows
+  /// rather than depend on when it happens to run.
+  final DateTime Function() _now;
 
   /// Ordered startup pipeline (TASK-123): every job is best-effort and logged;
   /// the aggregated [StartupReport] lands in the diagnostics log. Ordering below
@@ -2237,7 +2283,7 @@ class AppJobs {
       StartupJob('reconcilePredictions', reconcilePredictions),
       // TASK-62: keep the DB lean — prune stale predictions/health (CGM + insulin kept).
       StartupJob('pruneOldData',
-          () => _ref.read(historyRepositoryProvider).pruneOldData(DateTime.now())),
+          () => _ref.read(historyRepositoryProvider).pruneOldData(_now())),
       StartupJob('maybeShowMorningSummary', maybeShowMorningSummary),
       StartupJob('checkDeviceReminders', checkDeviceReminders),
       StartupJob('backfillHistory', backfillHistory, enabled: !demo),
@@ -2250,7 +2296,7 @@ class AppJobs {
           final outcome = await trainForecaster();
           if (outcome.trained) {
             await KvStore.setString(
-                _forecasterTrainStampKey, DateTime.now().toIso8601String());
+                _forecasterTrainStampKey, _now().toIso8601String());
           }
         }
       }),
@@ -2264,7 +2310,7 @@ class AppJobs {
     final raw = await KvStore.getString(_forecasterTrainStampKey);
     final last = raw == null ? null : DateTime.tryParse(raw);
     return last == null ||
-        DateTime.now().difference(last) >= const Duration(hours: 20);
+        _now().difference(last) >= const Duration(hours: 20);
   }
 
   /// Back-fill matured predictions with their actual outcome, then refresh the
@@ -2274,7 +2320,7 @@ class AppJobs {
       .track(Subsystem.predictionReconciliation, _reconcilePredictions);
 
   Future<void> _reconcilePredictions() async {
-    await _ref.read(historyRepositoryProvider).reconcilePredictions(DateTime.now());
+    await _ref.read(historyRepositoryProvider).reconcilePredictions(_now());
     await updateRecentForecastError();
   }
 
@@ -2282,7 +2328,7 @@ class AppJobs {
   /// so the prediction cone reflects recent real accuracy.
   Future<void> updateRecentForecastError() async {
     final repo = _ref.read(historyRepositoryProvider);
-    final now = DateTime.now();
+    final now = _now();
     final preds =
         await repo.predictions(now.subtract(const Duration(days: 14)), now);
     final pairs = [
@@ -2346,7 +2392,7 @@ class AppJobs {
 
   /// Backfill historical pump data from the History Log (best-effort; no-op in dev/sim).
   Future<int> backfillHistory() async {
-    final now = DateTime.now();
+    final now = _now();
     final siteChanges = <DateTime>[];
     final events = <PumpEvent>[];
     final count = await HistoryBackfillService(
@@ -2375,7 +2421,7 @@ class AppJobs {
   /// history, pushing the results into the providers the advisor/insights read.
   Future<void> trainSensitivity() async {
     final repo = _ref.read(historyRepositoryProvider);
-    final now = DateTime.now();
+    final now = _now();
     final settings = _ref.read(therapySettingsProvider);
     final baseHealth =
         await repo.health(now.subtract(const Duration(days: 21)), now);
@@ -2449,7 +2495,7 @@ class AppJobs {
   /// Also run on a periodic tick by [ModeExpiryWatchdogService], since the app can
   /// stay open for days between launches.
   Future<void> checkModeExpiry() async {
-    final now = DateTime.now();
+    final now = _now();
     await _ref.read(illnessModeProvider.notifier).deactivateIfExpired(now);
     await _ref.read(medicationModeProvider.notifier).deactivateIfExpired(now);
     await _ref.read(exercisePlanProvider.notifier).clearIfExpired(now);
@@ -2460,7 +2506,7 @@ class AppJobs {
   Future<void> checkIllnessSuggestion() async {
     if (_ref.read(illnessModeProvider).active) return;
     final repo = _ref.read(historyRepositoryProvider);
-    final now = DateTime.now();
+    final now = _now();
     final recent = await repo.cgm(now.subtract(const Duration(hours: 36)), now);
     if (recent.length < 24) return;
     final mean =
@@ -2510,7 +2556,7 @@ class AppJobs {
   /// Generate and show the morning briefing on first open each morning (the reliable
   /// path; a WorkManager job covers days the app isn't opened). Idempotent per day.
   Future<void> maybeShowMorningSummary() async {
-    final now = DateTime.now();
+    final now = _now();
     if (now.hour < 6) return;
     final key = '${now.year}-${now.month}-${now.day}';
     if (await KvStore.getString('morning_summary_shown') == key) return;
@@ -2552,7 +2598,7 @@ class AppJobs {
       log: _ref.read(mealLogProvider),
       library: _ref.read(mealLibraryProvider),
       repo: repo,
-      now: DateTime.now(),
+      now: _now(),
     );
     for (final l in res.learned) {
       final cgm = await repo.cgm(
@@ -2572,7 +2618,7 @@ class AppJobs {
 
   Future<int> _syncHealth() async {
     final svc = _ref.read(healthSyncServiceProvider);
-    final now = DateTime.now();
+    final now = _now();
     final samples = await svc.fetch(now.subtract(const Duration(days: 2)), now);
     if (samples.isNotEmpty) {
       await _ref.read(historyRepositoryProvider).saveHealth(samples);
@@ -2588,7 +2634,7 @@ class AppJobs {
   /// After an aerobic workout, warn about the raised nocturnal-hypo risk (aerobic
   /// exercise drops glucose for hours afterwards). Gated to once per day.
   Future<void> checkExerciseHypoRisk(List<HealthSample> samples) async {
-    final now = DateTime.now();
+    final now = _now();
     const classifier = WorkoutClassifier();
     final aerobicToday = samples.any((s) =>
         s.type == HealthMetric.exercise &&
@@ -2616,7 +2662,7 @@ class AppJobs {
   /// Load the last few hours of stored activity into the live forecaster's sampler so
   /// its BG predictions reflect recent steps/workouts. Cheap; safe to call at startup.
   Future<void> refreshForecastHealthSampler() async {
-    final now = DateTime.now();
+    final now = _now();
     final recent = await _ref
         .read(historyRepositoryProvider)
         .health(now.subtract(const Duration(hours: 6)), now);
@@ -2634,7 +2680,7 @@ class AppJobs {
 
   Future<TrainingOutcome> _trainForecaster() async {
     final repo = _ref.read(historyRepositoryProvider);
-    final now = DateTime.now();
+    final now = _now();
     final from = now.subtract(const Duration(days: 30));
     final settings = _ref.read(therapySettingsProvider);
     final outcome = await _ref.read(forecasterModelProvider.notifier).train(
@@ -2680,7 +2726,7 @@ class AppJobs {
   Future<void> logCarb(double grams, {int absorptionMinutes = 180}) =>
       _ref.read(dayHistoryControllerProvider.notifier).logCarb(
             CarbEntry(
-                time: DateTime.now(),
+                time: _now(),
                 grams: grams,
                 absorptionMinutes: absorptionMinutes),
           );
@@ -2688,13 +2734,13 @@ class AppJobs {
   /// Quick-log a bolus the user actually delivered on the pump.
   Future<void> logBolus(double units) => _ref
       .read(dayHistoryControllerProvider.notifier)
-      .logBolus(BolusEvent(time: DateTime.now(), units: units));
+      .logBolus(BolusEvent(time: _now(), units: units));
 
   /// Quick-log a context annotation (exercise / alcohol / stress), persisted for the
   /// retraining pipeline and surfaced on the timeline.
   Future<void> logContext(AnnotationKind kind,
       {Duration window = const Duration(hours: 2), String note = ''}) async {
-    final now = DateTime.now();
+    final now = _now();
     await _ref.read(historyRepositoryProvider).saveAnnotation(Annotation(
           id: '${kind.name}-${now.millisecondsSinceEpoch}',
           kind: kind,
@@ -2731,7 +2777,7 @@ class AppJobs {
       _ref.read(illnessModeProvider.notifier).activate();
       _ref.read(illnessSuggestionProvider.notifier).state = null;
       await ConfirmationDecisionStore.record(
-          p.id, ConfirmationDecision.confirmed, at: DateTime.now());
+          p.id, ConfirmationDecision.confirmed, at: _now());
       _ref.invalidate(pendingConfirmationsProvider);
       return;
     }
@@ -2751,14 +2797,14 @@ class AppJobs {
       await _ref.read(dayHistoryControllerProvider.notifier).reload();
     }
     await ConfirmationDecisionStore.record(
-        p.id, ConfirmationDecision.confirmed, at: DateTime.now());
+        p.id, ConfirmationDecision.confirmed, at: _now());
     _ref.invalidate(pendingConfirmationsProvider);
   }
 
   /// Dismiss a queued item so it doesn't resurface.
   Future<void> dismissPending(PendingConfirmation p) async {
     await ConfirmationDecisionStore.record(
-        p.id, ConfirmationDecision.dismissed, at: DateTime.now());
+        p.id, ConfirmationDecision.dismissed, at: _now());
     if (p.type == ConfirmationType.illness) {
       _ref.read(illnessSuggestionProvider.notifier).state = null;
     }
@@ -2796,7 +2842,7 @@ class AppJobs {
   /// Notify if the sensor or site is overdue for a change.
   Future<void> checkDeviceReminders() async {
     final state = _ref.read(deviceStateProvider);
-    final now = DateTime.now();
+    final now = _now();
     for (final kind in DeviceKind.values) {
       if (state.isOverdue(kind, now)) {
         final age = state.age(kind, now)!;
@@ -2818,7 +2864,7 @@ class AppJobs {
     required int preBolusMinutes,
     required double bolusUnits,
   }) async {
-    final now = DateTime.now();
+    final now = _now();
     await _ref.read(dayHistoryControllerProvider.notifier).logCarb(
           CarbEntry(
             time: now,
