@@ -14,6 +14,8 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
+
+import 'nightscout_follower.dart';
 import 'package:logging/logging.dart';
 
 import '../core/samples.dart';
@@ -30,6 +32,7 @@ class NightscoutConfig {
     this.baseUrl = '',
     this.apiSecret = '',
     this.enabled = false,
+    this.followerEnabled = false,
   });
 
   /// Base site URL, e.g. `https://my-nightscout.up.railway.app`. Trailing slashes
@@ -43,18 +46,31 @@ class NightscoutConfig {
   /// Master switch. When false, [NightscoutClient] uploads no-op silently.
   final bool enabled;
 
+  /// Follower mode (issue #75): pull CGM/treatments FROM the site as a data source.
+  ///
+  /// Independent of [enabled], which governs uploads. The two directions are genuinely
+  /// separate choices — someone can follow a site they never push to, and pushing to a
+  /// site does not imply wanting its data back (that is how you double-count your own
+  /// readings).
+  final bool followerEnabled;
+
   /// True only when uploads can actually be attempted.
   bool get isUsable => enabled && baseUrl.trim().isNotEmpty;
+
+  /// True only when a follower pull can actually be attempted.
+  bool get canFollow => followerEnabled && baseUrl.trim().isNotEmpty;
 
   NightscoutConfig copyWith({
     String? baseUrl,
     String? apiSecret,
     bool? enabled,
+    bool? followerEnabled,
   }) {
     return NightscoutConfig(
       baseUrl: baseUrl ?? this.baseUrl,
       apiSecret: apiSecret ?? this.apiSecret,
       enabled: enabled ?? this.enabled,
+      followerEnabled: followerEnabled ?? this.followerEnabled,
     );
   }
 
@@ -62,6 +78,7 @@ class NightscoutConfig {
         'baseUrl': baseUrl,
         'apiSecret': apiSecret,
         'enabled': enabled,
+        'followerEnabled': followerEnabled,
       };
 
   factory NightscoutConfig.fromJson(Map<String, dynamic> json) {
@@ -69,6 +86,9 @@ class NightscoutConfig {
       baseUrl: (json['baseUrl'] as String?) ?? '',
       apiSecret: (json['apiSecret'] as String?) ?? '',
       enabled: (json['enabled'] as bool?) ?? false,
+      // Absent in configs persisted before follower mode existed: default OFF, so an
+      // upgrade never silently starts pulling a second copy of someone's data.
+      followerEnabled: (json['followerEnabled'] as bool?) ?? false,
     );
   }
 
@@ -77,14 +97,16 @@ class NightscoutConfig {
       other is NightscoutConfig &&
       other.baseUrl == baseUrl &&
       other.apiSecret == apiSecret &&
-      other.enabled == enabled;
+      other.enabled == enabled &&
+      other.followerEnabled == followerEnabled;
 
   @override
-  int get hashCode => Object.hash(baseUrl, apiSecret, enabled);
+  int get hashCode =>
+      Object.hash(baseUrl, apiSecret, enabled, followerEnabled);
 
   @override
   String toString() =>
-      'NightscoutConfig(baseUrl: $baseUrl, enabled: $enabled, apiSecret: ${apiSecret.isEmpty ? '<empty>' : '<set>'})';
+      'NightscoutConfig(baseUrl: $baseUrl, enabled: $enabled, follower: $followerEnabled, apiSecret: ${apiSecret.isEmpty ? '<empty>' : '<set>'})';
 }
 
 /// Uploads bgdude data to a Nightscout site.
@@ -289,6 +311,60 @@ class NightscoutClient {
     } catch (e) {
       _log.warning('Nightscout testConnection error: $e');
       return false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Downloads (follower mode, issue #75).
+  // ---------------------------------------------------------------------------
+
+  /// GET CGM readings from `/api/v1/entries`, newest first.
+  ///
+  /// [since] fetches only entries at or after that instant. Returns an empty list on
+  /// any failure rather than throwing: a follower pull is background work on a server
+  /// bgdude does not control, and an unreachable site must degrade to "no new data",
+  /// never to a crash or a broken poll loop.
+  Future<List<NightscoutEntry>> fetchEntries({
+    DateTime? since,
+    int count = 288,
+  }) async =>
+      parseEntries(await _getJson('/api/v1/entries.json', since, count));
+
+  /// GET treatments (boluses, carbs) from `/api/v1/treatments`, newest first.
+  Future<List<NightscoutTreatment>> fetchTreatments({
+    DateTime? since,
+    int count = 200,
+  }) async =>
+      parseTreatments(await _getJson('/api/v1/treatments.json', since, count));
+
+  /// Shared GET returning a raw body ('' on any failure).
+  Future<String> _getJson(String path, DateTime? since, int count) async {
+    // canFollow, NOT isUsable: `enabled` is the UPLOAD switch. Gating reads on it would
+    // mean follower mode silently did nothing unless you also pushed to the site — and
+    // the two directions are deliberately independent choices.
+    if (!config.canFollow) {
+      _log.fine('Nightscout fetch skipped (disabled or no baseUrl).');
+      return '';
+    }
+    final query = <String, String>{
+      'count': '$count',
+      if (since != null)
+        // Nightscout's find filter. The site stores UTC, so send UTC — sending a
+        // local-time string would shift the window by the timezone offset and
+        // silently miss or re-fetch hours of data.
+        'find[dateString][\$gte]': since.toUtc().toIso8601String(),
+    };
+    final url = _endpoint(path).replace(queryParameters: query);
+    try {
+      final res = await _http.get(url, headers: _headers());
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        _log.warning('Nightscout GET $path failed: ${res.statusCode}');
+        return '';
+      }
+      return res.body;
+    } catch (e, st) {
+      _log.warning('Nightscout GET $path error: $e', e, st);
+      return '';
     }
   }
 

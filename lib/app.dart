@@ -25,6 +25,11 @@ class BgDudeApp extends ConsumerWidget {
     // app boots, not lazily on the first pump snapshot — see
     // HomeWidgetService.seedUnit's doc for why the lazy-construction gap mattered.
     ref.read(homeWidgetServiceProvider);
+    // Issue #75: start the Nightscout follower poll. Constructed eagerly for the same
+    // reason as the widget service — a lazily-created timer never ticks until
+    // something happens to read the provider, which in follower-only mode (no pump
+    // connected) may be never.
+    ref.read(nightscoutFollowerProvider);
     // Mirror every pump snapshot onto the home-screen widget (and re-push when the
     // display unit changes).
     ref.listen(pumpSnapshotProvider, (_, next) {

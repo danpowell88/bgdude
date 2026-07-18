@@ -11,6 +11,18 @@ import '../state/providers.dart';
 import 'app_routes.dart';
 
 /// Nightscout upload configuration section.
+/// One-line state for the Nightscout tile: the two directions are independent, so
+/// "Off" must not be shown when only one of them is on.
+String _nightscoutSummary(NightscoutConfig cfg) => switch ((
+      cfg.enabled,
+      cfg.followerEnabled
+    )) {
+      (true, true) => 'Uploading & following',
+      (true, false) => 'Uploading',
+      (false, true) => 'Following',
+      (false, false) => 'Off',
+    };
+
 class _NightscoutSection extends ConsumerStatefulWidget {
   const _NightscoutSection();
   @override
@@ -45,7 +57,7 @@ class _NightscoutSectionState extends ConsumerState<_NightscoutSection> {
     return ExpansionTile(
       leading: const Icon(Icons.cloud_upload_outlined),
       title: const Text('Nightscout'),
-      subtitle: Text(cfg.enabled ? 'Uploading' : 'Off'),
+      subtitle: Text(_nightscoutSummary(cfg)),
       childrenPadding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         SwitchListTile(
@@ -53,6 +65,18 @@ class _NightscoutSectionState extends ConsumerState<_NightscoutSection> {
           title: const Text('Upload to Nightscout'),
           value: cfg.enabled,
           onChanged: (v) => save(cfg.copyWith(enabled: v)),
+        ),
+        // Issue #75. Deliberately a separate switch from uploading: turning them
+        // into one control would mean pushing your readings to a site and then
+        // pulling the same readings back as if they were a second source.
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Follow this site'),
+          subtitle: const Text(
+              'Also read CGM data FROM Nightscout. Readings your pump already '
+              'recorded are never added twice.'),
+          value: cfg.followerEnabled,
+          onChanged: (v) => save(cfg.copyWith(followerEnabled: v)),
         ),
         TextField(
           controller: _url,
