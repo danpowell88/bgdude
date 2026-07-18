@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
+import androidx.core.content.edit
 import com.bgdude.app.pump.MutableSnapshot
 
 /**
@@ -40,16 +41,14 @@ object WidgetNativePush {
             iobUnits = snapshot.iobUnits,
             unitLabel = unitLabel,
         )
-        prefs.edit()
-            .putString(WidgetKeys.BG_TEXT, fields.bgText)
-            .putString(WidgetKeys.TREND, fields.trendArrow)
-            .putString(WidgetKeys.IOB, fields.iobText)
-            .putString(WidgetKeys.RANGE, fields.range)
-            .apply {
-                val epoch = snapshot.cgmTimestampEpochMs
-                if (epoch != null) putLong(WidgetKeys.CGM_EPOCH_MS, epoch)
-            }
-            .apply()
+        prefs.edit {
+            putString(WidgetKeys.BG_TEXT, fields.bgText)
+            putString(WidgetKeys.TREND, fields.trendArrow)
+            putString(WidgetKeys.IOB, fields.iobText)
+            putString(WidgetKeys.RANGE, fields.range)
+            val epoch = snapshot.cgmTimestampEpochMs
+            if (epoch != null) putLong(WidgetKeys.CGM_EPOCH_MS, epoch)
+        }
         requestRender(context)
     }
 
