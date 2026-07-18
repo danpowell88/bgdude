@@ -149,8 +149,17 @@ void main() {
   });
 
   group('pump alarm', () {
-    PumpSnapshot snapWith({List<String> alarms = const [], List<String> alerts = const []}) =>
-        PumpSnapshot(time: now, activeAlarms: alarms, activeAlerts: alerts);
+    PumpSnapshot snapWith({
+      List<String> alarms = const [],
+      List<String> alerts = const [],
+      List<String> malfunctions = const [],
+    }) =>
+        PumpSnapshot(
+          time: now,
+          activeAlarms: alarms,
+          activeAlerts: alerts,
+          malfunctions: malfunctions,
+        );
 
     test('a NEW alarm fires with bypassCooldown and a readable body', () {
       final r = orch.evaluate(AlertCycleInput(
@@ -189,6 +198,41 @@ void main() {
       final r = orch.evaluate(AlertCycleInput(now: now, lastAlarmSignature: 'OLD'));
       expect(r.alarmSignature, 'OLD');
     });
+
+    // Issue #88: a hardware malfunction is the pump itself failing, not a condition it
+    // is reporting, so it outranks both alarms and alerts in the title.
+    test('a malfunction fires immediately and leads the title', () {
+      final r = orch.evaluate(AlertCycleInput(
+          now: now,
+          snapshot: snapWith(malfunctions: ['MALFUNCTION_1'])));
+
+      expect(categories(r), [NotificationCategory.pumpAlarm]);
+      final d = r.decisions.single;
+      expect(d.title, 'Pump malfunction');
+      // Must not wait out a cooldown that some other condition started.
+      expect(d.bypassCooldown, isTrue);
+    });
+
+    test('a malfunction outranks a simultaneous alarm in the title', () {
+      final r = orch.evaluate(AlertCycleInput(
+          now: now,
+          snapshot: snapWith(
+              malfunctions: ['MALFUNCTION_1'], alarms: ['LOW_INSULIN_ALARM'])));
+
+      expect(r.decisions.single.title, 'Pump malfunction');
+      // ...but both are still named in the body — the alarm doesn't vanish.
+      expect(r.decisions.single.body, contains('Low insulin alarm'));
+    });
+
+    test('no malfunctions reported means no alert', () {
+      // The healthy case, which is also the captured-cargo case: an empty list must
+      // not fire anything.
+      final r = orch.evaluate(
+          AlertCycleInput(now: now, snapshot: snapWith(malfunctions: const [])));
+
+      expect(categories(r), isEmpty);
+    });
+
   });
 
   group('reservoir', () {

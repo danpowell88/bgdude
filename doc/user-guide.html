@@ -400,6 +400,7 @@
     <tr><th>Alert</th><th>Fires when</th><th>Default</th></tr>
     <tr><td><b>Morning summary</b></td><td>A daily briefing at <b>07:00</b> — overnight time-in-range plus prescriptive notes. A background job posts it even on days you don't open the app.</td><td>Normal</td></tr>
     <tr><td><b>Weekly report</b></td><td>A weekly nudge (Mon 08:00) that your report is ready to review.</td><td>Low</td></tr>
+    <tr><td><b>Pump malfunction</b></td><td>The pump has reported a hardware malfunction. Delivered through the same channel as pump alarms and fires <b>immediately</b> rather than waiting out any repeat interval. The pump raises its own alarm for this too — bgdude surfacing it means you see it on your phone as well, not instead.</td><td>High</td></tr>
     <tr><td><b>Pre-bolus timer</b></td><td>The pre-bolus countdown you started for a meal is up — time to eat. Survives the app being backgrounded, and fires <b>exactly on time</b> when Android's “Alarms &amp; reminders” permission is allowed (otherwise it may drift a few minutes in deep sleep).</td><td>High</td></tr>
   </table>
   <div class="note">These are all <b>additive</b> to your CGM/pump alarms, never a replacement — and the app is read-only, so a notification is a prompt to act, never an automatic dose.</div>

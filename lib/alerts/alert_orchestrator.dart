@@ -230,14 +230,28 @@ class AlertOrchestrator {
     // alarm notifies even mid-cooldown) and re-alert per the category's repeat
     // interval while it persists.
     String? alarmSignature;
-    final active = [...snap.activeAlarms, ...snap.activeAlerts];
+    // Issue #88: a hardware malfunction is folded in here rather than given its own
+    // category, so it inherits this path's tested change-detection AND cannot be
+    // silenced separately from pump alarms. It leads the title because it outranks
+    // both: an alarm is a condition, a malfunction is the pump itself failing.
+    final active = [
+      ...snap.malfunctions,
+      ...snap.activeAlarms,
+      ...snap.activeAlerts,
+    ];
     if (active.isNotEmpty) {
       final signature = active.join('|');
       alarmSignature = signature;
       out.add(AlertDecision(
         category: NotificationCategory.pumpAlarm,
-        title: snap.activeAlarms.isNotEmpty ? 'Pump alarm' : 'Pump alert',
+        title: snap.malfunctions.isNotEmpty
+            ? 'Pump malfunction'
+            : snap.activeAlarms.isNotEmpty
+                ? 'Pump alarm'
+                : 'Pump alert',
         body: '${active.map(humanizeAlarm).join(', ')} — check your pump.',
+        // A newly-appearing malfunction changes the signature, so it fires
+        // immediately rather than waiting out a cooldown started by something else.
         bypassCooldown: signature != input.lastAlarmSignature,
       ));
     }
