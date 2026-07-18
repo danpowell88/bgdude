@@ -22,28 +22,50 @@ import 'package:sqlite3/sqlite3.dart' as sqlite3;
 void main() {
   group('classifyDbOpenFailure', () {
     test('SQLITE_NOTADB on the very first read = wrong key or header corrupt', () {
-      final e = SqliteException(26, 'file is not a database');
+      final e = SqliteException(extendedResultCode: 26, message: 'file is not a database');
       expect(classifyDbOpenFailure(e, keyConfirmed: false),
           DbOpenDiagnosis.keyOrHeaderCorrupt);
     });
 
     test('SQLITE_NOTADB after the key was already confirmed = corrupted data', () {
-      final e = SqliteException(26, 'file is not a database');
+      final e = SqliteException(extendedResultCode: 26, message: 'file is not a database');
       expect(classifyDbOpenFailure(e, keyConfirmed: true),
           DbOpenDiagnosis.corruptedData);
     });
 
     test('SQLITE_CORRUPT is always corrupted data, key confirmed or not', () {
-      final e = SqliteException(11, 'database disk image is malformed');
+      final e = SqliteException(extendedResultCode: 11, message: 'database disk image is malformed');
       expect(classifyDbOpenFailure(e, keyConfirmed: false),
           DbOpenDiagnosis.corruptedData);
       expect(classifyDbOpenFailure(e, keyConfirmed: true),
           DbOpenDiagnosis.corruptedData);
     });
 
+    test('EXTENDED result codes reduce to their primary code', () {
+      // sqlite3 3.x derives resultCode as `extendedResultCode & 0xFF`, so the codes
+      // SQLite actually reports in the field now classify correctly: SQLITE_IOERR_READ
+      // (266) is an IO error, not an unknown. Under the old package this arrived as a
+      // raw 266 and fell through to the catch-all.
+      expect(
+        classifyDbOpenFailure(
+          SqliteException(extendedResultCode: 266, message: 'disk I/O error'),
+          keyConfirmed: false,
+        ),
+        DbOpenDiagnosis.ioError,
+      );
+      // SQLITE_CORRUPT_VTAB (267) -> 11 (SQLITE_CORRUPT).
+      expect(
+        classifyDbOpenFailure(
+          SqliteException(extendedResultCode: 267, message: 'malformed'),
+          keyConfirmed: true,
+        ),
+        DbOpenDiagnosis.corruptedData,
+      );
+    });
+
     test('IO-shaped SQLite codes (CANTOPEN/IOERR/FULL/PERM) are ioError', () {
       for (final code in [14, 10, 13, 3]) {
-        final e = SqliteException(code, 'io trouble');
+        final e = SqliteException(extendedResultCode: code, message: 'io trouble');
         expect(classifyDbOpenFailure(e, keyConfirmed: false),
             DbOpenDiagnosis.ioError,
             reason: 'code $code');
@@ -213,7 +235,7 @@ void main() {
       // raw sqlite3 connection BEFORE drift ever touches it.
       final raw = sqlite3.sqlite3.open(dbFile.path);
       raw.execute('PRAGMA user_version = 5;');
-      raw.dispose();
+      raw.close();
 
       final appDb = AppDatabase(NativeDatabase(dbFile));
       await expectLater(
@@ -239,7 +261,7 @@ void main() {
       expect(tables, isEmpty,
           reason: 'the downgrade guard is the FIRST statement in onUpgrade -- '
               'no migration/creation step should have run before it threw');
-      verify.dispose();
+      verify.close();
     });
   });
 

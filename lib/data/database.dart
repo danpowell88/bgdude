@@ -12,9 +12,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 // ignore: depend_on_referenced_packages
-import 'package:sqlite3/open.dart';
 
 import 'meal_tables.dart';
 
@@ -326,16 +324,14 @@ Future<void> _pruneOldBackups(File file, {required int keepStamp}) async {
 /// the real app documents directory); production callers never pass it.
 LazyDatabase openEncryptedDatabase(String passphrase, {File? file}) {
   return LazyDatabase(() async {
-    // Ensure the app uses the SQLCipher-enabled sqlite3, not the system one.
-    open.overrideForAll(openCipherOnAndroid);
-
+    // No open.overrideForAll here any more: sqlite3 3.x resolves the native library
+    // through its build hook (`hooks.user_defines.sqlite3.source: sqlcipher` in
+    // pubspec.yaml), including inside background isolates. The old override pointed at
+    // sqlcipher_flutter_libs, which is end-of-life.
     final dbFile = file ?? await defaultDatabaseFile();
 
     return NativeDatabase.createInBackground(
       dbFile,
-      isolateSetup: () async {
-        open.overrideForAll(openCipherOnAndroid);
-      },
       setup: (db) {
         // Apply the cipher key before any other statement.
         final escaped = passphrase.replaceAll("'", "''");

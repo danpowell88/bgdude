@@ -17,13 +17,12 @@ dependencies:
   # State management
   flutter_riverpod: ^2.5.1
 
-  # Storage (encrypted time-series). SQLCipher REPLACES sqlite3_flutter_libs —
-  # never depend on both (identical native namespace; the manifest merge fails).
-  drift: ^2.20.0
-  sqlcipher_flutter_libs: ^0.6.4
-  # Direct dep: database.dart calls sqlite3's open.dart to point drift at the
-  # SQLCipher native library.
-  sqlite3: ^2.4.0
+  # Storage (encrypted time-series). sqlite3 3.x bundles the native library itself
+  # via build hooks (see the `hooks:` block at the bottom of this file) — the old
+  # sqlcipher_flutter_libs / sqlite3_flutter_libs packages are end-of-life and must
+  # NOT be re-added; they collide on the same native namespace.
+  drift: ^2.34.0
+  sqlite3: ^3.4.0
   path_provider: ^2.1.4
   path: ^1.9.0
 
@@ -111,3 +110,13 @@ flutter:
     - assets/models/
     - assets/fixtures/
     - assets/food/
+
+# sqlite3 3.x picks its native SQLite build from here. `sqlcipher` keeps the exact
+# on-disk format the app already uses, so existing encrypted databases open unchanged
+# — the alternative (`sqlite3mc`) can read SQLCipher files but only via extra
+# `pragma cipher`/`pragma legacy` compatibility statements, which is a migration risk
+# taken for no benefit we need.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlcipher
