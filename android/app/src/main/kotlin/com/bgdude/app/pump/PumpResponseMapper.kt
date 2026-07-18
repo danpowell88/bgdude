@@ -15,6 +15,7 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV1R
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV2Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentEGVGuiDataResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.InsulinStatusResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.MalfunctionBitmaskStatusResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.LastBolusStatusV2Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.PumpVersionResponse
 
@@ -33,6 +34,15 @@ object PumpResponseMapper {
     fun apply(message: Message, snapshot: MutableSnapshot) {
         when (message) {
             // Ibc (internal battery capacity) is the value the pump UI shows as %.
+            // Issue #88: pump-reported hardware malfunctions. A zero bitmask is the
+            // normal case and must be recorded as "read and clear" rather than left
+            // indistinguishable from "never asked" — those are different claims about
+            // a safety-relevant signal.
+            is MalfunctionBitmaskStatusResponse -> {
+                snapshot.malfunctionRead = true
+                snapshot.malfunctions.clear()
+                message.malfunctions?.forEach { snapshot.malfunctions.add(it.name) }
+            }
             is CurrentBatteryV1Response ->
                 snapshot.batteryPercent = message.currentBatteryIbc
             is CurrentBatteryV2Response -> {

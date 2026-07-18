@@ -114,6 +114,8 @@ class PumpSnapshot {
     this.lastBolusTime,
     this.apiVersion,
     this.firmwareVersion,
+    this.malfunctions = const [],
+    this.malfunctionRead,
     this.activeAlerts = const [],
     this.activeAlarms = const [],
   });
@@ -152,6 +154,12 @@ class PumpSnapshot {
   final DateTime? lastBolusTime;
   final String? apiVersion;
   final String? firmwareVersion;
+
+  /// Pump-reported hardware malfunctions (op 119, issue #88). Empty means the pump
+  /// reported none — but only if [malfunctionRead] is true; empty-and-unread means
+  /// the pump was never asked or never answered, which is not an all-clear.
+  final List<String> malfunctions;
+  final bool? malfunctionRead;
 
   /// Active pump alerts (informational) and alarms (higher severity), by name.
   final List<String> activeAlerts;
@@ -236,6 +244,9 @@ class PumpSnapshot {
         lastBolusTime: _time(j['lastBolusTimestampEpochMs'] as num?),
         apiVersion: j['apiVersion'] as String?,
         firmwareVersion: j['firmwareVersion'] as String?,
+        malfunctions:
+            (j['malfunctions'] as List?)?.cast<String>() ?? const [],
+        malfunctionRead: j['malfunctionRead'] as bool?,
         activeAlerts: _stringList(j['activeAlerts']),
         activeAlarms: _stringList(j['activeAlarms']),
       );

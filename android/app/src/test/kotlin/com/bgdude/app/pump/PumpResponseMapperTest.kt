@@ -5,6 +5,7 @@ import com.jwoglom.pumpx2.pump.messages.response.currentStatus.ControlIQInfoV2Re
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentBatteryV1Response
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.CurrentEGVGuiDataResponse
 import com.jwoglom.pumpx2.pump.messages.response.currentStatus.InsulinStatusResponse
+import com.jwoglom.pumpx2.pump.messages.response.currentStatus.MalfunctionBitmaskStatusResponse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -154,4 +155,51 @@ class PumpResponseMapperTest {
         assertEquals(null, snapshot.cgmMgdl)
         assertEquals(null, snapshot.batteryPercent)
     }
+
+    /**
+     * Issue #88: the captured cargo from doc/pump-protocol.md is an all-zero bitmask —
+     * a healthy pump. That is the normal case, and the one worth being careful about:
+     * "no malfunctions" and "we never asked" must not look the same downstream, so the
+     * mapper records that the read happened.
+     */
+    @Test
+    fun malfunction_zero_bitmask_is_read_and_clear_not_unknown() {
+        val response = MalfunctionBitmaskStatusResponse()
+        response.parse(byteArrayOf(0, 0, 0, 0, 0, 0, 0, 0))
+
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(response, snapshot)
+
+        assertTrue(snapshot.malfunctions.isEmpty())
+        assertEquals(true, snapshot.malfunctionRead)
+    }
+
+    /**
+     * The captured cargo can only prove the healthy path — the spare test pump had no
+     * malfunction to capture. A non-zero bitmask is built here so the DETECTING half is
+     * covered too; a decoder that only ever sees zero would pass while being incapable
+     * of reporting the thing it exists for.
+     */
+    @Test
+    fun malfunction_non_zero_bitmask_is_decoded() {
+        val response = MalfunctionBitmaskStatusResponse()
+        response.parse(MalfunctionBitmaskStatusResponse.buildCargo(1L, 0L))
+
+        val snapshot = MutableSnapshot()
+        PumpResponseMapper.apply(response, snapshot)
+
+        assertEquals(true, snapshot.malfunctionRead)
+        assertTrue(
+            "a set bit must surface as at least one named malfunction",
+            snapshot.malfunctions.isNotEmpty(),
+        )
+    }
+
+    /** Until the pump answers, the field is absent — not an empty "all clear". */
+    @Test
+    fun malfunction_absent_until_the_pump_answers() {
+        val json = MutableSnapshot().toJson()
+        assertTrue(!json.contains("malfunctionRead"))
+    }
+
 }

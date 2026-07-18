@@ -64,6 +64,16 @@ class MutableSnapshot {
 
     var apiVersion: String? = null
     var firmwareVersion: String? = null
+    /**
+     * Pump-reported hardware malfunctions (op 119, issue #88). Empty is the normal
+     * case and means "the pump says none"; it is only meaningful once the pump has
+     * actually answered, which [malfunctionRead] records.
+     */
+    var malfunctions: MutableList<String> = mutableListOf()
+
+    /** Whether op 119 was answered at all — empty-and-unread differs from empty-and-clear. */
+    var malfunctionRead: Boolean? = null
+
     var activeAlerts: MutableList<String> = mutableListOf()
     var activeAlarms: MutableList<String> = mutableListOf()
 
@@ -116,6 +126,8 @@ class MutableSnapshot {
             val items = values.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" }
             parts.add("\"$name\":[$items]")
         }
+        field("malfunctionRead", malfunctionRead)
+        stringArray("malfunctions", malfunctions)
         stringArray("activeAlerts", activeAlerts)
         stringArray("activeAlarms", activeAlarms)
         return parts.joinToString(",", prefix = "{", postfix = "}")
