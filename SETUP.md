@@ -17,6 +17,30 @@ Follow these steps on a machine with Flutter to get to a running app.
 
 - Flutter 3.27+ (`flutter --version`; CI builds on pinned stable 3.44.4)
 - Android SDK with **compileSdk 36 / build-tools** and an Android 10+ (minSdk 29) device or emulator
+
+### Android version matrix (issue #237)
+
+| API | Android | Role | Tested |
+|---|---|---|---|
+| **29** | 10 | **Floor** — the lowest version the app claims to run on | Nightly emulator run (non-blocking) |
+| **34** | 14 | **Baseline** — the version development targets | Nightly emulator run (blocking) |
+| 36 | 16 | compileSdk | Built against; not run in CI |
+
+**Why 29 is the floor.** It is what `minSdk` declares, and the version-gated paths only
+execute down there: the pre-31 BLE permission flow (`ACCESS_FINE_LOCATION` for scanning)
+and the untyped `startForeground` fallback. A floor that is declared but never exercised
+is a guess, so the nightly runs it — marked non-blocking, because a flake on an old, slow
+AVD should be a signal rather than something that reds the nightly and trains everyone to
+ignore it.
+
+**Note:** issues #241 (lower the floor to 26) and #398 (raise it to 31) both propose
+moving this boundary, in opposite directions, and are unresolved. Update this table
+whenever `minSdk` in `android/app/build.gradle` changes — it is the human-readable copy
+of that number.
+
+**Display variants** are covered in-process by `flutter test`, not only on device: see
+`test/support/display_variants.dart` (large text at 1.6×, dark mode, a compact screen,
+and the compact + large-text combination, which is where layouts actually break).
 - JDK 17+
 - [GitHub CLI](https://cli.github.com/) (`gh`), authenticated with `repo` + `project` scopes
   (`gh auth login`) — all task/milestone planning lives in GitHub Issues + the `bgdude`
