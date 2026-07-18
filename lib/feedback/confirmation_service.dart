@@ -12,6 +12,7 @@ import '../ml/event_detectors.dart';
 import 'annotations.dart';
 import 'pending_confirmation.dart';
 import '../core/sleep_window.dart';
+import '../analytics/calibration_matcher.dart';
 
 class ConfirmationService {
   const ConfirmationService({
@@ -137,6 +138,34 @@ class ConfirmationService {
           confidence: 0.7,
         ));
       }
+    }
+
+    // 3b. Calibration mismatch (issue #77): a finger-prick that disagrees with the
+    // sensor at the same moment. Only DISAGREEMENTS are queued — a match that agrees
+    // needs no decision from anyone, and asking about it would bury the ones that
+    // matter under routine confirmations.
+    for (final m in const CalibrationMatcher().match(cgm)) {
+      if (const CalibrationMatcher().agrees(m)) continue;
+      if (_coveredBy(annotations, m.meterTime,
+          const {AnnotationKind.sensorInaccurate})) {
+        continue;
+      }
+      final pct = (m.fractionalDiff * 100).abs().round();
+      final direction = m.fractionalDiff > 0 ? 'higher' : 'lower';
+      out.add(PendingConfirmation(
+        type: ConfirmationType.calibrationMismatch,
+        start: m.meterTime,
+        end: m.meterTime,
+        title: 'Finger-prick disagreed with the sensor',
+        detail: 'Your meter read ${m.meterMgdl.round()} while the sensor said '
+            '${m.sensorMgdl.round()} — $pct% $direction, '
+            '${m.gap.inMinutes} min apart. Confirm if you trust the meter, and '
+            "that stretch of sensor data is excluded from training. Dismiss if the "
+            'finger-prick was the odd one out.',
+        // Scaled by how far apart they were, capped: a 20% gap is borderline, a
+        // 60%+ gap is almost certainly a real sensor problem.
+        confidence: (m.fractionalDiff.abs() / 0.6).clamp(0.3, 1.0),
+      ));
     }
 
     // 4. Illness: the detector thinks recent data looks illness-like.

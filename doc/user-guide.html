@@ -459,6 +459,8 @@
     <li><b>Recent fingersticks</b> — the latest imported readings in your unit, plus a running total.</li>
     <li><b>Unpair</b> — forget the meter and reset the import history.</li>
   </ul>
+  <p><b>Fingersticks vs the sensor.</b> Imported meter readings are drawn on the glucose chart as <b>distinct square marks</b> in their own colour, not joined into the CGM line — a finger-prick that disagrees with the sensor used to look like a sharp kink in the trace, indistinguishable from the sensor itself moving. They're separate measurements and now look like it.</p>
+  <p>When a finger-prick and the sensor disagree by more than 20% within 15 minutes of each other, the pair appears in your <b>Confirmation inbox</b> showing both numbers. <b>Confirm</b> if you trust the meter — that stretch of sensor data is then excluded from model training, so the app doesn't learn to reproduce a bad reading. <b>Dismiss</b> if the finger-prick was the odd one out. Pairs that <em>agree</em> are never queued: they need no decision, and asking would bury the ones that matter.</p>
   <div class="note">Each reading's time comes from the <b>meter's own clock</b> — if it has drifted from your phone, imported times can be slightly off. Like everything in bgdude it's read-only: it never sends anything to the meter, and the sync runs on demand (it doesn't hold the Bluetooth connection open).</div>
 </section>
 

@@ -151,6 +151,7 @@ class _ConfirmationCard extends ConsumerWidget {
         ConfirmationType.compressionLow => Icons.bedtime_outlined,
         ConfirmationType.illness => Icons.sick_outlined,
         ConfirmationType.siteFailure => Icons.healing,
+        ConfirmationType.calibrationMismatch => Icons.compare_arrows,
       };
 
   static String _when(DateTime t) {

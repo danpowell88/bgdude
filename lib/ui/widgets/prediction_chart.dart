@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'chart_axis.dart';
 import 'event_marker_bar.dart';
 import '../../analytics/predictor.dart';
+import '../../core/samples.dart';
 import '../../core/units.dart';
 import '../../state/providers.dart';
 import '../timeline_screen.dart' show explainDayEvent;
@@ -30,6 +31,9 @@ class PredictionChart extends ConsumerWidget {
         'COB' => const Color(0xFFE08A1E), // with carbs
         'UAM' => const Color(0xFF8A5CF0), // unannounced meal
         'Zero-temp' => const Color(0xFF17A2A5), // no basal
+        // Issue #77: distinct from the CGM trace, and from every forecast line — a
+        // finger-prick is a different kind of measurement, not another scenario.
+        'Fingerstick' => const Color(0xFFD64550),
         _ => cs.onSurfaceVariant, // CGM history
       };
 
@@ -53,14 +57,27 @@ class PredictionChart extends ConsumerWidget {
     double toDisplay(double m) => Mgdl(m).inUnit(unit);
     double xMin(DateTime t) => t.difference(now).inMinutes.toDouble();
 
-    // Trailing CGM history (minutes are negative — before now).
-    final history = [
+    // Trailing history (minutes are negative — before now), split by source.
+    //
+    // Issue #77: finger-pricks used to be drawn into the same line as the sensor, so a
+    // meter reading that disagreed with the sensor appeared as a sharp kink in the CGM
+    // trace — indistinguishable from the sensor itself having moved. They are separate
+    // measurements and are now drawn as separate marks.
+    final recent = [
       for (final s in ref.watch(dayDataProvider).cgm)
         if (!s.sensorWarmup &&
             s.mgdl > 0 &&
             now.difference(s.time).inMinutes <= _historyMinutes &&
             !s.time.isAfter(now))
-          FlSpot(xMin(s.time), toDisplay(s.mgdl)),
+          s,
+    ];
+    final history = [
+      for (final s in recent)
+        if (!isFingerstick(s)) FlSpot(xMin(s.time), toDisplay(s.mgdl)),
+    ]..sort((a, b) => a.x.compareTo(b.x));
+    final fingersticks = [
+      for (final s in recent)
+        if (isFingerstick(s)) FlSpot(xMin(s.time), toDisplay(s.mgdl)),
     ]..sort((a, b) => a.x.compareTo(b.x));
 
     final cs = Theme.of(context).colorScheme;
@@ -89,6 +106,24 @@ class PredictionChart extends ConsumerWidget {
       dotData: const FlDotData(show: false),
     ));
     labels.add('CGM');
+    if (fingersticks.isNotEmpty) {
+      // Marks only, no connecting line: consecutive finger-pricks hours apart are not
+      // a trace, and joining them would imply readings that were never taken.
+      bars.add(LineChartBarData(
+        spots: fingersticks,
+        color: seriesColor('Fingerstick', cs),
+        barWidth: 0,
+        dotData: FlDotData(
+          getDotPainter: (spot, _, __, ___) => FlDotSquarePainter(
+            size: 7,
+            color: seriesColor('Fingerstick', cs),
+            strokeWidth: 1.5,
+            strokeColor: cs.surface,
+          ),
+        ),
+      ));
+      labels.add('Fingerstick');
+    }
     for (final l in scenarios) {
       bars.add(forecast(l, seriesColor(l.label, cs)));
       labels.add(l.label);
@@ -217,6 +252,15 @@ class PredictionChart extends ConsumerWidget {
     );
   }
 
+  /// Whether a reading came from a finger-prick meter rather than the sensor.
+  ///
+  /// Both the explicit calibration flag and the meter source count: a reading entered
+  /// to calibrate and one imported from a Bluetooth meter are the same kind of
+  /// measurement, and only one of the two flags is set depending on how it arrived.
+  @visibleForTesting
+  static bool isFingerstick(CgmSample s) =>
+      s.isCalibration || s.source == GlucoseSource.meter;
+
   /// The series label for a hovered spot's bar index (tooltip line). Exposed for
   /// testing the tooltip's label lookup in isolation from the chart widget tree.
   @visibleForTesting
@@ -258,6 +302,7 @@ class PredictionChartLegend extends StatelessWidget {
     final entries = <(String, String)>[
       ('Predicted', 'best estimate'),
       ('CGM', 'recent readings'),
+      ('Fingerstick', 'meter reading'),
       if (scenarios) ...[
         ('IOB', 'insulin only'),
         ('COB', 'with carbs'),
