@@ -31,6 +31,11 @@ overwhelmingly decline. Asking for something no feature reads is a bad trade.
 - Any future GPS-based feature (auto weather by current location, geofenced reminders)
   re-opens this decision and must add the **two-step** prompt: foreground location first,
   background only afterwards, per Android's requirement.
+- **One such feature is already proposed: issue #377** (weather from device GPS, opt-in).
+  It does not invalidate this decision — #377 is explicitly opt-in and *foreground*
+  location, which is a different permission from the background one ruled out here. But
+  it does mean the sentence "no feature reads position" is true **today** rather than
+  permanently, and whoever implements #377 should re-read this file first.
 - `permissionsForSdk` in `lib/state/permission_audit.dart` intentionally lists
   `locationWhenInUse` only for `maxSdk: 30`, mirroring the manifest.
 
