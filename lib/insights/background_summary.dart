@@ -19,14 +19,26 @@ import '../data/history_repository.dart';
 import '../data/secure_key.dart';
 import '../ml/sensitivity_model.dart';
 import 'morning_summary.dart';
+import '../alerts/headless_alert_watch.dart';
+import '../data/kv_store.dart';
+import 'alert_monitor.dart';
+import 'notification_prefs.dart';
 import 'notifications.dart';
 import 'weekly_digest.dart';
 
 const _summaryTask = 'bgdude.morning-summary';
 
+/// Issues #51 / #28 stage 3: headless forecast-based alerting, so a predicted low is
+/// still caught when Android has evicted the app.
+const _alertWatchTask = 'bgdude.alert-watch';
+
+// Key names live on AlertWatchStore so the foreground app and this isolate cannot
+// drift apart on them.
+
 @pragma('vm:entry-point')
 void backgroundCallbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
+    if (task == _alertWatchTask) return _runAlertWatch();
     if (task != _summaryTask) return true;
     try {
       final now = DateTime.now();
@@ -98,6 +110,81 @@ void backgroundCallbackDispatcher() {
   });
 }
 
+/// The headless alert pass (issues #51 / #28).
+///
+/// Deliberately conservative: it opens the database, evaluates the SAME pure core the
+/// foreground uses, and posts at most one notification. Any failure returns true rather
+/// than throwing — a background task that fails hard gets backed off by WorkManager, and
+/// an alerting safety net that WorkManager has stopped scheduling is worse than useless
+/// because nobody would notice.
+Future<bool> _runAlertWatch() async {
+  try {
+    tzdata.initializeTimeZones();
+    await configureLocalTimezone();
+
+    final keys = await SecureKeyStore.open();
+    final db = AppDatabase(openEncryptedDatabase(keys.getOrCreatePassphrase()));
+    try {
+      KvStore.init(db);
+      final now = DateTime.now();
+
+      final beatRaw = await KvStore.getString(AlertWatchStore.foregroundBeatKey);
+      final beat = AlertWatchStore.decodeBeat(beatRaw);
+      if (!shouldEvaluateHeadless(
+          lastForegroundEvaluation: beat, now: now)) {
+        return true;
+      }
+
+      final repo = DriftHistoryRepository(db);
+      final cgm = await repo.cgm(now.subtract(const Duration(hours: 1)), now);
+      final readings = [
+        for (final s in cgm)
+          if (!s.sensorWarmup && !s.isCalibration && s.mgdl > 0)
+            (time: s.time, mgdl: s.mgdl.value),
+      ];
+
+      final fireLog = AlertFireLog.decode(
+          await KvStore.getString(AlertWatchStore.fireLogKey));
+      final alert = evaluateHeadless(
+        readings: readings,
+        fireLog: fireLog,
+        now: now,
+        lastForegroundEvaluation: beat,
+      );
+      if (alert == null) return true;
+
+      final notifications = NotificationService();
+      await notifications.init();
+      await notifications.show(
+        _categoryFor(alert.kind),
+        alert.title,
+        alert.body,
+      );
+
+      // Record the fire BEFORE returning so the next pass — and the foreground app —
+      // both see the cooldown.
+      await KvStore.setString(
+        AlertWatchStore.fireLogKey,
+        fireLog.withFired(alert.kind, now).encode(),
+      );
+    } finally {
+      await db.close();
+    }
+  } catch (_) {
+    // Try again next cycle.
+  }
+  return true;
+}
+
+/// Maps an alert kind onto its notification category, so the user's per-category
+/// preferences and quiet hours apply to a headless alert exactly as they do to a
+/// foreground one — a background pass must not become a way to bypass them.
+NotificationCategory _categoryFor(GlucoseAlertKind kind) => switch (kind) {
+      GlucoseAlertKind.urgentLow => NotificationCategory.urgentLow,
+      GlucoseAlertKind.predictedLow => NotificationCategory.predictedLow,
+      GlucoseAlertKind.predictedHigh => NotificationCategory.predictedHigh,
+    };
+
 /// Register the periodic background summary. Call once after onboarding.
 Future<void> registerBackgroundSummary() async {
   await Workmanager().initialize(backgroundCallbackDispatcher);
@@ -105,6 +192,15 @@ Future<void> registerBackgroundSummary() async {
     _summaryTask,
     _summaryTask,
     frequency: const Duration(hours: 6),
+    constraints: Constraints(networkType: NetworkType.notRequired),
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+  );
+  // 15 minutes is WorkManager's floor for periodic work. Coarser than the app's own
+  // 5-minute cadence, and far better than nothing once the app has been evicted.
+  await Workmanager().registerPeriodicTask(
+    _alertWatchTask,
+    _alertWatchTask,
+    frequency: const Duration(minutes: 15),
     constraints: Constraints(networkType: NetworkType.notRequired),
     existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
   );

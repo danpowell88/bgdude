@@ -9,6 +9,7 @@ import 'dart:isolate';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../alerts/alert_orchestrator.dart';
+import '../alerts/headless_alert_watch.dart';
 import '../analytics/band_coverage.dart';
 import '../analytics/bolus_advisor.dart';
 import '../analytics/context_builder.dart';
@@ -2049,6 +2050,15 @@ class AlertService {
   /// history I/O and throttled prediction logging (TASK-116).
   Future<void> onSnapshot() async {
     final now = DateTime.now();
+    // Issues #51/#28: tell the headless watch the app is alive and evaluating, so its
+    // background pass stands down rather than second-guessing a better-informed
+    // evaluation. Fire-and-forget — a failed heartbeat must never block alerting; it
+    // only means the background pass may also run, which is the safe direction.
+    unawaited(KvStore.setString(
+      AlertWatchStore.foregroundBeatKey,
+      AlertWatchStore.encodeBeat(now),
+    ).catchError((Object e) =>
+        appLog.error('alerts', 'heartbeat write failed', error: e)));
     final snap = _ref.read(pumpSnapshotProvider).valueOrNull;
 
     // Battery history I/O stays here; the low/soon-empty decision is pure.
