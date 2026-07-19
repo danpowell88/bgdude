@@ -5,6 +5,7 @@
 /// Advisory only — nothing here writes to the pump.
 library;
 
+import '../core/local_day.dart';
 import '../analytics/therapy_settings.dart';
 import '../core/samples.dart';
 import '../ml/autotune.dart';
@@ -51,9 +52,11 @@ class TherapyReportBuilder {
     final results = <DayResult>[];
     for (var d = startDay;
         !d.isAfter(endDay);
-        d = d.add(const Duration(days: 1))) {
+        // Issue #108: calendar step, not +24h — after a DST day a fixed 24h
+        // increment leaves the loop variable an hour off midnight, permanently.
+        d = addLocalDays(d, 1)) {
       final dayStart = d.subtract(const Duration(hours: 6)); // IOB lookback
-      final dayEnd = d.add(const Duration(days: 1));
+      final dayEnd = endOfLocalDay(d); // issue #108: DST-safe day boundary
       final dayCgm = [
         for (final s in cgm)
           if (!s.time.isBefore(dayStart) && s.time.isBefore(dayEnd)) s,
