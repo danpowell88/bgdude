@@ -110,6 +110,7 @@
   <div class="grp">Setup</div>
   <a href="#profile">Profile</a>
   <a href="#settings">Settings &amp; integrations</a>
+  <a href="#permissions">Permissions</a>
   <a href="#safety">Safety &amp; scope</a>
 </nav>
 
@@ -512,8 +513,25 @@
     <li><b>Nutrition-label AI</b> — optionally download a small on-device model (Gemma, ~0.5&nbsp;GB) that helps the <a href="#meals">label scanner</a> read unusual or foreign-language panels. Paste a Gemma&nbsp;3&nbsp;1B <code>.task</code> model URL (Gemma is licence-gated, so it isn't bundled) with an access token if the host needs one; it downloads once and runs entirely on your phone. Everything works without it — the deterministic parser is the always-on path.</li>
     <li><b>Re-pair / Unpair pump</b> — start a fresh scan or drop the pairing.</li>
     <li><b>Nightscout</b> — optional upload of entries, treatments and device status; enter your site URL + API secret and <b>Test connection</b>.</li>
+    <li><b>Permissions</b> — one screen listing everything bgdude asks Android for, whether it's currently granted, and <b>what breaks without it</b>. Worth checking after an Android update or if alarms go quiet: phones and OEM battery managers can revoke a grant without telling you. Missing permissions that matter (notifications, Bluetooth, unrestricted battery use) raise a warning at the top; optional ones (camera, Health Connect) don't, so the warning stays meaningful. Anything denied offers a direct link into system settings. Pull down to re-check.</li>
   </ul>
   <p><b>Storage recovery.</b> If encrypted local storage fails to open (a mismatched key after restoring a backup, file damage, a temporary failure reading the saved key from secure storage — e.g. right after an OS update — or this app build being older than the data, e.g. after sideloading an older version), a banner appears explaining what's wrong and the app keeps running without saving until you act. Tap the banner for the recovery screen: <b>retry</b> opening, <b>export what's still readable</b> (only offered when some data may have survived), or a destructive, twice-confirmed <b>reset storage</b> (not offered when the real fix is installing a newer app build — there's nothing to reset). Reset never deletes the old file outright — it's renamed aside on disk in case it turns out to be recoverable later, and only then is a fresh empty store created.</p>
+</section>
+
+<section id="permissions">
+  <h2>What each permission is for</h2>
+  <p>bgdude asks for only what it needs, and each one has a visible consequence if you decline. The <b>Settings &rarr; Permissions</b> screen shows the live state of all of these.</p>
+  <table>
+    <tr><th>Permission</th><th>Why bgdude needs it</th><th>What breaks without it</th></tr>
+    <tr><td><b>Notifications</b> (Android 13+)</td><td>Glucose alarms, pump alerts and reminders are delivered as notifications.</td><td><b>No alarms at all.</b> The app looks like it's working and stays silent — the most dangerous denial of the lot.</td></tr>
+    <tr><td><b>Nearby devices</b> (Bluetooth, Android 12+)</td><td>Finding and connecting to your pump.</td><td>The pump can never be found or reconnected.</td></tr>
+    <tr><td><b>Location</b> (Android 11 and below only)</td><td>Older Android versions legally require location permission to scan for <em>any</em> Bluetooth device. <b>bgdude never uses your position</b> — it's a scanning requirement, not a location feature.</td><td>Pump discovery silently finds nothing, which looks exactly like the pump being out of range.</td></tr>
+    <tr><td><b>Unrestricted battery use</b></td><td>Keeps the pump connection alive while the phone is idle.</td><td>Android suspends the app during Doze, so overnight readings and alarms stop until you next open it.</td></tr>
+    <tr><td><b>Alarms &amp; reminders</b></td><td>Pre-bolus and timed reminders firing at an exact time.</td><td>Reminders drift or arrive late — some phones revoke this silently after an update.</td></tr>
+    <tr><td><b>Health Connect</b></td><td>Reads sleep, heart rate and activity to explain changes in your insulin sensitivity.</td><td>Sensitivity insights lose their sleep and activity drivers. Glucose monitoring is unaffected.</td></tr>
+    <tr><td><b>Camera</b></td><td>Barcode scanning and reading meter panels.</td><td>Scanning is unavailable; everything can still be entered by hand.</td></tr>
+  </table>
+  <p>bgdude does <b>not</b> request background location, and no feature reads your position. Weather context, if you enable it, uses a city name you type in yourself.</p>
 </section>
 
 <section id="safety">
