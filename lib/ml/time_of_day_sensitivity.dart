@@ -21,6 +21,7 @@
 /// `ml/`, this only ever produces *suggestions* — it never writes to the pump.
 library;
 
+import '../core/local_day.dart';
 import 'dart:math' as math;
 
 import '../analytics/insulin_math.dart';
@@ -117,8 +118,10 @@ class TimeOfDaySensitivityAnalyzer {
     required List<CarbEntry> carbs,
     required TherapySettings settings,
   }) {
-    final dayStart = DateTime(day.year, day.month, day.day);
-    final dayEnd = dayStart.add(const Duration(days: 1));
+    // Issue #108: calendar arithmetic, not +24h — a DST day is 23 or 25 hours long
+    // and a fixed 24h window mis-attributes readings across the boundary.
+    final dayStart = startOfLocalDay(day);
+    final dayEnd = endOfLocalDay(day);
 
     final sorted = [...cgm]
       ..removeWhere((s) => s.sensorWarmup || s.isCalibration || s.mgdl <= 0)

@@ -3,6 +3,7 @@
 /// the report range. Derived from our own delivery history via [insulinTotals].
 library;
 
+import '../core/local_day.dart';
 import '../analytics/insulin_totals.dart';
 import '../core/samples.dart';
 import 'report_range.dart';
@@ -100,9 +101,11 @@ class InsulinReportBuilder {
     final endDay = DateTime(range.to.year, range.to.month, range.to.day);
     for (var d = startDay;
         !d.isAfter(endDay);
-        d = d.add(const Duration(days: 1))) {
+        // Issue #108: calendar step, not +24h — after a DST day a fixed 24h
+        // increment leaves the loop variable an hour off midnight, permanently.
+        d = addLocalDays(d, 1)) {
       final dayStart = d;
-      var dayEnd = d.add(const Duration(days: 1));
+      var dayEnd = endOfLocalDay(d); // issue #108: DST-safe day boundary
       if (dayEnd.isAfter(range.to)) dayEnd = range.to;
       final t = insulinTotals(
           boluses: boluses, basal: basal, from: dayStart, to: dayEnd);
