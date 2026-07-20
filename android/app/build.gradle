@@ -106,7 +106,7 @@ dependencies {
     testImplementation "junit:junit:4.13.2"
     // Real org.json on the unit-test classpath so PumpProfileMapper's JSON output can be
     // asserted (Android's bundled org.json is a throwing stub under JVM unit tests).
-    testImplementation "org.json:json:20260522"
+    testImplementation "org.json:json:20260719"
     // TASK-186: PumpService/BootReceiver lifecycle tests need a real (shadowed) Android
     // framework — Context, Service, NotificationManager, BroadcastReceiver dispatch.
     testImplementation "org.robolectric:robolectric:4.16.1"
