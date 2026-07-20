@@ -71,7 +71,7 @@ jobs:
       # TASK-288: pub.dev resolution is a real network dependency -- retry a
       # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -148,7 +148,7 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -234,7 +234,7 @@ jobs:
       # TASK-288: pub.dev resolution is a real network dependency -- retry a
       # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -398,7 +398,7 @@ jobs:
       # TASK-288: pub.dev resolution is a real network dependency -- retry a
       # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -474,7 +474,7 @@ jobs:
       # TASK-288: pub.dev resolution is a real network dependency -- retry a
       # transient blip instead of redding the whole build on it.
       - name: Install dependencies
-        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -511,7 +511,7 @@ jobs:
       # Maven cache as a side effect before the real, ungated run below.
       - name: Warm the Robolectric SDK-jar cache (network-dependent, retried)
         continue-on-error: true
-        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         with:
           timeout_minutes: 5
           max_attempts: 3
