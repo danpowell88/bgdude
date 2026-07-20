@@ -66,7 +66,7 @@ dependencies:
 
   # Utilities
   collection: ^1.18.0
-  intl: ^0.19.0
+  intl: ^0.20.3
   logging: ^1.2.0
   shared_preferences: ^2.3.2
   # Keystore-backed storage for the SQLCipher DB passphrase (TASK-8).
